@@ -1,5 +1,6 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { getClients, getInvoices } from '@/lib/storage';
 import { Client, Invoice } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,43 +12,28 @@ import ClientCard from './ClientCard';
 import { AnimatedBackground } from './ui-custom/AnimatedBackground';
 
 const Dashboard: React.FC = () => {
-  const [clients, setClients] = useState<Client[]>([]);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [stats, setStats] = useState({
-    totalClients: 0,
-    totalInvoices: 0,
-    totalAmount: 0,
-    pendingAmount: 0,
-    paidAmount: 0,
+  const { data: clients = [] } = useQuery({
+    queryKey: ['clients'],
+    queryFn: getClients
   });
 
-  useEffect(() => {
-    // Load clients and invoices
-    const loadedClients = getClients();
-    const loadedInvoices = getInvoices();
-    
-    setClients(loadedClients);
-    setInvoices(loadedInvoices);
-    
-    // Calculate stats
-    const totalClients = loadedClients.length;
-    const totalInvoices = loadedInvoices.length;
-    const totalAmount = loadedInvoices.reduce((sum, invoice) => sum + invoice.amount, 0);
-    const pendingAmount = loadedInvoices
+  const { data: invoices = [] } = useQuery({
+    queryKey: ['invoices'],
+    queryFn: getInvoices
+  });
+
+  // Calculate stats
+  const stats = {
+    totalClients: clients.length,
+    totalInvoices: invoices.length,
+    totalAmount: invoices.reduce((sum, invoice) => sum + invoice.amount, 0),
+    pendingAmount: invoices
       .filter(inv => ['sent', 'accepted'].includes(inv.status))
-      .reduce((sum, invoice) => sum + invoice.amount, 0);
-    const paidAmount = loadedInvoices
+      .reduce((sum, invoice) => sum + invoice.amount, 0),
+    paidAmount: invoices
       .filter(inv => inv.status === 'paid')
-      .reduce((sum, invoice) => sum + invoice.amount, 0);
-    
-    setStats({
-      totalClients,
-      totalInvoices,
-      totalAmount,
-      pendingAmount,
-      paidAmount,
-    });
-  }, []);
+      .reduce((sum, invoice) => sum + invoice.amount, 0),
+  };
 
   // Sort clients by newest first
   const sortedClients = [...clients].sort((a, b) => 

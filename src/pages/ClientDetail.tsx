@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getClient, getClientInvoices, deleteClient } from '@/lib/storage';
 import { Client, Invoice } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -7,7 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Separator } from '@/components/ui/separator';
 import InvoiceList from '@/components/InvoiceList';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Trash2, UserEdit } from 'lucide-react';
+import { ArrowLeft, Trash2, UserCog } from 'lucide-react';
 import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
 
@@ -100,7 +101,7 @@ const ClientDetail = () => {
             </Button>
             <Button size="sm" asChild>
               <Link to={`/client/edit/${client.id}`}>
-                <UserEdit className="h-4 w-4 mr-2" />
+                <UserCog className="h-4 w-4 mr-2" />
                 Edit Client
               </Link>
             </Button>

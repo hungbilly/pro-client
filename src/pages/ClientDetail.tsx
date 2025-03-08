@@ -1,176 +1,169 @@
-
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { getClient, getClientInvoices, deleteClient } from '@/lib/storage';
 import { Client, Invoice } from '@/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import InvoiceList from '@/components/InvoiceList';
-import PageTransition from '@/components/ui-custom/PageTransition';
-import AnimatedBackground from '@/components/ui-custom/AnimatedBackground';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { toast } from '@/components/ui/sonner';
-import { ChevronLeft, Mail, MapPin, Phone, Trash2, UserCog } from 'lucide-react';
+import { ArrowLeft, Trash2, UserEdit } from 'lucide-react';
+import { toast } from 'sonner';
+import PageTransition from '@/components/ui-custom/PageTransition';
 
 const ClientDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [client, setClient] = useState<Client | null>(null);
+  const [client, setClient] = useState<Client | undefined>(undefined);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (!id) {
+      toast.error('Client ID is missing.');
       navigate('/');
       return;
     }
 
-    // Fetch client and invoices
-    const fetchedClient = getClient(id);
-    if (fetchedClient) {
-      setClient(fetchedClient);
-      setInvoices(getClientInvoices(id));
-    } else {
-      toast.error('Client not found');
-      navigate('/');
-    }
-    setLoading(false);
+    const fetchClientData = async () => {
+      setIsLoading(true);
+      try {
+        const fetchedClient = getClient(id);
+        const fetchedInvoices = getClientInvoices(id);
+
+        if (fetchedClient) {
+          setClient(fetchedClient);
+          setInvoices(fetchedInvoices);
+        } else {
+          toast.error('Client not found.');
+          navigate('/');
+        }
+      } catch (error) {
+        console.error('Failed to fetch client data:', error);
+        toast.error('Failed to load client data.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchClientData();
   }, [id, navigate]);
 
-  const handleDeleteClient = () => {
-    if (!id) return;
-    
+  const handleDeleteClient = async () => {
     try {
-      deleteClient(id);
-      toast.success('Client deleted successfully');
-      navigate('/');
+      if (id) {
+        deleteClient(id);
+        toast.success('Client deleted successfully.');
+        navigate('/');
+      } else {
+        toast.error('Client ID is missing.');
+      }
     } catch (error) {
-      console.error('Error deleting client:', error);
-      toast.error('Failed to delete client');
+      console.error('Failed to delete client:', error);
+      toast.error('Failed to delete client.');
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p>Loading client details...</p>
-      </div>
+      <PageTransition>
+        <Card className="w-full max-w-4xl mx-auto">
+          <CardContent className="pt-6">
+            <div className="text-center p-8">Loading client data...</div>
+          </CardContent>
+        </Card>
+      </PageTransition>
     );
   }
 
   if (!client) {
-    return null;
+    return (
+      <PageTransition>
+        <Card className="w-full max-w-4xl mx-auto">
+          <CardContent className="pt-6">
+            <div className="text-center p-8">Client not found.</div>
+          </CardContent>
+        </Card>
+      </PageTransition>
+    );
   }
 
   return (
     <PageTransition>
-      <AnimatedBackground>
-        <div className="container px-4 py-8 mx-auto max-w-7xl">
-          <Button 
-            variant="ghost" 
-            className="mb-6" 
-            onClick={() => navigate('/')}
-          >
-            <ChevronLeft className="h-4 w-4 mr-2" />
-            Back to Dashboard
-          </Button>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
-            <div className="lg:col-span-1">
-              <Card className="backdrop-blur-sm bg-white/80 border-transparent shadow-soft">
-                <CardHeader>
-                  <CardTitle>{client.name}</CardTitle>
-                  <CardDescription>
-                    Client added on {new Date(client.createdAt).toLocaleDateString()}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3">
-                      <Mail className="h-4 w-4 text-muted-foreground" />
-                      <span>{client.email}</span>
-                    </div>
-                    
-                    {client.phone && (
-                      <div className="flex items-center gap-3">
-                        <Phone className="h-4 w-4 text-muted-foreground" />
-                        <span>{client.phone}</span>
-                      </div>
-                    )}
-                    
-                    {client.address && (
-                      <div className="flex items-start gap-3">
-                        <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
-                        <span>{client.address}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {client.notes && (
-                    <>
-                      <Separator />
-                      <div>
-                        <h3 className="text-sm font-medium mb-2">Notes</h3>
-                        <p className="text-sm text-muted-foreground whitespace-pre-line">{client.notes}</p>
-                      </div>
-                    </>
-                  )}
-
-                  <Separator />
-                  
-                  <div className="flex flex-col gap-3 pt-3">
-                    <Button asChild>
-                      <Link to={`/invoice/create/${client.id}`}>
-                        Create New Invoice
-                      </Link>
-                    </Button>
-                    <Button variant="outline" asChild>
-                      <Link to={`/client/edit/${client.id}`}>
-                        <UserCog className="h-4 w-4 mr-2" />
-                        Edit Client
-                      </Link>
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="destructive">
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete Client
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This will permanently delete {client.name} and all their associated invoices. 
-                            This action cannot be undone.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction 
-                            onClick={handleDeleteClient}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          >
-                            Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="lg:col-span-2">
-              <InvoiceList 
-                invoices={invoices}
-                client={client}
-              />
-            </div>
+      <Card className="w-full max-w-4xl mx-auto">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-2xl font-bold">{client.name}</CardTitle>
+          <div className="space-x-2">
+            <Button variant="outline" size="sm" onClick={() => navigate('/')}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Clients
+            </Button>
+            <Button size="sm" asChild>
+              <Link to={`/client/edit/${client.id}`}>
+                <UserEdit className="h-4 w-4 mr-2" />
+                Edit Client
+              </Link>
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Client
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. All data associated with this client will be permanently deleted.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDeleteClient}>Continue</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
-        </div>
-      </AnimatedBackground>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4">
+            <div>
+              <h3 className="text-lg font-medium">Client Information</h3>
+              <CardDescription>
+                View and manage client details.
+              </CardDescription>
+              <Separator className="my-4" />
+              <div className="space-y-2">
+                <p>
+                  <span className="font-semibold">Email:</span> {client.email}
+                </p>
+                <p>
+                  <span className="font-semibold">Phone:</span> {client.phone}
+                </p>
+                <p>
+                  <span className="font-semibold">Address:</span> {client.address}
+                </p>
+                <p>
+                  <span className="font-semibold">Created At:</span> {new Date(client.createdAt).toLocaleDateString()}
+                </p>
+                {client.notes && (
+                  <p>
+                    <span className="font-semibold">Notes:</span> {client.notes}
+                  </p>
+                )}
+              </div>
+            </div>
+            <Separator className="my-4" />
+            <InvoiceList invoices={invoices} client={client} />
+          </div>
+        </CardContent>
+        <CardFooter>
+          <CardDescription>
+            Manage client invoices and details.
+          </CardDescription>
+        </CardFooter>
+      </Card>
     </PageTransition>
   );
 };

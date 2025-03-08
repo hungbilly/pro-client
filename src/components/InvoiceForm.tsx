@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { saveInvoice, updateInvoice, getClient } from '@/lib/storage';
@@ -9,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
-import { toast } from '@/components/ui/sonner';
+import { toast } from 'sonner';
 import { Plus, Trash2, CreditCard, Send } from 'lucide-react';
 
 interface InvoiceFormProps {
@@ -148,7 +147,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ clientId, existingInvoice }) 
         return;
       }
 
-      const status = saveAsDraft ? 'draft' : 'sent';
+      const status = saveAsDraft ? 'draft' : 'sent' as Invoice['status'];
       const updatedFormData = { ...formData, status };
       
       let invoice;

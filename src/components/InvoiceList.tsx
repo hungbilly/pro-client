@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Invoice, Client } from '@/types';
@@ -7,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { AreaChart, CalendarDays, ClipboardCheck, Copy, Eye, FileEdit } from 'lucide-react';
-import { toast } from '@/components/ui/sonner';
+import { toast } from 'sonner';
 
 interface InvoiceListProps {
   invoices: Invoice[];

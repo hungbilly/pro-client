@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { toast } from '@/components/ui/sonner';
+import { toast } from 'sonner';
 
 interface ClientFormProps {
   existingClient?: Client;
@@ -39,6 +39,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ existingClient }) => {
       // Validate form
       if (!formData.name || !formData.email) {
         toast.error('Please fill in all required fields.');
+        setIsSubmitting(false);
         return;
       }
       
@@ -60,7 +61,6 @@ const ClientForm: React.FC<ClientFormProps> = ({ existingClient }) => {
     } catch (error) {
       console.error('Error saving client:', error);
       toast.error('Something went wrong. Please try again.');
-    } finally {
       setIsSubmitting(false);
     }
   };

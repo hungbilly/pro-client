@@ -50,7 +50,4 @@ export const PageTransition: React.FC<PageTransitionProps> = ({
   );
 };
 
-// You also need to add framer-motion as a dependency
-<lov-add-dependency>framer-motion@latest</lov-add-dependency>
-
 export default PageTransition;

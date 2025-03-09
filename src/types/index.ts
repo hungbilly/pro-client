@@ -16,6 +16,7 @@ export interface Invoice {
   amount: number;
   date: string;
   dueDate: string;
+  shootingDate?: string;
   status: 'draft' | 'sent' | 'accepted' | 'paid';
   items: InvoiceItem[];
   notes?: string;

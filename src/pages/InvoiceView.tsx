@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Check, Calendar, FileText, DollarSign, Send } from 'lucide-react';
+import { ArrowLeft, Check, Calendar, FileText, DollarSign, Send, Camera } from 'lucide-react';
 import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { useAuth } from '@/context/AuthContext';
@@ -212,6 +212,13 @@ const InvoiceView = () => {
                 <p>
                   <strong>Due Date:</strong> {new Date(invoice.dueDate).toLocaleDateString()}
                 </p>
+                {invoice.shootingDate && (
+                  <p className="flex items-center">
+                    <strong className="mr-1">Shooting Date:</strong>
+                    <Camera className="h-4 w-4 mr-1" />
+                    {new Date(invoice.shootingDate).toLocaleDateString()}
+                  </p>
+                )}
                 <p>
                   <strong>Amount:</strong> ${invoice.amount.toFixed(2)}
                 </p>

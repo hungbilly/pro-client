@@ -88,6 +88,7 @@ export type Database = {
           id: string
           notes: string | null
           number: string
+          shooting_date: string | null
           status: string
           view_link: string
         }
@@ -101,6 +102,7 @@ export type Database = {
           id?: string
           notes?: string | null
           number: string
+          shooting_date?: string | null
           status: string
           view_link: string
         }
@@ -114,6 +116,7 @@ export type Database = {
           id?: string
           notes?: string | null
           number?: string
+          shooting_date?: string | null
           status?: string
           view_link?: string
         }

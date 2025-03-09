@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Client, Invoice, InvoiceItem } from '@/types';
@@ -7,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2, Calendar as CalendarIcon } from 'lucide-react';
+import { Plus, Trash2, Calendar as CalendarIcon, Camera } from 'lucide-react';
 import { toast } from 'sonner';
 import { getClient, saveInvoice, updateInvoice } from '@/lib/storage';
 import { format } from 'date-fns';
@@ -28,6 +29,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
   const [number, setNumber] = useState(existingInvoice?.number || '');
   const [date, setDate] = useState<Date | null>(existingInvoice ? new Date(existingInvoice.date) : new Date());
   const [dueDate, setDueDate] = useState<Date | null>(existingInvoice ? new Date(existingInvoice.dueDate) : new Date());
+  const [shootingDate, setShootingDate] = useState<Date | null>(existingInvoice?.shootingDate ? new Date(existingInvoice.shootingDate) : null);
   const [status, setStatus] = useState<'draft' | 'sent' | 'accepted' | 'paid'>(existingInvoice?.status || 'draft');
   const [items, setItems] = useState<InvoiceItem[]>(existingInvoice?.items || [{ id: Date.now().toString(), description: '', quantity: 1, rate: 0, amount: 0 }]);
   const [notes, setNotes] = useState(existingInvoice?.notes || '');
@@ -104,6 +106,11 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
       contractTerms,
     };
 
+    // Add shooting date if it exists
+    if (shootingDate) {
+      invoiceData.shootingDate = format(shootingDate, 'yyyy-MM-dd');
+    }
+
     try {
       if (existingInvoice) {
         // Update existing invoice
@@ -120,6 +127,12 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
           contractTerms,
           viewLink: existingInvoice.viewLink,
         };
+
+        // Add shooting date if it exists
+        if (shootingDate) {
+          updatedInvoice.shootingDate = format(shootingDate, 'yyyy-MM-dd');
+        }
+
         await updateInvoice(updatedInvoice);
         toast.success('Invoice updated successfully!');
       } else {
@@ -162,7 +175,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
               required
             />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label>Invoice Date</Label>
               <Popover>
@@ -170,7 +183,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
                   <Button
                     variant={"outline"}
                     className={cn(
-                      "w-[240px] justify-start text-left font-normal",
+                      "w-full justify-start text-left font-normal",
                       !date && "text-muted-foreground"
                     )}
                   >
@@ -195,7 +208,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
                   <Button
                     variant={"outline"}
                     className={cn(
-                      "w-[240px] justify-start text-left font-normal",
+                      "w-full justify-start text-left font-normal",
                       !dueDate && "text-muted-foreground"
                     )}
                   >
@@ -208,6 +221,31 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
                     mode="single"
                     selected={dueDate}
                     onSelect={setDueDate}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div>
+              <Label>Shooting Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !shootingDate && "text-muted-foreground"
+                    )}
+                  >
+                    <Camera className="mr-2 h-4 w-4" />
+                    {shootingDate ? format(shootingDate, "PPP") : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <DatePicker
+                    mode="single"
+                    selected={shootingDate}
+                    onSelect={setShootingDate}
                     initialFocus
                   />
                 </PopoverContent>

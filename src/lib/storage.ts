@@ -1,3 +1,4 @@
+
 import { Client, Invoice, STORAGE_KEYS, InvoiceItem } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -196,6 +197,7 @@ export const getInvoices = async (): Promise<Invoice[]> => {
         amount: invoice.amount,
         date: invoice.date,
         dueDate: invoice.due_date,
+        shootingDate: invoice.shooting_date || undefined,
         status: invoice.status as 'draft' | 'sent' | 'accepted' | 'paid',
         items: invoiceItems,
         notes: invoice.notes || undefined,
@@ -250,6 +252,7 @@ export const getInvoice = async (id: string): Promise<Invoice | undefined> => {
       amount: invoice.amount,
       date: invoice.date,
       dueDate: invoice.due_date,
+      shootingDate: invoice.shooting_date || undefined,
       status: invoice.status as 'draft' | 'sent' | 'accepted' | 'paid',
       items: invoiceItems,
       notes: invoice.notes || undefined,
@@ -378,6 +381,7 @@ export const getClientInvoices = async (clientId: string): Promise<Invoice[]> =>
         amount: invoice.amount,
         date: invoice.date,
         dueDate: invoice.due_date,
+        shootingDate: invoice.shooting_date || undefined,
         status: invoice.status as 'draft' | 'sent' | 'accepted' | 'paid',
         items: invoiceItems,
         notes: invoice.notes || undefined,
@@ -405,6 +409,7 @@ export const saveInvoice = async (invoice: Omit<Invoice, 'id' | 'viewLink'>): Pr
         amount: invoice.amount,
         date: invoice.date,
         due_date: invoice.dueDate,
+        shooting_date: invoice.shootingDate,
         status: invoice.status,
         notes: invoice.notes,
         contract_terms: invoice.contractTerms,
@@ -456,6 +461,7 @@ export const saveInvoice = async (invoice: Omit<Invoice, 'id' | 'viewLink'>): Pr
       amount: newInvoice.amount,
       date: newInvoice.date,
       dueDate: newInvoice.due_date,
+      shootingDate: newInvoice.shooting_date || undefined,
       status: newInvoice.status as 'draft' | 'sent' | 'accepted' | 'paid',
       items,
       notes: newInvoice.notes || undefined,
@@ -479,6 +485,7 @@ export const updateInvoice = async (invoice: Invoice): Promise<Invoice> => {
         amount: invoice.amount,
         date: invoice.date,
         due_date: invoice.dueDate,
+        shooting_date: invoice.shootingDate,
         status: invoice.status,
         notes: invoice.notes,
         contract_terms: invoice.contractTerms,

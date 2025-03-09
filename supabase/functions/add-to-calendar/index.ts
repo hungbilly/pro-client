@@ -8,10 +8,43 @@ const corsHeaders = {
 };
 
 // Get environment variables
-const GOOGLE_API_KEY = Deno.env.get('GOOGLE_API_KEY');
-const COMPANY_CALENDAR_ID = Deno.env.get('COMPANY_CALENDAR_ID');
+const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID');
+const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET');
+const GOOGLE_REFRESH_TOKEN = Deno.env.get('GOOGLE_REFRESH_TOKEN');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || 'https://htjvyzmuqsrjpesdurni.supabase.co';
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh0anZ5em11cXNyanBlc2R1cm5pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE0MDg0NTIsImV4cCI6MjA1Njk4NDQ1Mn0.AtFzj0Ail1PgKmXJcPWyWnXqC6EbMP0UOlH4m_rhkq8';
+
+// Function to get a valid OAuth2 access token using refresh token
+async function getAccessToken() {
+  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_REFRESH_TOKEN) {
+    throw new Error('Missing Google OAuth2 credentials');
+  }
+  
+  const tokenEndpoint = 'https://oauth2.googleapis.com/token';
+  const params = new URLSearchParams({
+    client_id: GOOGLE_CLIENT_ID,
+    client_secret: GOOGLE_CLIENT_SECRET,
+    refresh_token: GOOGLE_REFRESH_TOKEN,
+    grant_type: 'refresh_token'
+  });
+
+  const response = await fetch(tokenEndpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: params.toString(),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    console.error('OAuth token error:', errorData);
+    throw new Error('Failed to get access token');
+  }
+
+  const data = await response.json();
+  return data.access_token;
+}
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -91,23 +124,28 @@ serve(async (req) => {
       },
     };
     
-    if (!GOOGLE_API_KEY || !COMPANY_CALENDAR_ID) {
-      console.error('Missing Google Calendar API credentials');
+    // Get fresh access token for Google Calendar API
+    let accessToken;
+    try {
+      accessToken = await getAccessToken();
+    } catch (error) {
+      console.error('Error getting access token:', error);
       return new Response(
         JSON.stringify({ 
-          error: 'Server configuration error', 
-          message: 'Google Calendar API credentials not configured' 
+          error: 'Authentication error', 
+          message: 'Failed to authenticate with Google Calendar' 
         }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
-    // Insert event to Google Calendar
+    // Insert event to Google Calendar using OAuth2 access token
     const calendarResponse = await fetch(
-      `https://www.googleapis.com/calendar/v3/calendars/${COMPANY_CALENDAR_ID}/events?key=${GOOGLE_API_KEY}`,
+      'https://www.googleapis.com/calendar/v3/calendars/primary/events',
       {
         method: 'POST',
         headers: {
+          'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(event),

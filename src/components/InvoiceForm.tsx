@@ -7,20 +7,20 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Calendar as CalendarIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { getClient, saveInvoice, updateInvoice } from '@/lib/storage';
 import { format } from 'date-fns';
 import { DatePicker } from '@/components/ui/date-picker';
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { CalendarIcon } from "@radix-ui/react-icons"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from '@/lib/utils';
 
 interface InvoiceFormProps {
   invoice?: Invoice;
+  clientId?: string;
 }
 
-const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice }) => {
+const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, clientId: predefinedClientId }) => {
   const { clientId: clientIdParam } = useParams<{ clientId: string }>();
   const navigate = useNavigate();
 
@@ -33,7 +33,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice }) =
   const [notes, setNotes] = useState(existingInvoice?.notes || '');
   const [contractTerms, setContractTerms] = useState(existingInvoice?.contractTerms || '');
 
-  const clientId = clientIdParam || existingInvoice?.clientId || '';
+  const clientId = predefinedClientId || clientIdParam || existingInvoice?.clientId || '';
 
   useEffect(() => {
     const fetchClient = async () => {

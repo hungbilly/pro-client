@@ -27,7 +27,11 @@ const InvoiceView = () => {
 
     const fetchInvoice = async () => {
       try {
-        const fetchedInvoice = await getInvoiceByViewLink(viewLink);
+        // Construct the full view link to match what's in the database
+        const fullViewLink = `${window.location.origin}/invoice/${viewLink}`;
+        console.log('Attempting to fetch invoice with link:', fullViewLink);
+        
+        const fetchedInvoice = await getInvoiceByViewLink(fullViewLink);
         if (!fetchedInvoice) {
           setError('Invoice not found.');
           setLoading(false);
@@ -46,6 +50,7 @@ const InvoiceView = () => {
         setClient(fetchedClient);
         setLoading(false);
       } catch (err) {
+        console.error('Failed to load invoice:', err);
         setError('Failed to load invoice.');
         setLoading(false);
       }

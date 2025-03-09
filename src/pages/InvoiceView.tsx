@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { getInvoiceByViewLink, getClient, updateInvoiceStatus, getInvoice } from '@/lib/storage';
@@ -11,6 +10,7 @@ import { ArrowLeft, Check, Calendar, FileText, DollarSign, Send, Camera } from '
 import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { useAuth } from '@/context/AuthContext';
+import { format } from 'date-fns';
 
 const InvoiceView = () => {
   const { viewLink } = useParams<{ viewLink: string }>();
@@ -84,6 +84,28 @@ const InvoiceView = () => {
     fetchInvoice();
   }, [viewLink]);
 
+  const addToGoogleCalendar = () => {
+    if (!invoice?.shootingDate || !client) return false;
+    
+    try {
+      const formattedDate = format(new Date(invoice.shootingDate), 'yyyyMMdd');
+      const title = `Photo Shoot - ${client.name} - Invoice #${invoice.number}`;
+      const details = `Photo shooting session for ${client.name}.\n\nClient Contact:\nEmail: ${client.email}\nPhone: ${client.phone}\n\nAddress: ${client.address}\n\nInvoice #${invoice.number}`;
+      
+      // Format time for all-day event (no specific time)
+      const dateStart = formattedDate;
+      const dateEnd = formattedDate;
+      
+      const googleCalendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${dateStart}/${dateEnd}&details=${encodeURIComponent(details)}&location=${encodeURIComponent(client.address)}`;
+      
+      window.open(googleCalendarUrl, '_blank');
+      return true;
+    } catch (err) {
+      console.error('Failed to add to Google Calendar:', err);
+      return false;
+    }
+  };
+
   const handleAcceptInvoice = async () => {
     if (!invoice) return;
 
@@ -92,6 +114,16 @@ const InvoiceView = () => {
       if (updatedInvoice) {
         setInvoice(updatedInvoice);
         toast.success('Invoice accepted!');
+        
+        // Automatically add to Google Calendar if the invoice has a shooting date
+        if (updatedInvoice.shootingDate && client) {
+          const calendarSuccess = addToGoogleCalendar();
+          if (calendarSuccess) {
+            toast.success('Event added to Google Calendar!');
+          } else {
+            toast.error('Failed to add event to Google Calendar. Please try manually.');
+          }
+        }
       } else {
         toast.error('Failed to update invoice status.');
       }

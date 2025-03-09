@@ -10,6 +10,9 @@ import ClientDetail from "./pages/ClientDetail";
 import ClientNew from "./pages/ClientNew";
 import InvoiceView from "./pages/InvoiceView";
 import InvoiceCreate from "./pages/InvoiceCreate";
+import Auth from "./pages/Auth";
+import { AuthProvider } from "./context/AuthContext";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -22,21 +25,52 @@ const queryClient = new QueryClient({
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/client/new" element={<ClientNew />} />
-          <Route path="/client/:id" element={<ClientDetail />} />
-          <Route path="/invoice/create/:clientId" element={<InvoiceCreate />} />
-          <Route path="/invoice/:viewLink" element={<InvoiceView />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route 
+              path="/" 
+              element={
+                <ProtectedRoute adminOnly>
+                  <Index />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/client/new" 
+              element={
+                <ProtectedRoute adminOnly>
+                  <ClientNew />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/client/:id" 
+              element={
+                <ProtectedRoute adminOnly>
+                  <ClientDetail />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/invoice/create/:clientId" 
+              element={
+                <ProtectedRoute adminOnly>
+                  <InvoiceCreate />
+                </ProtectedRoute>
+              } 
+            />
+            <Route path="/invoice/:viewLink" element={<InvoiceView />} />
+            <Route path="/auth" element={<Auth />} />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 

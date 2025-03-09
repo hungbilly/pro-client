@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getInvoiceByViewLink, getClient, updateInvoiceStatus } from '@/lib/storage';
@@ -26,7 +27,7 @@ const InvoiceView = () => {
 
     const fetchInvoice = async () => {
       try {
-        const fetchedInvoice = getInvoiceByViewLink(viewLink);
+        const fetchedInvoice = await getInvoiceByViewLink(viewLink);
         if (!fetchedInvoice) {
           setError('Invoice not found.');
           setLoading(false);
@@ -35,7 +36,7 @@ const InvoiceView = () => {
 
         setInvoice(fetchedInvoice);
 
-        const fetchedClient = getClient(fetchedInvoice.clientId);
+        const fetchedClient = await getClient(fetchedInvoice.clientId);
         if (!fetchedClient) {
           setError('Client not found.');
           setLoading(false);
@@ -57,7 +58,7 @@ const InvoiceView = () => {
     if (!invoice) return;
 
     try {
-      const updatedInvoice = updateInvoiceStatus(invoice.id, 'accepted');
+      const updatedInvoice = await updateInvoiceStatus(invoice.id, 'accepted');
       if (updatedInvoice) {
         setInvoice(updatedInvoice);
         toast.success('Invoice accepted!');

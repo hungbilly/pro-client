@@ -29,11 +29,11 @@ const ClientDetail = () => {
     const fetchClientData = async () => {
       setIsLoading(true);
       try {
-        const fetchedClient = getClient(id);
-        const fetchedInvoices = getClientInvoices(id);
-
+        const fetchedClient = await getClient(id);
         if (fetchedClient) {
           setClient(fetchedClient);
+          
+          const fetchedInvoices = await getClientInvoices(id);
           setInvoices(fetchedInvoices);
         } else {
           toast.error('Client not found.');
@@ -53,7 +53,7 @@ const ClientDetail = () => {
   const handleDeleteClient = async () => {
     try {
       if (id) {
-        deleteClient(id);
+        await deleteClient(id);
         toast.success('Client deleted successfully.');
         navigate('/');
       } else {

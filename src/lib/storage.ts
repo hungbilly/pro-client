@@ -1,4 +1,3 @@
-
 import { Client, Invoice, STORAGE_KEYS, InvoiceItem } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -263,33 +262,49 @@ export const getInvoice = async (id: string): Promise<Invoice | undefined> => {
   }
 };
 
+// Updated getInvoiceByViewLink to be more flexible
 export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | undefined> => {
   try {
-    // First get the invoice
-    const { data: invoice, error: invoiceError } = await supabase
+    console.log('Searching for invoice with view_link:', viewLink);
+    // Try a simple query without the exact matching to see if we can find any invoices with similar view links
+    const { data: allInvoices, error: invoiceQueryError } = await supabase
       .from('invoices')
-      .select('*')
-      .eq('view_link', viewLink)
-      .single();
+      .select('*');
     
-    if (invoiceError || !invoice) {
-      console.error('Error fetching invoice by view link:', invoiceError);
+    if (invoiceQueryError) {
+      console.error('Error querying invoices:', invoiceQueryError);
       return undefined;
     }
     
-    // Then get the invoice items
+    console.log('Found invoices:', allInvoices?.map(inv => inv.view_link));
+    
+    // Try to find an invoice with a matching view_link
+    const matchingInvoice = allInvoices?.find(inv => 
+      inv.view_link === viewLink || 
+      inv.view_link.includes(viewLink) || 
+      viewLink.includes(inv.view_link.split('/').pop() || '')
+    );
+    
+    if (!matchingInvoice) {
+      console.error('No invoice found with matching view link');
+      return undefined;
+    }
+    
+    console.log('Found matching invoice:', matchingInvoice);
+    
+    // Get the invoice items
     const { data: itemsData, error: itemsError } = await supabase
       .from('invoice_items')
       .select('*')
-      .eq('invoice_id', invoice.id);
+      .eq('invoice_id', matchingInvoice.id);
     
-    if (itemsError || !itemsData) {
+    if (itemsError) {
       console.error('Error fetching invoice items:', itemsError);
       return undefined;
     }
     
     // Map and transform the data
-    const invoiceItems = itemsData.map(item => ({
+    const invoiceItems = (itemsData || []).map(item => ({
       id: item.id,
       description: item.description,
       quantity: item.quantity,
@@ -298,20 +313,20 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
     }));
     
     return {
-      id: invoice.id,
-      clientId: invoice.client_id,
-      number: invoice.number,
-      amount: invoice.amount,
-      date: invoice.date,
-      dueDate: invoice.due_date,
-      status: invoice.status as 'draft' | 'sent' | 'accepted' | 'paid',
+      id: matchingInvoice.id,
+      clientId: matchingInvoice.client_id,
+      number: matchingInvoice.number,
+      amount: matchingInvoice.amount,
+      date: matchingInvoice.date,
+      dueDate: matchingInvoice.due_date,
+      status: matchingInvoice.status as 'draft' | 'sent' | 'accepted' | 'paid',
       items: invoiceItems,
-      notes: invoice.notes || undefined,
-      contractTerms: invoice.contract_terms || undefined,
-      viewLink: invoice.view_link
+      notes: matchingInvoice.notes || undefined,
+      contractTerms: matchingInvoice.contract_terms || undefined,
+      viewLink: matchingInvoice.view_link
     };
   } catch (error) {
-    console.error('Error fetching invoice by view link:', error);
+    console.error('Error in getInvoiceByViewLink:', error);
     return undefined;
   }
 };

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { getInvoiceByViewLink, getClient, updateInvoiceStatus } from '@/lib/storage';
+import { getInvoiceByViewLink, getClient, updateInvoiceStatus, getInvoice } from '@/lib/storage';
 import { Invoice, Client } from '@/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,27 +27,44 @@ const InvoiceView = () => {
 
     const fetchInvoice = async () => {
       try {
-        // Construct the full view link to match what's in the database
-        const fullViewLink = `${window.location.origin}/invoice/${viewLink}`;
-        console.log('Attempting to fetch invoice with link:', fullViewLink);
+        console.log('Attempting to fetch invoice with ID:', viewLink);
         
-        const fetchedInvoice = await getInvoiceByViewLink(fullViewLink);
+        // First try to fetch directly by ID since the URL contains the invoice ID
+        const fetchedInvoice = await getInvoice(viewLink);
+        
         if (!fetchedInvoice) {
-          setError('Invoice not found.');
-          setLoading(false);
-          return;
+          console.log('Invoice not found by ID, trying by view link');
+          // If direct ID fetch fails, try by view link as before
+          const fullViewLink = `${window.location.origin}/invoice/${viewLink}`;
+          console.log('Trying with view link:', fullViewLink);
+          
+          const invoiceByViewLink = await getInvoiceByViewLink(fullViewLink);
+          if (!invoiceByViewLink) {
+            setError('Invoice not found.');
+            setLoading(false);
+            return;
+          }
+          
+          setInvoice(invoiceByViewLink);
+        } else {
+          setInvoice(fetchedInvoice);
         }
 
-        setInvoice(fetchedInvoice);
-
-        const fetchedClient = await getClient(fetchedInvoice.clientId);
-        if (!fetchedClient) {
-          setError('Client not found.');
-          setLoading(false);
-          return;
+        // Once we have the invoice, fetch the client
+        if (fetchedInvoice || invoice) {
+          const clientId = (fetchedInvoice || invoice)?.clientId;
+          if (clientId) {
+            const fetchedClient = await getClient(clientId);
+            if (!fetchedClient) {
+              setError('Client not found.');
+              setLoading(false);
+              return;
+            }
+            
+            setClient(fetchedClient);
+          }
         }
-
-        setClient(fetchedClient);
+        
         setLoading(false);
       } catch (err) {
         console.error('Failed to load invoice:', err);

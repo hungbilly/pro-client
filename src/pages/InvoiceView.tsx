@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation } from 'react-router-dom';
 import { getInvoiceByViewLink, getClient, updateInvoiceStatus, getInvoice } from '@/lib/storage';
 import { Invoice, Client } from '@/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,6 +18,10 @@ const InvoiceView = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const location = useLocation();
+  
+  // Check if the URL has a client parameter or is accessed directly via shared link
+  const isClientView = location.search.includes('client=true') || !location.search;
 
   useEffect(() => {
     if (!viewLink) {
@@ -97,8 +102,8 @@ const InvoiceView = () => {
     
     setSending(true);
     try {
-      // Construct the full invoice URL
-      const invoiceUrl = `${window.location.origin}/invoice/${viewLink}`;
+      // Construct the full invoice URL with client parameter
+      const invoiceUrl = `${window.location.origin}/invoice/${viewLink}?client=true`;
       
       // Use the browser's native mailto functionality
       const subject = encodeURIComponent(`Invoice ${invoice.number}`);
@@ -157,12 +162,15 @@ const InvoiceView = () => {
   return (
     <PageTransition>
       <div className="container py-8">
-        <Button asChild variant="ghost" className="mb-4">
-          <Link to="/">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Dashboard
-          </Link>
-        </Button>
+        {/* Only show back to dashboard button if not a client view */}
+        {!isClientView && (
+          <Button asChild variant="ghost" className="mb-4">
+            <Link to="/">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Dashboard
+            </Link>
+          </Button>
+        )}
         
         <Card className="max-w-3xl mx-auto">
           <CardHeader>
@@ -236,16 +244,29 @@ const InvoiceView = () => {
           </CardContent>
           
           <CardFooter className="justify-end gap-2">
-            <Button 
-              onClick={handleSendInvoice} 
-              variant="outline" 
-              disabled={sending || !client.email}
-            >
-              <Send className="h-4 w-4 mr-2" />
-              Email to Client
-            </Button>
+            {/* Only show admin buttons if not a client view */}
+            {!isClientView && (
+              <>
+                <Button 
+                  onClick={handleSendInvoice} 
+                  variant="outline" 
+                  disabled={sending || !client.email}
+                >
+                  <Send className="h-4 w-4 mr-2" />
+                  Email to Client
+                </Button>
+                
+                {invoice.status === 'sent' && (
+                  <Button onClick={handleAcceptInvoice}>
+                    <Check className="h-4 w-4 mr-2" />
+                    Accept Invoice
+                  </Button>
+                )}
+              </>
+            )}
             
-            {invoice.status === 'sent' && (
+            {/* Always show accept button for clients if invoice is in 'sent' status */}
+            {isClientView && invoice.status === 'sent' && (
               <Button onClick={handleAcceptInvoice}>
                 <Check className="h-4 w-4 mr-2" />
                 Accept Invoice

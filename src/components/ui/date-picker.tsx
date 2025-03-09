@@ -21,12 +21,21 @@ interface DatePickerProps {
 export function DatePicker({ mode = "single", selected, onSelect, initialFocus }: DatePickerProps) {
   return (
     <div className="grid gap-2">
-      <Calendar
-        mode={mode}
-        selected={selected}
-        onSelect={onSelect}
-        initialFocus={initialFocus}
-      />
+      {mode === "single" ? (
+        <Calendar
+          mode="single"
+          selected={selected}
+          onSelect={onSelect}
+          initialFocus={initialFocus}
+        />
+      ) : (
+        <Calendar
+          mode="range"
+          selected={selected}
+          onSelect={onSelect}
+          initialFocus={initialFocus}
+        />
+      )}
     </div>
   )
 }

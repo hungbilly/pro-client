@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2, Calendar as CalendarIcon, Camera } from 'lucide-react';
+import { Plus, Trash2, Calendar as CalendarIcon, Camera, CalendarPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { getClient, saveInvoice, updateInvoice } from '@/lib/storage';
 import { format } from 'date-fns';
@@ -77,6 +77,23 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
       }
       return item;
     }));
+  };
+
+  const handleAddToGoogleCalendar = () => {
+    if (!shootingDate || !client) return;
+    
+    const formattedDate = format(shootingDate, 'yyyyMMdd');
+    const title = `Photo Shoot - ${client.name} - Invoice #${number}`;
+    const details = `Photo shooting session for ${client.name}.\n\nClient Contact:\nEmail: ${client.email}\nPhone: ${client.phone}\n\nAddress: ${client.address}\n\nInvoice #${number}`;
+    
+    // Format time for all-day event (no specific time)
+    const dateStart = formattedDate;
+    const dateEnd = formattedDate;
+    
+    const googleCalendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${dateStart}/${dateEnd}&details=${encodeURIComponent(details)}&location=${encodeURIComponent(client.address)}`;
+    
+    window.open(googleCalendarUrl, '_blank');
+    toast.success('Opening Google Calendar...');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -228,28 +245,40 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
             </div>
             <div>
               <Label>Shooting Date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant={"outline"}
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !shootingDate && "text-muted-foreground"
-                    )}
+              <div className="flex gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !shootingDate && "text-muted-foreground"
+                      )}
+                    >
+                      <Camera className="mr-2 h-4 w-4" />
+                      {shootingDate ? format(shootingDate, "PPP") : <span>Pick a date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <DatePicker
+                      mode="single"
+                      selected={shootingDate}
+                      onSelect={setShootingDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                {shootingDate && (
+                  <Button 
+                    type="button"
+                    variant="outline"
+                    onClick={handleAddToGoogleCalendar}
+                    title="Add to Google Calendar"
                   >
-                    <Camera className="mr-2 h-4 w-4" />
-                    {shootingDate ? format(shootingDate, "PPP") : <span>Pick a date</span>}
+                    <CalendarPlus className="h-4 w-4" />
                   </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <DatePicker
-                    mode="single"
-                    selected={shootingDate}
-                    onSelect={setShootingDate}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+                )}
+              </div>
             </div>
           </div>
           <div>

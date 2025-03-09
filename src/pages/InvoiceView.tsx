@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getInvoiceByViewLink, getClient, updateInvoiceStatus, getInvoice } from '@/lib/storage';
@@ -7,7 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Check, Calendar, FileText, DollarSign } from 'lucide-react';
+import { ArrowLeft, Check, Calendar, FileText, DollarSign, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
 
@@ -17,6 +16,7 @@ const InvoiceView = () => {
   const [client, setClient] = useState<Client | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     if (!viewLink) {
@@ -89,6 +89,31 @@ const InvoiceView = () => {
       }
     } catch (err) {
       toast.error('Failed to accept invoice.');
+    }
+  };
+
+  const handleSendInvoice = async () => {
+    if (!invoice || !client || !client.email) return;
+    
+    setSending(true);
+    try {
+      // Construct the full invoice URL
+      const invoiceUrl = `${window.location.origin}/invoice/${viewLink}`;
+      
+      // Use the browser's native mailto functionality
+      const subject = encodeURIComponent(`Invoice ${invoice.number}`);
+      const body = encodeURIComponent(
+        `Dear ${client.name},\n\nPlease find your invoice (${invoice.number}) at the following link:\n${invoiceUrl}\n\nThank you for your business.`
+      );
+      
+      window.location.href = `mailto:${client.email}?subject=${subject}&body=${body}`;
+      
+      toast.success(`Email client opened with invoice link for ${client.email}`);
+    } catch (err) {
+      console.error('Failed to open email client:', err);
+      toast.error('Failed to open email client.');
+    } finally {
+      setSending(false);
     }
   };
 
@@ -210,14 +235,23 @@ const InvoiceView = () => {
             </div>
           </CardContent>
           
-          {invoice.status === 'sent' && (
-            <CardFooter className="justify-end">
+          <CardFooter className="justify-end gap-2">
+            <Button 
+              onClick={handleSendInvoice} 
+              variant="outline" 
+              disabled={sending || !client.email}
+            >
+              <Send className="h-4 w-4 mr-2" />
+              Email to Client
+            </Button>
+            
+            {invoice.status === 'sent' && (
               <Button onClick={handleAcceptInvoice}>
                 <Check className="h-4 w-4 mr-2" />
                 Accept Invoice
               </Button>
-            </CardFooter>
-          )}
+            )}
+          </CardFooter>
         </Card>
       </div>
     </PageTransition>

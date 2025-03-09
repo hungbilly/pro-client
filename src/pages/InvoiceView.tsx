@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { useAuth } from '@/context/AuthContext';
 import { format } from 'date-fns';
+import { supabase } from "@/integrations/supabase/client";
 
 const InvoiceView = () => {
   const { viewLink } = useParams<{ viewLink: string }>();
@@ -84,6 +85,8 @@ const InvoiceView = () => {
     fetchInvoice();
   }, [viewLink]);
 
+  // This function is no longer needed as we'll use the edge function instead
+  // We keep a modified version just for reference in case the edge function fails
   const addToGoogleCalendar = () => {
     if (!invoice?.shootingDate || !client) return false;
     
@@ -106,6 +109,34 @@ const InvoiceView = () => {
     }
   };
 
+  // New function to add event to company calendar via edge function
+  const addToCompanyCalendar = async (invoiceId: string, clientId: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('add-to-calendar', {
+        body: { invoiceId, clientId }
+      });
+      
+      if (error) {
+        console.error('Error calling add-to-calendar function:', error);
+        toast.error('Failed to add event to company calendar');
+        return false;
+      }
+      
+      if (data.success) {
+        toast.success('Event added to company calendar');
+        return true;
+      } else {
+        console.warn('Calendar function response:', data);
+        toast.warning(data.message || 'Could not add to calendar');
+        return false;
+      }
+    } catch (err) {
+      console.error('Failed to add to company calendar:', err);
+      toast.error('Failed to add event to company calendar');
+      return false;
+    }
+  };
+
   const handleAcceptInvoice = async () => {
     if (!invoice) return;
 
@@ -115,13 +146,18 @@ const InvoiceView = () => {
         setInvoice(updatedInvoice);
         toast.success('Invoice accepted!');
         
-        // Automatically add to Google Calendar if the invoice has a shooting date
+        // Automatically add to company's Google Calendar if the invoice has a shooting date
         if (updatedInvoice.shootingDate && client) {
-          const calendarSuccess = addToGoogleCalendar();
-          if (calendarSuccess) {
-            toast.success('Event added to Google Calendar!');
-          } else {
-            toast.error('Failed to add event to Google Calendar. Please try manually.');
+          // Call the edge function to add to company calendar
+          const calendarSuccess = await addToCompanyCalendar(updatedInvoice.id, client.id);
+          
+          // If the edge function fails, fall back to the manual method as a backup
+          if (!calendarSuccess) {
+            toast.warning('Using backup method to create calendar event');
+            const manualSuccess = addToGoogleCalendar();
+            if (manualSuccess) {
+              toast.success('Please add this event to your company calendar');
+            }
           }
         }
       } else {
@@ -235,7 +271,7 @@ const InvoiceView = () => {
                 <p>
                   <strong>Phone:</strong> {client.phone}
                 </p>
-              </div>
+                </div>
               <div>
                 <h4 className="text-lg font-semibold mb-2">Invoice Details</h4>
                 <p>

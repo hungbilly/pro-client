@@ -10,11 +10,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import { type DateRange } from "react-day-picker"
 
 interface DatePickerProps {
   mode?: "single" | "range"
-  selected?: Date | null
-  onSelect?: (date: Date | null) => void
+  selected?: Date | DateRange | null
+  onSelect?: ((date: Date | null) => void) | ((range: DateRange | null) => void)
   initialFocus?: boolean
 }
 
@@ -24,15 +25,15 @@ export function DatePicker({ mode = "single", selected, onSelect, initialFocus }
       {mode === "single" ? (
         <Calendar
           mode="single"
-          selected={selected}
-          onSelect={onSelect}
+          selected={selected as Date | null}
+          onSelect={onSelect as (date: Date | null) => void}
           initialFocus={initialFocus}
         />
       ) : (
         <Calendar
           mode="range"
-          selected={selected}
-          onSelect={onSelect}
+          selected={selected as DateRange | null}
+          onSelect={onSelect as (range: DateRange | null) => void}
           initialFocus={initialFocus}
         />
       )}

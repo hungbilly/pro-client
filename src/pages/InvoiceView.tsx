@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { getInvoiceByViewLink, getClient, updateInvoiceStatus, getInvoice } from '@/lib/storage';
@@ -10,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Check, Calendar, FileText, DollarSign, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
+import { useAuth } from '@/context/AuthContext';
 
 const InvoiceView = () => {
   const { viewLink } = useParams<{ viewLink: string }>();
@@ -19,9 +19,11 @@ const InvoiceView = () => {
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const location = useLocation();
+  const { isAdmin } = useAuth();
   
   // Check if the URL has a client parameter or is accessed directly via shared link
-  const isClientView = location.search.includes('client=true') || !location.search;
+  // But now allow admin to see the admin view even with client=true in URL
+  const isClientView = (location.search.includes('client=true') || !location.search) && !isAdmin;
 
   useEffect(() => {
     if (!viewLink) {
@@ -162,7 +164,7 @@ const InvoiceView = () => {
   return (
     <PageTransition>
       <div className="container py-8">
-        {/* Only show back to dashboard button if not a client view */}
+        {/* Show back to dashboard button for admin users */}
         {!isClientView && (
           <Button asChild variant="ghost" className="mb-4">
             <Link to="/">

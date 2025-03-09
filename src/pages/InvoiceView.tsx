@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { getInvoiceByViewLink, getClient, updateInvoiceStatus, getInvoice } from '@/lib/storage';
@@ -161,6 +162,9 @@ const InvoiceView = () => {
     paid: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
   };
 
+  // Define which statuses allow clients to accept the invoice
+  const canClientAccept = ['draft', 'sent'].includes(invoice.status);
+
   return (
     <PageTransition>
       <div className="container py-8">
@@ -267,8 +271,8 @@ const InvoiceView = () => {
               </>
             )}
             
-            {/* Always show accept button for clients if invoice is in 'sent' status */}
-            {isClientView && invoice.status === 'sent' && (
+            {/* Always show accept button for clients if invoice is in 'draft' or 'sent' status */}
+            {isClientView && canClientAccept && (
               <Button onClick={handleAcceptInvoice}>
                 <Check className="h-4 w-4 mr-2" />
                 Accept Invoice

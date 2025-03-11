@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { getInvoiceByViewLink, getClient, updateInvoiceStatus, getInvoice } from '@/lib/storage';
@@ -176,18 +177,39 @@ const InvoiceView = () => {
       // Construct the full invoice URL with client parameter
       const invoiceUrl = `${window.location.origin}/invoice/${viewLink}?client=true`;
       
-      // Use the browser's native mailto functionality
-      const subject = encodeURIComponent(`Invoice ${invoice.number}`);
-      const body = encodeURIComponent(
-        `Dear ${client.name},\n\nPlease find your invoice (${invoice.number}) at the following link:\n${invoiceUrl}\n\nThank you for your business.`
-      );
+      // Use our new edge function to send email directly
+      const { data, error } = await supabase.functions.invoke('send-invoice-email', {
+        body: { 
+          clientEmail: client.email,
+          clientName: client.name,
+          invoiceNumber: invoice.number,
+          invoiceUrl: invoiceUrl,
+          additionalMessage: 'Please review this invoice at your earliest convenience.'
+        }
+      });
       
-      window.location.href = `mailto:${client.email}?subject=${subject}&body=${body}`;
+      if (error) {
+        console.error('Error calling send-invoice-email function:', error);
+        toast.error('Failed to send email to client.');
+        return;
+      }
       
-      toast.success(`Email client opened with invoice link for ${client.email}`);
+      if (data?.success) {
+        toast.success(`Email sent to ${client.email}`);
+        
+        // Update invoice status to 'sent' if it's currently in 'draft'
+        if (invoice.status === 'draft') {
+          const updatedInvoice = await updateInvoiceStatus(invoice.id, 'sent');
+          if (updatedInvoice) {
+            setInvoice(updatedInvoice);
+          }
+        }
+      } else {
+        toast.error(data?.message || 'Failed to send email.');
+      }
     } catch (err) {
-      console.error('Failed to open email client:', err);
-      toast.error('Failed to open email client.');
+      console.error('Failed to send email:', err);
+      toast.error('Failed to send email to client.');
     } finally {
       setSending(false);
     }

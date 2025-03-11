@@ -9,7 +9,7 @@ const corsHeaders = {
 
 // Email configuration from environment variables
 const EMAIL_HOST = Deno.env.get('EMAIL_HOST');
-const EMAIL_PORT = Number(Deno.env.get('EMAIL_PORT') || '587');
+const EMAIL_PORT = 587; // Set port explicitly to 587 for SMTP with TLS
 const EMAIL_USERNAME = Deno.env.get('EMAIL_USERNAME');
 const EMAIL_PASSWORD = Deno.env.get('EMAIL_PASSWORD');
 const EMAIL_FROM = Deno.env.get('EMAIL_FROM');

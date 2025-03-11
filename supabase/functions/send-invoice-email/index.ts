@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { SmtpClient } from "https://deno.land/x/smtp@v0.7.0/mod.ts";
 
@@ -8,8 +7,8 @@ const corsHeaders = {
 };
 
 // Email configuration from environment variables
-const EMAIL_HOST = Deno.env.get('EMAIL_HOST');
-const EMAIL_PORT = 587; // Set port explicitly to 587 for SMTP with TLS
+const EMAIL_HOST = Deno.env.get('EMAIL_HOST') || "mail.webhost66.com";
+const EMAIL_PORT = 587; // Set port explicitly to 587 as recommended by the provider
 const EMAIL_USERNAME = Deno.env.get('EMAIL_USERNAME');
 const EMAIL_PASSWORD = Deno.env.get('EMAIL_PASSWORD');
 const EMAIL_FROM = Deno.env.get('EMAIL_FROM');
@@ -22,7 +21,7 @@ serve(async (req) => {
 
   try {
     // Validate email configuration
-    if (!EMAIL_HOST || !EMAIL_USERNAME || !EMAIL_PASSWORD || !EMAIL_FROM) {
+    if (!EMAIL_USERNAME || !EMAIL_PASSWORD || !EMAIL_FROM) {
       console.error('Missing email configuration');
       return new Response(
         JSON.stringify({ error: 'Server configuration error', message: 'Email server not configured' }),
@@ -70,23 +69,17 @@ Thank you for your business.`;
 
     console.log(`Sending email to: ${clientEmail}`);
     
-    // Create SMTP client with modified connection approach
+    // Create SMTP client
     const client = new SmtpClient();
     
     try {
-      // Try a different connection approach with explicit hostname and port
-      const conn = await Deno.connect({
-        hostname: EMAIL_HOST,
-        port: EMAIL_PORT,
-      });
-      
-      // Use startTLS with the established connection
+      // Connect using the provider's recommended settings
       await client.connectTLS({
         hostname: EMAIL_HOST,
         port: EMAIL_PORT,
         username: EMAIL_USERNAME,
         password: EMAIL_PASSWORD,
-        connection: conn,
+        tls: true,      // Explicitly enable TLS as recommended
       });
       
       console.log("Successfully connected to SMTP server");
@@ -95,7 +88,7 @@ Thank you for your business.`;
       await client.send({
         from: EMAIL_FROM,
         to: clientEmail,
-        subject: subject,
+        subject: `Invoice ${invoiceNumber}`,
         content: text,
         html: html,
       });

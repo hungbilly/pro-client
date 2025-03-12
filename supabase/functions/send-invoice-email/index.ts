@@ -70,26 +70,28 @@ Thank you for your business.`;
 
     console.log(`Sending email to: ${clientEmail}`);
     
-    // Create a client with the connection options
-    const client = new SMTPClient({
-      connection: {
-        hostname: EMAIL_HOST,
-        port: EMAIL_PORT,
-        tls: true,
-        auth: {
-          username: EMAIL_USERNAME,
-          password: EMAIL_PASSWORD,
-        },
-      },
-    });
-
-    let sendResult;
-    let errorMessage = null;
+    let client = null;
+    let sendResult = null;
     
     try {
+      // Create SMTP client with more conservative timeouts
+      client = new SMTPClient({
+        connection: {
+          hostname: EMAIL_HOST,
+          port: EMAIL_PORT,
+          tls: true,
+          auth: {
+            username: EMAIL_USERNAME,
+            password: EMAIL_PASSWORD,
+          },
+          // Add explicit timeouts to prevent hanging connections
+          timeout: 10000, // 10 seconds timeout
+        },
+      });
+      
       console.log("SMTP client created, attempting to send email...");
       
-      // Send the email with proper error handling
+      // Send email
       sendResult = await client.send({
         from: EMAIL_FROM,
         to: clientEmail,
@@ -99,30 +101,7 @@ Thank you for your business.`;
       });
       
       console.log("Email sent successfully:", sendResult);
-    } catch (smtpError) {
-      console.error("SMTP Send Error:", smtpError);
-      errorMessage = smtpError.message || String(smtpError);
-    } finally {
-      // Ensure the connection is properly closed to prevent resource leaks
-      try {
-        await client.close();
-        console.log("SMTP connection closed successfully");
-      } catch (closeError) {
-        console.error("Error closing SMTP connection:", closeError);
-        // Don't throw here, we still want to return a response
-      }
-    }
-    
-    // Handle the response based on whether the email was sent successfully
-    if (errorMessage) {
-      return new Response(
-        JSON.stringify({ 
-          error: 'SMTP Error', 
-          message: errorMessage
-        }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    } else {
+      
       return new Response(
         JSON.stringify({ 
           success: true, 
@@ -130,8 +109,35 @@ Thank you for your business.`;
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    } catch (error) {
+      console.error("SMTP Error:", error);
+      return new Response(
+        JSON.stringify({ 
+          error: 'SMTP Error', 
+          message: error.message || String(error)
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    } finally {
+      // Clean up resources in a more defensive way
+      if (client) {
+        try {
+          // Create a timeout to ensure this doesn't hang
+          const closePromise = client.close();
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error("SMTP close timeout")), 5000)
+          );
+          
+          await Promise.race([closePromise, timeoutPromise])
+            .catch(err => console.warn("Warning during SMTP connection close:", err));
+            
+          console.log("SMTP connection handling completed");
+        } catch (closeError) {
+          // Just log the error but don't throw
+          console.warn("Warning during SMTP cleanup:", closeError);
+        }
+      }
     }
-    
   } catch (error) {
     console.error('Error in send-invoice-email function:', error);
     return new Response(

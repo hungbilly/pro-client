@@ -70,24 +70,27 @@ Thank you for your business.`;
 
     console.log(`Sending email to: ${clientEmail}`);
     
-    try {
-      // Create a new SMTP client using denomailer (a more modern Deno SMTP library)
-      const client = new SMTPClient({
-        connection: {
-          hostname: EMAIL_HOST,
-          port: EMAIL_PORT,
-          tls: true,
-          auth: {
-            username: EMAIL_USERNAME,
-            password: EMAIL_PASSWORD,
-          },
+    // Create a client with the connection options
+    const client = new SMTPClient({
+      connection: {
+        hostname: EMAIL_HOST,
+        port: EMAIL_PORT,
+        tls: true,
+        auth: {
+          username: EMAIL_USERNAME,
+          password: EMAIL_PASSWORD,
         },
-      });
+      },
+    });
 
+    let sendResult;
+    let errorMessage = null;
+    
+    try {
       console.log("SMTP client created, attempting to send email...");
       
-      // Send the email
-      const sendResult = await client.send({
+      // Send the email with proper error handling
+      sendResult = await client.send({
         from: EMAIL_FROM,
         to: clientEmail,
         subject: subject,
@@ -96,30 +99,36 @@ Thank you for your business.`;
       });
       
       console.log("Email sent successfully:", sendResult);
-      
-      // Close the connection
-      await client.close();
-      
-      // Return success response
+    } catch (smtpError) {
+      console.error("SMTP Send Error:", smtpError);
+      errorMessage = smtpError.message || String(smtpError);
+    } finally {
+      // Ensure the connection is properly closed to prevent resource leaks
+      try {
+        await client.close();
+        console.log("SMTP connection closed successfully");
+      } catch (closeError) {
+        console.error("Error closing SMTP connection:", closeError);
+        // Don't throw here, we still want to return a response
+      }
+    }
+    
+    // Handle the response based on whether the email was sent successfully
+    if (errorMessage) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'SMTP Error', 
+          message: errorMessage
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    } else {
       return new Response(
         JSON.stringify({ 
           success: true, 
           message: `Email sent to ${clientEmail}`
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-      
-    } catch (smtpError) {
-      console.error("SMTP Connection/Send Error:", smtpError);
-      
-      // Return detailed error for debugging
-      return new Response(
-        JSON.stringify({ 
-          error: 'SMTP Error', 
-          message: smtpError.message,
-          details: String(smtpError)
-        }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     

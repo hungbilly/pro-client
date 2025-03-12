@@ -22,6 +22,11 @@ function normalizeCRLF(text: string): string {
   return normalized.replace(/\n/g, '\r\n');
 }
 
+// Helper function to visualize line endings for debugging
+function visualizeLineEndings(text: string): string {
+  return text.replace(/\r\n/g, "\\r\\n\n").replace(/\n/g, "\\n\n").replace(/\r/g, "\\r\n");
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -64,6 +69,17 @@ Thank you for your business.`;
 
     // Ensure proper CRLF line endings for the text part
     const text = normalizeCRLF(rawText);
+    
+    // Log the text content with line ending visualization
+    console.log("Raw text before normalization:");
+    console.log(visualizeLineEndings(rawText));
+    console.log("Normalized text with CRLF:");
+    console.log(visualizeLineEndings(text));
+    
+    // Also log a hex dump of a sample line to really see what's happening
+    const sampleLine = text.split(/\r\n/)[0] + "\r\n";
+    console.log("Hex dump of first line ending:");
+    console.log([...sampleLine].map(c => c.charCodeAt(0).toString(16).padStart(2, '0')).join(' '));
 
     // HTML doesn't need CRLF normalization as browsers handle this automatically
     const html = `
@@ -99,25 +115,45 @@ Thank you for your business.`;
           // Add explicit timeouts to prevent hanging connections
           timeout: 10000, // 10 seconds timeout
         },
+        // Force explicit CRLF line endings in email headers and content
+        crlf: true,
       });
       
       console.log("SMTP client created, attempting to send email...");
       
-      // Send email - denomailer expects CRLF, but we'll ensure it's properly formatted anyway
-      sendResult = await client.send({
+      // Create email data object to inspect before sending
+      const emailData = {
         from: EMAIL_FROM,
         to: clientEmail,
         subject: subject,
         content: text,
         html: html,
-      });
+      };
+      
+      console.log("Email data prepared:", JSON.stringify({
+        from: emailData.from,
+        to: emailData.to,
+        subject: emailData.subject
+      }));
+      
+      // Send email - denomailer expects CRLF, but we've ensured it's properly formatted
+      sendResult = await client.send(emailData);
       
       console.log("Email sent successfully:", sendResult);
       
       return new Response(
         JSON.stringify({ 
           success: true, 
-          message: `Email sent to ${clientEmail}`
+          message: `Email sent to ${clientEmail}`,
+          debug: {
+            textSample: visualizeLineEndings(text.substring(0, 100)),
+            lineEndingsFixed: true,
+            emailDetails: {
+              from: EMAIL_FROM,
+              to: clientEmail,
+              subject: subject
+            }
+          }
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -126,7 +162,11 @@ Thank you for your business.`;
       return new Response(
         JSON.stringify({ 
           error: 'SMTP Error', 
-          message: error.message || String(error)
+          message: error.message || String(error),
+          debug: {
+            textSample: visualizeLineEndings(text.substring(0, 100)),
+            error: String(error)
+          }
         }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );

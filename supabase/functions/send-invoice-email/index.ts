@@ -14,17 +14,33 @@ const EMAIL_USERNAME = Deno.env.get('EMAIL_USERNAME');
 const EMAIL_PASSWORD = Deno.env.get('EMAIL_PASSWORD');
 const EMAIL_FROM = "info@billyhung.com"; // Fixed email address
 
-// Function to ensure CRLF line endings
+// Improved function to normalize line endings to CRLF
 function normalizeCRLF(text: string): string {
-  // First, normalize all line endings to LF
-  const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-  // Then convert all LFs to CRLFs
-  return normalized.replace(/\n/g, '\r\n');
+  // First normalize all existing line endings to a single LF
+  let normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  
+  // Then convert all single LF to CRLF
+  normalized = normalized.replace(/\n/g, '\r\n');
+  
+  return normalized;
 }
 
-// Helper function to visualize line endings for debugging
+// Helper function to visualize line endings for debugging without adding extra newlines
 function visualizeLineEndings(text: string): string {
-  return text.replace(/\r\n/g, "\\r\\n\n").replace(/\n/g, "\\n\n").replace(/\r/g, "\\r\n");
+  return text
+    .replace(/\r\n/g, "\\r\\n ")  // Replace CRLF with visible markers (no newline)
+    .replace(/\n/g, "\\n ")       // Replace LF with visible marker (no newline)
+    .replace(/\r/g, "\\r ");      // Replace CR with visible marker (no newline)
+}
+
+// Function to log raw bytes of a string for debugging
+function logRawBytes(str: string, label: string): void {
+  console.log(`${label} (${str.length} chars):`);
+  const bytes = Array.from(str).map(c => {
+    const code = c.charCodeAt(0);
+    return code.toString(16).padStart(2, '0') + (code === 13 ? "(CR)" : code === 10 ? "(LF)" : "");
+  });
+  console.log(bytes.join(' '));
 }
 
 serve(async (req) => {
@@ -57,7 +73,7 @@ serve(async (req) => {
     console.log(`Connecting to SMTP server: ${EMAIL_HOST}:${EMAIL_PORT}`);
     console.log(`Using username: ${EMAIL_USERNAME}`);
 
-    // Format the email content with CRLF line endings
+    // Format the email content
     const subject = `Invoice ${invoiceNumber}`;
     const rawText = `Dear ${clientName || 'Client'},
 
@@ -67,21 +83,29 @@ ${invoiceUrl}
 ${additionalMessage ? additionalMessage + '\n\n' : ''}
 Thank you for your business.`;
 
-    // Ensure proper CRLF line endings for the text part
+    // Normalize to ensure proper CRLF line endings
     const text = normalizeCRLF(rawText);
     
-    // Log the text content with line ending visualization
+    // Extensive logging for debugging
     console.log("Raw text before normalization:");
     console.log(visualizeLineEndings(rawText));
     console.log("Normalized text with CRLF:");
     console.log(visualizeLineEndings(text));
     
-    // Also log a hex dump of a sample line to really see what's happening
-    const sampleLine = text.split(/\r\n/)[0] + "\r\n";
-    console.log("Hex dump of first line ending:");
-    console.log([...sampleLine].map(c => c.charCodeAt(0).toString(16).padStart(2, '0')).join(' '));
+    // Log raw bytes to see exactly what's happening with the line endings
+    logRawBytes(text.substring(0, 100), "First 100 bytes of normalized text");
+    
+    // Also log a few sample lines with their raw bytes
+    const lines = text.split(/\r\n/);
+    for (let i = 0; i < Math.min(3, lines.length); i++) {
+      const line = lines[i];
+      logRawBytes(line, `Line ${i+1}`);
+      if (i < lines.length - 1) { // Add CRLF for all but the last line
+        logRawBytes("\r\n", "CRLF");
+      }
+    }
 
-    // HTML doesn't need CRLF normalization as browsers handle this automatically
+    // HTML version (browsers handle line endings automatically)
     const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <h2 style="color: #4a5568;">Invoice ${invoiceNumber}</h2>
@@ -102,7 +126,7 @@ Thank you for your business.`;
     let sendResult = null;
     
     try {
-      // Create SMTP client with more conservative timeouts
+      // Create SMTP client with correct line ending settings
       client = new SMTPClient({
         connection: {
           hostname: EMAIL_HOST,
@@ -112,8 +136,7 @@ Thank you for your business.`;
             username: EMAIL_USERNAME,
             password: EMAIL_PASSWORD,
           },
-          // Add explicit timeouts to prevent hanging connections
-          timeout: 10000, // 10 seconds timeout
+          timeout: 15000, // 15 seconds timeout
         },
         // Force explicit CRLF line endings in email headers and content
         crlf: true,
@@ -121,7 +144,7 @@ Thank you for your business.`;
       
       console.log("SMTP client created, attempting to send email...");
       
-      // Create email data object to inspect before sending
+      // Create email data object with normalized text
       const emailData = {
         from: EMAIL_FROM,
         to: clientEmail,
@@ -136,7 +159,7 @@ Thank you for your business.`;
         subject: emailData.subject
       }));
       
-      // Send email - denomailer expects CRLF, but we've ensured it's properly formatted
+      // Send email
       sendResult = await client.send(emailData);
       
       console.log("Email sent successfully:", sendResult);
@@ -146,7 +169,8 @@ Thank you for your business.`;
           success: true, 
           message: `Email sent to ${clientEmail}`,
           debug: {
-            textSample: visualizeLineEndings(text.substring(0, 100)),
+            rawTextSample: visualizeLineEndings(rawText.substring(0, 100)),
+            normalizedTextSample: visualizeLineEndings(text.substring(0, 100)),
             lineEndingsFixed: true,
             emailDetails: {
               from: EMAIL_FROM,
@@ -164,14 +188,15 @@ Thank you for your business.`;
           error: 'SMTP Error', 
           message: error.message || String(error),
           debug: {
-            textSample: visualizeLineEndings(text.substring(0, 100)),
+            rawTextSample: visualizeLineEndings(rawText.substring(0, 100)),
+            normalizedTextSample: visualizeLineEndings(text.substring(0, 100)),
             error: String(error)
           }
         }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     } finally {
-      // Clean up resources in a more defensive way
+      // Clean up resources
       if (client) {
         try {
           // Create a timeout to ensure this doesn't hang

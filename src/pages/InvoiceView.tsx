@@ -25,7 +25,8 @@ const InvoiceView = () => {
   const [sending, setSending] = useState(false);
   const location = useLocation();
   const { isAdmin } = useAuth();
-  
+  const [emailLogs, setEmailLogs] = useState<Array<{timestamp: Date, message: string, success: boolean}>>([]);
+
   const isClientView = (location.search.includes('client=true') || !location.search) && !isAdmin;
 
   const generateDefaultEmailContent = () => {
@@ -207,30 +208,54 @@ const InvoiceView = () => {
       if (error) {
         console.error('Error sending email:', error);
         toast.error('Email failed to send.');
+        setEmailLogs(prev => [
+          { timestamp: new Date(), message: `Failed to send email: ${error.message}`, success: false },
+          ...prev
+        ]);
         return;
       }
       
       if (data?.success) {
         console.log('Email response:', data);
         toast.success(`Email sent to ${client.email}`);
+        setEmailLogs(prev => [
+          { timestamp: new Date(), message: `Email sent successfully to ${client.email}`, success: true },
+          ...prev
+        ]);
         
         if (invoice.status === 'draft') {
           const updatedInvoice = await updateInvoiceStatus(invoice.id, 'sent');
           if (updatedInvoice) {
             setInvoice(updatedInvoice);
+            setEmailLogs(prev => [
+              { timestamp: new Date(), message: `Invoice status updated to 'sent'`, success: true },
+              ...prev
+            ]);
           }
         }
       } else {
         console.warn('Email response:', data);
         toast.error(data?.message || 'Email failed to send.');
+        setEmailLogs(prev => [
+          { timestamp: new Date(), message: `Email sending failed: ${data?.message || 'Unknown error'}`, success: false },
+          ...prev
+        ]);
         
         if (data?.debug) {
           console.log('Email debug info:', data.debug);
+          setEmailLogs(prev => [
+            { timestamp: new Date(), message: `Debug info: ${JSON.stringify(data.debug)}`, success: false },
+            ...prev
+          ]);
         }
       }
     } catch (err) {
       console.error('Failed to send email:', err);
       toast.error('Failed to send email to client.');
+      setEmailLogs(prev => [
+        { timestamp: new Date(), message: `Exception: ${err.message}`, success: false },
+        ...prev
+      ]);
     } finally {
       setSending(false);
     }
@@ -386,6 +411,18 @@ const InvoiceView = () => {
                     className="min-h-[100px]"
                     rows={5}
                   />
+                  
+                  {emailLogs.length > 0 && (
+                    <div className="w-full mt-2 bg-muted p-2 rounded-md max-h-[150px] overflow-y-auto text-sm">
+                      <h5 className="font-semibold">Email Logs:</h5>
+                      {emailLogs.map((log, index) => (
+                        <div key={index} className={`my-1 ${log.success ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                          <span className="text-xs opacity-70">{log.timestamp.toLocaleTimeString()}: </span>
+                          {log.message}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 
                 <Button 

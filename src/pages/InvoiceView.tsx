@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { getInvoiceByViewLink, getClient, updateInvoiceStatus, getInvoice } from '@/lib/storage';
@@ -24,11 +23,20 @@ const InvoiceView = () => {
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [testingSending, setTestingSending] = useState(false);
-  const [testEmailContent, setTestEmailContent] = useState("Dear billy hung,\r\n \r\n hello");
   const location = useLocation();
   const { isAdmin } = useAuth();
   
   const isClientView = (location.search.includes('client=true') || !location.search) && !isAdmin;
+
+  const generateDefaultEmailContent = () => {
+    if (!client || !invoice) return "Dear Client,\r\n\r\nPlease find your invoice at the link below:\r\n[Invoice Link]\r\n\r\nThank you for your business.";
+    
+    const invoiceUrl = `${window.location.origin}/invoice/${viewLink}?client=true`;
+    
+    return `Dear ${client.name},\r\n\r\nPlease find your invoice (${invoice.number}) at the following link:\r\n${invoiceUrl}\r\n\r\nThank you for your business.`;
+  };
+  
+  const [testEmailContent, setTestEmailContent] = useState(generateDefaultEmailContent());
 
   useEffect(() => {
     if (!viewLink) {
@@ -84,6 +92,12 @@ const InvoiceView = () => {
 
     fetchInvoice();
   }, [viewLink]);
+
+  useEffect(() => {
+    if (client && invoice) {
+      setTestEmailContent(generateDefaultEmailContent());
+    }
+  }, [client, invoice]);
 
   const addToGoogleCalendar = () => {
     if (!invoice?.shootingDate || !client) return false;
@@ -388,7 +402,7 @@ const InvoiceView = () => {
                     id="testEmailContent"
                     value={testEmailContent}
                     onChange={(e) => setTestEmailContent(e.target.value)}
-                    placeholder="Enter test email content"
+                    placeholder={generateDefaultEmailContent()}
                     className="min-h-[100px]"
                     rows={5}
                   />

@@ -43,6 +43,25 @@ function logRawBytes(str: string, label: string): void {
   console.log(bytes.join(' '));
 }
 
+// Function to convert plain text to HTML with clickable links
+function convertTextToHtml(text: string): string {
+  // Create paragraphs from line breaks
+  const paragraphs = text.split(/\r\n|\n|\r/).map(line => {
+    // If the line is empty, return a break
+    if (!line.trim()) return '<br>';
+    
+    // Replace URLs with clickable links
+    const lineWithLinks = line.replace(
+      /(https?:\/\/[^\s]+)/g, 
+      '<a href="$1" style="color: #3182ce; text-decoration: underline;">$1</a>'
+    );
+    
+    return `<p>${lineWithLinks}</p>`;
+  });
+  
+  return `<div style="font-family: Arial, sans-serif;">${paragraphs.join('')}</div>`;
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -80,14 +99,10 @@ serve(async (req) => {
       // For test emails, use the specified test message
       subject = "Test Email";
       // Use the custom content if provided, otherwise use the default
-      rawText = testEmailContent || "Dear billy hung,\r\n \r\n hello";
+      rawText = testEmailContent || "Dear Client,\r\n\r\nPlease find your invoice at the link below:\r\n[Invoice Link]\r\n\r\nThank you for your business.";
       
-      // Simple HTML conversion - split by line breaks and wrap in paragraphs
-      const htmlContent = rawText.split(/\r\n|\n|\r/)
-        .map(line => line.trim() ? `<p>${line}</p>` : '<br>')
-        .join('');
-        
-      html = `<div style="font-family: Arial, sans-serif;">${htmlContent}</div>`;
+      // Convert text to HTML with clickable links
+      html = convertTextToHtml(rawText);
     } else {
       // For regular invoice emails, use the standard format
       if (!invoiceNumber || !invoiceUrl) {

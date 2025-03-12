@@ -24,8 +24,6 @@ const InvoiceView = () => {
   const location = useLocation();
   const { isAdmin } = useAuth();
   
-  // Check if the URL has a client parameter or is accessed directly via shared link
-  // But now allow admin to see the admin view even with client=true in URL
   const isClientView = (location.search.includes('client=true') || !location.search) && !isAdmin;
 
   useEffect(() => {
@@ -39,12 +37,10 @@ const InvoiceView = () => {
       try {
         console.log('Attempting to fetch invoice with ID:', viewLink);
         
-        // First try to fetch directly by ID since the URL contains the invoice ID
         const fetchedInvoice = await getInvoice(viewLink);
         
         if (!fetchedInvoice) {
           console.log('Invoice not found by ID, trying by view link');
-          // If direct ID fetch fails, try by view link as before
           const fullViewLink = `${window.location.origin}/invoice/${viewLink}`;
           console.log('Trying with view link:', fullViewLink);
           
@@ -60,7 +56,6 @@ const InvoiceView = () => {
           setInvoice(fetchedInvoice);
         }
 
-        // Once we have the invoice, fetch the client
         if (fetchedInvoice || invoice) {
           const clientId = (fetchedInvoice || invoice)?.clientId;
           if (clientId) {
@@ -86,8 +81,6 @@ const InvoiceView = () => {
     fetchInvoice();
   }, [viewLink]);
 
-  // This function is no longer needed as we'll use the edge function instead
-  // We keep a modified version just for reference in case the edge function fails
   const addToGoogleCalendar = () => {
     if (!invoice?.shootingDate || !client) return false;
     
@@ -96,7 +89,6 @@ const InvoiceView = () => {
       const title = `Photo Shoot - ${client.name} - Invoice #${invoice.number}`;
       const details = `Photo shooting session for ${client.name}.\n\nClient Contact:\nEmail: ${client.email}\nPhone: ${client.phone}\n\nAddress: ${client.address}\n\nInvoice #${invoice.number}`;
       
-      // Format time for all-day event (no specific time)
       const dateStart = formattedDate;
       const dateEnd = formattedDate;
       
@@ -110,7 +102,6 @@ const InvoiceView = () => {
     }
   };
 
-  // New function to add event to company calendar via edge function
   const addToCompanyCalendar = async (invoiceId: string, clientId: string) => {
     try {
       const { data, error } = await supabase.functions.invoke('add-to-calendar', {
@@ -147,12 +138,9 @@ const InvoiceView = () => {
         setInvoice(updatedInvoice);
         toast.success('Invoice accepted!');
         
-        // Automatically add to company's Google Calendar if the invoice has a shooting date
         if (updatedInvoice.shootingDate && client) {
-          // Call the edge function to add to company calendar
           const calendarSuccess = await addToCompanyCalendar(updatedInvoice.id, client.id);
           
-          // If the edge function fails, fall back to the manual method as a backup
           if (!calendarSuccess) {
             toast.warning('Using backup method to create calendar event');
             const manualSuccess = addToGoogleCalendar();
@@ -174,13 +162,10 @@ const InvoiceView = () => {
     
     setSending(true);
     try {
-      // Construct the full invoice URL with client parameter
       const invoiceUrl = `${window.location.origin}/invoice/${viewLink}?client=true`;
       
-      // Add debug logging for the SMTP server inspection
       console.log('Sending invoice email request to edge function');
       
-      // Use our new edge function to send email directly
       const { data, error } = await supabase.functions.invoke('send-invoice-email', {
         body: { 
           clientEmail: client.email,
@@ -200,7 +185,6 @@ const InvoiceView = () => {
       if (data?.success) {
         toast.success(`Email sent to ${client.email}`);
         
-        // Update invoice status to 'sent' if it's currently in 'draft'
         if (invoice.status === 'draft') {
           const updatedInvoice = await updateInvoiceStatus(invoice.id, 'sent');
           if (updatedInvoice) {
@@ -218,7 +202,6 @@ const InvoiceView = () => {
     }
   };
 
-  // New function to send a test email with a simple "hello world" message
   const handleSendTestEmail = async () => {
     if (!client || !client.email) {
       toast.error('Client email is required for testing');
@@ -229,14 +212,11 @@ const InvoiceView = () => {
     try {
       console.log('Sending test email to:', client.email);
       
-      // Use our edge function to send a simple test email
       const { data, error } = await supabase.functions.invoke('send-invoice-email', {
         body: { 
           clientEmail: client.email,
           clientName: client.name,
-          invoiceNumber: 'TEST-EMAIL',
-          invoiceUrl: 'https://example.com/test',
-          additionalMessage: 'Hello World! This is a test email to verify email delivery is working.'
+          isTestEmail: true
         }
       });
       
@@ -253,7 +233,6 @@ const InvoiceView = () => {
         console.warn('Test email response:', data);
         toast.error(data?.message || 'Test email failed to send.');
         
-        // Display more detailed debug info if available
         if (data?.debug) {
           console.log('Email debug info:', data.debug);
         }
@@ -300,16 +279,14 @@ const InvoiceView = () => {
     draft: 'bg-muted text-muted-foreground',
     sent: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
     accepted: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-  paid: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+    paid: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
   };
 
-  // Define which statuses allow clients to accept the invoice
   const canClientAccept = ['draft', 'sent'].includes(invoice.status);
 
   return (
     <PageTransition>
       <div className="container py-8">
-        {/* Show back to dashboard button for admin users */}
         {!isClientView && (
           <Button asChild variant="ghost" className="mb-4">
             <Link to="/">
@@ -344,7 +321,7 @@ const InvoiceView = () => {
                 <p>
                   <strong>Phone:</strong> {client.phone}
                 </p>
-                </div>
+              </div>
               <div>
                 <h4 className="text-lg font-semibold mb-2">Invoice Details</h4>
                 <p>
@@ -398,10 +375,8 @@ const InvoiceView = () => {
           </CardContent>
           
           <CardFooter className="justify-end gap-2">
-            {/* Only show admin buttons if not a client view */}
             {!isClientView && (
               <>
-                {/* Add the test email button */}
                 <Button 
                   onClick={handleSendTestEmail} 
                   variant="outline" 
@@ -430,7 +405,6 @@ const InvoiceView = () => {
               </>
             )}
             
-            {/* Always show accept button for clients if invoice is in 'draft' or 'sent' status */}
             {isClientView && canClientAccept && (
               <Button onClick={handleAcceptInvoice}>
                 <Check className="h-4 w-4 mr-2" />

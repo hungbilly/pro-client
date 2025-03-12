@@ -60,11 +60,11 @@ serve(async (req) => {
     }
 
     // Get request data
-    const { clientEmail, clientName, invoiceNumber, invoiceUrl, additionalMessage } = await req.json();
+    const { clientEmail, clientName, invoiceNumber, invoiceUrl, additionalMessage, isTestEmail } = await req.json();
     
-    if (!clientEmail || !invoiceNumber || !invoiceUrl) {
+    if (!clientEmail) {
       return new Response(
-        JSON.stringify({ error: 'Missing required parameters' }),
+        JSON.stringify({ error: 'Missing required parameters', details: 'Client email is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -73,15 +73,46 @@ serve(async (req) => {
     console.log(`Connecting to SMTP server: ${EMAIL_HOST}:${EMAIL_PORT}`);
     console.log(`Using username: ${EMAIL_USERNAME}`);
 
-    // Format the email content
-    const subject = `Invoice ${invoiceNumber}`;
-    const rawText = `Dear ${clientName || 'Client'},
+    // Determine email content based on whether this is a test email
+    let subject, rawText, html;
+    
+    if (isTestEmail) {
+      // For test emails, use a very simple message
+      subject = "Test Email";
+      rawText = "Hello World";
+      html = "<h1>Hello World</h1>";
+    } else {
+      // For regular invoice emails, use the standard format
+      if (!invoiceNumber || !invoiceUrl) {
+        return new Response(
+          JSON.stringify({ error: 'Missing required parameters', details: 'Invoice number and URL are required for regular emails' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      subject = `Invoice ${invoiceNumber}`;
+      rawText = `Dear ${clientName || 'Client'},
 
 Please find your invoice (${invoiceNumber}) at the following link:
 ${invoiceUrl}
 
 ${additionalMessage ? additionalMessage + '\n\n' : ''}
 Thank you for your business.`;
+
+      html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #4a5568;">Invoice ${invoiceNumber}</h2>
+        <p>Dear ${clientName || 'Client'},</p>
+        <p>Please find your invoice (${invoiceNumber}) at the following link:</p>
+        <p><a href="${invoiceUrl}" style="color: #3182ce; text-decoration: underline;">${invoiceUrl}</a></p>
+        ${additionalMessage ? `<p>${additionalMessage}</p>` : ''}
+        <p>Thank you for your business.</p>
+        <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+          <p style="color: #718096; font-size: 0.9em;">This is an automated email, please do not reply directly.</p>
+        </div>
+      </div>
+      `;
+    }
 
     // Normalize to ensure proper CRLF line endings
     const text = normalizeCRLF(rawText);
@@ -104,21 +135,6 @@ Thank you for your business.`;
         logRawBytes("\r\n", "CRLF");
       }
     }
-
-    // HTML version (browsers handle line endings automatically)
-    const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h2 style="color: #4a5568;">Invoice ${invoiceNumber}</h2>
-      <p>Dear ${clientName || 'Client'},</p>
-      <p>Please find your invoice (${invoiceNumber}) at the following link:</p>
-      <p><a href="${invoiceUrl}" style="color: #3182ce; text-decoration: underline;">${invoiceUrl}</a></p>
-      ${additionalMessage ? `<p>${additionalMessage}</p>` : ''}
-      <p>Thank you for your business.</p>
-      <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
-        <p style="color: #718096; font-size: 0.9em;">This is an automated email, please do not reply directly.</p>
-      </div>
-    </div>
-    `;
 
     console.log(`Sending email to: ${clientEmail}`);
     

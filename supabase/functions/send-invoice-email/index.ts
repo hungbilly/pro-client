@@ -1,6 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { SmtpClient } from "https://deno.land/x/smtp@v0.7.0/mod.ts";
+import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,7 +9,7 @@ const corsHeaders = {
 
 // Email configuration from environment variables
 const EMAIL_HOST = Deno.env.get('EMAIL_HOST') || "mail.webhost66.com";
-const EMAIL_PORT = 465; // Changed from 587 to 465 as requested by the provider
+const EMAIL_PORT = 465; // Using port 465 as requested
 const EMAIL_USERNAME = Deno.env.get('EMAIL_USERNAME');
 const EMAIL_PASSWORD = Deno.env.get('EMAIL_PASSWORD');
 const EMAIL_FROM = Deno.env.get('EMAIL_FROM');
@@ -70,31 +70,32 @@ Thank you for your business.`;
 
     console.log(`Sending email to: ${clientEmail}`);
     
-    // Create SMTP client
-    const client = new SmtpClient();
-    
     try {
-      // Connect using the provider's recommended settings, now with port 465
-      await client.connectTLS({
-        hostname: EMAIL_HOST,
-        port: EMAIL_PORT,
-        username: EMAIL_USERNAME,
-        password: EMAIL_PASSWORD,
-        tls: true,      // Explicitly enable TLS as recommended
+      // Create a new SMTP client using denomailer (a more modern Deno SMTP library)
+      const client = new SMTPClient({
+        connection: {
+          hostname: EMAIL_HOST,
+          port: EMAIL_PORT,
+          tls: true,
+          auth: {
+            username: EMAIL_USERNAME,
+            password: EMAIL_PASSWORD,
+          },
+        },
       });
-      
-      console.log("Successfully connected to SMTP server");
+
+      console.log("SMTP client created, attempting to send email...");
       
       // Send the email
-      await client.send({
+      const sendResult = await client.send({
         from: EMAIL_FROM,
         to: clientEmail,
-        subject: `Invoice ${invoiceNumber}`,
+        subject: subject,
         content: text,
         html: html,
       });
       
-      console.log("Email sent successfully");
+      console.log("Email sent successfully:", sendResult);
       
       // Close the connection
       await client.close();
@@ -110,13 +111,6 @@ Thank you for your business.`;
       
     } catch (smtpError) {
       console.error("SMTP Connection/Send Error:", smtpError);
-      
-      // Try to close the connection if it was opened
-      try {
-        await client.close();
-      } catch (closeError) {
-        console.error("Error closing SMTP connection:", closeError);
-      }
       
       // Return detailed error for debugging
       return new Response(

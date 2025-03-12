@@ -13,8 +13,8 @@ import PageTransition from '@/components/ui-custom/PageTransition';
 import { useAuth } from '@/context/AuthContext';
 import { format } from 'date-fns';
 import { supabase } from "@/integrations/supabase/client";
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 
 const InvoiceView = () => {
   const { viewLink } = useParams<{ viewLink: string }>();
@@ -384,12 +384,13 @@ const InvoiceView = () => {
               <>
                 <div className="w-full flex flex-col gap-2 mb-4">
                   <Label htmlFor="testEmailContent">Test Email Content</Label>
-                  <Input
+                  <Textarea
                     id="testEmailContent"
                     value={testEmailContent}
                     onChange={(e) => setTestEmailContent(e.target.value)}
                     placeholder="Enter test email content"
-                    className="mb-2"
+                    className="min-h-[100px]"
+                    rows={5}
                   />
                 </div>
                 

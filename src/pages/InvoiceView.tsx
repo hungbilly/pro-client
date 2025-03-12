@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { getInvoiceByViewLink, getClient, updateInvoiceStatus, getInvoice } from '@/lib/storage';
@@ -15,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const InvoiceView = () => {
   const { viewLink } = useParams<{ viewLink: string }>();
@@ -361,33 +363,49 @@ const InvoiceView = () => {
 
             <Separator />
 
-            <div>
-              <h4 className="text-lg font-semibold mb-2">Items</h4>
-              <ul className="list-disc pl-5">
-                {invoice.items.map((item) => (
-                  <li key={item.id} className="mb-2">
-                    {item.description} - {item.quantity} x ${item.rate.toFixed(2)} = ${item.amount.toFixed(2)}
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <Tabs defaultValue="invoice" className="w-full">
+              <TabsList className="w-full">
+                <TabsTrigger value="invoice" className="flex-1">Invoice Details</TabsTrigger>
+                <TabsTrigger value="contract" className="flex-1">Contract Terms</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="invoice" className="mt-4">
+                <div>
+                  <h4 className="text-lg font-semibold mb-2">Items</h4>
+                  <ul className="list-disc pl-5">
+                    {invoice.items.map((item) => (
+                      <li key={item.id} className="mb-2">
+                        {item.description} - {item.quantity} x ${item.rate.toFixed(2)} = ${item.amount.toFixed(2)}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
 
-            <Separator />
+                <Separator className="my-4" />
 
-            <div>
-              <h4 className="text-lg font-semibold mb-2">Notes</h4>
-              <p>{invoice.notes || 'No notes provided.'}</p>
-            </div>
-
-            <Separator />
-
-            <div>
-              <h4 className="text-lg font-semibold mb-2 flex items-center gap-1">
-                <FileText className="h-4 w-4 mr-1" />
-                Contract Terms
-              </h4>
-              <p className="whitespace-pre-line">{invoice.contractTerms}</p>
-            </div>
+                <div>
+                  <h4 className="text-lg font-semibold mb-2">Notes</h4>
+                  <p>{invoice.notes || 'No notes provided.'}</p>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="contract" className="mt-4">
+                <div className="mb-4">
+                  {canClientAccept && (
+                    <Button onClick={handleAcceptInvoice} className="mb-4">
+                      <Check className="h-4 w-4 mr-2" />
+                      Accept Contract Terms
+                    </Button>
+                  )}
+                  
+                  <h4 className="text-lg font-semibold mb-2 flex items-center gap-1">
+                    <FileText className="h-4 w-4 mr-1" />
+                    Contract Terms
+                  </h4>
+                  <p className="whitespace-pre-line">{invoice.contractTerms}</p>
+                </div>
+              </TabsContent>
+            </Tabs>
           </CardContent>
           
           <CardFooter className="justify-end gap-2 flex-wrap">
@@ -433,13 +451,6 @@ const InvoiceView = () => {
                   <Send className="h-4 w-4 mr-2" />
                   Send Email
                 </Button>
-                
-                {invoice.status === 'sent' && (
-                  <Button onClick={handleAcceptInvoice}>
-                    <Check className="h-4 w-4 mr-2" />
-                    Accept Invoice
-                  </Button>
-                )}
               </>
             )}
             

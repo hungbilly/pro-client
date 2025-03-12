@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { getInvoiceByViewLink, getClient, updateInvoiceStatus, getInvoice } from '@/lib/storage';
@@ -12,6 +13,8 @@ import PageTransition from '@/components/ui-custom/PageTransition';
 import { useAuth } from '@/context/AuthContext';
 import { format } from 'date-fns';
 import { supabase } from "@/integrations/supabase/client";
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const InvoiceView = () => {
   const { viewLink } = useParams<{ viewLink: string }>();
@@ -21,6 +24,7 @@ const InvoiceView = () => {
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [testingSending, setTestingSending] = useState(false);
+  const [testEmailContent, setTestEmailContent] = useState("Dear billy hung,\r\n \r\n hello");
   const location = useLocation();
   const { isAdmin } = useAuth();
   
@@ -216,7 +220,8 @@ const InvoiceView = () => {
         body: { 
           clientEmail: client.email,
           clientName: client.name,
-          isTestEmail: true
+          isTestEmail: true,
+          testEmailContent: testEmailContent
         }
       });
       
@@ -374,14 +379,25 @@ const InvoiceView = () => {
             </div>
           </CardContent>
           
-          <CardFooter className="justify-end gap-2">
+          <CardFooter className="justify-end gap-2 flex-wrap">
             {!isClientView && (
               <>
+                <div className="w-full flex flex-col gap-2 mb-4">
+                  <Label htmlFor="testEmailContent">Test Email Content</Label>
+                  <Input
+                    id="testEmailContent"
+                    value={testEmailContent}
+                    onChange={(e) => setTestEmailContent(e.target.value)}
+                    placeholder="Enter test email content"
+                    className="mb-2"
+                  />
+                </div>
+                
                 <Button 
                   onClick={handleSendTestEmail} 
                   variant="outline" 
                   disabled={testingSending || !client.email}
-                  title="Send a test email with 'Hello World' content"
+                  title="Send a test email with custom content"
                 >
                   <MailCheck className="h-4 w-4 mr-2" />
                   Test Email

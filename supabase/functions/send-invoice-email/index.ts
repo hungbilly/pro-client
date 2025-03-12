@@ -60,7 +60,7 @@ serve(async (req) => {
     }
 
     // Get request data
-    const { clientEmail, clientName, invoiceNumber, invoiceUrl, additionalMessage, isTestEmail } = await req.json();
+    const { clientEmail, clientName, invoiceNumber, invoiceUrl, additionalMessage, isTestEmail, testEmailContent } = await req.json();
     
     if (!clientEmail) {
       return new Response(
@@ -79,8 +79,15 @@ serve(async (req) => {
     if (isTestEmail) {
       // For test emails, use the specified test message
       subject = "Test Email";
-      rawText = "Dear billy hung,\r\n \r\n hello";
-      html = "<h1>Dear billy hung,</h1><p>hello</p>";
+      // Use the custom content if provided, otherwise use the default
+      rawText = testEmailContent || "Dear billy hung,\r\n \r\n hello";
+      
+      // Simple HTML conversion - split by line breaks and wrap in paragraphs
+      const htmlContent = rawText.split(/\r\n|\n|\r/)
+        .map(line => line.trim() ? `<p>${line}</p>` : '<br>')
+        .join('');
+        
+      html = `<div style="font-family: Arial, sans-serif;">${htmlContent}</div>`;
     } else {
       // For regular invoice emails, use the standard format
       if (!invoiceNumber || !invoiceUrl) {

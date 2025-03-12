@@ -177,6 +177,9 @@ const InvoiceView = () => {
       // Construct the full invoice URL with client parameter
       const invoiceUrl = `${window.location.origin}/invoice/${viewLink}?client=true`;
       
+      // Add debug logging for the SMTP server inspection
+      console.log('Sending invoice email request to edge function');
+      
       // Use our new edge function to send email directly
       const { data, error } = await supabase.functions.invoke('send-invoice-email', {
         body: { 

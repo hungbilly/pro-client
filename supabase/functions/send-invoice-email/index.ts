@@ -12,7 +12,7 @@ const EMAIL_HOST = Deno.env.get('EMAIL_HOST') || "mail.webhost66.com";
 const EMAIL_PORT = 465; // Using port 465 as requested
 const EMAIL_USERNAME = Deno.env.get('EMAIL_USERNAME');
 const EMAIL_PASSWORD = Deno.env.get('EMAIL_PASSWORD');
-const EMAIL_FROM = Deno.env.get('EMAIL_FROM');
+const EMAIL_FROM = "info@billyhung.com"; // Fixed email address
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -22,7 +22,7 @@ serve(async (req) => {
 
   try {
     // Validate email configuration
-    if (!EMAIL_USERNAME || !EMAIL_PASSWORD || !EMAIL_FROM) {
+    if (!EMAIL_USERNAME || !EMAIL_PASSWORD) {
       console.error('Missing email configuration');
       return new Response(
         JSON.stringify({ error: 'Server configuration error', message: 'Email server not configured' }),

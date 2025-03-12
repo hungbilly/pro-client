@@ -79,7 +79,14 @@ serve(async (req) => {
     }
 
     // Get request data
-    const { clientEmail, clientName, invoiceNumber, invoiceUrl, additionalMessage, isTestEmail, testEmailContent } = await req.json();
+    const { 
+      clientEmail, 
+      clientName, 
+      invoiceNumber, 
+      invoiceUrl, 
+      emailSubject, 
+      emailContent 
+    } = await req.json();
     
     if (!clientEmail) {
       return new Response(
@@ -92,33 +99,31 @@ serve(async (req) => {
     console.log(`Connecting to SMTP server: ${EMAIL_HOST}:${EMAIL_PORT}`);
     console.log(`Using username: ${EMAIL_USERNAME}`);
 
-    // Determine email content based on whether this is a test email
+    // Determine email content
     let subject, rawText, html;
     
-    if (isTestEmail) {
-      // For test emails, use the specified test message
-      subject = "Test Email";
-      // Use the custom content if provided, otherwise use the default
-      rawText = testEmailContent || "Dear Client,\r\n\r\nPlease find your invoice at the link below:\r\n[Invoice Link]\r\n\r\nThank you for your business.";
+    if (emailContent) {
+      // Use custom email content and subject if provided
+      subject = emailSubject || `Invoice ${invoiceNumber || ''} for ${clientName || 'Client'}`;
+      rawText = emailContent;
       
       // Convert text to HTML with clickable links
       html = convertTextToHtml(rawText);
     } else {
-      // For regular invoice emails, use the standard format
+      // Fallback to standard format if no custom content provided
       if (!invoiceNumber || !invoiceUrl) {
         return new Response(
-          JSON.stringify({ error: 'Missing required parameters', details: 'Invoice number and URL are required for regular emails' }),
+          JSON.stringify({ error: 'Missing required parameters', details: 'Invoice number and URL are required' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       
-      subject = `Invoice ${invoiceNumber}`;
+      subject = emailSubject || `Invoice ${invoiceNumber}`;
       rawText = `Dear ${clientName || 'Client'},
 
 Please find your invoice (${invoiceNumber}) at the following link:
 ${invoiceUrl}
 
-${additionalMessage ? additionalMessage + '\n\n' : ''}
 Thank you for your business.`;
 
       html = `
@@ -127,7 +132,6 @@ Thank you for your business.`;
         <p>Dear ${clientName || 'Client'},</p>
         <p>Please find your invoice (${invoiceNumber}) at the following link:</p>
         <p><a href="${invoiceUrl}" style="color: #3182ce; text-decoration: underline;">${invoiceUrl}</a></p>
-        ${additionalMessage ? `<p>${additionalMessage}</p>` : ''}
         <p>Thank you for your business.</p>
         <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
           <p style="color: #718096; font-size: 0.9em;">This is an automated email, please do not reply directly.</p>

@@ -14,6 +14,7 @@ import { format } from 'date-fns';
 import { supabase } from "@/integrations/supabase/client";
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 
 const InvoiceView = () => {
   const { viewLink } = useParams<{ viewLink: string }>();
@@ -22,7 +23,6 @@ const InvoiceView = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
-  const [testingSending, setTestingSending] = useState(false);
   const location = useLocation();
   const { isAdmin } = useAuth();
   
@@ -36,7 +36,13 @@ const InvoiceView = () => {
     return `Dear ${client.name},\r\n\r\nPlease find your invoice (${invoice.number}) at the following link:\r\n${invoiceUrl}\r\n\r\nThank you for your business.`;
   };
   
-  const [testEmailContent, setTestEmailContent] = useState(generateDefaultEmailContent());
+  const generateDefaultSubject = () => {
+    if (!client || !invoice) return "Invoice";
+    return `Invoice ${invoice.number} for ${client.name}`;
+  };
+  
+  const [emailContent, setEmailContent] = useState(generateDefaultEmailContent());
+  const [emailSubject, setEmailSubject] = useState(generateDefaultSubject());
 
   useEffect(() => {
     if (!viewLink) {
@@ -95,7 +101,8 @@ const InvoiceView = () => {
 
   useEffect(() => {
     if (client && invoice) {
-      setTestEmailContent(generateDefaultEmailContent());
+      setEmailContent(generateDefaultEmailContent());
+      setEmailSubject(generateDefaultSubject());
     }
   }, [client, invoice]);
 
@@ -175,14 +182,16 @@ const InvoiceView = () => {
     }
   };
 
-  const handleSendInvoice = async () => {
-    if (!invoice || !client || !client.email) return;
+  const handleSendEmail = async () => {
+    if (!invoice || !client || !client.email) {
+      toast.error('Client email is required');
+      return;
+    }
     
     setSending(true);
     try {
+      console.log('Sending invoice email to:', client.email);
       const invoiceUrl = `${window.location.origin}/invoice/${viewLink}?client=true`;
-      
-      console.log('Sending invoice email request to edge function');
       
       const { data, error } = await supabase.functions.invoke('send-invoice-email', {
         body: { 
@@ -190,17 +199,19 @@ const InvoiceView = () => {
           clientName: client.name,
           invoiceNumber: invoice.number,
           invoiceUrl: invoiceUrl,
-          additionalMessage: 'Please review this invoice at your earliest convenience.'
+          emailSubject: emailSubject,
+          emailContent: emailContent
         }
       });
       
       if (error) {
-        console.error('Error calling send-invoice-email function:', error);
-        toast.error('Failed to send email to client.');
+        console.error('Error sending email:', error);
+        toast.error('Email failed to send.');
         return;
       }
       
       if (data?.success) {
+        console.log('Email response:', data);
         toast.success(`Email sent to ${client.email}`);
         
         if (invoice.status === 'draft') {
@@ -210,57 +221,18 @@ const InvoiceView = () => {
           }
         }
       } else {
-        toast.error(data?.message || 'Failed to send email.');
-      }
-    } catch (err) {
-      console.error('Failed to send email:', err);
-      toast.error('Failed to send email to client.');
-    } finally {
-      setSending(false);
-    }
-  };
-
-  const handleSendTestEmail = async () => {
-    if (!client || !client.email) {
-      toast.error('Client email is required for testing');
-      return;
-    }
-    
-    setTestingSending(true);
-    try {
-      console.log('Sending test email to:', client.email);
-      
-      const { data, error } = await supabase.functions.invoke('send-invoice-email', {
-        body: { 
-          clientEmail: client.email,
-          clientName: client.name,
-          isTestEmail: true,
-          testEmailContent: testEmailContent
-        }
-      });
-      
-      if (error) {
-        console.error('Error sending test email:', error);
-        toast.error('Test email failed to send.');
-        return;
-      }
-      
-      if (data?.success) {
-        console.log('Test email response:', data);
-        toast.success(`Test email sent to ${client.email}`);
-      } else {
-        console.warn('Test email response:', data);
-        toast.error(data?.message || 'Test email failed to send.');
+        console.warn('Email response:', data);
+        toast.error(data?.message || 'Email failed to send.');
         
         if (data?.debug) {
           console.log('Email debug info:', data.debug);
         }
       }
     } catch (err) {
-      console.error('Failed to send test email:', err);
-      toast.error('Failed to send test email to client.');
+      console.error('Failed to send email:', err);
+      toast.error('Failed to send email to client.');
     } finally {
-      setTestingSending(false);
+      setSending(false);
     }
   };
 
@@ -397,11 +369,19 @@ const InvoiceView = () => {
             {!isClientView && (
               <>
                 <div className="w-full flex flex-col gap-2 mb-4">
-                  <Label htmlFor="testEmailContent">Test Email Content</Label>
+                  <Label htmlFor="emailSubject">Email Subject</Label>
+                  <Input
+                    id="emailSubject"
+                    value={emailSubject}
+                    onChange={(e) => setEmailSubject(e.target.value)}
+                    placeholder={generateDefaultSubject()}
+                  />
+                  
+                  <Label htmlFor="emailContent">Email Content</Label>
                   <Textarea
-                    id="testEmailContent"
-                    value={testEmailContent}
-                    onChange={(e) => setTestEmailContent(e.target.value)}
+                    id="emailContent"
+                    value={emailContent}
+                    onChange={(e) => setEmailContent(e.target.value)}
                     placeholder={generateDefaultEmailContent()}
                     className="min-h-[100px]"
                     rows={5}
@@ -409,22 +389,12 @@ const InvoiceView = () => {
                 </div>
                 
                 <Button 
-                  onClick={handleSendTestEmail} 
-                  variant="outline" 
-                  disabled={testingSending || !client.email}
-                  title="Send a test email with custom content"
-                >
-                  <MailCheck className="h-4 w-4 mr-2" />
-                  Test Email
-                </Button>
-                
-                <Button 
-                  onClick={handleSendInvoice} 
-                  variant="outline" 
-                  disabled={sending || !client.email}
+                  onClick={handleSendEmail} 
+                  variant="default" 
+                  disabled={sending || !client?.email}
                 >
                   <Send className="h-4 w-4 mr-2" />
-                  Email to Client
+                  Send Email
                 </Button>
                 
                 {invoice.status === 'sent' && (

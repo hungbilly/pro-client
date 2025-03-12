@@ -14,6 +14,14 @@ const EMAIL_USERNAME = Deno.env.get('EMAIL_USERNAME');
 const EMAIL_PASSWORD = Deno.env.get('EMAIL_PASSWORD');
 const EMAIL_FROM = "info@billyhung.com"; // Fixed email address
 
+// Function to ensure CRLF line endings
+function normalizeCRLF(text: string): string {
+  // First, normalize all line endings to LF
+  const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  // Then convert all LFs to CRLFs
+  return normalized.replace(/\n/g, '\r\n');
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -44,9 +52,9 @@ serve(async (req) => {
     console.log(`Connecting to SMTP server: ${EMAIL_HOST}:${EMAIL_PORT}`);
     console.log(`Using username: ${EMAIL_USERNAME}`);
 
-    // Format the email content
+    // Format the email content with CRLF line endings
     const subject = `Invoice ${invoiceNumber}`;
-    const text = `Dear ${clientName || 'Client'},
+    const rawText = `Dear ${clientName || 'Client'},
 
 Please find your invoice (${invoiceNumber}) at the following link:
 ${invoiceUrl}
@@ -54,6 +62,10 @@ ${invoiceUrl}
 ${additionalMessage ? additionalMessage + '\n\n' : ''}
 Thank you for your business.`;
 
+    // Ensure proper CRLF line endings for the text part
+    const text = normalizeCRLF(rawText);
+
+    // HTML doesn't need CRLF normalization as browsers handle this automatically
     const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <h2 style="color: #4a5568;">Invoice ${invoiceNumber}</h2>
@@ -91,7 +103,7 @@ Thank you for your business.`;
       
       console.log("SMTP client created, attempting to send email...");
       
-      // Send email
+      // Send email - denomailer expects CRLF, but we'll ensure it's properly formatted anyway
       sendResult = await client.send({
         from: EMAIL_FROM,
         to: clientEmail,

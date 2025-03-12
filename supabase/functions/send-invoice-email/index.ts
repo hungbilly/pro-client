@@ -77,10 +77,10 @@ serve(async (req) => {
     let subject, rawText, html;
     
     if (isTestEmail) {
-      // For test emails, use a very simple message
+      // For test emails, use the specified test message
       subject = "Test Email";
-      rawText = "Hello World";
-      html = "<h1>Hello World</h1>";
+      rawText = "Dear billy hung,\r\n say hello";
+      html = "<h1>Dear billy hung,</h1><p>say hello</p>";
     } else {
       // For regular invoice emails, use the standard format
       if (!invoiceNumber || !invoiceUrl) {

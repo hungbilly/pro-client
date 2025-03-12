@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { getInvoiceByViewLink, getClient, updateInvoiceStatus, getInvoice } from '@/lib/storage';
@@ -7,7 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Check, Calendar, FileText, DollarSign, Send, Camera } from 'lucide-react';
+import { ArrowLeft, Check, Calendar, FileText, DollarSign, Send, Camera, MailCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { useAuth } from '@/context/AuthContext';
@@ -21,6 +20,7 @@ const InvoiceView = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const [testingSending, setTestingSending] = useState(false);
   const location = useLocation();
   const { isAdmin } = useAuth();
   
@@ -218,6 +218,54 @@ const InvoiceView = () => {
     }
   };
 
+  // New function to send a test email with a simple "hello world" message
+  const handleSendTestEmail = async () => {
+    if (!client || !client.email) {
+      toast.error('Client email is required for testing');
+      return;
+    }
+    
+    setTestingSending(true);
+    try {
+      console.log('Sending test email to:', client.email);
+      
+      // Use our edge function to send a simple test email
+      const { data, error } = await supabase.functions.invoke('send-invoice-email', {
+        body: { 
+          clientEmail: client.email,
+          clientName: client.name,
+          invoiceNumber: 'TEST-EMAIL',
+          invoiceUrl: 'https://example.com/test',
+          additionalMessage: 'Hello World! This is a test email to verify email delivery is working.'
+        }
+      });
+      
+      if (error) {
+        console.error('Error sending test email:', error);
+        toast.error('Test email failed to send.');
+        return;
+      }
+      
+      if (data?.success) {
+        console.log('Test email response:', data);
+        toast.success(`Test email sent to ${client.email}`);
+      } else {
+        console.warn('Test email response:', data);
+        toast.error(data?.message || 'Test email failed to send.');
+        
+        // Display more detailed debug info if available
+        if (data?.debug) {
+          console.log('Email debug info:', data.debug);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to send test email:', err);
+      toast.error('Failed to send test email to client.');
+    } finally {
+      setTestingSending(false);
+    }
+  };
+
   if (loading) {
     return (
       <PageTransition>
@@ -353,6 +401,17 @@ const InvoiceView = () => {
             {/* Only show admin buttons if not a client view */}
             {!isClientView && (
               <>
+                {/* Add the test email button */}
+                <Button 
+                  onClick={handleSendTestEmail} 
+                  variant="outline" 
+                  disabled={testingSending || !client.email}
+                  title="Send a test email with 'Hello World' content"
+                >
+                  <MailCheck className="h-4 w-4 mr-2" />
+                  Test Email
+                </Button>
+                
                 <Button 
                   onClick={handleSendInvoice} 
                   variant="outline" 

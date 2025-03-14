@@ -81,6 +81,7 @@ export type Database = {
         Row: {
           amount: number
           client_id: string
+          contract_status: string | null
           contract_terms: string | null
           created_at: string
           date: string
@@ -95,6 +96,7 @@ export type Database = {
         Insert: {
           amount: number
           client_id: string
+          contract_status?: string | null
           contract_terms?: string | null
           created_at?: string
           date: string
@@ -109,6 +111,7 @@ export type Database = {
         Update: {
           amount?: number
           client_id?: string
+          contract_status?: string | null
           contract_terms?: string | null
           created_at?: string
           date?: string

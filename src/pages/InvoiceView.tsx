@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { getInvoiceByViewLink, getClient, updateInvoiceStatus, getInvoice, updateContractStatus } from '@/lib/storage';
@@ -344,7 +343,7 @@ const InvoiceView = () => {
                   {invoice.status.toUpperCase()}
                 </Badge>
                 {invoice.contractStatus === 'accepted' && (
-                  <Badge className={contractStatusColor} variant="outline" className="flex items-center gap-1">
+                  <Badge variant="outline" className={`flex items-center gap-1 ${contractStatusColor}`}>
                     <FileCheck className="h-3 w-3" />
                     Contract Accepted
                   </Badge>

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Invoice, Client } from '@/types';
@@ -79,7 +78,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client }) => {
                   {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
                 </Badge>
                 {invoice.contractStatus === 'accepted' && (
-                  <Badge className={getContractStatusColor('accepted')} variant="outline" className="flex items-center gap-1">
+                  <Badge variant="outline" className={`flex items-center gap-1 ${getContractStatusColor('accepted')}`}>
                     <FileCheck className="h-3 w-3" />
                     Contract Accepted
                   </Badge>

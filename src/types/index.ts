@@ -18,6 +18,7 @@ export interface Invoice {
   dueDate: string;
   shootingDate?: string;
   status: 'draft' | 'sent' | 'accepted' | 'paid';
+  contractStatus?: 'pending' | 'accepted';
   items: InvoiceItem[];
   notes?: string;
   contractTerms?: string;

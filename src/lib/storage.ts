@@ -1,4 +1,3 @@
-
 import { Client, Invoice, STORAGE_KEYS, InvoiceItem } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -552,6 +551,28 @@ export const updateInvoiceStatus = async (id: string, status: Invoice['status'])
     return await getInvoice(id);
   } catch (error) {
     console.error('Error updating invoice status:', error);
+    return undefined;
+  }
+};
+
+export const updateContractStatus = async (id: string, contractStatus: 'pending' | 'accepted'): Promise<Invoice | undefined> => {
+  try {
+    const { data, error } = await supabase
+      .from('invoices')
+      .update({ contract_status: contractStatus })
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error || !data) {
+      console.error('Error updating contract status:', error);
+      return undefined;
+    }
+    
+    // Get the full invoice with items
+    return await getInvoice(id);
+  } catch (error) {
+    console.error('Error updating contract status:', error);
     return undefined;
   }
 };

@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { AreaChart, CalendarDays, ClipboardCheck, Copy, Eye, FileEdit, FileCheck } from 'lucide-react';
+import { AreaChart, CalendarDays, ClipboardCheck, Copy, Eye, FileEdit, FileCheck, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface InvoiceListProps {
@@ -26,6 +26,16 @@ const getStatusColor = (status: Invoice['status']) => {
       return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
     default:
       return 'bg-gray-100 text-gray-800';
+  }
+};
+
+const getContractStatusColor = (status?: 'pending' | 'accepted') => {
+  switch (status) {
+    case 'accepted':
+      return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+    case 'pending':
+    default:
+      return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
   }
 };
 
@@ -68,8 +78,8 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client }) => {
                 <Badge className={getStatusColor(invoice.status)}>
                   {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
                 </Badge>
-                {invoice.status === 'accepted' && (
-                  <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 flex items-center gap-1">
+                {invoice.contractStatus === 'accepted' && (
+                  <Badge className={getContractStatusColor('accepted')} variant="outline" className="flex items-center gap-1">
                     <FileCheck className="h-3 w-3" />
                     Contract Accepted
                   </Badge>

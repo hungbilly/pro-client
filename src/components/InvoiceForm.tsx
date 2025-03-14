@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Client, Invoice, InvoiceItem } from '@/types';
@@ -31,6 +30,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
   const [dueDate, setDueDate] = useState<Date | null>(existingInvoice ? new Date(existingInvoice.dueDate) : new Date());
   const [shootingDate, setShootingDate] = useState<Date | null>(existingInvoice?.shootingDate ? new Date(existingInvoice.shootingDate) : null);
   const [status, setStatus] = useState<'draft' | 'sent' | 'accepted' | 'paid'>(existingInvoice?.status || 'draft');
+  const [contractStatus, setContractStatus] = useState<'pending' | 'accepted'>(existingInvoice?.contractStatus || 'pending');
   const [items, setItems] = useState<InvoiceItem[]>(existingInvoice?.items || [{ id: Date.now().toString(), description: '', quantity: 1, rate: 0, amount: 0 }]);
   const [notes, setNotes] = useState(existingInvoice?.notes || '');
   const [contractTerms, setContractTerms] = useState(existingInvoice?.contractTerms || '');
@@ -44,9 +44,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
         if (fetchedClient) {
           setClient(fetchedClient);
         } else {
-          // Handle case where client is not found
           toast.error('Client not found.');
-          // Redirect or other error handling
         }
       }
     };
@@ -86,7 +84,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
     const title = `Photo Shoot - ${client.name} - Invoice #${number}`;
     const details = `Photo shooting session for ${client.name}.\n\nClient Contact:\nEmail: ${client.email}\nPhone: ${client.phone}\n\nAddress: ${client.address}\n\nInvoice #${number}`;
     
-    // Format time for all-day event (no specific time)
     const dateStart = formattedDate;
     const dateEnd = formattedDate;
     
@@ -118,19 +115,18 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
       date: format(date, 'yyyy-MM-dd'),
       dueDate: format(dueDate, 'yyyy-MM-dd'),
       status,
+      contractStatus,
       items,
       notes,
       contractTerms,
     };
 
-    // Add shooting date if it exists
     if (shootingDate) {
       invoiceData.shootingDate = format(shootingDate, 'yyyy-MM-dd');
     }
 
     try {
       if (existingInvoice) {
-        // Update existing invoice
         const updatedInvoice: Invoice = {
           id: existingInvoice.id,
           clientId: client.id,
@@ -139,13 +135,13 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
           date: format(date, 'yyyy-MM-dd'),
           dueDate: format(dueDate, 'yyyy-MM-dd'),
           status,
+          contractStatus,
           items,
           notes,
           contractTerms,
           viewLink: existingInvoice.viewLink,
         };
 
-        // Add shooting date if it exists
         if (shootingDate) {
           updatedInvoice.shootingDate = format(shootingDate, 'yyyy-MM-dd');
         }
@@ -153,7 +149,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
         await updateInvoice(updatedInvoice);
         toast.success('Invoice updated successfully!');
       } else {
-        // Save new invoice
         await saveInvoice(invoiceData);
         toast.success('Invoice saved successfully!');
       }
@@ -281,19 +276,33 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
               </div>
             </div>
           </div>
-          <div>
-            <Label htmlFor="status">Status</Label>
-            <Select value={status} onValueChange={(value) => setStatus(value as 'draft' | 'sent' | 'accepted' | 'paid')}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select a status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="sent">Sent</SelectItem>
-                <SelectItem value="accepted">Accepted</SelectItem>
-                <SelectItem value="paid">Paid</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="status">Invoice Status</Label>
+              <Select value={status} onValueChange={(value) => setStatus(value as 'draft' | 'sent' | 'accepted' | 'paid')}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="sent">Sent</SelectItem>
+                  <SelectItem value="accepted">Accepted</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="contractStatus">Contract Status</Label>
+              <Select value={contractStatus} onValueChange={(value) => setContractStatus(value as 'pending' | 'accepted')}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="accepted">Accepted</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div>
             <Label>Items</Label>

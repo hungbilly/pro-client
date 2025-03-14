@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
-import { getInvoiceByViewLink, getClient, updateInvoiceStatus, getInvoice } from '@/lib/storage';
+import { getInvoiceByViewLink, getClient, updateInvoiceStatus, getInvoice, updateContractStatus } from '@/lib/storage';
 import { Invoice, Client } from '@/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -184,6 +185,22 @@ const InvoiceView = () => {
     }
   };
 
+  const handleAcceptContract = async () => {
+    if (!invoice) return;
+
+    try {
+      const updatedInvoice = await updateContractStatus(invoice.id, 'accepted');
+      if (updatedInvoice) {
+        setInvoice(updatedInvoice);
+        toast.success('Contract terms accepted!');
+      } else {
+        toast.error('Failed to update contract status.');
+      }
+    } catch (err) {
+      toast.error('Failed to accept contract terms.');
+    }
+  };
+
   const handleSendEmail = async () => {
     if (!invoice || !client || !client.email) {
       toast.error('Client email is required');
@@ -299,7 +316,12 @@ const InvoiceView = () => {
     paid: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
   };
 
-  const canClientAccept = ['draft', 'sent'].includes(invoice.status);
+  const contractStatusColor = invoice.contractStatus === 'accepted' 
+    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+    : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+
+  const canClientAcceptInvoice = ['draft', 'sent'].includes(invoice.status);
+  const canClientAcceptContract = invoice.contractStatus !== 'accepted';
 
   return (
     <PageTransition>
@@ -321,8 +343,8 @@ const InvoiceView = () => {
                 <Badge className={statusColors[invoice.status] || 'bg-gray-100 text-gray-800'}>
                   {invoice.status.toUpperCase()}
                 </Badge>
-                {invoice.status === 'accepted' && !isClientView && (
-                  <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 flex items-center gap-1">
+                {invoice.contractStatus === 'accepted' && (
+                  <Badge className={contractStatusColor} variant="outline" className="flex items-center gap-1">
                     <FileCheck className="h-3 w-3" />
                     Contract Accepted
                   </Badge>
@@ -372,10 +394,17 @@ const InvoiceView = () => {
 
             <Tabs defaultValue="invoice" className="w-full">
               <TabsList className="w-full">
-                <TabsTrigger value="invoice" className="flex-1">Invoice Details</TabsTrigger>
+                <TabsTrigger value="invoice" className="flex-1">
+                  Invoice Details
+                  {invoice.status === 'accepted' && (
+                    <span className="ml-2">
+                      <FileCheck className="h-3 w-3 inline text-green-600" />
+                    </span>
+                  )}
+                </TabsTrigger>
                 <TabsTrigger value="contract" className="flex-1">
                   Contract Terms
-                  {invoice.status === 'accepted' && (
+                  {invoice.contractStatus === 'accepted' && (
                     <span className="ml-2">
                       <FileCheck className="h-3 w-3 inline text-green-600" />
                     </span>
@@ -384,6 +413,22 @@ const InvoiceView = () => {
               </TabsList>
               
               <TabsContent value="invoice" className="mt-4">
+                {isClientView && canClientAcceptInvoice && (
+                  <Button onClick={handleAcceptInvoice} className="mb-4">
+                    <Check className="h-4 w-4 mr-2" />
+                    Accept Invoice
+                  </Button>
+                )}
+                
+                {invoice.status === 'accepted' && !isClientView && (
+                  <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-md flex items-center gap-2">
+                    <FileCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    <span className="text-green-800 dark:text-green-400">
+                      This invoice has been accepted by the client
+                    </span>
+                  </div>
+                )}
+                
                 <div>
                   <h4 className="text-lg font-semibold mb-2">Items</h4>
                   <ul className="list-disc pl-5">
@@ -405,14 +450,14 @@ const InvoiceView = () => {
               
               <TabsContent value="contract" className="mt-4">
                 <div className="mb-4">
-                  {canClientAccept && (
-                    <Button onClick={handleAcceptInvoice} className="mb-4">
+                  {isClientView && canClientAcceptContract && (
+                    <Button onClick={handleAcceptContract} className="mb-4">
                       <Check className="h-4 w-4 mr-2" />
                       Accept Contract Terms
                     </Button>
                   )}
                   
-                  {invoice.status === 'accepted' && !isClientView && (
+                  {invoice.contractStatus === 'accepted' && !isClientView && (
                     <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-md flex items-center gap-2">
                       <FileCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
                       <span className="text-green-800 dark:text-green-400">
@@ -475,13 +520,6 @@ const InvoiceView = () => {
                   Send Email
                 </Button>
               </>
-            )}
-            
-            {isClientView && canClientAccept && (
-              <Button onClick={handleAcceptInvoice}>
-                <Check className="h-4 w-4 mr-2" />
-                Accept Invoice
-              </Button>
             )}
           </CardFooter>
         </Card>

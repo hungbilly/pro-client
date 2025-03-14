@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Invoice, Client } from '@/types';
@@ -5,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { AreaChart, CalendarDays, ClipboardCheck, Copy, Eye, FileEdit } from 'lucide-react';
+import { AreaChart, CalendarDays, ClipboardCheck, Copy, Eye, FileEdit, FileCheck } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface InvoiceListProps {
@@ -63,9 +64,17 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client }) => {
                   Created: {new Date(invoice.date).toLocaleDateString()}
                 </CardDescription>
               </div>
-              <Badge className={getStatusColor(invoice.status)}>
-                {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
-              </Badge>
+              <div className="flex flex-col gap-1">
+                <Badge className={getStatusColor(invoice.status)}>
+                  {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
+                </Badge>
+                {invoice.status === 'accepted' && (
+                  <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 flex items-center gap-1">
+                    <FileCheck className="h-3 w-3" />
+                    Contract Accepted
+                  </Badge>
+                )}
+              </div>
             </div>
           </CardHeader>
           <CardContent>

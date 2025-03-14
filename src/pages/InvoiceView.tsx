@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { getInvoiceByViewLink, getClient, updateInvoiceStatus, getInvoice } from '@/lib/storage';
@@ -7,7 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Check, Calendar, FileText, DollarSign, Send, Camera, MailCheck } from 'lucide-react';
+import { ArrowLeft, Check, Calendar, FileText, DollarSign, Send, Camera, MailCheck, FileCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { useAuth } from '@/context/AuthContext';
@@ -318,15 +317,23 @@ const InvoiceView = () => {
           <CardHeader>
             <CardTitle className="text-2xl font-bold flex items-center justify-between">
               <span>Invoice: {invoice.number}</span>
-              <Badge className={statusColors[invoice.status] || 'bg-gray-100 text-gray-800'}>
-                {invoice.status.toUpperCase()}
-              </Badge>
+              <div className="flex flex-col gap-1">
+                <Badge className={statusColors[invoice.status] || 'bg-gray-100 text-gray-800'}>
+                  {invoice.status.toUpperCase()}
+                </Badge>
+                {invoice.status === 'accepted' && !isClientView && (
+                  <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 flex items-center gap-1">
+                    <FileCheck className="h-3 w-3" />
+                    Contract Accepted
+                  </Badge>
+                )}
+              </div>
             </CardTitle>
             <CardDescription>
               View invoice details and contract terms.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <h4 className="text-lg font-semibold mb-2">Client Information</h4>
@@ -366,7 +373,14 @@ const InvoiceView = () => {
             <Tabs defaultValue="invoice" className="w-full">
               <TabsList className="w-full">
                 <TabsTrigger value="invoice" className="flex-1">Invoice Details</TabsTrigger>
-                <TabsTrigger value="contract" className="flex-1">Contract Terms</TabsTrigger>
+                <TabsTrigger value="contract" className="flex-1">
+                  Contract Terms
+                  {invoice.status === 'accepted' && (
+                    <span className="ml-2">
+                      <FileCheck className="h-3 w-3 inline text-green-600" />
+                    </span>
+                  )}
+                </TabsTrigger>
               </TabsList>
               
               <TabsContent value="invoice" className="mt-4">
@@ -396,6 +410,15 @@ const InvoiceView = () => {
                       <Check className="h-4 w-4 mr-2" />
                       Accept Contract Terms
                     </Button>
+                  )}
+                  
+                  {invoice.status === 'accepted' && !isClientView && (
+                    <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-md flex items-center gap-2">
+                      <FileCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
+                      <span className="text-green-800 dark:text-green-400">
+                        This contract has been accepted by the client
+                      </span>
+                    </div>
                   )}
                   
                   <h4 className="text-lg font-semibold mb-2 flex items-center gap-1">

@@ -10,6 +10,9 @@ import ClientDetail from "./pages/ClientDetail";
 import ClientNew from "./pages/ClientNew";
 import InvoiceView from "./pages/InvoiceView";
 import InvoiceCreate from "./pages/InvoiceCreate";
+import JobCreate from "./pages/JobCreate";
+import JobEdit from "./pages/JobEdit";
+import JobDetail from "./pages/JobDetail";
 import Auth from "./pages/Auth";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -52,6 +55,38 @@ const App = () => (
               element={
                 <ProtectedRoute adminOnly>
                   <ClientDetail />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/client/:clientId/job/create" 
+              element={
+                <ProtectedRoute adminOnly>
+                  <JobCreate />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/client/:clientId/job/edit/:id" 
+              element={
+                <ProtectedRoute adminOnly>
+                  <JobEdit />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/job/:id" 
+              element={
+                <ProtectedRoute adminOnly>
+                  <JobDetail />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/job/:jobId/invoice/create" 
+              element={
+                <ProtectedRoute adminOnly>
+                  <InvoiceCreate />
                 </ProtectedRoute>
               } 
             />

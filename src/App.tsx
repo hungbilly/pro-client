@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import ClientDetail from "./pages/ClientDetail";
 import ClientNew from "./pages/ClientNew";
+import ClientEdit from "./pages/ClientEdit";
 import InvoiceView from "./pages/InvoiceView";
 import InvoiceCreate from "./pages/InvoiceCreate";
 import JobCreate from "./pages/JobCreate";
@@ -55,6 +56,14 @@ const App = () => (
               element={
                 <ProtectedRoute adminOnly>
                   <ClientDetail />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/client/edit/:id" 
+              element={
+                <ProtectedRoute adminOnly>
+                  <ClientEdit />
                 </ProtectedRoute>
               } 
             />

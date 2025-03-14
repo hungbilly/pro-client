@@ -4,6 +4,7 @@ import { Routes, Route } from 'react-router-dom';
 import Index from '@/pages/Index';
 import ClientDetail from '@/pages/ClientDetail';
 import ClientNew from '@/pages/ClientNew';
+import ClientEdit from '@/pages/ClientEdit';
 import InvoiceCreate from '@/pages/InvoiceCreate';
 import InvoiceView from '@/pages/InvoiceView';
 import JobCreate from '@/pages/JobCreate';
@@ -17,6 +18,7 @@ const AppRoutes = () => {
       <Route path="/" element={<Index />} />
       <Route path="/client/new" element={<ClientNew />} />
       <Route path="/client/:id" element={<ClientDetail />} />
+      <Route path="/client/edit/:id" element={<ClientEdit />} />
       <Route path="/client/:clientId/job/create" element={<JobCreate />} />
       <Route path="/client/:clientId/job/edit/:id" element={<JobEdit />} />
       <Route path="/job/:id" element={<JobDetail />} />

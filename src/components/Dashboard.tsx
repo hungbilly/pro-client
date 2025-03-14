@@ -1,18 +1,25 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getClients, getInvoices, getJobs } from '@/lib/storage';
+import { getClients, getInvoices, getJobs, deleteClient } from '@/lib/storage';
 import { Client, Invoice } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Link, useNavigate } from 'react-router-dom';
-import { UserPlus, FileText, Users, CircleDollarSign, BarChart4, Clock, Briefcase, FilePlus, Eye, FileEdit } from 'lucide-react';
+import { UserPlus, FileText, Users, CircleDollarSign, BarChart4, Clock, Briefcase, FilePlus, Eye, FileEdit, MoreHorizontal, Trash2 } from 'lucide-react';
 import ClientCard from './ClientCard';
 import { AnimatedBackground } from './ui-custom/AnimatedBackground';
 import JobList from './JobList';
 import InvoiceList from './InvoiceList';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from './ui/badge';
+import { toast } from 'sonner';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -97,6 +104,18 @@ const Dashboard: React.FC = () => {
 
   const handleInvoiceRowClick = (invoiceId: string) => {
     navigate(`/invoice/${invoiceId}`);
+  };
+
+  const handleDeleteClient = async (e: React.MouseEvent, clientId: string) => {
+    e.stopPropagation();
+    
+    try {
+      await deleteClient(clientId);
+      toast.success("Client deleted successfully");
+    } catch (error) {
+      console.error("Error deleting client:", error);
+      toast.error("Failed to delete client");
+    }
   };
 
   return (
@@ -237,12 +256,37 @@ const Dashboard: React.FC = () => {
                               {new Date(client.createdAt).toLocaleDateString()}
                             </TableCell>
                             <TableCell className="text-right">
-                              <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-                                <Button variant="outline" size="sm" asChild>
-                                  <Link to={`/client/edit/${client.id}`}>
-                                    <FileEdit className="h-4 w-4" />
-                                  </Link>
-                                </Button>
+                              <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="bg-popover">
+                                    <DropdownMenuItem 
+                                      onClick={() => navigate(`/client/${client.id}/job/create`)}
+                                      className="cursor-pointer"
+                                    >
+                                      <Briefcase className="mr-2 h-4 w-4" />
+                                      <span>Add Job</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem 
+                                      onClick={() => navigate(`/client/edit/${client.id}`)}
+                                      className="cursor-pointer"
+                                    >
+                                      <FileEdit className="mr-2 h-4 w-4" />
+                                      <span>Edit</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem 
+                                      onClick={(e) => handleDeleteClient(e, client.id)}
+                                      className="cursor-pointer text-destructive focus:text-destructive"
+                                    >
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                      <span>Delete</span>
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                               </div>
                             </TableCell>
                           </TableRow>

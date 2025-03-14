@@ -6,6 +6,9 @@ import ClientDetail from '@/pages/ClientDetail';
 import ClientNew from '@/pages/ClientNew';
 import InvoiceCreate from '@/pages/InvoiceCreate';
 import InvoiceView from '@/pages/InvoiceView';
+import JobCreate from '@/pages/JobCreate';
+import JobEdit from '@/pages/JobEdit';
+import JobDetail from '@/pages/JobDetail';
 import NotFound from '@/pages/NotFound';
 
 const AppRoutes = () => {
@@ -14,7 +17,11 @@ const AppRoutes = () => {
       <Route path="/" element={<Index />} />
       <Route path="/client/new" element={<ClientNew />} />
       <Route path="/client/:id" element={<ClientDetail />} />
-      <Route path="/client/:id/invoice/new" element={<InvoiceCreate />} />
+      <Route path="/client/:clientId/job/create" element={<JobCreate />} />
+      <Route path="/client/:clientId/job/edit/:id" element={<JobEdit />} />
+      <Route path="/job/:id" element={<JobDetail />} />
+      <Route path="/job/:jobId/invoice/create" element={<InvoiceCreate />} />
+      <Route path="/invoice/create/:clientId" element={<InvoiceCreate />} />
       <Route path="/invoice/:link" element={<InvoiceView />} />
       <Route path="*" element={<NotFound />} />
     </Routes>

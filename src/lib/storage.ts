@@ -1,4 +1,4 @@
-import { Client, Invoice, STORAGE_KEYS, InvoiceItem } from "@/types";
+import { Client, Invoice, STORAGE_KEYS, InvoiceItem, Job } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 
 // Generate a unique ID
@@ -154,6 +154,249 @@ export const deleteClient = async (id: string): Promise<void> => {
   }
 };
 
+// Job operations
+export const getJobs = async (): Promise<Job[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('jobs')
+      .select('*');
+    
+    if (error) {
+      console.error('Error fetching jobs:', error);
+      return [];
+    }
+    
+    return data.map(job => ({
+      id: job.id,
+      clientId: job.client_id,
+      title: job.title,
+      description: job.description || undefined,
+      status: job.status as 'active' | 'completed' | 'cancelled',
+      date: job.date || undefined,
+      location: job.location || undefined,
+      createdAt: job.created_at,
+      updatedAt: job.updated_at
+    }));
+  } catch (error) {
+    console.error('Error fetching jobs:', error);
+    return [];
+  }
+};
+
+export const getJob = async (id: string): Promise<Job | undefined> => {
+  try {
+    const { data, error } = await supabase
+      .from('jobs')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (error || !data) {
+      console.error('Error fetching job:', error);
+      return undefined;
+    }
+    
+    return {
+      id: data.id,
+      clientId: data.client_id,
+      title: data.title,
+      description: data.description || undefined,
+      status: data.status as 'active' | 'completed' | 'cancelled',
+      date: data.date || undefined,
+      location: data.location || undefined,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at
+    };
+  } catch (error) {
+    console.error('Error fetching job:', error);
+    return undefined;
+  }
+};
+
+export const getClientJobs = async (clientId: string): Promise<Job[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('jobs')
+      .select('*')
+      .eq('client_id', clientId);
+    
+    if (error) {
+      console.error('Error fetching client jobs:', error);
+      return [];
+    }
+    
+    return data.map(job => ({
+      id: job.id,
+      clientId: job.client_id,
+      title: job.title,
+      description: job.description || undefined,
+      status: job.status as 'active' | 'completed' | 'cancelled',
+      date: job.date || undefined,
+      location: job.location || undefined,
+      createdAt: job.created_at,
+      updatedAt: job.updated_at
+    }));
+  } catch (error) {
+    console.error('Error fetching client jobs:', error);
+    return [];
+  }
+};
+
+export const getJobInvoices = async (jobId: string): Promise<Invoice[]> => {
+  try {
+    // First get all invoices for the job
+    const { data: invoicesData, error: invoicesError } = await supabase
+      .from('invoices')
+      .select('*')
+      .eq('job_id', jobId);
+    
+    if (invoicesError || !invoicesData || invoicesData.length === 0) {
+      if (invoicesError) console.error('Error fetching job invoices:', invoicesError);
+      return [];
+    }
+    
+    // Get all invoice IDs
+    const invoiceIds = invoicesData.map(invoice => invoice.id);
+    
+    // Then get all invoice items for these invoices
+    const { data: itemsData, error: itemsError } = await supabase
+      .from('invoice_items')
+      .select('*')
+      .in('invoice_id', invoiceIds);
+    
+    if (itemsError) {
+      console.error('Error fetching invoice items:', itemsError);
+      // Continue with empty items if there was an error
+    }
+    
+    // Map and transform the data
+    return invoicesData.map(invoice => {
+      const invoiceItems = (itemsData || [])
+        .filter(item => item.invoice_id === invoice.id)
+        .map(item => ({
+          id: item.id,
+          description: item.description,
+          quantity: item.quantity,
+          rate: item.rate,
+          amount: item.amount
+        }));
+      
+      return {
+        id: invoice.id,
+        clientId: invoice.client_id,
+        jobId: invoice.job_id || undefined,
+        number: invoice.number,
+        amount: invoice.amount,
+        date: invoice.date,
+        dueDate: invoice.due_date,
+        shootingDate: invoice.shooting_date || undefined,
+        status: invoice.status as 'draft' | 'sent' | 'accepted' | 'paid',
+        contractStatus: invoice.contract_status as 'pending' | 'accepted' || 'pending',
+        items: invoiceItems,
+        notes: invoice.notes || undefined,
+        contractTerms: invoice.contract_terms || undefined,
+        viewLink: invoice.view_link
+      };
+    });
+  } catch (error) {
+    console.error('Error fetching job invoices:', error);
+    return [];
+  }
+};
+
+export const saveJob = async (job: Omit<Job, 'id' | 'createdAt' | 'updatedAt'>): Promise<Job> => {
+  try {
+    const { data, error } = await supabase
+      .from('jobs')
+      .insert({
+        client_id: job.clientId,
+        title: job.title,
+        description: job.description,
+        status: job.status,
+        date: job.date,
+        location: job.location
+      })
+      .select()
+      .single();
+    
+    if (error || !data) {
+      console.error('Error saving job:', error);
+      throw new Error(error?.message || 'Failed to save job');
+    }
+    
+    return {
+      id: data.id,
+      clientId: data.client_id,
+      title: data.title,
+      description: data.description || undefined,
+      status: data.status as 'active' | 'completed' | 'cancelled',
+      date: data.date || undefined,
+      location: data.location || undefined,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at
+    };
+  } catch (error) {
+    console.error('Error saving job:', error);
+    throw error;
+  }
+};
+
+export const updateJob = async (job: Job): Promise<Job> => {
+  try {
+    const { data, error } = await supabase
+      .from('jobs')
+      .update({
+        client_id: job.clientId,
+        title: job.title,
+        description: job.description,
+        status: job.status,
+        date: job.date,
+        location: job.location,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', job.id)
+      .select()
+      .single();
+    
+    if (error || !data) {
+      console.error('Error updating job:', error);
+      throw new Error(error?.message || 'Failed to update job');
+    }
+    
+    return {
+      id: data.id,
+      clientId: data.client_id,
+      title: data.title,
+      description: data.description || undefined,
+      status: data.status as 'active' | 'completed' | 'cancelled',
+      date: data.date || undefined,
+      location: data.location || undefined,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at
+    };
+  } catch (error) {
+    console.error('Error updating job:', error);
+    throw error;
+  }
+};
+
+export const deleteJob = async (id: string): Promise<void> => {
+  try {
+    const { error } = await supabase
+      .from('jobs')
+      .delete()
+      .eq('id', id);
+    
+    if (error) {
+      console.error('Error deleting job:', error);
+      throw new Error(error.message);
+    }
+  } catch (error) {
+    console.error('Error deleting job:', error);
+    throw error;
+  }
+};
+
 // Invoice operations
 export const getInvoices = async (): Promise<Invoice[]> => {
   try {
@@ -192,12 +435,14 @@ export const getInvoices = async (): Promise<Invoice[]> => {
       return {
         id: invoice.id,
         clientId: invoice.client_id,
+        jobId: invoice.job_id || undefined,
         number: invoice.number,
         amount: invoice.amount,
         date: invoice.date,
         dueDate: invoice.due_date,
         shootingDate: invoice.shooting_date || undefined,
         status: invoice.status as 'draft' | 'sent' | 'accepted' | 'paid',
+        contractStatus: invoice.contract_status as 'pending' | 'accepted' || 'pending',
         items: invoiceItems,
         notes: invoice.notes || undefined,
         contractTerms: invoice.contract_terms || undefined,
@@ -247,12 +492,14 @@ export const getInvoice = async (id: string): Promise<Invoice | undefined> => {
     return {
       id: invoice.id,
       clientId: invoice.client_id,
+      jobId: invoice.job_id || undefined,
       number: invoice.number,
       amount: invoice.amount,
       date: invoice.date,
       dueDate: invoice.due_date,
       shootingDate: invoice.shooting_date || undefined,
       status: invoice.status as 'draft' | 'sent' | 'accepted' | 'paid',
+      contractStatus: invoice.contract_status as 'pending' | 'accepted' || 'pending',
       items: invoiceItems,
       notes: invoice.notes || undefined,
       contractTerms: invoice.contract_terms || undefined,
@@ -317,11 +564,13 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
     return {
       id: matchingInvoice.id,
       clientId: matchingInvoice.client_id,
+      jobId: matchingInvoice.job_id || undefined,
       number: matchingInvoice.number,
       amount: matchingInvoice.amount,
       date: matchingInvoice.date,
       dueDate: matchingInvoice.due_date,
       status: matchingInvoice.status as 'draft' | 'sent' | 'accepted' | 'paid',
+      contractStatus: matchingInvoice.contract_status as 'pending' | 'accepted' || 'pending',
       items: invoiceItems,
       notes: matchingInvoice.notes || undefined,
       contractTerms: matchingInvoice.contract_terms || undefined,
@@ -358,7 +607,6 @@ export const getClientInvoices = async (clientId: string): Promise<Invoice[]> =>
     if (itemsError) {
       console.error('Error fetching invoice items:', itemsError);
       // Continue with empty items if there was an error
-      // No need to return empty array here as we still have invoices
     }
     
     // Map and transform the data
@@ -376,12 +624,14 @@ export const getClientInvoices = async (clientId: string): Promise<Invoice[]> =>
       return {
         id: invoice.id,
         clientId: invoice.client_id,
+        jobId: invoice.job_id || undefined,
         number: invoice.number,
         amount: invoice.amount,
         date: invoice.date,
         dueDate: invoice.due_date,
         shootingDate: invoice.shooting_date || undefined,
         status: invoice.status as 'draft' | 'sent' | 'accepted' | 'paid',
+        contractStatus: invoice.contract_status as 'pending' | 'accepted' || 'pending',
         items: invoiceItems,
         notes: invoice.notes || undefined,
         contractTerms: invoice.contract_terms || undefined,
@@ -404,12 +654,14 @@ export const saveInvoice = async (invoice: Omit<Invoice, 'id' | 'viewLink'>): Pr
       .from('invoices')
       .insert({
         client_id: invoice.clientId,
+        job_id: invoice.jobId,
         number: invoice.number,
         amount: invoice.amount,
         date: invoice.date,
         due_date: invoice.dueDate,
         shooting_date: invoice.shootingDate,
         status: invoice.status,
+        contract_status: invoice.contractStatus,
         notes: invoice.notes,
         contract_terms: invoice.contractTerms,
         view_link: viewLink
@@ -456,12 +708,14 @@ export const saveInvoice = async (invoice: Omit<Invoice, 'id' | 'viewLink'>): Pr
     return {
       id: newInvoice.id,
       clientId: newInvoice.client_id,
+      jobId: newInvoice.job_id || undefined,
       number: newInvoice.number,
       amount: newInvoice.amount,
       date: newInvoice.date,
       dueDate: newInvoice.due_date,
       shootingDate: newInvoice.shooting_date || undefined,
       status: newInvoice.status as 'draft' | 'sent' | 'accepted' | 'paid',
+      contractStatus: newInvoice.contract_status as 'pending' | 'accepted' || 'pending',
       items,
       notes: newInvoice.notes || undefined,
       contractTerms: newInvoice.contract_terms || undefined,
@@ -480,12 +734,14 @@ export const updateInvoice = async (invoice: Invoice): Promise<Invoice> => {
       .from('invoices')
       .update({
         client_id: invoice.clientId,
+        job_id: invoice.jobId,
         number: invoice.number,
         amount: invoice.amount,
         date: invoice.date,
         due_date: invoice.dueDate,
         shooting_date: invoice.shootingDate,
         status: invoice.status,
+        contract_status: invoice.contractStatus,
         notes: invoice.notes,
         contract_terms: invoice.contractTerms,
         view_link: invoice.viewLink

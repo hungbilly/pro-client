@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Client, Invoice, InvoiceItem } from '@/types';
+import { Client, Invoice, InvoiceItem, Job } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Trash2, Calendar as CalendarIcon, Camera, CalendarPlus } from 'lucide-react';
 import { toast } from 'sonner';
-import { getClient, saveInvoice, updateInvoice } from '@/lib/storage';
+import { getClient, saveInvoice, updateInvoice, getJob, getClientJobs } from '@/lib/storage';
 import { format } from 'date-fns';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -18,13 +19,15 @@ import { cn } from '@/lib/utils';
 interface InvoiceFormProps {
   invoice?: Invoice;
   clientId?: string;
+  jobId?: string;
 }
 
-const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, clientId: predefinedClientId }) => {
-  const { clientId: clientIdParam } = useParams<{ clientId: string }>();
+const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, clientId: predefinedClientId, jobId: predefinedJobId }) => {
+  const { clientId: clientIdParam, jobId: jobIdParam } = useParams<{ clientId?: string; jobId?: string }>();
   const navigate = useNavigate();
 
   const [client, setClient] = useState<Client | null>(null);
+  const [jobs, setJobs] = useState<Job[]>([]);
   const [number, setNumber] = useState(existingInvoice?.number || '');
   const [date, setDate] = useState<Date | null>(existingInvoice ? new Date(existingInvoice.date) : new Date());
   const [dueDate, setDueDate] = useState<Date | null>(existingInvoice ? new Date(existingInvoice.dueDate) : new Date());
@@ -34,6 +37,9 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
   const [items, setItems] = useState<InvoiceItem[]>(existingInvoice?.items || [{ id: Date.now().toString(), description: '', quantity: 1, rate: 0, amount: 0 }]);
   const [notes, setNotes] = useState(existingInvoice?.notes || '');
   const [contractTerms, setContractTerms] = useState(existingInvoice?.contractTerms || '');
+  const [selectedJobId, setSelectedJobId] = useState<string | undefined>(
+    predefinedJobId || jobIdParam || existingInvoice?.jobId || undefined
+  );
 
   const clientId = predefinedClientId || clientIdParam || existingInvoice?.clientId || '';
 
@@ -43,6 +49,19 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
         const fetchedClient = await getClient(clientId);
         if (fetchedClient) {
           setClient(fetchedClient);
+          
+          // Fetch jobs for this client
+          const fetchedJobs = await getClientJobs(clientId);
+          setJobs(fetchedJobs);
+          
+          // If there's a predefined job ID, check if it exists in the fetched jobs
+          if (selectedJobId) {
+            const job = fetchedJobs.find(j => j.id === selectedJobId);
+            if (!job) {
+              // If the job doesn't exist for this client, clear the selection
+              setSelectedJobId(undefined);
+            }
+          }
         } else {
           toast.error('Client not found.');
         }
@@ -50,7 +69,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
     };
 
     fetchClient();
-  }, [clientId]);
+  }, [clientId, selectedJobId]);
 
   const calculateTotalAmount = () => {
     return items.reduce((total, item) => total + item.amount, 0);
@@ -110,6 +129,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
 
     const invoiceData: Omit<Invoice, 'id' | 'viewLink'> = {
       clientId: client.id,
+      jobId: selectedJobId,
       number,
       amount,
       date: format(date, 'yyyy-MM-dd'),
@@ -130,6 +150,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
         const updatedInvoice: Invoice = {
           id: existingInvoice.id,
           clientId: client.id,
+          jobId: selectedJobId,
           number,
           amount,
           date: format(date, 'yyyy-MM-dd'),
@@ -152,7 +173,13 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
         await saveInvoice(invoiceData);
         toast.success('Invoice saved successfully!');
       }
-      navigate(`/client/${client.id}`);
+      
+      // Navigate to the appropriate page based on context
+      if (selectedJobId) {
+        navigate(`/job/${selectedJobId}`);
+      } else {
+        navigate(`/client/${client.id}`);
+      }
     } catch (error) {
       console.error('Failed to save/update invoice:', error);
       toast.error('Failed to save/update invoice.');
@@ -187,6 +214,29 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
               required
             />
           </div>
+          
+          {jobs.length > 0 && (
+            <div>
+              <Label htmlFor="job">Job (Optional)</Label>
+              <Select 
+                value={selectedJobId || ""} 
+                onValueChange={(value) => setSelectedJobId(value || undefined)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a job (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">No specific job</SelectItem>
+                  {jobs.map((job) => (
+                    <SelectItem key={job.id} value={job.id}>
+                      {job.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label>Invoice Date</Label>
@@ -363,7 +413,18 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
         </form>
       </CardContent>
       <CardFooter className="flex justify-between">
-        <Button variant="outline" onClick={() => navigate(`/client/${client.id}`)}>Cancel</Button>
+        <Button 
+          variant="outline" 
+          onClick={() => {
+            if (selectedJobId) {
+              navigate(`/job/${selectedJobId}`);
+            } else {
+              navigate(`/client/${client.id}`);
+            }
+          }}
+        >
+          Cancel
+        </Button>
         <Button onClick={handleSubmit}>{existingInvoice ? 'Update Invoice' : 'Create Invoice'}</Button>
       </CardFooter>
     </Card>

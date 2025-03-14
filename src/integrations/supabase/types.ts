@@ -87,6 +87,7 @@ export type Database = {
           date: string
           due_date: string
           id: string
+          job_id: string | null
           notes: string | null
           number: string
           shooting_date: string | null
@@ -102,6 +103,7 @@ export type Database = {
           date: string
           due_date: string
           id?: string
+          job_id?: string | null
           notes?: string | null
           number: string
           shooting_date?: string | null
@@ -117,6 +119,7 @@ export type Database = {
           date?: string
           due_date?: string
           id?: string
+          job_id?: string | null
           notes?: string | null
           number?: string
           shooting_date?: string | null
@@ -126,6 +129,57 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "invoices_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jobs: {
+        Row: {
+          client_id: string
+          created_at: string
+          date: string | null
+          description: string | null
+          id: string
+          location: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          date?: string | null
+          description?: string | null
+          id?: string
+          location?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          date?: string | null
+          description?: string | null
+          id?: string
+          location?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jobs_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"

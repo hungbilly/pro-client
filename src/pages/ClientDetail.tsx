@@ -1,12 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { getClient, getClientInvoices, deleteClient } from '@/lib/storage';
-import { Client, Invoice } from '@/types';
+import { getClient, getClientInvoices, deleteClient, getClientJobs } from '@/lib/storage';
+import { Client, Invoice, Job } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import InvoiceList from '@/components/InvoiceList';
+import JobList from '@/components/JobList';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { ArrowLeft, Trash2, UserCog } from 'lucide-react';
 import { toast } from 'sonner';
@@ -17,6 +18,7 @@ const ClientDetail = () => {
   const navigate = useNavigate();
   const [client, setClient] = useState<Client | undefined>(undefined);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -35,6 +37,9 @@ const ClientDetail = () => {
           
           const fetchedInvoices = await getClientInvoices(id);
           setInvoices(fetchedInvoices);
+          
+          const fetchedJobs = await getClientJobs(id);
+          setJobs(fetchedJobs);
         } else {
           toast.error('Client not found.');
           navigate('/');
@@ -63,6 +68,10 @@ const ClientDetail = () => {
       console.error('Failed to delete client:', error);
       toast.error('Failed to delete client.');
     }
+  };
+
+  const handleJobDelete = (jobId: string) => {
+    setJobs(jobs.filter(job => job.id !== jobId));
   };
 
   if (isLoading) {
@@ -156,12 +165,14 @@ const ClientDetail = () => {
               </div>
             </div>
             <Separator className="my-4" />
+            <JobList jobs={jobs} client={client} onJobDelete={handleJobDelete} />
+            <Separator className="my-4" />
             <InvoiceList invoices={invoices} client={client} />
           </div>
         </CardContent>
         <CardFooter>
           <CardDescription>
-            Manage client invoices and details.
+            Manage client details, jobs and invoices.
           </CardDescription>
         </CardFooter>
       </Card>

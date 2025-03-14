@@ -1,0 +1,241 @@
+
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { Job, Client } from '@/types';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+import { BriefcaseBusiness, CalendarDays, MapPin, Plus, Eye, FileEdit, Trash2 } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { deleteJob } from '@/lib/storage';
+import { toast } from 'sonner';
+
+interface JobListProps {
+  jobs: Job[];
+  client: Client;
+  onJobDelete: (jobId: string) => void;
+}
+
+const getStatusColor = (status: Job['status']) => {
+  switch (status) {
+    case 'active':
+      return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+    case 'completed':
+      return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+    case 'cancelled':
+      return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+    default:
+      return 'bg-gray-100 text-gray-800';
+  }
+};
+
+const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
+  // Sort jobs by date (newest first)
+  const sortedJobs = [...jobs].sort((a, b) => {
+    if (!a.date) return 1;
+    if (!b.date) return -1;
+    return new Date(b.date).getTime() - new Date(a.date).getTime();
+  });
+
+  // Group jobs by status
+  const activeJobs = sortedJobs.filter(job => job.status === 'active');
+  const completedJobs = sortedJobs.filter(job => job.status === 'completed');
+  const cancelledJobs = sortedJobs.filter(job => job.status === 'cancelled');
+
+  const handleDeleteJob = async (jobId: string) => {
+    try {
+      await deleteJob(jobId);
+      toast.success('Job deleted successfully.');
+      onJobDelete(jobId);
+    } catch (error) {
+      console.error('Failed to delete job:', error);
+      toast.error('Failed to delete job.');
+    }
+  };
+
+  const renderJobCard = (job: Job) => (
+    <div key={job.id} className="group relative">
+      <Link 
+        to={`/job/${job.id}`}
+        className="block transition-all duration-200 hover:shadow-soft rounded-lg"
+      >
+        <Card className="overflow-hidden h-full border-transparent hover:border-border transition-all duration-200">
+          <CardHeader className="pb-3">
+            <div className="flex justify-between items-start">
+              <div>
+                <CardTitle className="text-base">{job.title}</CardTitle>
+                <CardDescription className="text-xs mt-1">
+                  {job.createdAt && `Created: ${new Date(job.createdAt).toLocaleDateString()}`}
+                </CardDescription>
+              </div>
+              <Badge className={getStatusColor(job.status)}>
+                {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {job.description && (
+              <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{job.description}</p>
+            )}
+            <div className="space-y-2">
+              {job.date && (
+                <div className="flex justify-between items-center">
+                  <div className="text-sm text-muted-foreground">Date:</div>
+                  <div className="text-sm font-medium flex items-center">
+                    <CalendarDays className="h-3 w-3 mr-1 text-muted-foreground" />
+                    {new Date(job.date).toLocaleDateString()}
+                  </div>
+                </div>
+              )}
+              {job.location && (
+                <div className="flex justify-between items-center">
+                  <div className="text-sm text-muted-foreground">Location:</div>
+                  <div className="text-sm font-medium flex items-center">
+                    <MapPin className="h-3 w-3 mr-1 text-muted-foreground" />
+                    {job.location}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 mr-1"
+                asChild
+              >
+                <Link to={`/client/${client.id}/job/edit/${job.id}`}>
+                  <FileEdit className="h-4 w-4" />
+                </Link>
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 mr-1"
+                asChild
+              >
+                <Link to={`/job/${job.id}`}>
+                  <Eye className="h-4 w-4" />
+                </Link>
+              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action cannot be undone. This will permanently delete the job and all related data.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      handleDeleteJob(job.id);
+                    }}>Delete</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          </CardContent>
+        </Card>
+      </Link>
+    </div>
+  );
+
+  const renderJobSection = (title: string, icon: React.ReactNode, jobList: Job[], emptyMessage: string) => (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        {icon}
+        <h3 className="text-lg font-medium">{title}</h3>
+      </div>
+      
+      {jobList.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {jobList.map(renderJobCard)}
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground py-4">{emptyMessage}</p>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-semibold">Jobs</h2>
+        <Button asChild>
+          <Link to={`/client/${client.id}/job/create`}>
+            <Plus className="h-4 w-4 mr-2" />
+            Create Job
+          </Link>
+        </Button>
+      </div>
+      
+      {sortedJobs.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-8 text-center">
+            <BriefcaseBusiness className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-medium mb-2">No Jobs Yet</h3>
+            <p className="text-muted-foreground mb-6 max-w-md">
+              You haven't created any jobs for this client yet. Create your first job to get started.
+            </p>
+            <Button asChild>
+              <Link to={`/client/${client.id}/job/create`}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create First Job
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-10">
+          {activeJobs.length > 0 && (
+            renderInvoiceSection(
+              "Active Jobs", 
+              <BriefcaseBusiness className="h-5 w-5 text-muted-foreground" />, 
+              activeJobs,
+              "No active jobs"
+            )
+          )}
+          
+          {completedJobs.length > 0 && (
+            <>
+              <Separator />
+              {renderInvoiceSection(
+                "Completed Jobs", 
+                <BriefcaseBusiness className="h-5 w-5 text-muted-foreground" />, 
+                completedJobs,
+                "No completed jobs"
+              )}
+            </>
+          )}
+          
+          {cancelledJobs.length > 0 && (
+            <>
+              <Separator />
+              {renderInvoiceSection(
+                "Cancelled Jobs", 
+                <BriefcaseBusiness className="h-5 w-5 text-muted-foreground" />, 
+                cancelledJobs,
+                "No cancelled jobs"
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default JobList;

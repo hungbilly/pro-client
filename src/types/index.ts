@@ -9,9 +9,22 @@ export interface Client {
   notes?: string;
 }
 
+export interface Job {
+  id: string;
+  clientId: string;
+  title: string;
+  description?: string;
+  status: 'active' | 'completed' | 'cancelled';
+  date?: string;
+  location?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Invoice {
   id: string;
   clientId: string;
+  jobId?: string;
   number: string;
   amount: number;
   date: string;
@@ -36,5 +49,6 @@ export interface InvoiceItem {
 // Local storage keys
 export const STORAGE_KEYS = {
   CLIENTS: 'wedding-clients',
-  INVOICES: 'wedding-invoices'
+  INVOICES: 'wedding-invoices',
+  JOBS: 'wedding-jobs'
 };

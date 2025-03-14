@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getClients, getInvoices, getJobs } from '@/lib/storage';
@@ -6,7 +5,7 @@ import { Client, Invoice } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { UserPlus, FileText, Users, CircleDollarSign, BarChart4, Clock, Briefcase, FilePlus, Eye, FileEdit } from 'lucide-react';
 import ClientCard from './ClientCard';
 import { AnimatedBackground } from './ui-custom/AnimatedBackground';
@@ -16,6 +15,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from './ui/badge';
 
 const Dashboard: React.FC = () => {
+  const navigate = useNavigate();
+  
   const { data: clients = [] } = useQuery({
     queryKey: ['clients'],
     queryFn: getClients
@@ -31,7 +32,6 @@ const Dashboard: React.FC = () => {
     queryFn: getJobs
   });
 
-  // Calculate stats
   const stats = {
     totalClients: clients.length,
     totalJobs: jobs.length,
@@ -45,17 +45,14 @@ const Dashboard: React.FC = () => {
       .reduce((sum, invoice) => sum + invoice.amount, 0),
   };
 
-  // Sort clients by newest first
   const sortedClients = [...clients].sort((a, b) => 
     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
   
-  // Recent invoices (top 5)
   const recentInvoices = [...invoices]
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 5);
 
-  // Upcoming invoices (due in the next 30 days)
   const today = new Date();
   const thirtyDaysFromNow = new Date(today);
   thirtyDaysFromNow.setDate(today.getDate() + 30);
@@ -67,12 +64,9 @@ const Dashboard: React.FC = () => {
     )
     .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
 
-  // Get the first client for default usage in components
   const defaultClient = clients.length > 0 ? clients[0] : null;
 
   const handleJobDelete = (jobId: string) => {
-    // This function will be passed to JobList to handle job deletion
-    // It can be implemented later if needed
   };
 
   const getStatusColor = (status: string) => {
@@ -93,6 +87,18 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  const handleClientRowClick = (clientId: string) => {
+    navigate(`/client/${clientId}`);
+  };
+
+  const handleJobRowClick = (jobId: string) => {
+    navigate(`/job/${jobId}`);
+  };
+
+  const handleInvoiceRowClick = (invoiceId: string) => {
+    navigate(`/invoice/${invoiceId}`);
+  };
+
   return (
     <AnimatedBackground className="py-6">
       <div className="container px-4 mx-auto">
@@ -108,7 +114,6 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Stats overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <Card className="backdrop-blur-sm bg-white/80 border-transparent shadow-soft hover:shadow-glow transition-all duration-300">
             <CardContent className="flex items-center p-6">
@@ -159,7 +164,6 @@ const Dashboard: React.FC = () => {
           </Card>
         </div>
 
-        {/* Main content with tabs */}
         <Card className="backdrop-blur-sm bg-white/80 border-transparent shadow-soft">
           <CardHeader>
             <CardTitle>Manage Your Business</CardTitle>
@@ -182,7 +186,6 @@ const Dashboard: React.FC = () => {
                 </TabsTrigger>
               </TabsList>
               
-              {/* Clients Tab Content */}
               <TabsContent value="clients">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-semibold">Your Clients</h2>
@@ -222,7 +225,11 @@ const Dashboard: React.FC = () => {
                       </TableHeader>
                       <TableBody>
                         {sortedClients.map((client) => (
-                          <TableRow key={client.id}>
+                          <TableRow 
+                            key={client.id} 
+                            onClick={() => handleClientRowClick(client.id)}
+                            className="cursor-pointer"
+                          >
                             <TableCell className="font-medium">{client.name}</TableCell>
                             <TableCell>{client.email}</TableCell>
                             <TableCell>{client.phone}</TableCell>
@@ -230,14 +237,9 @@ const Dashboard: React.FC = () => {
                               {new Date(client.createdAt).toLocaleDateString()}
                             </TableCell>
                             <TableCell className="text-right">
-                              <div className="flex justify-end gap-2">
+                              <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
                                 <Button variant="outline" size="sm" asChild>
-                                  <Link to={`/client/${client.id}`}>
-                                    <Eye className="h-4 w-4" />
-                                  </Link>
-                                </Button>
-                                <Button variant="outline" size="sm" asChild>
-                                  <Link to={`/invoice/create/${client.id}`}>
+                                  <Link to={`/client/edit/${client.id}`}>
                                     <FileEdit className="h-4 w-4" />
                                   </Link>
                                 </Button>
@@ -251,7 +253,6 @@ const Dashboard: React.FC = () => {
                 )}
               </TabsContent>
               
-              {/* Jobs Tab Content */}
               <TabsContent value="jobs">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-semibold">Current Jobs</h2>
@@ -296,7 +297,11 @@ const Dashboard: React.FC = () => {
                         {jobs.map((job) => {
                           const jobClient = clients.find((c) => c.id === job.clientId) || defaultClient;
                           return (
-                            <TableRow key={job.id}>
+                            <TableRow 
+                              key={job.id}
+                              onClick={() => handleJobRowClick(job.id)}
+                              className="cursor-pointer"
+                            >
                               <TableCell className="font-medium">{job.title}</TableCell>
                               <TableCell>{jobClient?.name}</TableCell>
                               <TableCell className="hidden md:table-cell">
@@ -308,10 +313,10 @@ const Dashboard: React.FC = () => {
                                 </Badge>
                               </TableCell>
                               <TableCell className="text-right">
-                                <div className="flex justify-end gap-2">
+                                <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
                                   <Button variant="outline" size="sm" asChild>
-                                    <Link to={`/job/${job.id}`}>
-                                      <Eye className="h-4 w-4" />
+                                    <Link to={`/client/${job.clientId}/job/edit/${job.id}`}>
+                                      <FileEdit className="h-4 w-4" />
                                     </Link>
                                   </Button>
                                 </div>
@@ -325,7 +330,6 @@ const Dashboard: React.FC = () => {
                 )}
               </TabsContent>
               
-              {/* Invoices Tab Content */}
               <TabsContent value="invoices">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-semibold">Your Invoices</h2>
@@ -372,7 +376,11 @@ const Dashboard: React.FC = () => {
                         {invoices.map((invoice) => {
                           const invoiceClient = clients.find((c) => c.id === invoice.clientId) || defaultClient;
                           return (
-                            <TableRow key={invoice.id}>
+                            <TableRow 
+                              key={invoice.id}
+                              onClick={() => handleInvoiceRowClick(invoice.id)}
+                              className="cursor-pointer"
+                            >
                               <TableCell className="font-medium">{invoice.number}</TableCell>
                               <TableCell>{invoiceClient?.name}</TableCell>
                               <TableCell className="hidden md:table-cell">
@@ -388,10 +396,10 @@ const Dashboard: React.FC = () => {
                                 </Badge>
                               </TableCell>
                               <TableCell className="text-right">
-                                <div className="flex justify-end gap-2">
+                                <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
                                   <Button variant="outline" size="sm" asChild>
-                                    <Link to={`/invoice/${invoice.id}`}>
-                                      <Eye className="h-4 w-4" />
+                                    <Link to={`/invoice/edit/${invoice.id}`}>
+                                      <FileEdit className="h-4 w-4" />
                                     </Link>
                                   </Button>
                                 </div>

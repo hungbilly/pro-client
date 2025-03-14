@@ -1,15 +1,17 @@
 
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getClients, getInvoices } from '@/lib/storage';
+import { getClients, getInvoices, getJobs } from '@/lib/storage';
 import { Client, Invoice } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Link } from 'react-router-dom';
-import { UserPlus, FileText, Users, CircleDollarSign, BarChart4, Clock } from 'lucide-react';
+import { UserPlus, FileText, Users, CircleDollarSign, BarChart4, Clock, Briefcase, FilePlus } from 'lucide-react';
 import ClientCard from './ClientCard';
 import { AnimatedBackground } from './ui-custom/AnimatedBackground';
+import JobList from './JobList';
+import InvoiceList from './InvoiceList';
 
 const Dashboard: React.FC = () => {
   const { data: clients = [] } = useQuery({
@@ -22,9 +24,15 @@ const Dashboard: React.FC = () => {
     queryFn: getInvoices
   });
 
+  const { data: jobs = [] } = useQuery({
+    queryKey: ['jobs'],
+    queryFn: getJobs
+  });
+
   // Calculate stats
   const stats = {
     totalClients: clients.length,
+    totalJobs: jobs.length,
     totalInvoices: invoices.length,
     totalAmount: invoices.reduce((sum, invoice) => sum + invoice.amount, 0),
     pendingAmount: invoices
@@ -89,11 +97,11 @@ const Dashboard: React.FC = () => {
           <Card className="backdrop-blur-sm bg-white/80 border-transparent shadow-soft hover:shadow-glow transition-all duration-300">
             <CardContent className="flex items-center p-6">
               <div className="rounded-full p-3 bg-purple-100 dark:bg-purple-900/20 mr-4">
-                <FileText className="h-5 w-5 text-purple-700 dark:text-purple-400" />
+                <Briefcase className="h-5 w-5 text-purple-700 dark:text-purple-400" />
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Invoices</p>
-                <h3 className="text-2xl font-bold">{stats.totalInvoices}</h3>
+                <p className="text-sm font-medium text-muted-foreground">Total Jobs</p>
+                <h3 className="text-2xl font-bold">{stats.totalJobs}</h3>
               </div>
             </CardContent>
           </Card>
@@ -123,21 +131,41 @@ const Dashboard: React.FC = () => {
           </Card>
         </div>
 
-        {/* Main content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Clients list */}
-          <div className="lg:col-span-2">
-            <Card className="backdrop-blur-sm bg-white/80 border-transparent shadow-soft">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <div className="space-y-1">
-                  <CardTitle>Clients</CardTitle>
-                  <CardDescription>Manage your wedding clients</CardDescription>
+        {/* Main content with tabs */}
+        <Card className="backdrop-blur-sm bg-white/80 border-transparent shadow-soft">
+          <CardHeader>
+            <CardTitle>Manage Your Business</CardTitle>
+            <CardDescription>View and manage clients, jobs, and invoices</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Tabs defaultValue="clients" className="w-full">
+              <TabsList className="grid w-full grid-cols-3 mb-6">
+                <TabsTrigger value="clients" className="flex items-center gap-2">
+                  <Users size={16} />
+                  <span>Clients</span>
+                </TabsTrigger>
+                <TabsTrigger value="jobs" className="flex items-center gap-2">
+                  <Briefcase size={16} />
+                  <span>Jobs</span>
+                </TabsTrigger>
+                <TabsTrigger value="invoices" className="flex items-center gap-2">
+                  <FileText size={16} />
+                  <span>Invoices</span>
+                </TabsTrigger>
+              </TabsList>
+              
+              {/* Clients Tab Content */}
+              <TabsContent value="clients">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-semibold">Your Clients</h2>
+                  <Button asChild size="sm">
+                    <Link to="/client/new">
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      New Client
+                    </Link>
+                  </Button>
                 </div>
-                <Button variant="ghost" size="sm" asChild>
-                  <Link to="/clients">View all</Link>
-                </Button>
-              </CardHeader>
-              <CardContent>
+                
                 {clients.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-8 text-center">
                     <Users className="h-12 w-12 text-muted-foreground mb-4" />
@@ -153,117 +181,86 @@ const Dashboard: React.FC = () => {
                     </Button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                    {sortedClients.slice(0, 6).map((client) => (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {sortedClients.map((client) => (
                       <ClientCard key={client.id} client={client} compact />
                     ))}
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Invoices overview */}
-          <div>
-            <Card className="backdrop-blur-sm bg-white/80 border-transparent shadow-soft">
-              <CardHeader>
-                <CardTitle>Invoices Overview</CardTitle>
-                <CardDescription>Recent & upcoming invoices</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Tabs defaultValue="upcoming" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2 mb-4">
-                    <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
-                    <TabsTrigger value="recent">Recent</TabsTrigger>
-                  </TabsList>
-                  
-                  <TabsContent value="upcoming" className="space-y-4">
-                    {upcomingInvoices.length === 0 ? (
-                      <div className="text-center py-8">
-                        <Clock className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                        <p className="text-muted-foreground">No upcoming invoices</p>
-                      </div>
-                    ) : (
-                      upcomingInvoices.slice(0, 5).map((invoice) => {
-                        const client = clients.find(c => c.id === invoice.clientId);
-                        const daysUntilDue = Math.ceil(
-                          (new Date(invoice.dueDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
-                        );
-                        
-                        return (
-                          <Link 
-                            key={invoice.id} 
-                            to={`/invoice/${invoice.id}`}
-                            className="block"
-                          >
-                            <div className="flex items-center justify-between p-3 rounded-lg hover:bg-accent/50 transition-colors">
-                              <div>
-                                <p className="font-medium">{client?.name || 'Unknown Client'}</p>
-                                <p className="text-sm text-muted-foreground">{invoice.number}</p>
-                              </div>
-                              <div className="text-right">
-                                <p className="font-bold">${invoice.amount.toFixed(2)}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  Due in {daysUntilDue} {daysUntilDue === 1 ? 'day' : 'days'}
-                                </p>
-                              </div>
-                            </div>
-                          </Link>
-                        );
-                      })
+              </TabsContent>
+              
+              {/* Jobs Tab Content */}
+              <TabsContent value="jobs">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-semibold">Current Jobs</h2>
+                  {clients.length > 0 && (
+                    <div className="flex gap-2">
+                      <Button asChild size="sm" variant="outline">
+                        <Link to={`/client/${clients[0].id}`}>
+                          View Client Details
+                        </Link>
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                
+                {jobs.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <Briefcase className="h-12 w-12 text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-medium mb-2">No Jobs Yet</h3>
+                    <p className="text-muted-foreground mb-6 max-w-md">
+                      You haven't created any jobs yet. Select a client to create your first job.
+                    </p>
+                    {clients.length > 0 && (
+                      <Button asChild>
+                        <Link to={`/client/${clients[0].id}`}>
+                          Select a Client
+                        </Link>
+                      </Button>
                     )}
-                  </TabsContent>
-                  
-                  <TabsContent value="recent" className="space-y-4">
-                    {recentInvoices.length === 0 ? (
-                      <div className="text-center py-8">
-                        <BarChart4 className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                        <p className="text-muted-foreground">No invoices created yet</p>
-                      </div>
-                    ) : (
-                      recentInvoices.map((invoice) => {
-                        const client = clients.find(c => c.id === invoice.clientId);
-                        
-                        return (
-                          <Link 
-                            key={invoice.id} 
-                            to={`/invoice/${invoice.id}`}
-                            className="block"
-                          >
-                            <div className="flex items-center justify-between p-3 rounded-lg hover:bg-accent/50 transition-colors">
-                              <div>
-                                <p className="font-medium">{client?.name || 'Unknown Client'}</p>
-                                <p className="text-sm text-muted-foreground">
-                                  {new Date(invoice.date).toLocaleDateString()}
-                                </p>
-                              </div>
-                              <div className="text-right">
-                                <p className="font-bold">${invoice.amount.toFixed(2)}</p>
-                                <p className="text-xs">
-                                  <span className={`px-2 py-0.5 rounded-full text-xs ${
-                                    invoice.status === 'paid' 
-                                      ? 'bg-green-100 text-green-800' 
-                                      : invoice.status === 'accepted'
-                                      ? 'bg-blue-100 text-blue-800'
-                                      : invoice.status === 'sent'
-                                      ? 'bg-amber-100 text-amber-800'
-                                      : 'bg-gray-100 text-gray-800'
-                                  }`}>
-                                    {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
-                                  </span>
-                                </p>
-                              </div>
-                            </div>
-                          </Link>
-                        );
-                      })
+                  </div>
+                ) : (
+                  <JobList jobs={jobs} clients={clients} />
+                )}
+              </TabsContent>
+              
+              {/* Invoices Tab Content */}
+              <TabsContent value="invoices">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-semibold">Your Invoices</h2>
+                  {jobs.length > 0 && (
+                    <div className="flex gap-2">
+                      <Button asChild size="sm" variant="outline">
+                        <Link to={`/job/${jobs[0].id}`}>
+                          View Job Details
+                        </Link>
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                
+                {invoices.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <FilePlus className="h-12 w-12 text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-medium mb-2">No Invoices Yet</h3>
+                    <p className="text-muted-foreground mb-6 max-w-md">
+                      You haven't created any invoices yet. Select a job to create your first invoice.
+                    </p>
+                    {jobs.length > 0 && (
+                      <Button asChild>
+                        <Link to={`/job/${jobs[0].id}`}>
+                          Select a Job
+                        </Link>
+                      </Button>
                     )}
-                  </TabsContent>
-                </Tabs>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+                  </div>
+                ) : (
+                  <InvoiceList invoices={invoices} clients={clients} />
+                )}
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
       </div>
     </AnimatedBackground>
   );

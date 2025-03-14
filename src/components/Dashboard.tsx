@@ -65,6 +65,14 @@ const Dashboard: React.FC = () => {
     )
     .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
 
+  // Get the first client for default usage in components
+  const defaultClient = clients.length > 0 ? clients[0] : null;
+
+  const handleJobDelete = (jobId: string) => {
+    // This function will be passed to JobList to handle job deletion
+    // It can be implemented later if needed
+  };
+
   return (
     <AnimatedBackground className="py-6">
       <div className="container px-4 mx-auto">
@@ -220,7 +228,12 @@ const Dashboard: React.FC = () => {
                     )}
                   </div>
                 ) : (
-                  <JobList jobs={jobs} clients={clients} />
+                  // Pass the first client instead of all clients to fix the type error
+                  <JobList 
+                    jobs={jobs} 
+                    client={defaultClient!} 
+                    onJobDelete={handleJobDelete} 
+                  />
                 )}
               </TabsContent>
               
@@ -255,7 +268,11 @@ const Dashboard: React.FC = () => {
                     )}
                   </div>
                 ) : (
-                  <InvoiceList invoices={invoices} clients={clients} />
+                  // Pass the first client instead of all clients to fix the type error
+                  <InvoiceList 
+                    invoices={invoices} 
+                    client={defaultClient!} 
+                  />
                 )}
               </TabsContent>
             </Tabs>

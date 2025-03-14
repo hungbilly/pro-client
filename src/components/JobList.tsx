@@ -201,7 +201,7 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
       ) : (
         <div className="space-y-10">
           {activeJobs.length > 0 && (
-            renderInvoiceSection(
+            renderJobSection(
               "Active Jobs", 
               <BriefcaseBusiness className="h-5 w-5 text-muted-foreground" />, 
               activeJobs,
@@ -212,7 +212,7 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
           {completedJobs.length > 0 && (
             <>
               <Separator />
-              {renderInvoiceSection(
+              {renderJobSection(
                 "Completed Jobs", 
                 <BriefcaseBusiness className="h-5 w-5 text-muted-foreground" />, 
                 completedJobs,
@@ -224,7 +224,7 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
           {cancelledJobs.length > 0 && (
             <>
               <Separator />
-              {renderInvoiceSection(
+              {renderJobSection(
                 "Cancelled Jobs", 
                 <BriefcaseBusiness className="h-5 w-5 text-muted-foreground" />, 
                 cancelledJobs,

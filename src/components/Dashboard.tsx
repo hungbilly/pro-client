@@ -7,11 +7,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Link } from 'react-router-dom';
-import { UserPlus, FileText, Users, CircleDollarSign, BarChart4, Clock, Briefcase, FilePlus } from 'lucide-react';
+import { UserPlus, FileText, Users, CircleDollarSign, BarChart4, Clock, Briefcase, FilePlus, Eye, FileEdit } from 'lucide-react';
 import ClientCard from './ClientCard';
 import { AnimatedBackground } from './ui-custom/AnimatedBackground';
 import JobList from './JobList';
 import InvoiceList from './InvoiceList';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from './ui/badge';
 
 const Dashboard: React.FC = () => {
   const { data: clients = [] } = useQuery({
@@ -71,6 +73,24 @@ const Dashboard: React.FC = () => {
   const handleJobDelete = (jobId: string) => {
     // This function will be passed to JobList to handle job deletion
     // It can be implemented later if needed
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active':
+      case 'sent':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+      case 'completed':
+      case 'accepted':
+      case 'paid':
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+      case 'draft':
+        return 'bg-muted text-muted-foreground';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
   };
 
   return (
@@ -189,10 +209,44 @@ const Dashboard: React.FC = () => {
                     </Button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {sortedClients.map((client) => (
-                      <ClientCard key={client.id} client={client} compact />
-                    ))}
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Phone</TableHead>
+                          <TableHead className="hidden md:table-cell">Added On</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {sortedClients.map((client) => (
+                          <TableRow key={client.id}>
+                            <TableCell className="font-medium">{client.name}</TableCell>
+                            <TableCell>{client.email}</TableCell>
+                            <TableCell>{client.phone}</TableCell>
+                            <TableCell className="hidden md:table-cell">
+                              {new Date(client.createdAt).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-2">
+                                <Button variant="outline" size="sm" asChild>
+                                  <Link to={`/client/${client.id}`}>
+                                    <Eye className="h-4 w-4" />
+                                  </Link>
+                                </Button>
+                                <Button variant="outline" size="sm" asChild>
+                                  <Link to={`/invoice/create/${client.id}`}>
+                                    <FileEdit className="h-4 w-4" />
+                                  </Link>
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   </div>
                 )}
               </TabsContent>
@@ -202,13 +256,12 @@ const Dashboard: React.FC = () => {
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-semibold">Current Jobs</h2>
                   {clients.length > 0 && (
-                    <div className="flex gap-2">
-                      <Button asChild size="sm" variant="outline">
-                        <Link to={`/client/${clients[0].id}`}>
-                          View Client Details
-                        </Link>
-                      </Button>
-                    </div>
+                    <Button asChild size="sm">
+                      <Link to={`/client/${clients[0].id}/job/create`}>
+                        <Briefcase className="h-4 w-4 mr-2" />
+                        New Job
+                      </Link>
+                    </Button>
                   )}
                 </div>
                 
@@ -228,12 +281,47 @@ const Dashboard: React.FC = () => {
                     )}
                   </div>
                 ) : (
-                  // Pass the first client instead of all clients to fix the type error
-                  <JobList 
-                    jobs={jobs} 
-                    client={defaultClient!} 
-                    onJobDelete={handleJobDelete} 
-                  />
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Title</TableHead>
+                          <TableHead>Client</TableHead>
+                          <TableHead className="hidden md:table-cell">Date</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {jobs.map((job) => {
+                          const jobClient = clients.find((c) => c.id === job.clientId) || defaultClient;
+                          return (
+                            <TableRow key={job.id}>
+                              <TableCell className="font-medium">{job.title}</TableCell>
+                              <TableCell>{jobClient?.name}</TableCell>
+                              <TableCell className="hidden md:table-cell">
+                                {job.date ? new Date(job.date).toLocaleDateString() : 'N/A'}
+                              </TableCell>
+                              <TableCell>
+                                <Badge className={getStatusColor(job.status)}>
+                                  {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-2">
+                                  <Button variant="outline" size="sm" asChild>
+                                    <Link to={`/job/${job.id}`}>
+                                      <Eye className="h-4 w-4" />
+                                    </Link>
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
                 )}
               </TabsContent>
               
@@ -242,13 +330,12 @@ const Dashboard: React.FC = () => {
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-semibold">Your Invoices</h2>
                   {jobs.length > 0 && (
-                    <div className="flex gap-2">
-                      <Button asChild size="sm" variant="outline">
-                        <Link to={`/job/${jobs[0].id}`}>
-                          View Job Details
-                        </Link>
-                      </Button>
-                    </div>
+                    <Button asChild size="sm">
+                      <Link to={`/invoice/create/${defaultClient?.id}`}>
+                        <FileText className="h-4 w-4 mr-2" />
+                        New Invoice
+                      </Link>
+                    </Button>
                   )}
                 </div>
                 
@@ -268,11 +355,53 @@ const Dashboard: React.FC = () => {
                     )}
                   </div>
                 ) : (
-                  // Pass the first client instead of all clients to fix the type error
-                  <InvoiceList 
-                    invoices={invoices} 
-                    client={defaultClient!} 
-                  />
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Invoice #</TableHead>
+                          <TableHead>Client</TableHead>
+                          <TableHead className="hidden md:table-cell">Date</TableHead>
+                          <TableHead className="hidden md:table-cell">Due Date</TableHead>
+                          <TableHead>Amount</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {invoices.map((invoice) => {
+                          const invoiceClient = clients.find((c) => c.id === invoice.clientId) || defaultClient;
+                          return (
+                            <TableRow key={invoice.id}>
+                              <TableCell className="font-medium">{invoice.number}</TableCell>
+                              <TableCell>{invoiceClient?.name}</TableCell>
+                              <TableCell className="hidden md:table-cell">
+                                {new Date(invoice.date).toLocaleDateString()}
+                              </TableCell>
+                              <TableCell className="hidden md:table-cell">
+                                {new Date(invoice.dueDate).toLocaleDateString()}
+                              </TableCell>
+                              <TableCell>${invoice.amount.toFixed(2)}</TableCell>
+                              <TableCell>
+                                <Badge className={getStatusColor(invoice.status)}>
+                                  {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-2">
+                                  <Button variant="outline" size="sm" asChild>
+                                    <Link to={`/invoice/${invoice.id}`}>
+                                      <Eye className="h-4 w-4" />
+                                    </Link>
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
                 )}
               </TabsContent>
             </Tabs>

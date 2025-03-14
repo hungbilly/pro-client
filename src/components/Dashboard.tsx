@@ -20,9 +20,20 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
+  const [clientToDelete, setClientToDelete] = React.useState<string | null>(null);
   
   const { data: clients = [] } = useQuery({
     queryKey: ['clients'],
@@ -106,20 +117,48 @@ const Dashboard: React.FC = () => {
     navigate(`/invoice/${invoiceId}`);
   };
 
-  const handleDeleteClient = async (e: React.MouseEvent, clientId: string) => {
+  const confirmDeleteClient = (e: React.MouseEvent, clientId: string) => {
     e.stopPropagation();
+    setClientToDelete(clientId);
+  };
+
+  const handleDeleteClient = async () => {
+    if (!clientToDelete) return;
     
     try {
-      await deleteClient(clientId);
+      await deleteClient(clientToDelete);
       toast.success("Client deleted successfully");
+      setClientToDelete(null);
     } catch (error) {
       console.error("Error deleting client:", error);
       toast.error("Failed to delete client");
     }
   };
 
+  const cancelDeleteClient = () => {
+    setClientToDelete(null);
+  };
+
   return (
     <AnimatedBackground className="py-6">
+      <AlertDialog open={!!clientToDelete} onOpenChange={(open) => !open && setClientToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete this client?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the client
+              and all associated data from our servers.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelDeleteClient}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteClient} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <div className="container px-4 mx-auto">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
           <h1 className="text-3xl font-bold mb-3 md:mb-0">Wedding Client Management</h1>
@@ -279,7 +318,7 @@ const Dashboard: React.FC = () => {
                                       <span>Edit</span>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem 
-                                      onClick={(e) => handleDeleteClient(e, client.id)}
+                                      onClick={(e) => confirmDeleteClient(e, client.id)}
                                       className="cursor-pointer text-destructive focus:text-destructive"
                                     >
                                       <Trash2 className="mr-2 h-4 w-4" />

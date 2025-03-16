@@ -14,6 +14,7 @@ import InvoiceCreate from "./pages/InvoiceCreate";
 import JobCreate from "./pages/JobCreate";
 import JobEdit from "./pages/JobEdit";
 import JobDetail from "./pages/JobDetail";
+import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -100,6 +101,14 @@ const App = () => (
               } 
             />
             <Route path="/invoice/:viewLink" element={<InvoiceView />} />
+            <Route 
+              path="/settings" 
+              element={
+                <ProtectedRoute adminOnly>
+                  <Settings />
+                </ProtectedRoute>
+              } 
+            />
             <Route path="/auth" element={<Auth />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

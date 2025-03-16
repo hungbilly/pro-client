@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Client, Invoice, InvoiceItem, Job } from '@/types';
@@ -14,6 +15,7 @@ import { format } from 'date-fns';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from '@/lib/utils';
+import { useCompany } from './CompanySelector';
 
 interface InvoiceFormProps {
   invoice?: Invoice;
@@ -23,6 +25,7 @@ interface InvoiceFormProps {
 
 const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, clientId, jobId }) => {
   const navigate = useNavigate();
+  const { selectedCompanyId } = useCompany();
 
   const [client, setClient] = useState<Client | null>(null);
   const [job, setJob] = useState<Job | null>(null);
@@ -119,10 +122,16 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
       return;
     }
 
+    if (!selectedCompanyId) {
+      toast.error('Please select a company first.');
+      return;
+    }
+
     const amount = calculateTotalAmount();
 
     const invoiceData: Omit<Invoice, 'id' | 'viewLink'> = {
       clientId: client.id,
+      companyId: selectedCompanyId,
       jobId,
       number,
       amount,
@@ -144,6 +153,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
         const updatedInvoice: Invoice = {
           id: existingInvoice.id,
           clientId: client.id,
+          companyId: selectedCompanyId,
           jobId,
           number,
           amount,

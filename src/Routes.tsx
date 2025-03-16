@@ -10,6 +10,7 @@ import InvoiceView from '@/pages/InvoiceView';
 import JobCreate from '@/pages/JobCreate';
 import JobEdit from '@/pages/JobEdit';
 import JobDetail from '@/pages/JobDetail';
+import Settings from '@/pages/Settings';
 import NotFound from '@/pages/NotFound';
 
 const AppRoutes = () => {
@@ -24,6 +25,7 @@ const AppRoutes = () => {
       <Route path="/job/:id" element={<JobDetail />} />
       <Route path="/job/:jobId/invoice/create" element={<InvoiceCreate />} />
       <Route path="/invoice/:viewLink" element={<InvoiceView />} />
+      <Route path="/settings" element={<Settings />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

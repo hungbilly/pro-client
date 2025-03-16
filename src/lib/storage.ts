@@ -1,4 +1,5 @@
-import { Client, Invoice, STORAGE_KEYS, InvoiceItem, Job } from "@/types";
+
+import { Client, Invoice, STORAGE_KEYS, InvoiceItem, Job, Company } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 
 // Generate a unique ID
@@ -9,6 +10,159 @@ export const generateId = (): string => {
 // Generate a unique viewLink for invoices
 export const generateViewLink = (): string => {
   return `${window.location.origin}/invoice/${generateId()}`;
+};
+
+// Company operations
+export const getCompanies = async (): Promise<Company[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('companies')
+      .select('*')
+      .order('is_default', { ascending: false })
+      .order('name');
+    
+    if (error) {
+      console.error('Error fetching companies:', error);
+      return [];
+    }
+    
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching companies:', error);
+    return [];
+  }
+};
+
+export const getDefaultCompany = async (): Promise<Company | null> => {
+  try {
+    const { data, error } = await supabase
+      .from('companies')
+      .select('*')
+      .eq('is_default', true)
+      .single();
+    
+    if (error || !data) {
+      // If no default company, try to get any company
+      const { data: anyCompany, error: anyError } = await supabase
+        .from('companies')
+        .select('*')
+        .limit(1)
+        .single();
+      
+      if (anyError || !anyCompany) {
+        return null;
+      }
+      
+      return anyCompany;
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error fetching default company:', error);
+    return null;
+  }
+};
+
+export const saveCompany = async (company: Omit<Company, 'id' | 'created_at' | 'updated_at'>): Promise<Company> => {
+  try {
+    // If this is set as default, update other companies first
+    if (company.is_default) {
+      const { error: updateError } = await supabase
+        .from('companies')
+        .update({ is_default: false })
+        .neq('user_id', company.user_id); // Just to have a condition, will update all rows
+      
+      if (updateError) {
+        console.error('Error updating other companies:', updateError);
+      }
+    }
+    
+    // Now insert the new company
+    const { data, error } = await supabase
+      .from('companies')
+      .insert({
+        user_id: company.user_id,
+        name: company.name,
+        address: company.address,
+        phone: company.phone,
+        email: company.email,
+        website: company.website,
+        logo_url: company.logo_url,
+        is_default: company.is_default
+      })
+      .select()
+      .single();
+    
+    if (error || !data) {
+      console.error('Error saving company:', error);
+      throw new Error(error?.message || 'Failed to save company');
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error saving company:', error);
+    throw error;
+  }
+};
+
+export const updateCompany = async (company: Company): Promise<Company> => {
+  try {
+    // If this is set as default, update other companies first
+    if (company.is_default) {
+      const { error: updateError } = await supabase
+        .from('companies')
+        .update({ is_default: false })
+        .neq('id', company.id);
+      
+      if (updateError) {
+        console.error('Error updating other companies:', updateError);
+      }
+    }
+    
+    // Now update the company
+    const { data, error } = await supabase
+      .from('companies')
+      .update({
+        name: company.name,
+        address: company.address,
+        phone: company.phone,
+        email: company.email,
+        website: company.website,
+        logo_url: company.logo_url,
+        is_default: company.is_default,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', company.id)
+      .select()
+      .single();
+    
+    if (error || !data) {
+      console.error('Error updating company:', error);
+      throw new Error(error?.message || 'Failed to update company');
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Error updating company:', error);
+    throw error;
+  }
+};
+
+export const deleteCompany = async (id: string): Promise<void> => {
+  try {
+    const { error } = await supabase
+      .from('companies')
+      .delete()
+      .eq('id', id);
+    
+    if (error) {
+      console.error('Error deleting company:', error);
+      throw new Error(error.message);
+    }
+  } catch (error) {
+    console.error('Error deleting company:', error);
+    throw error;
+  }
 };
 
 // Client operations
@@ -75,7 +229,8 @@ export const saveClient = async (client: Omit<Client, 'id' | 'createdAt'>): Prom
         email: client.email,
         phone: client.phone,
         address: client.address,
-        notes: client.notes
+        notes: client.notes,
+        company_id: client.companyId
       })
       .select()
       .single();
@@ -92,7 +247,8 @@ export const saveClient = async (client: Omit<Client, 'id' | 'createdAt'>): Prom
       phone: data.phone,
       address: data.address,
       notes: data.notes || undefined,
-      createdAt: data.created_at
+      createdAt: data.created_at,
+      companyId: data.company_id
     };
   } catch (error) {
     console.error('Error saving client:', error);
@@ -109,7 +265,8 @@ export const updateClient = async (client: Client): Promise<Client> => {
         email: client.email,
         phone: client.phone,
         address: client.address,
-        notes: client.notes
+        notes: client.notes,
+        company_id: client.companyId
       })
       .eq('id', client.id)
       .select()
@@ -127,7 +284,8 @@ export const updateClient = async (client: Client): Promise<Client> => {
       phone: data.phone,
       address: data.address,
       notes: data.notes || undefined,
-      createdAt: data.created_at
+      createdAt: data.created_at,
+      companyId: data.company_id
     };
   } catch (error) {
     console.error('Error updating client:', error);
@@ -310,6 +468,7 @@ export const saveJob = async (job: Omit<Job, 'id' | 'createdAt' | 'updatedAt'>):
       .from('jobs')
       .insert({
         client_id: job.clientId,
+        company_id: job.companyId,
         title: job.title,
         description: job.description,
         status: job.status,
@@ -327,6 +486,7 @@ export const saveJob = async (job: Omit<Job, 'id' | 'createdAt' | 'updatedAt'>):
     return {
       id: data.id,
       clientId: data.client_id,
+      companyId: data.company_id,
       title: data.title,
       description: data.description || undefined,
       status: data.status as 'active' | 'completed' | 'cancelled',
@@ -347,6 +507,7 @@ export const updateJob = async (job: Job): Promise<Job> => {
       .from('jobs')
       .update({
         client_id: job.clientId,
+        company_id: job.companyId,
         title: job.title,
         description: job.description,
         status: job.status,
@@ -366,6 +527,7 @@ export const updateJob = async (job: Job): Promise<Job> => {
     return {
       id: data.id,
       clientId: data.client_id,
+      companyId: data.company_id,
       title: data.title,
       description: data.description || undefined,
       status: data.status as 'active' | 'completed' | 'cancelled',
@@ -654,6 +816,7 @@ export const saveInvoice = async (invoice: Omit<Invoice, 'id' | 'viewLink'>): Pr
       .from('invoices')
       .insert({
         client_id: invoice.clientId,
+        company_id: invoice.companyId,
         job_id: invoice.jobId,
         number: invoice.number,
         amount: invoice.amount,
@@ -708,6 +871,7 @@ export const saveInvoice = async (invoice: Omit<Invoice, 'id' | 'viewLink'>): Pr
     return {
       id: newInvoice.id,
       clientId: newInvoice.client_id,
+      companyId: newInvoice.company_id,
       jobId: newInvoice.job_id || undefined,
       number: newInvoice.number,
       amount: newInvoice.amount,
@@ -734,6 +898,7 @@ export const updateInvoice = async (invoice: Invoice): Promise<Invoice> => {
       .from('invoices')
       .update({
         client_id: invoice.clientId,
+        company_id: invoice.companyId,
         job_id: invoice.jobId,
         number: invoice.number,
         amount: invoice.amount,

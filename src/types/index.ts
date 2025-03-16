@@ -7,11 +7,27 @@ export interface Client {
   address: string;
   createdAt: string;
   notes?: string;
+  companyId?: string;
+}
+
+export interface Company {
+  id: string;
+  name: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  logo_url?: string;
+  is_default: boolean;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Job {
   id: string;
   clientId: string;
+  companyId?: string;
   title: string;
   description?: string;
   status: 'active' | 'completed' | 'cancelled';
@@ -24,6 +40,7 @@ export interface Job {
 export interface Invoice {
   id: string;
   clientId: string;
+  companyId?: string;
   jobId?: string;
   number: string;
   amount: number;

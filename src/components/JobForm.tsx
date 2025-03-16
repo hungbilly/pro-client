@@ -15,13 +15,15 @@ import { format } from 'date-fns';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from '@/lib/utils';
+import CompanySelector, { useCompany } from './CompanySelector';
 
 interface JobFormProps {
   job?: Job;
   clientId?: string;
+  companyId?: string | null;
 }
 
-const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefinedClientId }) => {
+const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefinedClientId, companyId: predefinedCompanyId }) => {
   const { clientId: clientIdParam } = useParams<{ clientId: string }>();
   const navigate = useNavigate();
 
@@ -33,6 +35,16 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
   const [location, setLocation] = useState(existingJob?.location || '');
 
   const clientId = predefinedClientId || clientIdParam || existingJob?.clientId || '';
+  const { selectedCompanyId, setSelectedCompanyId } = useCompany();
+
+  useEffect(() => {
+    // If company ID is provided as a prop, use it
+    if (predefinedCompanyId) {
+      setSelectedCompanyId(predefinedCompanyId);
+    } else if (existingJob?.companyId) {
+      setSelectedCompanyId(existingJob.companyId);
+    }
+  }, [predefinedCompanyId, existingJob?.companyId, setSelectedCompanyId]);
 
   useEffect(() => {
     const fetchClient = async () => {
@@ -63,6 +75,11 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
       return;
     }
 
+    if (!selectedCompanyId) {
+      toast.error('Please select a company.');
+      return;
+    }
+
     const formattedDate = date ? format(date, 'yyyy-MM-dd') : undefined;
 
     try {
@@ -70,6 +87,7 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
         const updatedJob: Job = {
           id: existingJob.id,
           clientId: client.id,
+          companyId: selectedCompanyId,
           title,
           description,
           status,
@@ -84,6 +102,7 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
       } else {
         const newJob = {
           clientId: client.id,
+          companyId: selectedCompanyId,
           title,
           description,
           status,
@@ -119,6 +138,13 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {!predefinedCompanyId && (
+            <div className="mb-4">
+              <Label htmlFor="company">Company</Label>
+              <CompanySelector className="w-full" />
+            </div>
+          )}
+          
           <div>
             <Label htmlFor="title">Job Title</Label>
             <Input

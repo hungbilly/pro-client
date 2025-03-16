@@ -1026,4 +1026,39 @@ export const updateInvoiceStatus = async (id: string, status: Invoice['status'])
 export const updateContractStatus = async (id: string, contractStatus: 'pending' | 'accepted'): Promise<Invoice | undefined> => {
   try {
     const { data, error } = await supabase
-      .from('in
+      .from('invoices')
+      .update({ contract_status: contractStatus })
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error || !data) {
+      console.error('Error updating contract status:', error);
+      return undefined;
+    }
+    
+    // Get the full invoice with items
+    return await getInvoice(id);
+  } catch (error) {
+    console.error('Error updating contract status:', error);
+    return undefined;
+  }
+};
+
+export const deleteInvoice = async (id: string): Promise<void> => {
+  try {
+    // Delete the invoice (items will be cascade deleted)
+    const { error } = await supabase
+      .from('invoices')
+      .delete()
+      .eq('id', id);
+    
+    if (error) {
+      console.error('Error deleting invoice:', error);
+      throw new Error(error.message);
+    }
+  } catch (error) {
+    console.error('Error deleting invoice:', error);
+    throw error;
+  }
+};

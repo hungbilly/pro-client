@@ -26,10 +26,10 @@ const MainNavbar = () => {
 
   const menuItems = [
     { path: '/', label: 'Dashboard', icon: <Home className="w-5 h-5" /> },
-    { path: '/client', label: 'Clients', icon: <Users className="w-5 h-5" /> },
+    { path: '/clients', label: 'Clients', icon: <Users className="w-5 h-5" /> },
     // Comment out Leads section for now as it doesn't exist in the app yet
     // { path: '/leads', label: 'Leads', icon: <Target className="w-5 h-5" /> },
-    { path: '/job', label: 'Jobs', icon: <Briefcase className="w-5 h-5" /> },
+    { path: '/jobs', label: 'Jobs', icon: <Briefcase className="w-5 h-5" /> },
     // Comment out Calendar section for now as it doesn't exist in the app yet
     // { path: '/calendar', label: 'Calendar', icon: <Calendar className="w-5 h-5" /> },
     // Comment out Payments section for now as it doesn't exist in the app yet

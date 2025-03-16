@@ -51,7 +51,7 @@ const AdminHeader = () => {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem asChild>
-                <Link to="/" className="cursor-pointer w-full flex items-center">
+                <Link to="/clients" className="cursor-pointer w-full flex items-center">
                   <Users className="mr-2 h-4 w-4" />
                   <span>Clients</span>
                 </Link>

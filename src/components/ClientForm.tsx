@@ -12,10 +12,10 @@ import { saveClient, updateClient } from '@/lib/storage';
 import CompanySelector, { useCompany } from './CompanySelector';
 
 interface ClientFormProps {
-  client?: Client;
+  existingClient?: Client;
 }
 
-const ClientForm: React.FC<ClientFormProps> = ({ client: existingClient }) => {
+const ClientForm: React.FC<ClientFormProps> = ({ existingClient }) => {
   const navigate = useNavigate();
   const { selectedCompanyId } = useCompany();
   

@@ -420,7 +420,7 @@ const Dashboard: React.FC = () => {
                       </TableHeader>
                       <TableBody>
                         {jobs.map((job) => {
-                          const jobClient = clients.find((c) => c.id === job.clientId) || defaultClient;
+                          const jobClient = clients.find((c) => c.id === job.clientId) || null;
                           return (
                             <TableRow 
                               key={job.id}

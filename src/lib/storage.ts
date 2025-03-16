@@ -1,3 +1,4 @@
+
 import { Client, Invoice, STORAGE_KEYS, InvoiceItem, Job, Company } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -181,7 +182,16 @@ export const getClients = async (companyId?: string | null) => {
       throw error;
     }
     
-    return data || [];
+    return data?.map(client => ({
+      id: client.id,
+      name: client.name,
+      email: client.email,
+      phone: client.phone,
+      address: client.address,
+      notes: client.notes || undefined,
+      createdAt: client.created_at,
+      companyId: client.company_id
+    })) || [];
   } catch (error) {
     console.error('Error in getClients:', error);
     throw error;
@@ -208,7 +218,8 @@ export const getClient = async (id: string): Promise<Client | undefined> => {
       phone: data.phone,
       address: data.address,
       notes: data.notes || undefined,
-      createdAt: data.created_at
+      createdAt: data.created_at,
+      companyId: data.company_id
     };
   } catch (error) {
     console.error('Error fetching client:', error);
@@ -325,7 +336,18 @@ export const getJobs = async (companyId?: string | null) => {
       throw error;
     }
     
-    return data || [];
+    return data?.map(job => ({
+      id: job.id,
+      clientId: job.client_id,
+      companyId: job.company_id,
+      title: job.title,
+      description: job.description || undefined,
+      status: job.status as 'active' | 'completed' | 'cancelled',
+      date: job.date || undefined,
+      location: job.location || undefined,
+      createdAt: job.created_at,
+      updatedAt: job.updated_at
+    })) || [];
   } catch (error) {
     console.error('Error in getJobs:', error);
     throw error;
@@ -348,6 +370,7 @@ export const getJob = async (id: string): Promise<Job | undefined> => {
     return {
       id: data.id,
       clientId: data.client_id,
+      companyId: data.company_id,
       title: data.title,
       description: data.description || undefined,
       status: data.status as 'active' | 'completed' | 'cancelled',
@@ -377,6 +400,7 @@ export const getClientJobs = async (clientId: string): Promise<Job[]> => {
     return data.map(job => ({
       id: job.id,
       clientId: job.client_id,
+      companyId: job.company_id,
       title: job.title,
       description: job.description || undefined,
       status: job.status as 'active' | 'completed' | 'cancelled',
@@ -433,6 +457,7 @@ export const getJobInvoices = async (jobId: string): Promise<Invoice[]> => {
       return {
         id: invoice.id,
         clientId: invoice.client_id,
+        companyId: invoice.company_id,
         jobId: invoice.job_id || undefined,
         number: invoice.number,
         amount: invoice.amount,
@@ -440,7 +465,7 @@ export const getJobInvoices = async (jobId: string): Promise<Invoice[]> => {
         dueDate: invoice.due_date,
         shootingDate: invoice.shooting_date || undefined,
         status: invoice.status as 'draft' | 'sent' | 'accepted' | 'paid',
-        contractStatus: invoice.contract_status as 'pending' | 'accepted' || 'pending',
+        contractStatus: invoice.contract_status as 'pending' | 'accepted' || undefined,
         items: invoiceItems,
         notes: invoice.notes || undefined,
         contractTerms: invoice.contract_terms || undefined,
@@ -587,8 +612,8 @@ export const getInvoices = async (companyId?: string | null) => {
         date: invoice.date,
         dueDate: invoice.due_date,
         shootingDate: invoice.shooting_date,
-        status: invoice.status,
-        contractStatus: invoice.contract_status,
+        status: invoice.status as 'draft' | 'sent' | 'accepted' | 'paid',
+        contractStatus: invoice.contract_status as 'pending' | 'accepted',
         items,
         notes: invoice.notes,
         contractTerms: invoice.contract_terms,
@@ -647,8 +672,8 @@ export const getInvoice = async (id: string): Promise<Invoice | undefined> => {
       date: invoice.date,
       dueDate: invoice.due_date,
       shootingDate: invoice.shooting_date,
-      status: invoice.status,
-      contractStatus: invoice.contract_status,
+      status: invoice.status as 'draft' | 'sent' | 'accepted' | 'paid',
+      contractStatus: invoice.contract_status as 'pending' | 'accepted',
       items: invoiceItems,
       notes: invoice.notes,
       contractTerms: invoice.contract_terms,
@@ -781,8 +806,8 @@ export const getClientInvoices = async (clientId: string): Promise<Invoice[]> =>
         date: invoice.date,
         dueDate: invoice.due_date,
         shootingDate: invoice.shooting_date,
-        status: invoice.status,
-        contractStatus: invoice.contract_status,
+        status: invoice.status as 'draft' | 'sent' | 'accepted' | 'paid',
+        contractStatus: invoice.contract_status as 'pending' | 'accepted',
         items: invoiceItems,
         notes: invoice.notes,
         contractTerms: invoice.contract_terms,

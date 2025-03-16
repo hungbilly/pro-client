@@ -1,6 +1,17 @@
 import { Client, Invoice, STORAGE_KEYS, InvoiceItem, Job, Company, InvoiceStatus, ContractStatus } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 
+// Helper function to safely parse enum values
+function parseEnum<T extends string>(value: string | null | undefined, enumValues: T[], defaultValue: T): T {
+  if (!value) {
+    return defaultValue;
+  }
+  if (enumValues.includes(value as T)) {
+    return value as T;
+  }
+  return defaultValue;
+}
+
 // Generate a unique ID
 export const generateId = (): string => {
   return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
@@ -803,30 +814,11 @@ export const getClientInvoices = async (clientId: string): Promise<Invoice[]> =>
           amount: item.amount
         }));
       
-      // Fix: Properly cast string values to their respective enum types
-      let status: InvoiceStatus;
-      switch (invoice.status) {
-        case 'draft':
-        case 'sent':
-        case 'accepted':
-        case 'paid':
-          status = invoice.status as InvoiceStatus;
-          break;
-        default:
-          status = 'draft'; // Default fallback
-      }
-      
-      let contractStatus: ContractStatus | undefined;
-      if (invoice.contract_status) {
-        switch (invoice.contract_status) {
-          case 'pending':
-          case 'accepted':
-            contractStatus = invoice.contract_status as ContractStatus;
-            break;
-          default:
-            contractStatus = 'pending'; // Default fallback
-        }
-      }
+      // Using parseEnum to safely cast string values to their respective enum types
+      const status = parseEnum(invoice.status, ['draft', 'sent', 'accepted', 'paid'] as InvoiceStatus[], 'draft');
+      const contractStatus = invoice.contract_status 
+        ? parseEnum(invoice.contract_status, ['pending', 'accepted'] as ContractStatus[], 'pending') 
+        : undefined;
       
       return {
         id: invoice.id,

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, createContext, useContext } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
@@ -13,23 +13,22 @@ export interface Company {
   is_default: boolean;
 }
 
-interface CompanySelectorProps {
-  onCompanySelect?: (companyId: string) => void;
-  className?: string;
-  showLabel?: boolean;
+interface CompanyContextType {
+  companies: Company[];
+  selectedCompanyId: string | null;
+  setSelectedCompanyId: (id: string) => void;
+  loading: boolean;
+  refreshCompanies: () => Promise<void>;
 }
 
-export const useCompany = () => {
+// Create a context to share company state across components
+const CompanyContext = createContext<CompanyContextType | undefined>(undefined);
+
+export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (user) {
-      fetchCompanies();
-    }
-  }, [user]);
 
   const fetchCompanies = async () => {
     setLoading(true);
@@ -60,14 +59,38 @@ export const useCompany = () => {
     }
   };
 
-  return {
-    companies,
-    selectedCompanyId,
-    setSelectedCompanyId,
-    loading,
-    refreshCompanies: fetchCompanies
-  };
+  useEffect(() => {
+    if (user) {
+      fetchCompanies();
+    }
+  }, [user]);
+
+  return (
+    <CompanyContext.Provider value={{ 
+      companies, 
+      selectedCompanyId, 
+      setSelectedCompanyId, 
+      loading, 
+      refreshCompanies: fetchCompanies 
+    }}>
+      {children}
+    </CompanyContext.Provider>
+  );
 };
+
+export const useCompany = () => {
+  const context = useContext(CompanyContext);
+  if (context === undefined) {
+    throw new Error('useCompany must be used within a CompanyProvider');
+  }
+  return context;
+};
+
+interface CompanySelectorProps {
+  onCompanySelect?: (companyId: string) => void;
+  className?: string;
+  showLabel?: boolean;
+}
 
 const CompanySelector: React.FC<CompanySelectorProps> = ({ onCompanySelect, className, showLabel = false }) => {
   const { companies, selectedCompanyId, setSelectedCompanyId, loading } = useCompany();

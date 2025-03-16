@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getClients, getInvoices, getJobs, deleteClient } from '@/lib/storage';
 import { Client, Invoice } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -39,9 +39,18 @@ const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const [clientToDelete, setClientToDelete] = React.useState<string | null>(null);
   const [isAddJobModalOpen, setIsAddJobModalOpen] = useState(false);
+  const queryClient = useQueryClient();
   
   const { companies, selectedCompanyId, loading: companyLoading } = useCompany();
   
+  useEffect(() => {
+    if (selectedCompanyId) {
+      queryClient.invalidateQueries({ queryKey: ['clients', selectedCompanyId] });
+      queryClient.invalidateQueries({ queryKey: ['jobs', selectedCompanyId] });
+      queryClient.invalidateQueries({ queryKey: ['invoices', selectedCompanyId] });
+    }
+  }, [selectedCompanyId, queryClient]);
+
   const { data: clients = [], isLoading: clientsLoading } = useQuery({
     queryKey: ['clients', selectedCompanyId],
     queryFn: () => getClients(selectedCompanyId),
@@ -163,6 +172,8 @@ const Dashboard: React.FC = () => {
       await deleteClient(clientToDelete);
       toast.success("Client deleted successfully");
       setClientToDelete(null);
+      
+      queryClient.invalidateQueries({ queryKey: ['clients', selectedCompanyId] });
     } catch (error) {
       console.error("Error deleting client:", error);
       toast.error("Failed to delete client");

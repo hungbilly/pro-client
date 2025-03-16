@@ -21,9 +21,10 @@ interface JobFormProps {
   job?: Job;
   clientId?: string;
   companyId?: string | null;
+  onSuccess?: () => void;
 }
 
-const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefinedClientId, companyId: predefinedCompanyId }) => {
+const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefinedClientId, companyId: predefinedCompanyId, onSuccess }) => {
   const { clientId: clientIdParam } = useParams<{ clientId: string }>();
   const navigate = useNavigate();
 
@@ -113,7 +114,12 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
         await saveJob(newJob);
         toast.success('Job created successfully!');
       }
-      navigate(`/client/${client.id}`);
+      
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        navigate(`/client/${client.id}`);
+      }
     } catch (error) {
       console.error('Failed to save/update job:', error);
       toast.error('Failed to save/update job.');

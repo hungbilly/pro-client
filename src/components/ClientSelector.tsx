@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { getClients } from '@/lib/storage';
 import { PlusCircle } from 'lucide-react';
+import AddClientModal from '@/components/ui-custom/AddClientModal';
 
 interface ClientSelectorProps {
   selectedClientId?: string;
@@ -24,6 +25,7 @@ const ClientSelector: React.FC<ClientSelectorProps> = ({
   const [loading, setLoading] = useState(true);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [clientModalOpen, setClientModalOpen] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -46,7 +48,7 @@ const ClientSelector: React.FC<ClientSelectorProps> = ({
     };
 
     fetchClients();
-  }, [selectedClientId]);
+  }, [selectedClientId, clientModalOpen]);
 
   const handleClientClick = (client: Client) => {
     setSelectedClient(client);
@@ -55,7 +57,18 @@ const ClientSelector: React.FC<ClientSelectorProps> = ({
   };
 
   const handleCreateNewClient = () => {
-    navigate('/client/new');
+    setClientModalOpen(true);
+  };
+
+  const handleClientAdded = async () => {
+    setClientModalOpen(false);
+    // Refresh clients list
+    try {
+      const allClients = await getClients();
+      setClients(allClients);
+    } catch (error) {
+      console.error('Error refreshing clients:', error);
+    }
   };
 
   return (
@@ -108,6 +121,8 @@ const ClientSelector: React.FC<ClientSelectorProps> = ({
           Add new client
         </Button>
       </div>
+      
+      <AddClientModal isOpen={clientModalOpen} onClose={handleClientAdded} />
     </div>
   );
 };

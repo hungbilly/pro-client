@@ -13,9 +13,10 @@ import JobDetail from '@/pages/JobDetail';
 import Settings from '@/pages/Settings';
 import NotFound from '@/pages/NotFound';
 import MainNavbar from '@/components/MainNavbar';
+import { isDemoMode } from './lib/storage';
 
 const AppRoutes = () => {
-  console.log('Rendering AppRoutes');
+  console.log('Rendering AppRoutes, demo mode:', isDemoMode());
 
   return (
     <>

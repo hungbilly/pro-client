@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import AppRoutes from "./Routes";
+import { isDemoMode } from "./lib/storage";
 
 // Log env variables (not values, just if they exist)
 console.log('Environment variables available:', {
@@ -24,6 +25,8 @@ const queryClient = new QueryClient({
 
 const App = () => {
   console.log('Rendering App component');
+  const demoMode = isDemoMode();
+  
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
@@ -31,6 +34,11 @@ const App = () => {
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            {demoMode && (
+              <div className="bg-yellow-100 p-2 text-center text-yellow-800">
+                <strong>Demo Mode:</strong> Running without Supabase connection. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables to connect to your database.
+              </div>
+            )}
             <AppRoutes />
           </BrowserRouter>
         </TooltipProvider>

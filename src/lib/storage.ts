@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
 import { Client, Company, Invoice, InvoiceItem, InvoiceStatus, ContractStatus, Job } from '@/types';
 
-// Initialize Supabase client
+// Initialize Supabase client with fallback to demo mode if env vars are missing
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
@@ -11,7 +11,77 @@ console.log('Supabase URL and Key availability:', {
   keyExists: !!supabaseKey
 });
 
-const supabase = createClient(supabaseUrl, supabaseKey);
+// Create a mock client if Supabase credentials are missing
+let supabase;
+const DEMO_MODE = !supabaseUrl || !supabaseKey;
+
+if (DEMO_MODE) {
+  console.log('Running in DEMO MODE - Supabase credentials missing');
+  
+  // Mock storage for demo mode
+  const demoStorage = {
+    clients: [],
+    companies: [],
+    jobs: [],
+    invoices: []
+  };
+  
+  // Mock Supabase client
+  supabase = {
+    from: (table) => ({
+      select: () => {
+        const mockData = {
+          data: demoStorage[table] || [],
+          error: null
+        };
+        
+        return {
+          eq: () => ({
+            single: () => mockData,
+            order: () => mockData,
+            select: () => mockData
+          }),
+          order: () => ({
+            data: demoStorage[table] || [],
+            error: null
+          }),
+          single: () => mockData
+        };
+      },
+      insert: (items) => {
+        const newItems = items.map(item => ({...item, id: item.id || uuidv4()}));
+        demoStorage[table] = [...(demoStorage[table] || []), ...newItems];
+        return {
+          select: () => ({
+            single: () => ({
+              data: newItems[0],
+              error: null
+            })
+          })
+        };
+      },
+      update: (item) => ({
+        eq: () => ({
+          select: () => ({
+            single: () => ({
+              data: item,
+              error: null
+            })
+          })
+        })
+      }),
+      delete: () => ({
+        eq: () => ({
+          data: null,
+          error: null
+        })
+      })
+    })
+  };
+} else {
+  // Real Supabase client
+  supabase = createClient(supabaseUrl, supabaseKey);
+}
 
 // Client functions
 export const getClients = async (companyId?: string): Promise<Client[]> => {
@@ -641,3 +711,5 @@ const storeInvoiceRelatedCompany = async (company: any) => {
     updatedAt: company.updated_at
   }));
 };
+
+export const isDemoMode = () => DEMO_MODE;

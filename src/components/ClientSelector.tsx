@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { getClients } from '@/lib/storage';
 import { PlusCircle } from 'lucide-react';
 import AddClientModal from '@/components/ui-custom/AddClientModal';
+import { useCompany } from './CompanySelector';
 
 interface ClientSelectorProps {
   selectedClientId?: string;
@@ -27,11 +28,18 @@ const ClientSelector: React.FC<ClientSelectorProps> = ({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [clientModalOpen, setClientModalOpen] = useState(false);
   const navigate = useNavigate();
+  
+  // Get the selected company from context
+  const { selectedCompanyId } = useCompany();
+  
+  console.log("ClientSelector: selectedCompanyId =", selectedCompanyId);
 
   useEffect(() => {
     const fetchClients = async () => {
       try {
-        const allClients = await getClients();
+        console.log("Fetching clients for company:", selectedCompanyId);
+        const allClients = await getClients(selectedCompanyId);
+        console.log("Fetched clients:", allClients.length);
         setClients(allClients);
         
         if (selectedClientId) {
@@ -48,7 +56,7 @@ const ClientSelector: React.FC<ClientSelectorProps> = ({
     };
 
     fetchClients();
-  }, [selectedClientId, clientModalOpen]);
+  }, [selectedClientId, clientModalOpen, selectedCompanyId]);
 
   const handleClientClick = (client: Client) => {
     setSelectedClient(client);
@@ -64,7 +72,7 @@ const ClientSelector: React.FC<ClientSelectorProps> = ({
     setClientModalOpen(false);
     // Refresh clients list
     try {
-      const allClients = await getClients();
+      const allClients = await getClients(selectedCompanyId);
       setClients(allClients);
     } catch (error) {
       console.error('Error refreshing clients:', error);

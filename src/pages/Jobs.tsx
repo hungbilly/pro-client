@@ -1,115 +1,168 @@
-
-import React, { useState } from 'react';
+import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { getJobs, getClients } from '@/lib/storage';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Plus, Search } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { FileText, PlusCircle, Eye, FileEdit, Clock, MapPin, User, Briefcase, MoreHorizontal } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import PageTransition from '@/components/ui-custom/PageTransition';
-import AddJobModal from '@/components/ui-custom/AddJobModal';
-import { Job } from '@/types';
-import { getJobs } from '@/lib/storage';
+import AddJobButton from '@/components/ui-custom/AddJobButton';
+import { CompanyProvider } from '@/components/CompanySelector';
+
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useCompany } from '@/components/CompanySelector';
-import { toast } from 'sonner';
 
 const Jobs = () => {
-  const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isAddJobModalOpen, setIsAddJobModalOpen] = useState(false);
-  const { selectedCompanyId } = useCompany();
+  console.log("Jobs page rendering");
+  try {
+    return (
+      <PageTransition>
+        <CompanyProvider>
+          <div className="container mx-auto py-6 px-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
+              <h1 className="text-3xl font-bold mb-4 sm:mb-0">Jobs</h1>
+              <AddJobButton />
+            </div>
+            
+            <JobsTable />
+          </div>
+        </CompanyProvider>
+      </PageTransition>
+    );
+  } catch (error) {
+    console.error("Error rendering Jobs page:", error);
+    return <div className="p-8 text-center">
+      <h2 className="text-xl font-bold">Something went wrong</h2>
+      <p className="text-red-500">{error instanceof Error ? error.message : String(error)}</p>
+    </div>;
+  }
+};
 
-  // Fetch jobs data with the selected company ID
+const JobsTable = () => {
+  const { selectedCompanyId } = useCompany();
+  
   const { data: jobs = [], isLoading, error } = useQuery({
     queryKey: ['jobs', selectedCompanyId],
-    queryFn: async () => {
-      try {
-        if (!selectedCompanyId) return [];
-        const jobsData = await getJobs(selectedCompanyId);
-        return jobsData;
-      } catch (error) {
-        console.error('Error fetching jobs:', error);
-        toast.error('Failed to load jobs');
-        return [];
-      }
-    },
+    queryFn: () => getJobs(selectedCompanyId),
     enabled: !!selectedCompanyId,
   });
 
-  // Filter jobs based on search query
-  const filteredJobs = jobs.filter((job: Job) => 
-    job.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const { data: clients = [] } = useQuery({
+    queryKey: ['clients', selectedCompanyId],
+    queryFn: () => getClients(selectedCompanyId),
+    enabled: !!selectedCompanyId,
+  });
 
-  const handleJobClick = (jobId: string) => {
-    navigate(`/job/${jobId}`);
+  if (isLoading) return <CardContent>Loading jobs...</CardContent>;
+  if (error) return <CardContent>Error: {error.message}</CardContent>;
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active':
+      case 'sent':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+      case 'completed':
+      case 'accepted':
+      case 'paid':
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+      case 'draft':
+        return 'bg-muted text-muted-foreground';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
   };
 
   return (
-    <PageTransition>
-      <div className="container mx-auto py-8 px-4">
-        <div className="flex flex-col md:flex-row justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold mb-4 md:mb-0">Jobs</h1>
-          
-          <div className="w-full md:w-auto flex flex-col md:flex-row gap-4">
-            <div className="relative w-full md:w-64">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-              <Input
-                placeholder="Search jobs..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            
-            <Button onClick={() => setIsAddJobModalOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" /> Add Job
-            </Button>
-          </div>
-        </div>
-
-        {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {[...Array(6)].map((_, i) => (
-              <Card key={i} className="animate-pulse">
-                <CardContent className="h-48 p-6"></CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : error ? (
-          <div className="text-center py-8">
-            <p className="text-red-500">Error loading jobs. Please try again.</p>
-          </div>
-        ) : filteredJobs.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-gray-500">No jobs found. Add your first job to get started.</p>
+    <Card className="backdrop-blur-sm bg-white/80 border-transparent shadow-soft">
+      <CardHeader>
+        <CardTitle>Current Jobs</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {jobs.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <Briefcase className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-medium mb-2">No Jobs Yet</h3>
+            <p className="text-muted-foreground mb-6 max-w-md">
+              You haven't created any jobs yet. Add your first job to get started.
+            </p>
+            <AddJobButton />
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {filteredJobs.map((job: Job) => (
-              <Card 
-                key={job.id} 
-                className="cursor-pointer hover:shadow-md transition-shadow"
-                onClick={() => handleJobClick(job.id)}
-              >
-                <CardContent className="p-6">
-                  <h3 className="font-semibold text-lg mb-2">{job.title}</h3>
-                  <p className="text-sm text-gray-500 mb-2">
-                    {job.date && new Date(job.date).toLocaleDateString()}
-                  </p>
-                  <p className="text-sm line-clamp-2">{job.description}</p>
-                </CardContent>
-              </Card>
-            ))}
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Client</TableHead>
+                  <TableHead className="hidden md:table-cell">Date</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {jobs.map((job) => {
+                  const jobClient = clients.find((c) => c.id === job.clientId) || null;
+                  return (
+                    <TableRow key={job.id}>
+                      <TableCell className="font-medium">{job.title}</TableCell>
+                      <TableCell>{jobClient?.name}</TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {job.date ? new Date(job.date).toLocaleDateString() : 'N/A'}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={getStatusColor(job.status)}>
+                          {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem asChild>
+                              <Link to={`/job/${job.id}`}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                <span>View</span>
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                              <Link to={`/job/edit/${job.id}`}>
+                                <FileEdit className="mr-2 h-4 w-4" />
+                                <span>Edit</span>
+                              </Link>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           </div>
         )}
-
-        <AddJobModal 
-          isOpen={isAddJobModalOpen} 
-          onClose={() => setIsAddJobModalOpen(false)} 
-        />
-      </div>
-    </PageTransition>
+      </CardContent>
+    </Card>
   );
 };
 

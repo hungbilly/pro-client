@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Index from '@/pages/Index';
@@ -15,6 +14,8 @@ import JobDetail from '@/pages/JobDetail';
 import Settings from '@/pages/Settings';
 import NotFound from '@/pages/NotFound';
 import MainNavbar from '@/components/MainNavbar';
+
+console.log("Routes is loading...");
 
 const AppRoutes = () => {
   return (

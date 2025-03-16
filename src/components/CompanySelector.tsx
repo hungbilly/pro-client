@@ -33,6 +33,7 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const fetchCompanies = async () => {
     setLoading(true);
     try {
+      console.log("CompanyProvider: Fetching companies for user:", user?.id);
       const { data, error } = await supabase
         .from('companies')
         .select('id, name, is_default')
@@ -42,12 +43,14 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
       
       if (error) throw error;
       
+      console.log("CompanyProvider: Fetched companies:", data?.length);
       setCompanies(data || []);
       
       // Select default company or first one
       if (data && data.length > 0) {
         const defaultCompany = data.find(c => c.is_default);
         const companyId = defaultCompany ? defaultCompany.id : data[0].id;
+        console.log("CompanyProvider: Setting selected company to:", companyId);
         setSelectedCompanyId(companyId);
       } else {
         setSelectedCompanyId(null);
@@ -64,6 +67,8 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
       fetchCompanies();
     }
   }, [user]);
+
+  console.log("CompanyProvider rendering with selectedCompanyId:", selectedCompanyId);
 
   return (
     <CompanyContext.Provider value={{ 
@@ -96,6 +101,7 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({ onCompanySelect, clas
   const { companies, selectedCompanyId, setSelectedCompanyId, loading } = useCompany();
 
   const handleCompanyChange = (value: string) => {
+    console.log("CompanySelector: Company changed to:", value);
     setSelectedCompanyId(value);
     if (onCompanySelect) {
       onCompanySelect(value);

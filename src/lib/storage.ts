@@ -735,7 +735,8 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
     
     // Fix: Properly cast the string values to the appropriate enum types
     const status = matchingInvoice.status as InvoiceStatus;
-    const contractStatus = matchingInvoice.contract_status as ContractStatus || undefined;
+    // Handle potential undefined value for contract_status
+    const contractStatus = matchingInvoice.contract_status ? (matchingInvoice.contract_status as ContractStatus) : undefined;
     
     return {
       id: matchingInvoice.id,

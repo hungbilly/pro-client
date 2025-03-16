@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getClients, getInvoices, getJobs, deleteClient } from '@/lib/storage';
 import { Client, Invoice } from '@/types';
@@ -30,25 +30,55 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useCompany } from './CompanySelector';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const [clientToDelete, setClientToDelete] = React.useState<string | null>(null);
   
-  const { data: clients = [] } = useQuery({
-    queryKey: ['clients'],
-    queryFn: getClients
+  const { companies, selectedCompanyId, loading: companyLoading } = useCompany();
+  
+  const { data: clients = [], isLoading: clientsLoading } = useQuery({
+    queryKey: ['clients', selectedCompanyId],
+    queryFn: () => getClients(selectedCompanyId),
+    enabled: !!selectedCompanyId
   });
 
-  const { data: invoices = [] } = useQuery({
-    queryKey: ['invoices'],
-    queryFn: getInvoices
+  const { data: invoices = [], isLoading: invoicesLoading } = useQuery({
+    queryKey: ['invoices', selectedCompanyId],
+    queryFn: () => getInvoices(selectedCompanyId),
+    enabled: !!selectedCompanyId
   });
 
-  const { data: jobs = [] } = useQuery({
-    queryKey: ['jobs'],
-    queryFn: getJobs
+  const { data: jobs = [], isLoading: jobsLoading } = useQuery({
+    queryKey: ['jobs', selectedCompanyId],
+    queryFn: () => getJobs(selectedCompanyId),
+    enabled: !!selectedCompanyId
   });
+
+  if (companyLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <p className="text-lg">Loading company data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (companies.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center p-8 max-w-md">
+          <h2 className="text-2xl font-bold mb-4">Welcome to Wedding Studio Manager</h2>
+          <p className="mb-6">To get started, you need to create a company first.</p>
+          <Button asChild>
+            <Link to="/settings">Create Your Company</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   const stats = {
     totalClients: clients.length,
@@ -138,6 +168,18 @@ const Dashboard: React.FC = () => {
   const cancelDeleteClient = () => {
     setClientToDelete(null);
   };
+
+  const isLoading = clientsLoading || invoicesLoading || jobsLoading;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <p className="text-lg">Loading data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <AnimatedBackground className="py-6">

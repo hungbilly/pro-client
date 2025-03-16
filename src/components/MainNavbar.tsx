@@ -8,9 +8,11 @@ import {
   Briefcase, 
   Calendar, 
   DollarSign, 
-  Settings 
+  Settings,
+  Building
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import CompanySelector from './CompanySelector';
 
 const MainNavbar = () => {
   const location = useLocation();
@@ -43,6 +45,10 @@ const MainNavbar = () => {
             Wedding Studio Manager
           </Link>
           
+          <div className="hidden md:flex items-center">
+            <CompanySelector className="mr-4" />
+          </div>
+          
           <div className="flex space-x-1 md:space-x-4">
             {menuItems.map((item) => (
               <Link
@@ -60,6 +66,11 @@ const MainNavbar = () => {
               </Link>
             ))}
           </div>
+        </div>
+        
+        {/* Mobile company selector */}
+        <div className="md:hidden pb-2">
+          <CompanySelector className="w-full" />
         </div>
       </div>
     </nav>

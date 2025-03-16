@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { Building } from 'lucide-react';
 
 export interface Company {
   id: string;
@@ -15,6 +16,7 @@ export interface Company {
 interface CompanySelectorProps {
   onCompanySelect?: (companyId: string) => void;
   className?: string;
+  showLabel?: boolean;
 }
 
 export const useCompany = () => {
@@ -35,6 +37,7 @@ export const useCompany = () => {
       const { data, error } = await supabase
         .from('companies')
         .select('id, name, is_default')
+        .eq('user_id', user?.id)
         .order('is_default', { ascending: false })
         .order('name');
       
@@ -66,7 +69,7 @@ export const useCompany = () => {
   };
 };
 
-const CompanySelector: React.FC<CompanySelectorProps> = ({ onCompanySelect, className }) => {
+const CompanySelector: React.FC<CompanySelectorProps> = ({ onCompanySelect, className, showLabel = false }) => {
   const { companies, selectedCompanyId, setSelectedCompanyId, loading } = useCompany();
 
   const handleCompanyChange = (value: string) => {
@@ -90,22 +93,30 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({ onCompanySelect, clas
 
   return (
     <div className={className}>
-      <Select 
-        value={selectedCompanyId || ''} 
-        onValueChange={handleCompanyChange}
-        disabled={companies.length === 0}
-      >
-        <SelectTrigger>
-          <SelectValue placeholder="Select a company" />
-        </SelectTrigger>
-        <SelectContent>
-          {companies.map(company => (
-            <SelectItem key={company.id} value={company.id}>
-              {company.name} {company.is_default && "(Default)"}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      {showLabel && (
+        <div className="flex items-center gap-1 mb-1 text-sm font-medium">
+          <Building className="h-4 w-4" />
+          <span>Company</span>
+        </div>
+      )}
+      <div>
+        <Select 
+          value={selectedCompanyId || ''} 
+          onValueChange={handleCompanyChange}
+          disabled={companies.length === 0}
+        >
+          <SelectTrigger className="min-w-[200px]">
+            <SelectValue placeholder="Select a company" />
+          </SelectTrigger>
+          <SelectContent>
+            {companies.map(company => (
+              <SelectItem key={company.id} value={company.id}>
+                {company.name} {company.is_default && "(Default)"}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
     </div>
   );
 };

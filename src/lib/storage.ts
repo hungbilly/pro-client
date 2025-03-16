@@ -1,4 +1,3 @@
-
 import { Client, Invoice, STORAGE_KEYS, InvoiceItem, Job, Company } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -166,29 +165,26 @@ export const deleteCompany = async (id: string): Promise<void> => {
 };
 
 // Client operations
-export const getClients = async (): Promise<Client[]> => {
+export const getClients = async (companyId?: string | null) => {
   try {
-    const { data, error } = await supabase
-      .from('clients')
-      .select('*');
+    let query = supabase.from('clients').select('*');
+    
+    // If companyId is provided, filter by it
+    if (companyId) {
+      query = query.eq('company_id', companyId);
+    }
+    
+    const { data, error } = await query.order('name');
     
     if (error) {
       console.error('Error fetching clients:', error);
-      return [];
+      throw error;
     }
     
-    return data.map(client => ({
-      id: client.id,
-      name: client.name,
-      email: client.email,
-      phone: client.phone,
-      address: client.address,
-      notes: client.notes || undefined,
-      createdAt: client.created_at
-    }));
+    return data || [];
   } catch (error) {
-    console.error('Error fetching clients:', error);
-    return [];
+    console.error('Error in getClients:', error);
+    throw error;
   }
 };
 
@@ -313,31 +309,26 @@ export const deleteClient = async (id: string): Promise<void> => {
 };
 
 // Job operations
-export const getJobs = async (): Promise<Job[]> => {
+export const getJobs = async (companyId?: string | null) => {
   try {
-    const { data, error } = await supabase
-      .from('jobs')
-      .select('*');
+    let query = supabase.from('jobs').select('*');
+    
+    // If companyId is provided, filter by it
+    if (companyId) {
+      query = query.eq('company_id', companyId);
+    }
+    
+    const { data, error } = await query.order('created_at', { ascending: false });
     
     if (error) {
       console.error('Error fetching jobs:', error);
-      return [];
+      throw error;
     }
     
-    return data.map(job => ({
-      id: job.id,
-      clientId: job.client_id,
-      title: job.title,
-      description: job.description || undefined,
-      status: job.status as 'active' | 'completed' | 'cancelled',
-      date: job.date || undefined,
-      location: job.location || undefined,
-      createdAt: job.created_at,
-      updatedAt: job.updated_at
-    }));
+    return data || [];
   } catch (error) {
-    console.error('Error fetching jobs:', error);
-    return [];
+    console.error('Error in getJobs:', error);
+    throw error;
   }
 };
 
@@ -560,60 +551,55 @@ export const deleteJob = async (id: string): Promise<void> => {
 };
 
 // Invoice operations
-export const getInvoices = async (): Promise<Invoice[]> => {
+export const getInvoices = async (companyId?: string | null) => {
   try {
-    // First get all invoices
-    const { data: invoicesData, error: invoicesError } = await supabase
-      .from('invoices')
-      .select('*');
+    let query = supabase.from('invoices').select('*, invoice_items(*)');
     
-    if (invoicesError || !invoicesData) {
-      console.error('Error fetching invoices:', invoicesError);
-      return [];
+    // If companyId is provided, filter by it
+    if (companyId) {
+      query = query.eq('company_id', companyId);
     }
     
-    // Then get all invoice items
-    const { data: itemsData, error: itemsError } = await supabase
-      .from('invoice_items')
-      .select('*');
+    const { data, error } = await query.order('date', { ascending: false });
     
-    if (itemsError || !itemsData) {
-      console.error('Error fetching invoice items:', itemsError);
-      return [];
+    if (error) {
+      console.error('Error fetching invoices:', error);
+      throw error;
     }
     
-    // Map and transform the data
-    return invoicesData.map(invoice => {
-      const invoiceItems = itemsData
-        .filter(item => item.invoice_id === invoice.id)
-        .map(item => ({
-          id: item.id,
-          description: item.description,
-          quantity: item.quantity,
-          rate: item.rate,
-          amount: item.amount
-        }));
+    // Transform the data to match our type
+    const invoices = (data || []).map(invoice => {
+      const items = invoice.invoice_items.map((item: any) => ({
+        id: item.id,
+        description: item.description,
+        quantity: item.quantity,
+        rate: item.rate,
+        amount: item.amount
+      }));
       
       return {
         id: invoice.id,
         clientId: invoice.client_id,
-        jobId: invoice.job_id || undefined,
+        companyId: invoice.company_id,
+        jobId: invoice.job_id,
         number: invoice.number,
         amount: invoice.amount,
         date: invoice.date,
         dueDate: invoice.due_date,
-        shootingDate: invoice.shooting_date || undefined,
-        status: invoice.status as 'draft' | 'sent' | 'accepted' | 'paid',
-        contractStatus: invoice.contract_status as 'pending' | 'accepted' || 'pending',
-        items: invoiceItems,
-        notes: invoice.notes || undefined,
-        contractTerms: invoice.contract_terms || undefined,
+        shootingDate: invoice.shooting_date,
+        status: invoice.status,
+        contractStatus: invoice.contract_status,
+        items,
+        notes: invoice.notes,
+        contractTerms: invoice.contract_terms,
         viewLink: invoice.view_link
       };
     });
+    
+    return invoices;
   } catch (error) {
-    console.error('Error fetching invoices:', error);
-    return [];
+    console.error('Error in getInvoices:', error);
+    throw error;
   }
 };
 
@@ -654,17 +640,18 @@ export const getInvoice = async (id: string): Promise<Invoice | undefined> => {
     return {
       id: invoice.id,
       clientId: invoice.client_id,
-      jobId: invoice.job_id || undefined,
+      companyId: invoice.company_id,
+      jobId: invoice.job_id,
       number: invoice.number,
       amount: invoice.amount,
       date: invoice.date,
       dueDate: invoice.due_date,
-      shootingDate: invoice.shooting_date || undefined,
-      status: invoice.status as 'draft' | 'sent' | 'accepted' | 'paid',
-      contractStatus: invoice.contract_status as 'pending' | 'accepted' || 'pending',
+      shootingDate: invoice.shooting_date,
+      status: invoice.status,
+      contractStatus: invoice.contract_status,
       items: invoiceItems,
-      notes: invoice.notes || undefined,
-      contractTerms: invoice.contract_terms || undefined,
+      notes: invoice.notes,
+      contractTerms: invoice.contract_terms,
       viewLink: invoice.view_link
     };
   } catch (error) {
@@ -726,16 +713,17 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
     return {
       id: matchingInvoice.id,
       clientId: matchingInvoice.client_id,
-      jobId: matchingInvoice.job_id || undefined,
+      companyId: matchingInvoice.company_id,
+      jobId: matchingInvoice.job_id,
       number: matchingInvoice.number,
       amount: matchingInvoice.amount,
       date: matchingInvoice.date,
       dueDate: matchingInvoice.due_date,
-      status: matchingInvoice.status as 'draft' | 'sent' | 'accepted' | 'paid',
-      contractStatus: matchingInvoice.contract_status as 'pending' | 'accepted' || 'pending',
+      status: matchingInvoice.status,
+      contractStatus: matchingInvoice.contract_status,
       items: invoiceItems,
-      notes: matchingInvoice.notes || undefined,
-      contractTerms: matchingInvoice.contract_terms || undefined,
+      notes: matchingInvoice.notes,
+      contractTerms: matchingInvoice.contract_terms,
       viewLink: matchingInvoice.view_link
     };
   } catch (error) {
@@ -786,17 +774,18 @@ export const getClientInvoices = async (clientId: string): Promise<Invoice[]> =>
       return {
         id: invoice.id,
         clientId: invoice.client_id,
-        jobId: invoice.job_id || undefined,
+        companyId: invoice.company_id,
+        jobId: invoice.job_id,
         number: invoice.number,
         amount: invoice.amount,
         date: invoice.date,
         dueDate: invoice.due_date,
-        shootingDate: invoice.shooting_date || undefined,
-        status: invoice.status as 'draft' | 'sent' | 'accepted' | 'paid',
-        contractStatus: invoice.contract_status as 'pending' | 'accepted' || 'pending',
+        shootingDate: invoice.shooting_date,
+        status: invoice.status,
+        contractStatus: invoice.contract_status,
         items: invoiceItems,
-        notes: invoice.notes || undefined,
-        contractTerms: invoice.contract_terms || undefined,
+        notes: invoice.notes,
+        contractTerms: invoice.contract_terms,
         viewLink: invoice.view_link
       };
     });
@@ -872,17 +861,17 @@ export const saveInvoice = async (invoice: Omit<Invoice, 'id' | 'viewLink'>): Pr
       id: newInvoice.id,
       clientId: newInvoice.client_id,
       companyId: newInvoice.company_id,
-      jobId: newInvoice.job_id || undefined,
+      jobId: newInvoice.job_id,
       number: newInvoice.number,
       amount: newInvoice.amount,
       date: newInvoice.date,
       dueDate: newInvoice.due_date,
-      shootingDate: newInvoice.shooting_date || undefined,
-      status: newInvoice.status as 'draft' | 'sent' | 'accepted' | 'paid',
-      contractStatus: newInvoice.contract_status as 'pending' | 'accepted' || 'pending',
+      shootingDate: newInvoice.shooting_date,
+      status: newInvoice.status,
+      contractStatus: newInvoice.contract_status,
       items,
-      notes: newInvoice.notes || undefined,
-      contractTerms: newInvoice.contract_terms || undefined,
+      notes: newInvoice.notes,
+      contractTerms: newInvoice.contract_terms,
       viewLink: newInvoice.view_link
     };
   } catch (error) {

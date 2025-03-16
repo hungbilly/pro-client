@@ -4,6 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 export interface Company {
   id: string;
@@ -88,23 +89,24 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({ onCompanySelect, clas
   }
 
   return (
-    <Select 
-      value={selectedCompanyId || ''} 
-      onValueChange={handleCompanyChange}
-      disabled={companies.length === 0}
-      className={className}
-    >
-      <SelectTrigger>
-        <SelectValue placeholder="Select a company" />
-      </SelectTrigger>
-      <SelectContent>
-        {companies.map(company => (
-          <SelectItem key={company.id} value={company.id}>
-            {company.name} {company.is_default && "(Default)"}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <div className={className}>
+      <Select 
+        value={selectedCompanyId || ''} 
+        onValueChange={handleCompanyChange}
+        disabled={companies.length === 0}
+      >
+        <SelectTrigger>
+          <SelectValue placeholder="Select a company" />
+        </SelectTrigger>
+        <SelectContent>
+          {companies.map(company => (
+            <SelectItem key={company.id} value={company.id}>
+              {company.name} {company.is_default && "(Default)"}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
   );
 };
 

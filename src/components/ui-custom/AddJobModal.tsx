@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import JobForm from '@/components/JobForm';
 import ClientSelector from '@/components/ClientSelector';
 import CompanySelector from '@/components/CompanySelector';
@@ -26,12 +26,13 @@ const AddJobModal: React.FC<AddJobModalProps> = ({ isOpen, onClose, clientId: in
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create New Job</DialogTitle>
+          <DialogDescription>Add a new job for your selected client</DialogDescription>
         </DialogHeader>
         
-        <div className="py-4 space-y-6">
+        <div className="py-2 space-y-4">
           {!initialClientId && (
             <ClientSelector
               selectedClientId={selectedClientId || undefined}
@@ -46,12 +47,12 @@ const AddJobModal: React.FC<AddJobModalProps> = ({ isOpen, onClose, clientId: in
           {selectedClientId ? (
             <JobForm 
               clientId={selectedClientId} 
-              companyId={selectedCompanyId}
+              companyId={selectedCompanyId || undefined}
               onSuccess={onClose}
             />
           ) : (
             <Card>
-              <CardContent className="py-6">
+              <CardContent className="py-4">
                 <p className="text-center text-muted-foreground">Please select a client to continue</p>
               </CardContent>
             </Card>

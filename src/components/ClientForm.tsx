@@ -1,11 +1,11 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Client } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { saveClient, updateClient } from '@/lib/storage';
@@ -13,9 +13,10 @@ import CompanySelector, { useCompany } from './CompanySelector';
 
 interface ClientFormProps {
   existingClient?: Client;
+  onSuccess?: () => void;
 }
 
-const ClientForm: React.FC<ClientFormProps> = ({ existingClient }) => {
+const ClientForm: React.FC<ClientFormProps> = ({ existingClient, onSuccess }) => {
   const navigate = useNavigate();
   const { selectedCompanyId } = useCompany();
   
@@ -66,7 +67,13 @@ const ClientForm: React.FC<ClientFormProps> = ({ existingClient }) => {
         await saveClient(newClient);
         toast.success('Client created successfully!');
       }
-      navigate('/');
+      
+      // Call onSuccess callback if provided, otherwise navigate to home
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        navigate('/');
+      }
     } catch (error) {
       console.error('Failed to save client:', error);
       toast.error('Failed to save client');
@@ -74,16 +81,10 @@ const ClientForm: React.FC<ClientFormProps> = ({ existingClient }) => {
   };
 
   return (
-    <Card className="max-w-2xl mx-auto">
-      <CardHeader>
-        <CardTitle>{existingClient ? 'Edit Client' : 'New Client'}</CardTitle>
-        <CardDescription>
-          {existingClient ? 'Update client information' : 'Enter client details to add them to your system'}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="mb-4">
+    <div className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid gap-3">
+          <div>
             <Label htmlFor="company">Company</Label>
             <CompanySelector className="w-full" />
           </div>
@@ -140,20 +141,21 @@ const ClientForm: React.FC<ClientFormProps> = ({ existingClient }) => {
               placeholder="Additional notes about this client"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              rows={4}
+              rows={3}
             />
           </div>
-        </form>
-      </CardContent>
-      <CardFooter className="flex justify-between">
-        <Button variant="outline" onClick={() => navigate('/')}>
-          Cancel
-        </Button>
-        <Button onClick={handleSubmit}>
-          {existingClient ? 'Update Client' : 'Create Client'}
-        </Button>
-      </CardFooter>
-    </Card>
+        </div>
+      
+        <div className="flex justify-end space-x-2 pt-2">
+          <Button variant="outline" type="button" onClick={onSuccess || (() => navigate('/'))}>
+            Cancel
+          </Button>
+          <Button type="submit">
+            {existingClient ? 'Update Client' : 'Create Client'}
+          </Button>
+        </div>
+      </form>
+    </div>
   );
 };
 

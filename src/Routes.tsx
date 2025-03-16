@@ -15,6 +15,8 @@ import NotFound from '@/pages/NotFound';
 import MainNavbar from '@/components/MainNavbar';
 
 const AppRoutes = () => {
+  console.log('Rendering AppRoutes');
+
   return (
     <>
       <MainNavbar />

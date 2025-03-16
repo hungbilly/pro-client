@@ -43,13 +43,16 @@ const InvoiceView = () => {
 
   useEffect(() => {
     const fetchInvoice = async () => {
+      console.log('InvoiceView: Fetching invoice with viewLink:', viewLink);
       if (!viewLink) {
+        console.error('InvoiceView: No viewLink parameter provided');
         setLoading(false);
         return;
       }
 
       try {
         const invoiceData = await getInvoiceByViewLink(viewLink);
+        console.log('InvoiceView: Received invoice data:', invoiceData?.id || 'null');
         setInvoice(invoiceData);
         
         // Get related entities from session storage
@@ -57,9 +60,29 @@ const InvoiceView = () => {
         const storedCompany = sessionStorage.getItem('current_invoice_company');
         const storedJob = sessionStorage.getItem('current_invoice_job');
         
-        if (storedClient) setClient(JSON.parse(storedClient));
-        if (storedCompany) setCompany(JSON.parse(storedCompany));
-        if (storedJob) setJob(JSON.parse(storedJob));
+        console.log('InvoiceView: Session storage data available:', {
+          client: !!storedClient,
+          company: !!storedCompany,
+          job: !!storedJob
+        });
+        
+        if (storedClient) {
+          const parsedClient = JSON.parse(storedClient);
+          console.log('InvoiceView: Parsed client:', parsedClient.id);
+          setClient(parsedClient);
+        }
+        
+        if (storedCompany) {
+          const parsedCompany = JSON.parse(storedCompany);
+          console.log('InvoiceView: Parsed company:', parsedCompany.id);
+          setCompany(parsedCompany);
+        }
+        
+        if (storedJob) {
+          const parsedJob = JSON.parse(storedJob);
+          console.log('InvoiceView: Parsed job:', parsedJob.id);
+          setJob(parsedJob);
+        }
       } catch (error) {
         console.error('Error fetching invoice:', error);
         toast.error('Failed to load invoice');
@@ -75,6 +98,7 @@ const InvoiceView = () => {
     if (!invoice) return;
     
     try {
+      console.log('Updating invoice status to:', status);
       const updatedInvoice = await updateInvoiceStatus(invoice.id, status);
       if (updatedInvoice) {
         setInvoice(updatedInvoice);
@@ -90,6 +114,7 @@ const InvoiceView = () => {
     if (!invoice) return;
     
     try {
+      console.log('Updating contract status to:', status);
       const updatedInvoice = await updateContractStatus(invoice.id, status);
       if (updatedInvoice) {
         setInvoice(updatedInvoice);
@@ -100,6 +125,14 @@ const InvoiceView = () => {
       toast.error('Failed to update contract status');
     }
   };
+
+  console.log('InvoiceView: Rendering with data:', {
+    invoiceExists: !!invoice,
+    clientExists: !!client,
+    companyExists: !!company,
+    jobExists: !!job,
+    loading
+  });
 
   return (
     <PageTransition>
@@ -191,7 +224,6 @@ const InvoiceView = () => {
               </Card>
             )}
 
-            {/* Display invoice items */}
             <Card className="mb-8">
               <CardHeader>
                 <CardTitle>Invoice Items</CardTitle>
@@ -226,7 +258,6 @@ const InvoiceView = () => {
               </CardContent>
             </Card>
 
-            {/* Invoice notes */}
             {invoice.notes && (
               <Card className="mb-8">
                 <CardHeader>
@@ -238,7 +269,6 @@ const InvoiceView = () => {
               </Card>
             )}
 
-            {/* Contract terms and acceptance */}
             {invoice.contractTerms && (
               <Card className="mb-8">
                 <CardHeader>
@@ -273,7 +303,6 @@ const InvoiceView = () => {
               </Card>
             )}
 
-            {/* Invoice status and actions */}
             <Card>
               <CardHeader>
                 <CardTitle>Invoice Status</CardTitle>

@@ -5,6 +5,12 @@ import { Client, Company, Invoice, InvoiceItem, InvoiceStatus, ContractStatus, J
 // Initialize Supabase client
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+console.log('Supabase URL and Key availability:', {
+  urlExists: !!supabaseUrl,
+  keyExists: !!supabaseKey
+});
+
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Client functions
@@ -293,6 +299,7 @@ export const deleteJob = async (id: string): Promise<boolean> => {
 
 // Invoice functions
 export const getInvoices = async (companyId?: string): Promise<Invoice[]> => {
+  console.log('Getting invoices for company:', companyId);
   let query = supabase
     .from('invoices')
     .select('*')
@@ -309,10 +316,12 @@ export const getInvoices = async (companyId?: string): Promise<Invoice[]> => {
     return [];
   }
 
+  console.log('Fetched invoices:', data?.length || 0);
   return data || [];
 };
 
 export const getInvoicesByClient = async (clientId: string): Promise<Invoice[]> => {
+  console.log('Getting invoices for client:', clientId);
   const { data, error } = await supabase
     .from('invoices')
     .select('*')
@@ -324,12 +333,14 @@ export const getInvoicesByClient = async (clientId: string): Promise<Invoice[]> 
     return [];
   }
 
+  console.log('Fetched invoices for client:', data?.length || 0);
   return data || [];
 };
 
 export const getClientInvoices = getInvoicesByClient;
 
 export const getInvoicesByJob = async (jobId: string): Promise<Invoice[]> => {
+  console.log('Getting invoices for job:', jobId);
   const { data, error } = await supabase
     .from('invoices')
     .select('*')
@@ -341,12 +352,14 @@ export const getInvoicesByJob = async (jobId: string): Promise<Invoice[]> => {
     return [];
   }
 
+  console.log('Fetched invoices for job:', data?.length || 0);
   return data || [];
 };
 
 export const getJobInvoices = getInvoicesByJob;
 
 export const getInvoice = async (id: string): Promise<Invoice | null> => {
+  console.log('Getting invoice by ID:', id);
   const { data, error } = await supabase
     .from('invoices')
     .select(`
@@ -361,10 +374,12 @@ export const getInvoice = async (id: string): Promise<Invoice | null> => {
     return null;
   }
 
+  console.log('Fetched invoice:', data?.id);
   return data;
 };
 
 export const getInvoiceByViewLink = async (viewToken: string): Promise<Invoice | null> => {
+  console.log('Getting invoice by view token:', viewToken);
   try {
     const { data: invoices, error } = await supabase
       .from('invoices')
@@ -383,6 +398,7 @@ export const getInvoiceByViewLink = async (viewToken: string): Promise<Invoice |
       return null;
     }
 
+    console.log('Found invoice with view token:', invoices.id);
     const matchingInvoice = invoices;
 
     // Map invoice items
@@ -441,19 +457,21 @@ export const getInvoiceByViewLink = async (viewToken: string): Promise<Invoice |
       viewLink: matchingInvoice.view_token
     };
 
-    // Store the related entities in the store state for components to use
-    // We're not modifying the Invoice type, but making the data available
-    // This creates a clean separation between database queries and type structure
+    // Store the related entities in session storage for components to use
+    console.log('Storing invoice related entities in session storage');
     if (matchingInvoice.client) {
       await storeInvoiceRelatedClient(matchingInvoice.client);
+      console.log('Stored client data in session storage');
     }
     
     if (matchingInvoice.job) {
       await storeInvoiceRelatedJob(matchingInvoice.job);
+      console.log('Stored job data in session storage');
     }
     
     if (matchingInvoice.company) {
       await storeInvoiceRelatedCompany(matchingInvoice.company);
+      console.log('Stored company data in session storage');
     }
     
     return invoice;
@@ -576,9 +594,9 @@ export const deleteInvoice = async (id: string): Promise<boolean> => {
   return true;
 };
 
-// Helper functions to store related entities in session storage for components to use
-// This allows components to access the data without modifying the Invoice type
+// Helper functions to store related entities in session storage
 const storeInvoiceRelatedClient = async (client: any) => {
+  console.log('Storing invoice client data:', client?.id);
   if (!client) return;
   sessionStorage.setItem('current_invoice_client', JSON.stringify({
     id: client.id,
@@ -591,6 +609,7 @@ const storeInvoiceRelatedClient = async (client: any) => {
 };
 
 const storeInvoiceRelatedJob = async (job: any) => {
+  console.log('Storing invoice job data:', job?.id);
   if (!job) return;
   sessionStorage.setItem('current_invoice_job', JSON.stringify({
     id: job.id,
@@ -607,6 +626,7 @@ const storeInvoiceRelatedJob = async (job: any) => {
 };
 
 const storeInvoiceRelatedCompany = async (company: any) => {
+  console.log('Storing invoice company data:', company?.id);
   if (!company) return;
   sessionStorage.setItem('current_invoice_company', JSON.stringify({
     id: company.id,

@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
 import { Client, Company, Invoice, InvoiceItem, InvoiceStatus, ContractStatus, Job } from '@/types';
@@ -438,39 +437,7 @@ export const getInvoiceByViewLink = async (viewToken: string): Promise<Invoice |
       notes: matchingInvoice.notes,
       contractTerms: matchingInvoice.contract_terms,
       items: items,
-      viewLink: matchingInvoice.view_token,
-      client: matchingInvoice.client ? {
-        id: matchingInvoice.client.id,
-        name: matchingInvoice.client.name,
-        email: matchingInvoice.client.email,
-        phone: matchingInvoice.client.phone,
-        address: matchingInvoice.client.address,
-        createdAt: matchingInvoice.client.created_at
-      } : undefined,
-      job: matchingInvoice.job ? {
-        id: matchingInvoice.job.id,
-        clientId: matchingInvoice.job.client_id,
-        companyId: matchingInvoice.job.company_id,
-        title: matchingInvoice.job.title,
-        description: matchingInvoice.job.description,
-        status: matchingInvoice.job.status,
-        date: matchingInvoice.job.date,
-        location: matchingInvoice.job.location,
-        createdAt: matchingInvoice.job.created_at,
-        updatedAt: matchingInvoice.job.updated_at
-      } : undefined,
-      company: matchingInvoice.company ? {
-        id: matchingInvoice.company.id,
-        name: matchingInvoice.company.name,
-        email: matchingInvoice.company.email,
-        phone: matchingInvoice.company.phone,
-        address: matchingInvoice.company.address,
-        logo_url: matchingInvoice.company.logo_url,
-        is_default: matchingInvoice.company.is_default,
-        user_id: matchingInvoice.company.user_id,
-        created_at: matchingInvoice.company.created_at,
-        updated_at: matchingInvoice.company.updated_at
-      } : undefined
+      viewLink: matchingInvoice.view_token
     };
   } catch (error) {
     console.error("Error in getInvoiceByViewLink:", error);

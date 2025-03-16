@@ -32,10 +32,12 @@ const JobCreate = () => {
             <CardTitle>Job Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            <ClientSelector
-              selectedClientId={selectedClientId || undefined}
-              onClientSelect={handleClientSelect}
-            />
+            {!clientId && (
+              <ClientSelector
+                selectedClientId={selectedClientId || undefined}
+                onClientSelect={handleClientSelect}
+              />
+            )}
             
             <CompanySelector 
               className="mt-4" 
@@ -44,9 +46,9 @@ const JobCreate = () => {
           </CardContent>
         </Card>
         
-        {selectedClientId ? (
+        {(selectedClientId || clientId) ? (
           <JobForm 
-            clientId={selectedClientId} 
+            clientId={selectedClientId || clientId || ''} 
             companyId={selectedCompanyId} 
           />
         ) : (

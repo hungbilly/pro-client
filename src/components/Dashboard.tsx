@@ -40,20 +40,20 @@ const Dashboard: React.FC = () => {
   
   const { data: clients = [], isLoading: clientsLoading } = useQuery({
     queryKey: ['clients', selectedCompanyId],
-    queryFn: () => selectedCompanyId ? getClients(selectedCompanyId) : getClients(),
-    enabled: true
+    queryFn: () => getClients(selectedCompanyId),
+    enabled: !!selectedCompanyId
   });
 
   const { data: invoices = [], isLoading: invoicesLoading } = useQuery({
     queryKey: ['invoices', selectedCompanyId],
-    queryFn: () => selectedCompanyId ? getInvoices(selectedCompanyId) : getInvoices(),
-    enabled: true
+    queryFn: () => getInvoices(selectedCompanyId),
+    enabled: !!selectedCompanyId
   });
 
   const { data: jobs = [], isLoading: jobsLoading } = useQuery({
     queryKey: ['jobs', selectedCompanyId],
-    queryFn: () => selectedCompanyId ? getJobs(selectedCompanyId) : getJobs(),
-    enabled: true
+    queryFn: () => getJobs(selectedCompanyId),
+    enabled: !!selectedCompanyId
   });
 
   if (companyLoading) {

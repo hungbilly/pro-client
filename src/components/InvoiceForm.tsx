@@ -129,6 +129,25 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
 
     const amount = calculateTotalAmount();
 
+    const invoiceData: Omit<Invoice, 'id' | 'viewLink'> = {
+      clientId: client.id,
+      companyId: selectedCompanyId,
+      jobId,
+      number,
+      amount,
+      date: format(date, 'yyyy-MM-dd'),
+      dueDate: format(dueDate, 'yyyy-MM-dd'),
+      status,
+      contractStatus,
+      items,
+      notes,
+      contractTerms,
+    };
+
+    if (shootingDate) {
+      invoiceData.shootingDate = format(shootingDate, 'yyyy-MM-dd');
+    }
+
     try {
       if (existingInvoice) {
         const updatedInvoice: Invoice = {
@@ -140,7 +159,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
           amount,
           date: format(date, 'yyyy-MM-dd'),
           dueDate: format(dueDate, 'yyyy-MM-dd'),
-          shootingDate: shootingDate ? format(shootingDate, 'yyyy-MM-dd') : undefined,
           status,
           contractStatus,
           items,
@@ -149,25 +167,13 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
           viewLink: existingInvoice.viewLink,
         };
 
+        if (shootingDate) {
+          updatedInvoice.shootingDate = format(shootingDate, 'yyyy-MM-dd');
+        }
+
         await updateInvoice(updatedInvoice);
         toast.success('Invoice updated successfully!');
       } else {
-        const invoiceData = {
-          clientId: client.id,
-          companyId: selectedCompanyId,
-          jobId,
-          number,
-          amount,
-          date: format(date, 'yyyy-MM-dd'),
-          dueDate: format(dueDate, 'yyyy-MM-dd'),
-          shootingDate: shootingDate ? format(shootingDate, 'yyyy-MM-dd') : undefined,
-          status,
-          contractStatus,
-          items,
-          notes,
-          contractTerms,
-        };
-
         await saveInvoice(invoiceData);
         toast.success('Invoice saved successfully!');
       }

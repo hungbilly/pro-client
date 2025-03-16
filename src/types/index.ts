@@ -37,6 +37,9 @@ export interface Job {
   updatedAt: string;
 }
 
+export type InvoiceStatus = 'draft' | 'sent' | 'accepted' | 'paid';
+export type ContractStatus = 'pending' | 'accepted';
+
 export interface Invoice {
   id: string;
   clientId: string;
@@ -47,8 +50,8 @@ export interface Invoice {
   date: string;
   dueDate: string;
   shootingDate?: string;
-  status: 'draft' | 'sent' | 'accepted' | 'paid';
-  contractStatus?: 'pending' | 'accepted';
+  status: InvoiceStatus;
+  contractStatus?: ContractStatus;
   items: InvoiceItem[];
   notes?: string;
   contractTerms?: string;

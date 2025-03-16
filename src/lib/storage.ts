@@ -1,5 +1,4 @@
-
-import { Client, Invoice, STORAGE_KEYS, InvoiceItem, Job, Company } from "@/types";
+import { Client, Invoice, STORAGE_KEYS, InvoiceItem, Job, Company, InvoiceStatus, ContractStatus } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 
 // Generate a unique ID
@@ -464,8 +463,8 @@ export const getJobInvoices = async (jobId: string): Promise<Invoice[]> => {
         date: invoice.date,
         dueDate: invoice.due_date,
         shootingDate: invoice.shooting_date || undefined,
-        status: invoice.status as 'draft' | 'sent' | 'accepted' | 'paid',
-        contractStatus: invoice.contract_status as 'pending' | 'accepted' || undefined,
+        status: invoice.status as InvoiceStatus,
+        contractStatus: invoice.contract_status as ContractStatus || undefined,
         items: invoiceItems,
         notes: invoice.notes || undefined,
         contractTerms: invoice.contract_terms || undefined,
@@ -612,8 +611,8 @@ export const getInvoices = async (companyId?: string | null) => {
         date: invoice.date,
         dueDate: invoice.due_date,
         shootingDate: invoice.shooting_date,
-        status: invoice.status as 'draft' | 'sent' | 'accepted' | 'paid',
-        contractStatus: invoice.contract_status as 'pending' | 'accepted',
+        status: invoice.status as InvoiceStatus,
+        contractStatus: invoice.contract_status as ContractStatus,
         items,
         notes: invoice.notes,
         contractTerms: invoice.contract_terms,
@@ -672,8 +671,8 @@ export const getInvoice = async (id: string): Promise<Invoice | undefined> => {
       date: invoice.date,
       dueDate: invoice.due_date,
       shootingDate: invoice.shooting_date,
-      status: invoice.status as 'draft' | 'sent' | 'accepted' | 'paid',
-      contractStatus: invoice.contract_status as 'pending' | 'accepted',
+      status: invoice.status as InvoiceStatus,
+      contractStatus: invoice.contract_status as ContractStatus,
       items: invoiceItems,
       notes: invoice.notes,
       contractTerms: invoice.contract_terms,
@@ -685,7 +684,6 @@ export const getInvoice = async (id: string): Promise<Invoice | undefined> => {
   }
 };
 
-// Updated getInvoiceByViewLink to be more flexible
 export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | undefined> => {
   try {
     console.log('Searching for invoice with view_link:', viewLink);
@@ -806,8 +804,8 @@ export const getClientInvoices = async (clientId: string): Promise<Invoice[]> =>
         date: invoice.date,
         dueDate: invoice.due_date,
         shootingDate: invoice.shooting_date,
-        status: invoice.status as 'draft' | 'sent' | 'accepted' | 'paid',
-        contractStatus: invoice.contract_status as 'pending' | 'accepted',
+        status: invoice.status as InvoiceStatus,
+        contractStatus: invoice.contract_status as ContractStatus,
         items: invoiceItems,
         notes: invoice.notes,
         contractTerms: invoice.contract_terms,

@@ -1,3 +1,4 @@
+
 import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
 import { Client, Company, Invoice, InvoiceItem, InvoiceStatus, ContractStatus, Job } from '@/types';
@@ -477,9 +478,9 @@ export const getInvoiceByViewLink = async (viewToken: string): Promise<Invoice |
   }
 };
 
-export const saveInvoice = async (invoice: Omit<Invoice, 'id'>): Promise<Invoice | null> => {
+export const saveInvoice = async (invoiceData: Omit<Invoice, 'id' | 'viewLink'>): Promise<Invoice | null> => {
   const newInvoice = {
-    ...invoice,
+    ...invoiceData,
     id: uuidv4(),
     view_token: uuidv4(),
     created_at: new Date().toISOString()

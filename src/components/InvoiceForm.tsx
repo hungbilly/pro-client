@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Client, Invoice, InvoiceItem, Job } from '@/types';
@@ -128,36 +129,45 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
 
     const amount = calculateTotalAmount();
 
-    const invoiceData: Omit<Invoice, 'id' | 'viewLink'> = {
-      clientId: client.id,
-      companyId: selectedCompanyId,
-      jobId,
-      number,
-      amount,
-      date: format(date, 'yyyy-MM-dd'),
-      dueDate: format(dueDate, 'yyyy-MM-dd'),
-      status,
-      contractStatus,
-      items,
-      notes,
-      contractTerms,
-    };
-
-    if (shootingDate) {
-      invoiceData.shootingDate = format(shootingDate, 'yyyy-MM-dd');
-    }
-
     try {
       if (existingInvoice) {
         const updatedInvoice: Invoice = {
           id: existingInvoice.id,
-          ...invoiceData,
+          clientId: client.id,
+          companyId: selectedCompanyId,
+          jobId,
+          number,
+          amount,
+          date: format(date, 'yyyy-MM-dd'),
+          dueDate: format(dueDate, 'yyyy-MM-dd'),
+          shootingDate: shootingDate ? format(shootingDate, 'yyyy-MM-dd') : undefined,
+          status,
+          contractStatus,
+          items,
+          notes,
+          contractTerms,
           viewLink: existingInvoice.viewLink,
         };
 
         await updateInvoice(updatedInvoice);
         toast.success('Invoice updated successfully!');
       } else {
+        const invoiceData = {
+          clientId: client.id,
+          companyId: selectedCompanyId,
+          jobId,
+          number,
+          amount,
+          date: format(date, 'yyyy-MM-dd'),
+          dueDate: format(dueDate, 'yyyy-MM-dd'),
+          shootingDate: shootingDate ? format(shootingDate, 'yyyy-MM-dd') : undefined,
+          status,
+          contractStatus,
+          items,
+          notes,
+          contractTerms,
+        };
+
         await saveInvoice(invoiceData);
         toast.success('Invoice saved successfully!');
       }

@@ -8,11 +8,17 @@ const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Client functions
-export const getClients = async (): Promise<Client[]> => {
-  const { data, error } = await supabase
+export const getClients = async (companyId?: string): Promise<Client[]> => {
+  let query = supabase
     .from('clients')
     .select('*')
     .order('created_at', { ascending: false });
+    
+  if (companyId) {
+    query = query.eq('company_id', companyId);
+  }
+  
+  const { data, error } = await query;
 
   if (error) {
     console.error('Error fetching clients:', error);
@@ -178,11 +184,17 @@ export const deleteCompany = async (id: string): Promise<boolean> => {
 };
 
 // Job functions
-export const getJobs = async (): Promise<Job[]> => {
-  const { data, error } = await supabase
+export const getJobs = async (companyId?: string): Promise<Job[]> => {
+  let query = supabase
     .from('jobs')
     .select('*')
     .order('created_at', { ascending: false });
+    
+  if (companyId) {
+    query = query.eq('company_id', companyId);
+  }
+  
+  const { data, error } = await query;
 
   if (error) {
     console.error('Error fetching jobs:', error);
@@ -206,6 +218,8 @@ export const getJobsByClient = async (clientId: string): Promise<Job[]> => {
 
   return data || [];
 };
+
+export const getClientJobs = getJobsByClient;
 
 export const getJob = async (id: string): Promise<Job | null> => {
   const { data, error } = await supabase
@@ -278,11 +292,17 @@ export const deleteJob = async (id: string): Promise<boolean> => {
 };
 
 // Invoice functions
-export const getInvoices = async (): Promise<Invoice[]> => {
-  const { data, error } = await supabase
+export const getInvoices = async (companyId?: string): Promise<Invoice[]> => {
+  let query = supabase
     .from('invoices')
     .select('*')
     .order('created_at', { ascending: false });
+    
+  if (companyId) {
+    query = query.eq('company_id', companyId);
+  }
+  
+  const { data, error } = await query;
 
   if (error) {
     console.error('Error fetching invoices:', error);
@@ -306,6 +326,25 @@ export const getInvoicesByClient = async (clientId: string): Promise<Invoice[]> 
 
   return data || [];
 };
+
+export const getClientInvoices = getInvoicesByClient;
+
+export const getInvoicesByJob = async (jobId: string): Promise<Invoice[]> => {
+  const { data, error } = await supabase
+    .from('invoices')
+    .select('*')
+    .eq('job_id', jobId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching invoices by job:', error);
+    return [];
+  }
+
+  return data || [];
+};
+
+export const getJobInvoices = getInvoicesByJob;
 
 export const getInvoice = async (id: string): Promise<Invoice | null> => {
   const { data, error } = await supabase
@@ -352,7 +391,7 @@ export const getInvoiceByViewLink = async (viewToken: string): Promise<Invoice |
       invoiceId: item.invoice_id,
       description: item.description,
       quantity: item.quantity,
-      unitPrice: item.unit_price,
+      rate: item.rate,
       amount: item.amount
     }));
     
@@ -389,23 +428,23 @@ export const getInvoiceByViewLink = async (viewToken: string): Promise<Invoice |
       jobId: matchingInvoice.job_id,
       companyId: matchingInvoice.company_id,
       number: matchingInvoice.number,
-      issueDate: matchingInvoice.issue_date,
+      date: matchingInvoice.date,
       dueDate: matchingInvoice.due_date,
+      shootingDate: matchingInvoice.shooting_date,
       status: status,
       contractStatus: contractStatus,
-      totalAmount: matchingInvoice.total_amount,
+      amount: matchingInvoice.amount,
       notes: matchingInvoice.notes,
+      contractTerms: matchingInvoice.contract_terms,
       items: items,
-      createdAt: matchingInvoice.created_at,
-      updatedAt: matchingInvoice.updated_at,
+      viewLink: matchingInvoice.view_token,
       client: matchingInvoice.client ? {
         id: matchingInvoice.client.id,
         name: matchingInvoice.client.name,
         email: matchingInvoice.client.email,
         phone: matchingInvoice.client.phone,
         address: matchingInvoice.client.address,
-        createdAt: matchingInvoice.client.created_at,
-        updatedAt: matchingInvoice.client.updated_at
+        createdAt: matchingInvoice.client.created_at
       } : undefined,
       job: matchingInvoice.job ? {
         id: matchingInvoice.job.id,
@@ -425,13 +464,12 @@ export const getInvoiceByViewLink = async (viewToken: string): Promise<Invoice |
         email: matchingInvoice.company.email,
         phone: matchingInvoice.company.phone,
         address: matchingInvoice.company.address,
-        logo: matchingInvoice.company.logo,
-        bankDetails: matchingInvoice.company.bank_details,
-        taxNumber: matchingInvoice.company.tax_number,
-        createdAt: matchingInvoice.company.created_at,
-        updatedAt: matchingInvoice.company.updated_at
-      } : undefined,
-      viewToken: matchingInvoice.view_token
+        logo_url: matchingInvoice.company.logo_url,
+        is_default: matchingInvoice.company.is_default,
+        user_id: matchingInvoice.company.user_id,
+        created_at: matchingInvoice.company.created_at,
+        updated_at: matchingInvoice.company.updated_at
+      } : undefined
     };
   } catch (error) {
     console.error("Error in getInvoiceByViewLink:", error);
@@ -439,13 +477,12 @@ export const getInvoiceByViewLink = async (viewToken: string): Promise<Invoice |
   }
 };
 
-export const saveInvoice = async (invoice: Omit<Invoice, 'id' | 'createdAt' | 'updatedAt'>, items: Omit<InvoiceItem, 'id' | 'invoiceId'>[]): Promise<Invoice | null> => {
+export const saveInvoice = async (invoice: Omit<Invoice, 'id'>): Promise<Invoice | null> => {
   const newInvoice = {
     ...invoice,
     id: uuidv4(),
     view_token: uuidv4(),
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
+    created_at: new Date().toISOString()
   };
 
   const { data, error } = await supabase
@@ -459,34 +496,25 @@ export const saveInvoice = async (invoice: Omit<Invoice, 'id' | 'createdAt' | 'u
     return null;
   }
 
-  // Save invoice items
-  if (items.length > 0) {
-    const invoiceItems = items.map(item => ({
-      ...item,
-      id: uuidv4(),
-      invoice_id: data.id
-    }));
-
-    const { error: itemsError } = await supabase
-      .from('invoice_items')
-      .insert(invoiceItems);
-
-    if (itemsError) {
-      console.error('Error saving invoice items:', itemsError);
-      // Consider rolling back the invoice here
-      return null;
-    }
-  }
-
   return data;
 };
 
-export const updateInvoice = async (invoice: Invoice, items: InvoiceItem[]): Promise<Invoice | null> => {
+export const updateInvoice = async (invoice: Invoice): Promise<Invoice | null> => {
   const { data, error } = await supabase
     .from('invoices')
     .update({
-      ...invoice,
-      updated_at: new Date().toISOString()
+      client_id: invoice.clientId,
+      company_id: invoice.companyId,
+      job_id: invoice.jobId,
+      number: invoice.number,
+      amount: invoice.amount,
+      date: invoice.date,
+      due_date: invoice.dueDate,
+      shooting_date: invoice.shootingDate,
+      status: invoice.status,
+      contract_status: invoice.contractStatus,
+      notes: invoice.notes,
+      contract_terms: invoice.contractTerms
     })
     .eq('id', invoice.id)
     .select()
@@ -497,33 +525,40 @@ export const updateInvoice = async (invoice: Invoice, items: InvoiceItem[]): Pro
     return null;
   }
 
-  // Delete existing items
-  const { error: deleteError } = await supabase
-    .from('invoice_items')
-    .delete()
-    .eq('invoice_id', invoice.id);
+  return data;
+};
 
-  if (deleteError) {
-    console.error('Error deleting invoice items:', deleteError);
+export const updateInvoiceStatus = async (invoiceId: string, status: InvoiceStatus): Promise<Invoice | null> => {
+  const { data, error } = await supabase
+    .from('invoices')
+    .update({
+      status
+    })
+    .eq('id', invoiceId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error updating invoice status:', error);
     return null;
   }
 
-  // Insert new items
-  if (items.length > 0) {
-    const invoiceItems = items.map(item => ({
-      ...item,
-      id: item.id || uuidv4(),
-      invoice_id: invoice.id
-    }));
+  return data;
+};
 
-    const { error: itemsError } = await supabase
-      .from('invoice_items')
-      .insert(invoiceItems);
+export const updateContractStatus = async (invoiceId: string, contractStatus: ContractStatus): Promise<Invoice | null> => {
+  const { data, error } = await supabase
+    .from('invoices')
+    .update({
+      contract_status: contractStatus
+    })
+    .eq('id', invoiceId)
+    .select()
+    .single();
 
-    if (itemsError) {
-      console.error('Error saving invoice items:', itemsError);
-      return null;
-    }
+  if (error) {
+    console.error('Error updating contract status:', error);
+    return null;
   }
 
   return data;

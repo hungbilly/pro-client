@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Client, Invoice, InvoiceItem, Job } from '@/types';
@@ -152,24 +151,9 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
       if (existingInvoice) {
         const updatedInvoice: Invoice = {
           id: existingInvoice.id,
-          clientId: client.id,
-          companyId: selectedCompanyId,
-          jobId,
-          number,
-          amount,
-          date: format(date, 'yyyy-MM-dd'),
-          dueDate: format(dueDate, 'yyyy-MM-dd'),
-          status,
-          contractStatus,
-          items,
-          notes,
-          contractTerms,
+          ...invoiceData,
           viewLink: existingInvoice.viewLink,
         };
-
-        if (shootingDate) {
-          updatedInvoice.shootingDate = format(shootingDate, 'yyyy-MM-dd');
-        }
 
         await updateInvoice(updatedInvoice);
         toast.success('Invoice updated successfully!');

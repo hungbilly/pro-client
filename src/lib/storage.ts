@@ -1,4 +1,3 @@
-
 import { Client, Invoice, STORAGE_KEYS, InvoiceItem, Job, Company, InvoiceStatus, ContractStatus } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -804,9 +803,30 @@ export const getClientInvoices = async (clientId: string): Promise<Invoice[]> =>
           amount: item.amount
         }));
       
-      // Fix: Explicitly cast the status values to their respective types 
-      const status = invoice.status as InvoiceStatus;
-      const contractStatus = invoice.contract_status as ContractStatus | undefined;
+      // Fix: Properly cast string values to their respective enum types
+      let status: InvoiceStatus;
+      switch (invoice.status) {
+        case 'draft':
+        case 'sent':
+        case 'accepted':
+        case 'paid':
+          status = invoice.status as InvoiceStatus;
+          break;
+        default:
+          status = 'draft'; // Default fallback
+      }
+      
+      let contractStatus: ContractStatus | undefined;
+      if (invoice.contract_status) {
+        switch (invoice.contract_status) {
+          case 'pending':
+          case 'accepted':
+            contractStatus = invoice.contract_status as ContractStatus;
+            break;
+          default:
+            contractStatus = 'pending'; // Default fallback
+        }
+      }
       
       return {
         id: invoice.id,

@@ -733,6 +733,10 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
       amount: item.amount
     }));
     
+    // Ensure we're explicitly casting status values to their respective types
+    const status = matchingInvoice.status as InvoiceStatus;
+    const contractStatus = matchingInvoice.contract_status as ContractStatus;
+    
     return {
       id: matchingInvoice.id,
       clientId: matchingInvoice.client_id,
@@ -742,8 +746,8 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
       amount: matchingInvoice.amount,
       date: matchingInvoice.date,
       dueDate: matchingInvoice.due_date,
-      status: matchingInvoice.status,
-      contractStatus: matchingInvoice.contract_status,
+      status,
+      contractStatus,
       items: invoiceItems,
       notes: matchingInvoice.notes,
       contractTerms: matchingInvoice.contract_terms,
@@ -794,6 +798,10 @@ export const getClientInvoices = async (clientId: string): Promise<Invoice[]> =>
           amount: item.amount
         }));
       
+      // Ensure we're explicitly casting status values to their respective types
+      const status = invoice.status as InvoiceStatus;
+      const contractStatus = invoice.contract_status as ContractStatus;
+      
       return {
         id: invoice.id,
         clientId: invoice.client_id,
@@ -804,8 +812,8 @@ export const getClientInvoices = async (clientId: string): Promise<Invoice[]> =>
         date: invoice.date,
         dueDate: invoice.due_date,
         shootingDate: invoice.shooting_date,
-        status: invoice.status as InvoiceStatus,
-        contractStatus: invoice.contract_status as ContractStatus,
+        status,
+        contractStatus,
         items: invoiceItems,
         notes: invoice.notes,
         contractTerms: invoice.contract_terms,

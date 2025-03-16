@@ -1,3 +1,4 @@
+
 import { Client, Invoice, STORAGE_KEYS, InvoiceItem, Job, Company, InvoiceStatus, ContractStatus } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -410,6 +411,69 @@ export const getClientJobs = async (clientId: string): Promise<Job[]> => {
     }));
   } catch (error) {
     console.error('Error fetching client jobs:', error);
+    return [];
+  }
+};
+
+export const getJobInvoices = async (jobId: string): Promise<Invoice[]> => {
+  try {
+    // First get all invoices for the job
+    const { data: invoicesData, error: invoicesError } = await supabase
+      .from('invoices')
+      .select('*')
+      .eq('job_id', jobId);
+    
+    if (invoicesError || !invoicesData || invoicesData.length === 0) {
+      if (invoicesError) console.error('Error fetching job invoices:', invoicesError);
+      return [];
+    }
+    
+    // Get all invoice IDs
+    const invoiceIds = invoicesData.map(invoice => invoice.id);
+    
+    // Then get all invoice items for these invoices
+    const { data: itemsData, error: itemsError } = await supabase
+      .from('invoice_items')
+      .select('*')
+      .in('invoice_id', invoiceIds);
+    
+    if (itemsError) {
+      console.error('Error fetching invoice items:', itemsError);
+      // Continue with empty items if there was an error
+    }
+    
+    // Map and transform the data
+    return invoicesData.map(invoice => {
+      const invoiceItems = (itemsData || [])
+        .filter(item => item.invoice_id === invoice.id)
+        .map(item => ({
+          id: item.id,
+          description: item.description,
+          quantity: item.quantity,
+          rate: item.rate,
+          amount: item.amount
+        }));
+      
+      return {
+        id: invoice.id,
+        clientId: invoice.client_id,
+        companyId: invoice.company_id,
+        jobId: invoice.job_id || undefined,
+        number: invoice.number,
+        amount: invoice.amount,
+        date: invoice.date,
+        dueDate: invoice.due_date,
+        shootingDate: invoice.shooting_date || undefined,
+        status: invoice.status as InvoiceStatus,
+        contractStatus: invoice.contract_status as ContractStatus || undefined,
+        items: invoiceItems,
+        notes: invoice.notes || undefined,
+        contractTerms: invoice.contract_terms || undefined,
+        viewLink: invoice.view_link
+      };
+    });
+  } catch (error) {
+    console.error('Error fetching job invoices:', error);
     return [];
   }
 };

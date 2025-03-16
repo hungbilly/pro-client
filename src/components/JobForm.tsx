@@ -21,10 +21,9 @@ interface JobFormProps {
   job?: Job;
   clientId?: string;
   companyId?: string | null;
-  onSuccess?: () => void;
 }
 
-const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefinedClientId, companyId: predefinedCompanyId, onSuccess }) => {
+const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefinedClientId, companyId: predefinedCompanyId }) => {
   const { clientId: clientIdParam } = useParams<{ clientId: string }>();
   const navigate = useNavigate();
 
@@ -114,12 +113,7 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
         await saveJob(newJob);
         toast.success('Job created successfully!');
       }
-      
-      if (onSuccess) {
-        onSuccess();
-      } else {
-        navigate(`/client/${client.id}`);
-      }
+      navigate(`/client/${client.id}`);
     } catch (error) {
       console.error('Failed to save/update job:', error);
       toast.error('Failed to save/update job.');
@@ -217,7 +211,7 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
         </form>
       </CardContent>
       <CardFooter className="flex justify-between">
-        <Button variant="outline" onClick={() => onSuccess ? onSuccess() : navigate(`/client/${client.id}`)}>Cancel</Button>
+        <Button variant="outline" onClick={() => navigate(`/client/${client.id}`)}>Cancel</Button>
         <Button onClick={handleSubmit}>{existingJob ? 'Update Job' : 'Create Job'}</Button>
       </CardFooter>
     </Card>

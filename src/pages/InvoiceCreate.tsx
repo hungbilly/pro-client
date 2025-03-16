@@ -2,16 +2,15 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import InvoiceForm from '@/components/InvoiceForm';
-import { getJob, getClient } from '@/lib/storage';
-import { Job, Client } from '@/types';
+import { getJob } from '@/lib/storage';
+import { Job } from '@/types';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { toast } from 'sonner';
 
 const InvoiceCreate = () => {
-  const { jobId, clientId } = useParams<{ jobId?: string; clientId?: string }>();
+  const { jobId } = useParams<{ jobId: string }>();
   const navigate = useNavigate();
   const [job, setJob] = useState<Job | null>(null);
-  const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -19,32 +18,18 @@ const InvoiceCreate = () => {
       setLoading(true);
       
       try {
-        // If jobId is provided, load the job first
-        if (jobId) {
-          const fetchedJob = await getJob(jobId);
-          if (fetchedJob) {
-            setJob(fetchedJob);
-            return; // We have the job and its clientId
-          } else {
-            toast.error('Job not found');
-            navigate('/');
-            return;
-          }
-        } 
-        
-        // If jobId not provided but clientId is, load the client
-        if (clientId) {
-          const fetchedClient = await getClient(clientId);
-          if (fetchedClient) {
-            setClient(fetchedClient);
-          } else {
-            toast.error('Client not found');
-            navigate('/');
-            return;
-          }
-        } else if (!jobId) {
-          // Neither jobId nor clientId provided
-          toast.error('Missing job or client information');
+        // JobId is required for invoice creation
+        if (!jobId) {
+          toast.error('Job information is required to create an invoice');
+          navigate('/');
+          return;
+        }
+
+        const fetchedJob = await getJob(jobId);
+        if (fetchedJob) {
+          setJob(fetchedJob);
+        } else {
+          toast.error('Job not found');
           navigate('/');
           return;
         }
@@ -58,7 +43,7 @@ const InvoiceCreate = () => {
     };
 
     loadData();
-  }, [jobId, clientId, navigate]);
+  }, [jobId, navigate]);
 
   if (loading) {
     return (
@@ -70,15 +55,11 @@ const InvoiceCreate = () => {
     );
   }
 
-  // If we have a job, use its clientId
-  const effectiveClientId = job?.clientId || (client?.id || '');
-  const title = job ? `Create Invoice for ${job.title}` : 'Create Invoice';
-
-  if (!effectiveClientId) {
+  if (!job) {
     return (
       <PageTransition>
         <div className="container mx-auto py-8">
-          <div className="text-center">Client information not available</div>
+          <div className="text-center">Job information not available</div>
         </div>
       </PageTransition>
     );
@@ -87,8 +68,8 @@ const InvoiceCreate = () => {
   return (
     <PageTransition>
       <div className="container mx-auto py-8">
-        <h1 className="text-3xl font-bold mb-8 text-center">{title}</h1>
-        <InvoiceForm clientId={effectiveClientId} jobId={jobId} />
+        <h1 className="text-3xl font-bold mb-8 text-center">Create Invoice for {job.title}</h1>
+        <InvoiceForm clientId={job.clientId} jobId={jobId} />
       </div>
     </PageTransition>
   );

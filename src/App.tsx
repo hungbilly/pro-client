@@ -99,14 +99,6 @@ const App = () => (
                 </ProtectedRoute>
               } 
             />
-            <Route 
-              path="/invoice/create/:clientId" 
-              element={
-                <ProtectedRoute adminOnly>
-                  <InvoiceCreate />
-                </ProtectedRoute>
-              } 
-            />
             <Route path="/invoice/:viewLink" element={<InvoiceView />} />
             <Route path="/auth" element={<Auth />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

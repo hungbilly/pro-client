@@ -1,14 +1,18 @@
 
 import React from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import JobForm from '@/components/JobForm';
 import PageTransition from '@/components/ui-custom/PageTransition';
+import { toast } from 'sonner';
 
 const JobCreate = () => {
   const { clientId } = useParams<{ clientId: string }>();
+  const navigate = useNavigate();
 
   if (!clientId) {
-    return <div>Error: Client ID is required</div>;
+    toast.error('Client ID is required to create a job');
+    navigate('/');
+    return null;
   }
 
   return (

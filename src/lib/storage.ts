@@ -804,9 +804,9 @@ export const getClientInvoices = async (clientId: string): Promise<Invoice[]> =>
           amount: item.amount
         }));
       
-      // Ensure we're explicitly casting status values to their respective types
+      // Fix: Explicitly cast the status values to their respective types 
       const status = invoice.status as InvoiceStatus;
-      const contractStatus = invoice.contract_status as ContractStatus;
+      const contractStatus = invoice.contract_status as ContractStatus | undefined;
       
       return {
         id: invoice.id,

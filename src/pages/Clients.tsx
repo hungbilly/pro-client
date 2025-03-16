@@ -10,6 +10,7 @@ import ClientCard from '@/components/ClientCard';
 import AddClientModal from '@/components/ui-custom/AddClientModal';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { Client } from '@/types';
+import { getClients } from '@/lib/storage';
 
 const Clients = () => {
   const navigate = useNavigate();
@@ -21,8 +22,7 @@ const Clients = () => {
     queryKey: ['clients'],
     queryFn: async () => {
       try {
-        // This would typically be an API call to fetch clients
-        return [];
+        return await getClients();
       } catch (error) {
         console.error('Error fetching clients:', error);
         throw error;
@@ -32,8 +32,7 @@ const Clients = () => {
 
   // Filter clients based on search query
   const filteredClients = clients.filter((client: Client) => {
-    const fullName = `${client.firstName} ${client.lastName}`.toLowerCase();
-    return fullName.includes(searchQuery.toLowerCase()) || 
+    return client.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
            client.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
            client.phone?.includes(searchQuery);
   });

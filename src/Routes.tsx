@@ -12,22 +12,26 @@ import JobEdit from '@/pages/JobEdit';
 import JobDetail from '@/pages/JobDetail';
 import Settings from '@/pages/Settings';
 import NotFound from '@/pages/NotFound';
+import MainNavbar from '@/components/MainNavbar';
 
 const AppRoutes = () => {
   return (
-    <Routes>
-      <Route path="/" element={<Index />} />
-      <Route path="/client/new" element={<ClientNew />} />
-      <Route path="/client/:id" element={<ClientDetail />} />
-      <Route path="/client/edit/:id" element={<ClientEdit />} />
-      <Route path="/client/:clientId/job/create" element={<JobCreate />} />
-      <Route path="/client/:clientId/job/edit/:id" element={<JobEdit />} />
-      <Route path="/job/:id" element={<JobDetail />} />
-      <Route path="/job/:jobId/invoice/create" element={<InvoiceCreate />} />
-      <Route path="/invoice/:viewLink" element={<InvoiceView />} />
-      <Route path="/settings" element={<Settings />} />
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+    <>
+      <MainNavbar />
+      <Routes>
+        <Route path="/" element={<Index />} />
+        <Route path="/client/new" element={<ClientNew />} />
+        <Route path="/client/:id" element={<ClientDetail />} />
+        <Route path="/client/edit/:id" element={<ClientEdit />} />
+        <Route path="/client/:clientId/job/create" element={<JobCreate />} />
+        <Route path="/client/:clientId/job/edit/:id" element={<JobEdit />} />
+        <Route path="/job/:id" element={<JobDetail />} />
+        <Route path="/job/:jobId/invoice/create" element={<InvoiceCreate />} />
+        <Route path="/invoice/:viewLink" element={<InvoiceView />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </>
   );
 };
 

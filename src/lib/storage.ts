@@ -1,3 +1,4 @@
+
 import { Client, Invoice, STORAGE_KEYS, InvoiceItem, Job, Company, InvoiceStatus, ContractStatus } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -733,10 +734,14 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
       amount: item.amount
     }));
     
-    // Fix: Properly cast the string values to the appropriate enum types
+    // Properly cast the status string to the InvoiceStatus type
     const status = matchingInvoice.status as InvoiceStatus;
-    // Handle potential undefined value for contract_status
-    const contractStatus = matchingInvoice.contract_status ? (matchingInvoice.contract_status as ContractStatus) : undefined;
+    
+    // Handle possible undefined contractStatus
+    let contractStatus: ContractStatus | undefined = undefined;
+    if (matchingInvoice.contract_status) {
+      contractStatus = matchingInvoice.contract_status as ContractStatus;
+    }
     
     return {
       id: matchingInvoice.id,

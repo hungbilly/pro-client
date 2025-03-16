@@ -7,7 +7,7 @@ import PageTransition from '@/components/ui-custom/PageTransition';
 import AddClientModal from '@/components/ui-custom/AddClientModal';
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { ClientCard } from '@/components/ClientCard';
+import ClientCard from '@/components/ClientCard';
 import { useQuery } from '@tanstack/react-query';
 import { getClients } from '@/lib/storage';
 

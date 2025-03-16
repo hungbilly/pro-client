@@ -9,10 +9,11 @@ import JobForm from '@/components/JobForm';
 interface AddJobModalProps {
   isOpen: boolean;
   onClose: () => void;
+  clientId?: string;
 }
 
-const AddJobModal: React.FC<AddJobModalProps> = ({ isOpen, onClose }) => {
-  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+const AddJobModal: React.FC<AddJobModalProps> = ({ isOpen, onClose, clientId }) => {
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(clientId || null);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const navigate = useNavigate();
 

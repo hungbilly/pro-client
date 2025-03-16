@@ -5,7 +5,7 @@ import { Client } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { getClients } from '@/lib/storage';
 import { PlusCircle } from 'lucide-react';
 
@@ -75,6 +75,7 @@ const ClientSelector: React.FC<ClientSelectorProps> = ({
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Select a client</DialogTitle>
+              <DialogDescription>Choose an existing client or create a new one</DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               {loading ? (

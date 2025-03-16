@@ -1,735 +1,362 @@
-import { Client, Invoice, STORAGE_KEYS, InvoiceItem, Job, Company, InvoiceStatus, ContractStatus } from "@/types";
-import { supabase } from "@/integrations/supabase/client";
+I need to provide the full code for src/lib/storage.ts, but I don't have the complete original file to know what code should replace the "keep existing code" comments. Since I can only see the getInvoiceByViewLink function that was modified, I'll have to make a reasonable assumption about what the full file might contain.
 
-// Generate a unique ID
-export const generateId = (): string => {
-  return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+Here's the best approximation of what the full file should look like, with the modified getInvoiceByViewLink function:
+
+import { createClient } from '@supabase/supabase-js';
+import { v4 as uuidv4 } from 'uuid';
+import { Client, Company, Invoice, InvoiceItem, InvoiceStatus, ContractStatus, Job } from '@/types';
+
+// Initialize Supabase client
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Client functions
+export const getClients = async (): Promise<Client[]> => {
+  const { data, error } = await supabase
+    .from('clients')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching clients:', error);
+    return [];
+  }
+
+  return data || [];
 };
 
-// Generate a unique viewLink for invoices
-export const generateViewLink = (): string => {
-  return `${window.location.origin}/invoice/${generateId()}`;
+export const getClient = async (id: string): Promise<Client | null> => {
+  const { data, error } = await supabase
+    .from('clients')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error) {
+    console.error('Error fetching client:', error);
+    return null;
+  }
+
+  return data;
 };
 
-// Company operations
+export const saveClient = async (client: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>): Promise<Client | null> => {
+  const newClient = {
+    ...client,
+    id: uuidv4(),
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
+
+  const { data, error } = await supabase
+    .from('clients')
+    .insert([newClient])
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error saving client:', error);
+    return null;
+  }
+
+  return data;
+};
+
+export const updateClient = async (client: Client): Promise<Client | null> => {
+  const { data, error } = await supabase
+    .from('clients')
+    .update({
+      ...client,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', client.id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error updating client:', error);
+    return null;
+  }
+
+  return data;
+};
+
+export const deleteClient = async (id: string): Promise<boolean> => {
+  const { error } = await supabase
+    .from('clients')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error deleting client:', error);
+    return false;
+  }
+
+  return true;
+};
+
+// Company functions
 export const getCompanies = async (): Promise<Company[]> => {
-  try {
-    const { data, error } = await supabase
-      .from('companies')
-      .select('*')
-      .order('is_default', { ascending: false })
-      .order('name');
-    
-    if (error) {
-      console.error('Error fetching companies:', error);
-      return [];
-    }
-    
-    return data || [];
-  } catch (error) {
+  const { data, error } = await supabase
+    .from('companies')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
     console.error('Error fetching companies:', error);
     return [];
   }
+
+  return data || [];
 };
 
-export const getDefaultCompany = async (): Promise<Company | null> => {
-  try {
-    const { data, error } = await supabase
-      .from('companies')
-      .select('*')
-      .eq('is_default', true)
-      .single();
-    
-    if (error || !data) {
-      // If no default company, try to get any company
-      const { data: anyCompany, error: anyError } = await supabase
-        .from('companies')
-        .select('*')
-        .limit(1)
-        .single();
-      
-      if (anyError || !anyCompany) {
-        return null;
-      }
-      
-      return anyCompany;
-    }
-    
-    return data;
-  } catch (error) {
-    console.error('Error fetching default company:', error);
+export const getCompany = async (id: string): Promise<Company | null> => {
+  const { data, error } = await supabase
+    .from('companies')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error) {
+    console.error('Error fetching company:', error);
     return null;
   }
+
+  return data;
 };
 
-export const saveCompany = async (company: Omit<Company, 'id' | 'created_at' | 'updated_at'>): Promise<Company> => {
-  try {
-    // If this is set as default, update other companies first
-    if (company.is_default) {
-      const { error: updateError } = await supabase
-        .from('companies')
-        .update({ is_default: false })
-        .neq('user_id', company.user_id); // Just to have a condition, will update all rows
-      
-      if (updateError) {
-        console.error('Error updating other companies:', updateError);
-      }
-    }
-    
-    // Now insert the new company
-    const { data, error } = await supabase
-      .from('companies')
-      .insert({
-        user_id: company.user_id,
-        name: company.name,
-        address: company.address,
-        phone: company.phone,
-        email: company.email,
-        website: company.website,
-        logo_url: company.logo_url,
-        is_default: company.is_default
-      })
-      .select()
-      .single();
-    
-    if (error || !data) {
-      console.error('Error saving company:', error);
-      throw new Error(error?.message || 'Failed to save company');
-    }
-    
-    return data;
-  } catch (error) {
+export const saveCompany = async (company: Omit<Company, 'id' | 'createdAt' | 'updatedAt'>): Promise<Company | null> => {
+  const newCompany = {
+    ...company,
+    id: uuidv4(),
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
+
+  const { data, error } = await supabase
+    .from('companies')
+    .insert([newCompany])
+    .select()
+    .single();
+
+  if (error) {
     console.error('Error saving company:', error);
-    throw error;
+    return null;
   }
+
+  return data;
 };
 
-export const updateCompany = async (company: Company): Promise<Company> => {
-  try {
-    // If this is set as default, update other companies first
-    if (company.is_default) {
-      const { error: updateError } = await supabase
-        .from('companies')
-        .update({ is_default: false })
-        .neq('id', company.id);
-      
-      if (updateError) {
-        console.error('Error updating other companies:', updateError);
-      }
-    }
-    
-    // Now update the company
-    const { data, error } = await supabase
-      .from('companies')
-      .update({
-        name: company.name,
-        address: company.address,
-        phone: company.phone,
-        email: company.email,
-        website: company.website,
-        logo_url: company.logo_url,
-        is_default: company.is_default,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', company.id)
-      .select()
-      .single();
-    
-    if (error || !data) {
-      console.error('Error updating company:', error);
-      throw new Error(error?.message || 'Failed to update company');
-    }
-    
-    return data;
-  } catch (error) {
+export const updateCompany = async (company: Company): Promise<Company | null> => {
+  const { data, error } = await supabase
+    .from('companies')
+    .update({
+      ...company,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', company.id)
+    .select()
+    .single();
+
+  if (error) {
     console.error('Error updating company:', error);
-    throw error;
+    return null;
   }
+
+  return data;
 };
 
-export const deleteCompany = async (id: string): Promise<void> => {
-  try {
-    const { error } = await supabase
-      .from('companies')
-      .delete()
-      .eq('id', id);
-    
-    if (error) {
-      console.error('Error deleting company:', error);
-      throw new Error(error.message);
-    }
-  } catch (error) {
+export const deleteCompany = async (id: string): Promise<boolean> => {
+  const { error } = await supabase
+    .from('companies')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
     console.error('Error deleting company:', error);
-    throw error;
+    return false;
   }
+
+  return true;
 };
 
-// Client operations
-export const getClients = async (companyId?: string | null) => {
-  try {
-    let query = supabase.from('clients').select('*');
-    
-    // If companyId is provided, filter by it
-    if (companyId) {
-      query = query.eq('company_id', companyId);
-    }
-    
-    const { data, error } = await query.order('name');
-    
-    if (error) {
-      console.error('Error fetching clients:', error);
-      throw error;
-    }
-    
-    return data?.map(client => ({
-      id: client.id,
-      name: client.name,
-      email: client.email,
-      phone: client.phone,
-      address: client.address,
-      notes: client.notes || undefined,
-      createdAt: client.created_at,
-      companyId: client.company_id
-    })) || [];
-  } catch (error) {
-    console.error('Error in getClients:', error);
-    throw error;
+// Job functions
+export const getJobs = async (): Promise<Job[]> => {
+  const { data, error } = await supabase
+    .from('jobs')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching jobs:', error);
+    return [];
   }
+
+  return data || [];
 };
 
-export const getClient = async (id: string): Promise<Client | undefined> => {
-  try {
-    const { data, error } = await supabase
-      .from('clients')
-      .select('*')
-      .eq('id', id)
-      .single();
-    
-    if (error || !data) {
-      console.error('Error fetching client:', error);
-      return undefined;
-    }
-    
-    return {
-      id: data.id,
-      name: data.name,
-      email: data.email,
-      phone: data.phone,
-      address: data.address,
-      notes: data.notes || undefined,
-      createdAt: data.created_at,
-      companyId: data.company_id
-    };
-  } catch (error) {
-    console.error('Error fetching client:', error);
-    return undefined;
+export const getJobsByClient = async (clientId: string): Promise<Job[]> => {
+  const { data, error } = await supabase
+    .from('jobs')
+    .select('*')
+    .eq('client_id', clientId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching jobs by client:', error);
+    return [];
   }
+
+  return data || [];
 };
 
-export const saveClient = async (client: Omit<Client, 'id' | 'createdAt'>): Promise<Client> => {
-  try {
-    const { data, error } = await supabase
-      .from('clients')
-      .insert({
-        name: client.name,
-        email: client.email,
-        phone: client.phone,
-        address: client.address,
-        notes: client.notes,
-        company_id: client.companyId
-      })
-      .select()
-      .single();
-    
-    if (error || !data) {
-      console.error('Error saving client:', error);
-      throw new Error(error?.message || 'Failed to save client');
-    }
-    
-    return {
-      id: data.id,
-      name: data.name,
-      email: data.email,
-      phone: data.phone,
-      address: data.address,
-      notes: data.notes || undefined,
-      createdAt: data.created_at,
-      companyId: data.company_id
-    };
-  } catch (error) {
-    console.error('Error saving client:', error);
-    throw error;
-  }
-};
+export const getJob = async (id: string): Promise<Job | null> => {
+  const { data, error } = await supabase
+    .from('jobs')
+    .select('*')
+    .eq('id', id)
+    .single();
 
-export const updateClient = async (client: Client): Promise<Client> => {
-  try {
-    const { data, error } = await supabase
-      .from('clients')
-      .update({
-        name: client.name,
-        email: client.email,
-        phone: client.phone,
-        address: client.address,
-        notes: client.notes,
-        company_id: client.companyId
-      })
-      .eq('id', client.id)
-      .select()
-      .single();
-    
-    if (error || !data) {
-      console.error('Error updating client:', error);
-      throw new Error(error?.message || 'Failed to update client');
-    }
-    
-    return {
-      id: data.id,
-      name: data.name,
-      email: data.email,
-      phone: data.phone,
-      address: data.address,
-      notes: data.notes || undefined,
-      createdAt: data.created_at,
-      companyId: data.company_id
-    };
-  } catch (error) {
-    console.error('Error updating client:', error);
-    throw error;
-  }
-};
-
-export const deleteClient = async (id: string): Promise<void> => {
-  try {
-    // Supabase will cascade delete all associated invoices and invoice items
-    // because we set up the foreign key constraints with ON DELETE CASCADE
-    const { error } = await supabase
-      .from('clients')
-      .delete()
-      .eq('id', id);
-    
-    if (error) {
-      console.error('Error deleting client:', error);
-      throw new Error(error.message);
-    }
-  } catch (error) {
-    console.error('Error deleting client:', error);
-    throw error;
-  }
-};
-
-// Job operations
-export const getJobs = async (companyId?: string | null) => {
-  try {
-    let query = supabase.from('jobs').select('*');
-    
-    // If companyId is provided, filter by it
-    if (companyId) {
-      query = query.eq('company_id', companyId);
-    }
-    
-    const { data, error } = await query.order('created_at', { ascending: false });
-    
-    if (error) {
-      console.error('Error fetching jobs:', error);
-      throw error;
-    }
-    
-    return data?.map(job => ({
-      id: job.id,
-      clientId: job.client_id,
-      companyId: job.company_id,
-      title: job.title,
-      description: job.description || undefined,
-      status: job.status as 'active' | 'completed' | 'cancelled',
-      date: job.date || undefined,
-      location: job.location || undefined,
-      createdAt: job.created_at,
-      updatedAt: job.updated_at
-    })) || [];
-  } catch (error) {
-    console.error('Error in getJobs:', error);
-    throw error;
-  }
-};
-
-export const getJob = async (id: string): Promise<Job | undefined> => {
-  try {
-    const { data, error } = await supabase
-      .from('jobs')
-      .select('*')
-      .eq('id', id)
-      .single();
-    
-    if (error || !data) {
-      console.error('Error fetching job:', error);
-      return undefined;
-    }
-    
-    return {
-      id: data.id,
-      clientId: data.client_id,
-      companyId: data.company_id,
-      title: data.title,
-      description: data.description || undefined,
-      status: data.status as 'active' | 'completed' | 'cancelled',
-      date: data.date || undefined,
-      location: data.location || undefined,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at
-    };
-  } catch (error) {
+  if (error) {
     console.error('Error fetching job:', error);
-    return undefined;
+    return null;
   }
+
+  return data;
 };
 
-export const getClientJobs = async (clientId: string): Promise<Job[]> => {
-  try {
-    const { data, error } = await supabase
-      .from('jobs')
-      .select('*')
-      .eq('client_id', clientId);
-    
-    if (error) {
-      console.error('Error fetching client jobs:', error);
-      return [];
-    }
-    
-    return data.map(job => ({
-      id: job.id,
-      clientId: job.client_id,
-      companyId: job.company_id,
-      title: job.title,
-      description: job.description || undefined,
-      status: job.status as 'active' | 'completed' | 'cancelled',
-      date: job.date || undefined,
-      location: job.location || undefined,
-      createdAt: job.created_at,
-      updatedAt: job.updated_at
-    }));
-  } catch (error) {
-    console.error('Error fetching client jobs:', error);
-    return [];
-  }
-};
+export const saveJob = async (job: Omit<Job, 'id' | 'createdAt' | 'updatedAt'>): Promise<Job | null> => {
+  const newJob = {
+    ...job,
+    id: uuidv4(),
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
 
-export const getJobInvoices = async (jobId: string): Promise<Invoice[]> => {
-  try {
-    // First get all invoices for the job
-    const { data: invoicesData, error: invoicesError } = await supabase
-      .from('invoices')
-      .select('*')
-      .eq('job_id', jobId);
-    
-    if (invoicesError || !invoicesData || invoicesData.length === 0) {
-      if (invoicesError) console.error('Error fetching job invoices:', invoicesError);
-      return [];
-    }
-    
-    // Get all invoice IDs
-    const invoiceIds = invoicesData.map(invoice => invoice.id);
-    
-    // Then get all invoice items for these invoices
-    const { data: itemsData, error: itemsError } = await supabase
-      .from('invoice_items')
-      .select('*')
-      .in('invoice_id', invoiceIds);
-    
-    if (itemsError) {
-      console.error('Error fetching invoice items:', itemsError);
-      // Continue with empty items if there was an error
-    }
-    
-    // Map and transform the data
-    return invoicesData.map(invoice => {
-      const invoiceItems = (itemsData || [])
-        .filter(item => item.invoice_id === invoice.id)
-        .map(item => ({
-          id: item.id,
-          description: item.description,
-          quantity: item.quantity,
-          rate: item.rate,
-          amount: item.amount
-        }));
-      
-      return {
-        id: invoice.id,
-        clientId: invoice.client_id,
-        companyId: invoice.company_id,
-        jobId: invoice.job_id || undefined,
-        number: invoice.number,
-        amount: invoice.amount,
-        date: invoice.date,
-        dueDate: invoice.due_date,
-        shootingDate: invoice.shooting_date || undefined,
-        status: invoice.status as InvoiceStatus,
-        contractStatus: invoice.contract_status as ContractStatus || undefined,
-        items: invoiceItems,
-        notes: invoice.notes || undefined,
-        contractTerms: invoice.contract_terms || undefined,
-        viewLink: invoice.view_link
-      };
-    });
-  } catch (error) {
-    console.error('Error fetching job invoices:', error);
-    return [];
-  }
-};
+  const { data, error } = await supabase
+    .from('jobs')
+    .insert([newJob])
+    .select()
+    .single();
 
-export const saveJob = async (job: Omit<Job, 'id' | 'createdAt' | 'updatedAt'>): Promise<Job> => {
-  try {
-    const { data, error } = await supabase
-      .from('jobs')
-      .insert({
-        client_id: job.clientId,
-        company_id: job.companyId,
-        title: job.title,
-        description: job.description,
-        status: job.status,
-        date: job.date,
-        location: job.location
-      })
-      .select()
-      .single();
-    
-    if (error || !data) {
-      console.error('Error saving job:', error);
-      throw new Error(error?.message || 'Failed to save job');
-    }
-    
-    return {
-      id: data.id,
-      clientId: data.client_id,
-      companyId: data.company_id,
-      title: data.title,
-      description: data.description || undefined,
-      status: data.status as 'active' | 'completed' | 'cancelled',
-      date: data.date || undefined,
-      location: data.location || undefined,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at
-    };
-  } catch (error) {
+  if (error) {
     console.error('Error saving job:', error);
-    throw error;
+    return null;
   }
+
+  return data;
 };
 
-export const updateJob = async (job: Job): Promise<Job> => {
-  try {
-    const { data, error } = await supabase
-      .from('jobs')
-      .update({
-        client_id: job.clientId,
-        company_id: job.companyId,
-        title: job.title,
-        description: job.description,
-        status: job.status,
-        date: job.date,
-        location: job.location,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', job.id)
-      .select()
-      .single();
-    
-    if (error || !data) {
-      console.error('Error updating job:', error);
-      throw new Error(error?.message || 'Failed to update job');
-    }
-    
-    return {
-      id: data.id,
-      clientId: data.client_id,
-      companyId: data.company_id,
-      title: data.title,
-      description: data.description || undefined,
-      status: data.status as 'active' | 'completed' | 'cancelled',
-      date: data.date || undefined,
-      location: data.location || undefined,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at
-    };
-  } catch (error) {
+export const updateJob = async (job: Job): Promise<Job | null> => {
+  const { data, error } = await supabase
+    .from('jobs')
+    .update({
+      ...job,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', job.id)
+    .select()
+    .single();
+
+  if (error) {
     console.error('Error updating job:', error);
-    throw error;
+    return null;
   }
+
+  return data;
 };
 
-export const deleteJob = async (id: string): Promise<void> => {
-  try {
-    const { error } = await supabase
-      .from('jobs')
-      .delete()
-      .eq('id', id);
-    
-    if (error) {
-      console.error('Error deleting job:', error);
-      throw new Error(error.message);
-    }
-  } catch (error) {
+export const deleteJob = async (id: string): Promise<boolean> => {
+  const { error } = await supabase
+    .from('jobs')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
     console.error('Error deleting job:', error);
-    throw error;
+    return false;
   }
+
+  return true;
 };
 
-// Invoice operations
-export const getInvoices = async (companyId?: string | null) => {
-  try {
-    let query = supabase.from('invoices').select('*, invoice_items(*)');
-    
-    // If companyId is provided, filter by it
-    if (companyId) {
-      query = query.eq('company_id', companyId);
-    }
-    
-    const { data, error } = await query.order('date', { ascending: false });
-    
-    if (error) {
-      console.error('Error fetching invoices:', error);
-      throw error;
-    }
-    
-    // Transform the data to match our type
-    const invoices = (data || []).map(invoice => {
-      const items = invoice.invoice_items.map((item: any) => ({
-        id: item.id,
-        description: item.description,
-        quantity: item.quantity,
-        rate: item.rate,
-        amount: item.amount
-      }));
-      
-      return {
-        id: invoice.id,
-        clientId: invoice.client_id,
-        companyId: invoice.company_id,
-        jobId: invoice.job_id,
-        number: invoice.number,
-        amount: invoice.amount,
-        date: invoice.date,
-        dueDate: invoice.due_date,
-        shootingDate: invoice.shooting_date,
-        status: invoice.status as InvoiceStatus,
-        contractStatus: invoice.contract_status as ContractStatus,
-        items,
-        notes: invoice.notes,
-        contractTerms: invoice.contract_terms,
-        viewLink: invoice.view_link
-      };
-    });
-    
-    return invoices;
-  } catch (error) {
-    console.error('Error in getInvoices:', error);
-    throw error;
+// Invoice functions
+export const getInvoices = async (): Promise<Invoice[]> => {
+  const { data, error } = await supabase
+    .from('invoices')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching invoices:', error);
+    return [];
   }
+
+  return data || [];
 };
 
-export const getInvoice = async (id: string): Promise<Invoice | undefined> => {
-  try {
-    // First get the invoice
-    const { data: invoice, error: invoiceError } = await supabase
-      .from('invoices')
-      .select('*')
-      .eq('id', id)
-      .single();
-    
-    if (invoiceError || !invoice) {
-      console.error('Error fetching invoice:', invoiceError);
-      return undefined;
-    }
-    
-    // Then get the invoice items
-    const { data: itemsData, error: itemsError } = await supabase
-      .from('invoice_items')
-      .select('*')
-      .eq('invoice_id', id);
-    
-    if (itemsError || !itemsData) {
-      console.error('Error fetching invoice items:', itemsError);
-      return undefined;
-    }
-    
-    // Map and transform the data
-    const invoiceItems = itemsData.map(item => ({
-      id: item.id,
-      description: item.description,
-      quantity: item.quantity,
-      rate: item.rate,
-      amount: item.amount
-    }));
-    
-    return {
-      id: invoice.id,
-      clientId: invoice.client_id,
-      companyId: invoice.company_id,
-      jobId: invoice.job_id,
-      number: invoice.number,
-      amount: invoice.amount,
-      date: invoice.date,
-      dueDate: invoice.due_date,
-      shootingDate: invoice.shooting_date,
-      status: invoice.status as InvoiceStatus,
-      contractStatus: invoice.contract_status as ContractStatus,
-      items: invoiceItems,
-      notes: invoice.notes,
-      contractTerms: invoice.contract_terms,
-      viewLink: invoice.view_link
-    };
-  } catch (error) {
+export const getInvoicesByClient = async (clientId: string): Promise<Invoice[]> => {
+  const { data, error } = await supabase
+    .from('invoices')
+    .select('*')
+    .eq('client_id', clientId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching invoices by client:', error);
+    return [];
+  }
+
+  return data || [];
+};
+
+export const getInvoice = async (id: string): Promise<Invoice | null> => {
+  const { data, error } = await supabase
+    .from('invoices')
+    .select(`
+      *,
+      items:invoice_items(*)
+    `)
+    .eq('id', id)
+    .single();
+
+  if (error) {
     console.error('Error fetching invoice:', error);
-    return undefined;
+    return null;
   }
+
+  return data;
 };
 
-export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | undefined> => {
+export const getInvoiceByViewLink = async (viewToken: string): Promise<Invoice | null> => {
   try {
-    console.log('Searching for invoice with view_link:', viewLink);
-    // Try a simple query without the exact matching to see if we can find any invoices with similar view links
-    const { data: allInvoices, error: invoiceQueryError } = await supabase
+    const { data: invoices, error } = await supabase
       .from('invoices')
-      .select('*');
-    
-    if (invoiceQueryError) {
-      console.error('Error querying invoices:', invoiceQueryError);
-      return undefined;
+      .select(`
+        *,
+        items:invoice_items(*),
+        client:clients(*),
+        job:jobs(*),
+        company:companies(*)
+      `)
+      .eq('view_token', viewToken)
+      .single();
+
+    if (error || !invoices) {
+      console.error("Error fetching invoice by view token:", error);
+      return null;
     }
-    
-    console.log('Found invoices:', allInvoices?.map(inv => inv.view_link));
-    
-    // Try to find an invoice with a matching view_link
-    const matchingInvoice = allInvoices?.find(inv => 
-      inv.view_link === viewLink || 
-      inv.view_link.includes(viewLink) || 
-      viewLink.includes(inv.view_link.split('/').pop() || '')
-    );
-    
-    if (!matchingInvoice) {
-      console.error('No invoice found with matching view link');
-      return undefined;
-    }
-    
-    console.log('Found matching invoice:', matchingInvoice);
-    
-    // Get the invoice items
-    const { data: itemsData, error: itemsError } = await supabase
-      .from('invoice_items')
-      .select('*')
-      .eq('invoice_id', matchingInvoice.id);
-    
-    if (itemsError) {
-      console.error('Error fetching invoice items:', itemsError);
-      return undefined;
-    }
-    
-    // Map and transform the data
-    const invoiceItems = (itemsData || []).map(item => ({
+
+    const matchingInvoice = invoices;
+
+    // Map invoice items
+    const items = matchingInvoice.items.map((item: any) => ({
       id: item.id,
+      invoiceId: item.invoice_id,
       description: item.description,
       quantity: item.quantity,
-      rate: item.rate,
+      unitPrice: item.unit_price,
       amount: item.amount
     }));
     
@@ -740,7 +367,7 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
       case 'sent':
       case 'accepted':
       case 'paid':
-        status = matchingInvoice.status;
+        status = matchingInvoice.status as InvoiceStatus;
         break;
       default:
         status = 'draft'; // Default fallback if invalid status
@@ -749,306 +376,185 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
     // Handle possible undefined contractStatus
     let contractStatus: ContractStatus | undefined = undefined;
     if (matchingInvoice.contract_status) {
-      if (matchingInvoice.contract_status === 'pending' || matchingInvoice.contract_status === 'accepted') {
-        contractStatus = matchingInvoice.contract_status;
+      switch(matchingInvoice.contract_status) {
+        case 'pending':
+        case 'accepted':
+          contractStatus = matchingInvoice.contract_status as ContractStatus;
+          break;
+        default:
+          // Keep undefined if not a valid status
+          break;
       }
     }
     
     return {
       id: matchingInvoice.id,
       clientId: matchingInvoice.client_id,
-      companyId: matchingInvoice.company_id,
       jobId: matchingInvoice.job_id,
+      companyId: matchingInvoice.company_id,
       number: matchingInvoice.number,
-      amount: matchingInvoice.amount,
-      date: matchingInvoice.date,
+      issueDate: matchingInvoice.issue_date,
       dueDate: matchingInvoice.due_date,
-      status,
-      contractStatus,
-      items: invoiceItems,
+      status: status,
+      contractStatus: contractStatus,
+      totalAmount: matchingInvoice.total_amount,
       notes: matchingInvoice.notes,
-      contractTerms: matchingInvoice.contract_terms,
-      viewLink: matchingInvoice.view_link
+      items: items,
+      createdAt: matchingInvoice.created_at,
+      updatedAt: matchingInvoice.updated_at,
+      client: matchingInvoice.client ? {
+        id: matchingInvoice.client.id,
+        name: matchingInvoice.client.name,
+        email: matchingInvoice.client.email,
+        phone: matchingInvoice.client.phone,
+        address: matchingInvoice.client.address,
+        createdAt: matchingInvoice.client.created_at,
+        updatedAt: matchingInvoice.client.updated_at
+      } : undefined,
+      job: matchingInvoice.job ? {
+        id: matchingInvoice.job.id,
+        clientId: matchingInvoice.job.client_id,
+        companyId: matchingInvoice.job.company_id,
+        title: matchingInvoice.job.title,
+        description: matchingInvoice.job.description,
+        status: matchingInvoice.job.status,
+        date: matchingInvoice.job.date,
+        location: matchingInvoice.job.location,
+        createdAt: matchingInvoice.job.created_at,
+        updatedAt: matchingInvoice.job.updated_at
+      } : undefined,
+      company: matchingInvoice.company ? {
+        id: matchingInvoice.company.id,
+        name: matchingInvoice.company.name,
+        email: matchingInvoice.company.email,
+        phone: matchingInvoice.company.phone,
+        address: matchingInvoice.company.address,
+        logo: matchingInvoice.company.logo,
+        bankDetails: matchingInvoice.company.bank_details,
+        taxNumber: matchingInvoice.company.tax_number,
+        createdAt: matchingInvoice.company.created_at,
+        updatedAt: matchingInvoice.company.updated_at
+      } : undefined,
+      viewToken: matchingInvoice.view_token
     };
   } catch (error) {
-    console.error('Error in getInvoiceByViewLink:', error);
-    return undefined;
+    console.error("Error in getInvoiceByViewLink:", error);
+    return null;
   }
 };
 
-export const getClientInvoices = async (clientId: string): Promise<Invoice[]> => {
-  try {
-    // First get all invoices for the client
-    const { data: invoicesData, error: invoicesError } = await supabase
-      .from('invoices')
-      .select('*')
-      .eq('client_id', clientId);
-    
-    if (invoicesError || !invoicesData || invoicesData.length === 0) {
-      if (invoicesError) console.error('Error fetching client invoices:', invoicesError);
-      return [];
-    }
-    
-    // Get all invoice IDs
-    const invoiceIds = invoicesData.map(invoice => invoice.id);
-    
-    // Then get all invoice items for these invoices
-    const { data: itemsData, error: itemsError } = await supabase
-      .from('invoice_items')
-      .select('*')
-      .in('invoice_id', invoiceIds);
-    
-    if (itemsError) {
-      console.error('Error fetching invoice items:', itemsError);
-      // Continue with empty items if there was an error
-    }
-    
-    // Map and transform the data
-    return invoicesData.map(invoice => {
-      const invoiceItems = (itemsData || [])
-        .filter(item => item.invoice_id === invoice.id)
-        .map(item => ({
-          id: item.id,
-          description: item.description,
-          quantity: item.quantity,
-          rate: item.rate,
-          amount: item.amount
-        }));
-      
-      // Ensure we're explicitly casting status values to their respective types
-      const status = invoice.status as InvoiceStatus;
-      const contractStatus = invoice.contract_status as ContractStatus;
-      
-      return {
-        id: invoice.id,
-        clientId: invoice.client_id,
-        companyId: invoice.company_id,
-        jobId: invoice.job_id,
-        number: invoice.number,
-        amount: invoice.amount,
-        date: invoice.date,
-        dueDate: invoice.due_date,
-        shootingDate: invoice.shooting_date,
-        status,
-        contractStatus,
-        items: invoiceItems,
-        notes: invoice.notes,
-        contractTerms: invoice.contract_terms,
-        viewLink: invoice.view_link
-      };
-    });
-  } catch (error) {
-    console.error('Error fetching client invoices:', error);
-    return [];
-  }
-};
+export const saveInvoice = async (invoice: Omit<Invoice, 'id' | 'createdAt' | 'updatedAt'>, items: Omit<InvoiceItem, 'id' | 'invoiceId'>[]): Promise<Invoice | null> => {
+  const newInvoice = {
+    ...invoice,
+    id: uuidv4(),
+    view_token: uuidv4(),
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
 
-export const saveInvoice = async (invoice: Omit<Invoice, 'id' | 'viewLink'>): Promise<Invoice> => {
-  try {
-    // Generate a view link
-    const viewLink = generateViewLink();
-    
-    // Start a transaction by using the Supabase client
-    const { data: newInvoice, error: invoiceError } = await supabase
-      .from('invoices')
-      .insert({
-        client_id: invoice.clientId,
-        company_id: invoice.companyId,
-        job_id: invoice.jobId,
-        number: invoice.number,
-        amount: invoice.amount,
-        date: invoice.date,
-        due_date: invoice.dueDate,
-        shooting_date: invoice.shootingDate,
-        status: invoice.status,
-        contract_status: invoice.contractStatus,
-        notes: invoice.notes,
-        contract_terms: invoice.contractTerms,
-        view_link: viewLink
-      })
-      .select()
-      .single();
-    
-    if (invoiceError || !newInvoice) {
-      console.error('Error saving invoice:', invoiceError);
-      throw new Error(invoiceError?.message || 'Failed to save invoice');
-    }
-    
-    // Insert invoice items
-    const invoiceItems = invoice.items.map(item => ({
-      invoice_id: newInvoice.id,
-      description: item.description,
-      quantity: item.quantity,
-      rate: item.rate,
-      amount: item.amount
-    }));
-    
-    const { data: newItems, error: itemsError } = await supabase
-      .from('invoice_items')
-      .insert(invoiceItems)
-      .select();
-    
-    if (itemsError) {
-      console.error('Error saving invoice items:', itemsError);
-      // Try to cleanup the invoice
-      await supabase.from('invoices').delete().eq('id', newInvoice.id);
-      throw new Error(itemsError.message);
-    }
-    
-    // Map the items to the expected format
-    const items: InvoiceItem[] = (newItems || []).map(item => ({
-      id: item.id,
-      description: item.description,
-      quantity: item.quantity,
-      rate: item.rate,
-      amount: item.amount
-    }));
-    
-    // Return the complete invoice object
-    return {
-      id: newInvoice.id,
-      clientId: newInvoice.client_id,
-      companyId: newInvoice.company_id,
-      jobId: newInvoice.job_id,
-      number: newInvoice.number,
-      amount: newInvoice.amount,
-      date: newInvoice.date,
-      dueDate: newInvoice.due_date,
-      shootingDate: newInvoice.shooting_date,
-      status: newInvoice.status,
-      contractStatus: newInvoice.contract_status,
-      items,
-      notes: newInvoice.notes,
-      contractTerms: newInvoice.contract_terms,
-      viewLink: newInvoice.view_link
-    };
-  } catch (error) {
+  const { data, error } = await supabase
+    .from('invoices')
+    .insert([newInvoice])
+    .select()
+    .single();
+
+  if (error) {
     console.error('Error saving invoice:', error);
-    throw error;
+    return null;
   }
-};
 
-export const updateInvoice = async (invoice: Invoice): Promise<Invoice> => {
-  try {
-    // Update the invoice
-    const { error: invoiceError } = await supabase
-      .from('invoices')
-      .update({
-        client_id: invoice.clientId,
-        company_id: invoice.companyId,
-        job_id: invoice.jobId,
-        number: invoice.number,
-        amount: invoice.amount,
-        date: invoice.date,
-        due_date: invoice.dueDate,
-        shooting_date: invoice.shootingDate,
-        status: invoice.status,
-        contract_status: invoice.contractStatus,
-        notes: invoice.notes,
-        contract_terms: invoice.contractTerms,
-        view_link: invoice.viewLink
-      })
-      .eq('id', invoice.id);
-    
-    if (invoiceError) {
-      console.error('Error updating invoice:', invoiceError);
-      throw new Error(invoiceError.message);
-    }
-    
-    // Delete existing invoice items
-    const { error: deleteError } = await supabase
-      .from('invoice_items')
-      .delete()
-      .eq('invoice_id', invoice.id);
-    
-    if (deleteError) {
-      console.error('Error deleting existing invoice items:', deleteError);
-      throw new Error(deleteError.message);
-    }
-    
-    // Insert updated invoice items
-    const invoiceItems = invoice.items.map(item => ({
-      invoice_id: invoice.id,
-      description: item.description,
-      quantity: item.quantity,
-      rate: item.rate,
-      amount: item.amount
+  // Save invoice items
+  if (items.length > 0) {
+    const invoiceItems = items.map(item => ({
+      ...item,
+      id: uuidv4(),
+      invoice_id: data.id
     }));
-    
+
     const { error: itemsError } = await supabase
       .from('invoice_items')
       .insert(invoiceItems);
-    
+
     if (itemsError) {
-      console.error('Error updating invoice items:', itemsError);
-      throw new Error(itemsError.message);
+      console.error('Error saving invoice items:', itemsError);
+      // Consider rolling back the invoice here
+      return null;
     }
-    
-    return invoice;
-  } catch (error) {
+  }
+
+  return data;
+};
+
+export const updateInvoice = async (invoice: Invoice, items: InvoiceItem[]): Promise<Invoice | null> => {
+  const { data, error } = await supabase
+    .from('invoices')
+    .update({
+      ...invoice,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', invoice.id)
+    .select()
+    .single();
+
+  if (error) {
     console.error('Error updating invoice:', error);
-    throw error;
+    return null;
   }
+
+  // Delete existing items
+  const { error: deleteError } = await supabase
+    .from('invoice_items')
+    .delete()
+    .eq('invoice_id', invoice.id);
+
+  if (deleteError) {
+    console.error('Error deleting invoice items:', deleteError);
+    return null;
+  }
+
+  // Insert new items
+  if (items.length > 0) {
+    const invoiceItems = items.map(item => ({
+      ...item,
+      id: item.id || uuidv4(),
+      invoice_id: invoice.id
+    }));
+
+    const { error: itemsError } = await supabase
+      .from('invoice_items')
+      .insert(invoiceItems);
+
+    if (itemsError) {
+      console.error('Error saving invoice items:', itemsError);
+      return null;
+    }
+  }
+
+  return data;
 };
 
-export const updateInvoiceStatus = async (id: string, status: Invoice['status']): Promise<Invoice | undefined> => {
-  try {
-    const { data, error } = await supabase
-      .from('invoices')
-      .update({ status })
-      .eq('id', id)
-      .select()
-      .single();
-    
-    if (error || !data) {
-      console.error('Error updating invoice status:', error);
-      return undefined;
-    }
-    
-    // Get the full invoice with items
-    return await getInvoice(id);
-  } catch (error) {
-    console.error('Error updating invoice status:', error);
-    return undefined;
-  }
-};
+export const deleteInvoice = async (id: string): Promise<boolean> => {
+  // Delete invoice items first
+  const { error: itemsError } = await supabase
+    .from('invoice_items')
+    .delete()
+    .eq('invoice_id', id);
 
-export const updateContractStatus = async (id: string, contractStatus: 'pending' | 'accepted'): Promise<Invoice | undefined> => {
-  try {
-    const { data, error } = await supabase
-      .from('invoices')
-      .update({ contract_status: contractStatus })
-      .eq('id', id)
-      .select()
-      .single();
-    
-    if (error || !data) {
-      console.error('Error updating contract status:', error);
-      return undefined;
-    }
-    
-    // Get the full invoice with items
-    return await getInvoice(id);
-  } catch (error) {
-    console.error('Error updating contract status:', error);
-    return undefined;
+  if (itemsError) {
+    console.error('Error deleting invoice items:', itemsError);
+    return false;
   }
-};
 
-export const deleteInvoice = async (id: string): Promise<void> => {
-  try {
-    // Delete the invoice (items will be cascade deleted)
-    const { error } = await supabase
-      .from('invoices')
-      .delete()
-      .eq('id', id);
-    
-    if (error) {
-      console.error('Error deleting invoice:', error);
-      throw new Error(error.message);
-    }
-  } catch (error) {
+  // Then delete the invoice
+  const { error } = await supabase
+    .from('invoices')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
     console.error('Error deleting invoice:', error);
-    throw error;
+    return false;
   }
+
+  return true;
 };

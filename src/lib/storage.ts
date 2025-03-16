@@ -1,4 +1,3 @@
-
 import { Client, Invoice, STORAGE_KEYS, InvoiceItem, Job, Company, InvoiceStatus, ContractStatus } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -735,12 +734,24 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
     }));
     
     // Properly cast the status string to the InvoiceStatus type
-    const status = matchingInvoice.status as InvoiceStatus;
+    let status: InvoiceStatus;
+    switch(matchingInvoice.status) {
+      case 'draft':
+      case 'sent':
+      case 'accepted':
+      case 'paid':
+        status = matchingInvoice.status;
+        break;
+      default:
+        status = 'draft'; // Default fallback if invalid status
+    }
     
     // Handle possible undefined contractStatus
     let contractStatus: ContractStatus | undefined = undefined;
     if (matchingInvoice.contract_status) {
-      contractStatus = matchingInvoice.contract_status as ContractStatus;
+      if (matchingInvoice.contract_status === 'pending' || matchingInvoice.contract_status === 'accepted') {
+        contractStatus = matchingInvoice.contract_status;
+      }
     }
     
     return {

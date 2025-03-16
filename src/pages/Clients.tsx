@@ -9,7 +9,6 @@ import { UserPlus, Pencil, Trash2, FileEdit, FileText, Eye, MoreHorizontal } fro
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { useAuth } from '@/context/AuthContext';
 import AddClientButton from '@/components/ui-custom/AddClientButton';
-import { CompanyProvider } from '@/components/CompanySelector';
 import { toast } from 'sonner';
 
 import {
@@ -37,16 +36,14 @@ const Clients = () => {
   try {
     return (
       <PageTransition>
-        <CompanyProvider>
-          <div className="container mx-auto py-6 px-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
-              <h1 className="text-3xl font-bold mb-4 sm:mb-0">Clients</h1>
-              <AddClientButton />
-            </div>
-            
-            <ClientsTable />
+        <div className="container mx-auto py-6 px-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
+            <h1 className="text-3xl font-bold mb-4 sm:mb-0">Clients</h1>
+            <AddClientButton />
           </div>
-        </CompanyProvider>
+          
+          <ClientsTable />
+        </div>
       </PageTransition>
     );
   } catch (error) {

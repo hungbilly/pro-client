@@ -8,7 +8,6 @@ import { FileText, PlusCircle, Eye, FileEdit, Clock, MapPin, User, Briefcase, Mo
 import { Badge } from '@/components/ui/badge';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import AddJobButton from '@/components/ui-custom/AddJobButton';
-import { CompanyProvider } from '@/components/CompanySelector';
 
 import {
   Table,
@@ -32,16 +31,14 @@ const Jobs = () => {
   try {
     return (
       <PageTransition>
-        <CompanyProvider>
-          <div className="container mx-auto py-6 px-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
-              <h1 className="text-3xl font-bold mb-4 sm:mb-0">Jobs</h1>
-              <AddJobButton />
-            </div>
-            
-            <JobsTable />
+        <div className="container mx-auto py-6 px-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
+            <h1 className="text-3xl font-bold mb-4 sm:mb-0">Jobs</h1>
+            <AddJobButton />
           </div>
-        </CompanyProvider>
+          
+          <JobsTable />
+        </div>
       </PageTransition>
     );
   } catch (error) {

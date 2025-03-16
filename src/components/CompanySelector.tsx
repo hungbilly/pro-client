@@ -86,6 +86,7 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
 export const useCompany = () => {
   const context = useContext(CompanyContext);
   if (context === undefined) {
+    console.error("useCompany called outside of CompanyProvider! Check component hierarchy.");
     throw new Error('useCompany must be used within a CompanyProvider');
   }
   return context;

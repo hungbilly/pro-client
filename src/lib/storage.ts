@@ -733,9 +733,9 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
       amount: item.amount
     }));
     
-    // Ensure we're explicitly casting status values to their respective types
+    // Fix: Properly cast the string values to the appropriate enum types
     const status = matchingInvoice.status as InvoiceStatus;
-    const contractStatus = matchingInvoice.contract_status as ContractStatus;
+    const contractStatus = matchingInvoice.contract_status as ContractStatus || undefined;
     
     return {
       id: matchingInvoice.id,
@@ -1035,4 +1035,3 @@ export const deleteInvoice = async (id: string): Promise<void> => {
     throw error;
   }
 };
-

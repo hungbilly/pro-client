@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { getAllClients } from '@/lib/storage';
+import { getClients } from '@/lib/storage';
 import { PlusCircle } from 'lucide-react';
 
 interface ClientSelectorProps {
@@ -29,7 +29,7 @@ const ClientSelector: React.FC<ClientSelectorProps> = ({
   useEffect(() => {
     const fetchClients = async () => {
       try {
-        const allClients = await getAllClients();
+        const allClients = await getClients();
         setClients(allClients);
         
         if (selectedClientId) {

@@ -815,9 +815,18 @@ export const getClientInvoices = async (clientId: string): Promise<Invoice[]> =>
         }));
       
       // Using parseEnum to safely cast string values to their respective enum types
-      const status = parseEnum(invoice.status, ['draft', 'sent', 'accepted', 'paid'] as InvoiceStatus[], 'draft');
-      const contractStatus = invoice.contract_status 
-        ? parseEnum(invoice.contract_status, ['pending', 'accepted'] as ContractStatus[], 'pending') 
+      const status: InvoiceStatus = parseEnum(
+        invoice.status, 
+        ['draft', 'sent', 'accepted', 'paid'] as InvoiceStatus[], 
+        'draft' as InvoiceStatus
+      );
+      
+      const contractStatus: ContractStatus | undefined = invoice.contract_status 
+        ? parseEnum(
+            invoice.contract_status, 
+            ['pending', 'accepted'] as ContractStatus[], 
+            'pending' as ContractStatus
+          ) 
         : undefined;
       
       return {
@@ -1053,3 +1062,4 @@ export const deleteInvoice = async (id: string): Promise<void> => {
     throw error;
   }
 };
+

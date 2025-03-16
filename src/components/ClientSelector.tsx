@@ -36,7 +36,11 @@ const ClientSelector: React.FC<ClientSelectorProps> = ({
           const client = allClients.find(c => c.id === selectedClientId);
           if (client) {
             setSelectedClient(client);
+          } else {
+            setSelectedClient(null);
           }
+        } else {
+          setSelectedClient(null);
         }
       } catch (error) {
         console.error('Error fetching clients:', error);

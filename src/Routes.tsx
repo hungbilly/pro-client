@@ -24,6 +24,7 @@ const AppRoutes = () => {
         <Route path="/client/:id" element={<ClientDetail />} />
         <Route path="/client/edit/:id" element={<ClientEdit />} />
         <Route path="/client/:clientId/job/create" element={<JobCreate />} />
+        <Route path="/job/create" element={<JobCreate />} />
         <Route path="/client/:clientId/job/edit/:id" element={<JobEdit />} />
         <Route path="/job/:id" element={<JobDetail />} />
         <Route path="/job/:jobId/invoice/create" element={<InvoiceCreate />} />

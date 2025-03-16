@@ -15,7 +15,7 @@ import { format } from 'date-fns';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from '@/lib/utils';
-import CompanySelector, { useCompany } from './CompanySelector';
+import { useCompany } from './CompanySelector';
 
 interface JobFormProps {
   job?: Job;
@@ -124,7 +124,9 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
     return (
       <Card className="w-full max-w-4xl mx-auto">
         <CardContent className="pt-6">
-          <div className="text-center p-8">Loading client data...</div>
+          <div className="text-center p-8">
+            {clientId ? "Loading client data..." : "Please select a client first"}
+          </div>
         </CardContent>
       </Card>
     );
@@ -134,17 +136,10 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
     <Card className="w-full max-w-4xl mx-auto">
       <CardHeader>
         <CardTitle>{existingJob ? 'Edit Job' : 'Create Job'}</CardTitle>
-        <CardDescription>Fill in the details to {existingJob ? 'update' : 'create'} the job.</CardDescription>
+        <CardDescription>For client: {client.name}</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {!predefinedCompanyId && (
-            <div className="mb-4">
-              <Label htmlFor="company">Company</Label>
-              <CompanySelector className="w-full" />
-            </div>
-          )}
-          
           <div>
             <Label htmlFor="title">Job Title</Label>
             <Input

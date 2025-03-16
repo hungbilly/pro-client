@@ -422,7 +422,8 @@ export const getInvoiceByViewLink = async (viewToken: string): Promise<Invoice |
       }
     }
     
-    return {
+    // Create the base invoice object with required fields for the Invoice type
+    const invoice: Invoice = {
       id: matchingInvoice.id,
       clientId: matchingInvoice.client_id,
       jobId: matchingInvoice.job_id,
@@ -439,6 +440,23 @@ export const getInvoiceByViewLink = async (viewToken: string): Promise<Invoice |
       items: items,
       viewLink: matchingInvoice.view_token
     };
+
+    // Store the related entities in the store state for components to use
+    // We're not modifying the Invoice type, but making the data available
+    // This creates a clean separation between database queries and type structure
+    if (matchingInvoice.client) {
+      await storeInvoiceRelatedClient(matchingInvoice.client);
+    }
+    
+    if (matchingInvoice.job) {
+      await storeInvoiceRelatedJob(matchingInvoice.job);
+    }
+    
+    if (matchingInvoice.company) {
+      await storeInvoiceRelatedCompany(matchingInvoice.company);
+    }
+    
+    return invoice;
   } catch (error) {
     console.error("Error in getInvoiceByViewLink:", error);
     return null;
@@ -556,4 +574,50 @@ export const deleteInvoice = async (id: string): Promise<boolean> => {
   }
 
   return true;
+};
+
+// Helper functions to store related entities in session storage for components to use
+// This allows components to access the data without modifying the Invoice type
+const storeInvoiceRelatedClient = async (client: any) => {
+  if (!client) return;
+  sessionStorage.setItem('current_invoice_client', JSON.stringify({
+    id: client.id,
+    name: client.name,
+    email: client.email,
+    phone: client.phone,
+    address: client.address,
+    createdAt: client.created_at
+  }));
+};
+
+const storeInvoiceRelatedJob = async (job: any) => {
+  if (!job) return;
+  sessionStorage.setItem('current_invoice_job', JSON.stringify({
+    id: job.id,
+    clientId: job.client_id,
+    companyId: job.company_id,
+    title: job.title,
+    description: job.description,
+    status: job.status,
+    date: job.date,
+    location: job.location,
+    createdAt: job.created_at,
+    updatedAt: job.updated_at
+  }));
+};
+
+const storeInvoiceRelatedCompany = async (company: any) => {
+  if (!company) return;
+  sessionStorage.setItem('current_invoice_company', JSON.stringify({
+    id: company.id,
+    name: company.name,
+    email: company.email,
+    phone: company.phone,
+    address: company.address,
+    logoUrl: company.logo_url,
+    isDefault: company.is_default,
+    userId: company.user_id,
+    createdAt: company.created_at,
+    updatedAt: company.updated_at
+  }));
 };

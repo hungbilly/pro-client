@@ -1,20 +1,20 @@
 
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import JobForm from '@/components/JobForm';
-import ClientSelector from '@/components/ClientSelector';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useNavigate } from 'react-router-dom';
 import CompanySelector from '@/components/CompanySelector';
-import { Card, CardContent } from '@/components/ui/card';
+import ClientSelector from '@/components/ClientSelector';
+import JobForm from '@/components/JobForm';
 
 interface AddJobModalProps {
   isOpen: boolean;
   onClose: () => void;
-  clientId?: string;
 }
 
-const AddJobModal: React.FC<AddJobModalProps> = ({ isOpen, onClose, clientId: initialClientId }) => {
-  const [selectedClientId, setSelectedClientId] = useState<string | null>(initialClientId || null);
+const AddJobModal: React.FC<AddJobModalProps> = ({ isOpen, onClose }) => {
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const handleCompanySelect = (companyId: string) => {
     setSelectedCompanyId(companyId);
@@ -24,38 +24,34 @@ const AddJobModal: React.FC<AddJobModalProps> = ({ isOpen, onClose, clientId: in
     setSelectedClientId(clientId);
   };
 
+  const handleSuccess = () => {
+    onClose();
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Create New Job</DialogTitle>
-          <DialogDescription>Add a new job for your selected client</DialogDescription>
+          <DialogTitle>Add New Job</DialogTitle>
         </DialogHeader>
         
-        <div className="py-2 space-y-4">
-          {!initialClientId && (
-            <ClientSelector
-              selectedClientId={selectedClientId || undefined}
-              onClientSelect={handleClientSelect}
-            />
-          )}
+        <div className="space-y-6 py-4">
+          <ClientSelector
+            selectedClientId={selectedClientId || undefined}
+            onClientSelect={handleClientSelect}
+          />
           
           <CompanySelector 
+            className="mt-4" 
             onCompanySelect={handleCompanySelect} 
           />
           
-          {selectedClientId ? (
+          {selectedClientId && (
             <JobForm 
-              clientId={selectedClientId} 
-              companyId={selectedCompanyId || undefined}
-              onSuccess={onClose}
+              clientId={selectedClientId}
+              companyId={selectedCompanyId}
+              onSuccess={handleSuccess}
             />
-          ) : (
-            <Card>
-              <CardContent className="py-4">
-                <p className="text-center text-muted-foreground">Please select a client to continue</p>
-              </CardContent>
-            </Card>
           )}
         </div>
       </DialogContent>

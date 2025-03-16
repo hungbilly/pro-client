@@ -13,6 +13,8 @@ import JobDetail from '@/pages/JobDetail';
 import Settings from '@/pages/Settings';
 import NotFound from '@/pages/NotFound';
 import MainNavbar from '@/components/MainNavbar';
+import Clients from '@/pages/Clients';
+import Jobs from '@/pages/Jobs';
 
 const AppRoutes = () => {
   return (
@@ -20,9 +22,11 @@ const AppRoutes = () => {
       <MainNavbar />
       <Routes>
         <Route path="/" element={<Index />} />
+        <Route path="/client" element={<Clients />} />
         <Route path="/client/new" element={<ClientNew />} />
         <Route path="/client/:id" element={<ClientDetail />} />
         <Route path="/client/edit/:id" element={<ClientEdit />} />
+        <Route path="/job" element={<Jobs />} />
         <Route path="/client/:clientId/job/create" element={<JobCreate />} />
         <Route path="/job/create" element={<JobCreate />} />
         <Route path="/client/:clientId/job/edit/:id" element={<JobEdit />} />

@@ -1027,11 +1027,4 @@ export const deleteInvoice = async (id: string): Promise<void> => {
       .eq('id', id);
     
     if (error) {
-      console.error('Error deleting invoice:', error);
-      throw new Error(error.message);
-    }
-  } catch (error) {
-    console.error('Error deleting invoice:', error);
-    throw error;
-  }
-};
+      console.error('Error deleting invoice

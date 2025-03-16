@@ -8,7 +8,6 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { getClients } from '@/lib/storage';
 import { PlusCircle } from 'lucide-react';
-import AddClientModal from './ui-custom/AddClientModal';
 
 interface ClientSelectorProps {
   selectedClientId?: string;
@@ -25,7 +24,6 @@ const ClientSelector: React.FC<ClientSelectorProps> = ({
   const [loading, setLoading] = useState(true);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [isAddClientModalOpen, setIsAddClientModalOpen] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -48,7 +46,7 @@ const ClientSelector: React.FC<ClientSelectorProps> = ({
     };
 
     fetchClients();
-  }, [selectedClientId, isAddClientModalOpen]);
+  }, [selectedClientId]);
 
   const handleClientClick = (client: Client) => {
     setSelectedClient(client);
@@ -56,12 +54,8 @@ const ClientSelector: React.FC<ClientSelectorProps> = ({
     onClientSelect(client.id);
   };
 
-  const openAddClientModal = () => {
-    setIsAddClientModalOpen(true);
-  };
-
-  const closeAddClientModal = () => {
-    setIsAddClientModalOpen(false);
+  const handleCreateNewClient = () => {
+    navigate('/client/new');
   };
 
   return (
@@ -108,13 +102,11 @@ const ClientSelector: React.FC<ClientSelectorProps> = ({
         <Button 
           variant="secondary" 
           className="flex items-center gap-1" 
-          onClick={openAddClientModal}
+          onClick={handleCreateNewClient}
         >
           <PlusCircle className="h-4 w-4" />
           Add new client
         </Button>
-        
-        <AddClientModal isOpen={isAddClientModalOpen} onClose={closeAddClientModal} />
       </div>
     </div>
   );

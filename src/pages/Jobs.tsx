@@ -9,24 +9,31 @@ import { Plus, Search } from 'lucide-react';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import AddJobModal from '@/components/ui-custom/AddJobModal';
 import { Job } from '@/types';
+import { getJobs } from '@/lib/storage';
+import { useCompany } from '@/components/CompanySelector';
+import { toast } from 'sonner';
 
 const Jobs = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddJobModalOpen, setIsAddJobModalOpen] = useState(false);
+  const { selectedCompanyId } = useCompany();
 
-  // Fetch jobs data
+  // Fetch jobs data with the selected company ID
   const { data: jobs = [], isLoading, error } = useQuery({
-    queryKey: ['jobs'],
+    queryKey: ['jobs', selectedCompanyId],
     queryFn: async () => {
       try {
-        // This would typically be an API call to fetch jobs
-        return [];
+        if (!selectedCompanyId) return [];
+        const jobsData = await getJobs(selectedCompanyId);
+        return jobsData;
       } catch (error) {
         console.error('Error fetching jobs:', error);
-        throw error;
+        toast.error('Failed to load jobs');
+        return [];
       }
     },
+    enabled: !!selectedCompanyId,
   });
 
   // Filter jobs based on search query
@@ -88,7 +95,7 @@ const Jobs = () => {
                 <CardContent className="p-6">
                   <h3 className="font-semibold text-lg mb-2">{job.title}</h3>
                   <p className="text-sm text-gray-500 mb-2">
-                    {new Date(job.date).toLocaleDateString()}
+                    {job.date && new Date(job.date).toLocaleDateString()}
                   </p>
                   <p className="text-sm line-clamp-2">{job.description}</p>
                 </CardContent>

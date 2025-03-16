@@ -777,29 +777,29 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
 
 export const getClientInvoices = async (clientId: string): Promise<Invoice[]> => {
   try {
-    // First get all invoices for the client
+    // Fetch invoices
     const { data: invoicesData, error: invoicesError } = await supabase
       .from('invoices')
-      .select('*')
+      .select()
       .eq('client_id', clientId);
     
-    if (invoicesError || !invoicesData || invoicesData.length === 0) {
-      if (invoicesError) console.error('Error fetching client invoices:', invoicesError);
+    if (invoicesError) {
+      console.error('Error fetching client invoices:', invoicesError);
       return [];
     }
     
-    // Get all invoice IDs
-    const invoiceIds = invoicesData.map(invoice => invoice.id);
+    if (!invoicesData || invoicesData.length === 0) {
+      return [];
+    }
     
-    // Then get all invoice items for these invoices
+    // Fetch invoice items
     const { data: itemsData, error: itemsError } = await supabase
       .from('invoice_items')
-      .select('*')
-      .in('invoice_id', invoiceIds);
+      .select()
+      .in('invoice_id', invoicesData.map(invoice => invoice.id));
     
     if (itemsError) {
       console.error('Error fetching invoice items:', itemsError);
-      // Continue with empty items if there was an error
     }
     
     // Map and transform the data
@@ -813,22 +813,22 @@ export const getClientInvoices = async (clientId: string): Promise<Invoice[]> =>
           rate: item.rate,
           amount: item.amount
         }));
-      
+
       // Using parseEnum to safely cast string values to their respective enum types
-      const status: InvoiceStatus = parseEnum(
-        invoice.status, 
-        ['draft', 'sent', 'accepted', 'paid'] as InvoiceStatus[], 
-        'draft' as InvoiceStatus
-      );
+      const status = parseEnum(
+        invoice.status,
+        ['draft', 'sent', 'accepted', 'paid'],
+        'draft'
+      ) as InvoiceStatus;
       
-      const contractStatus: ContractStatus | undefined = invoice.contract_status 
+      const contractStatus = invoice.contract_status
         ? parseEnum(
-            invoice.contract_status, 
-            ['pending', 'accepted'] as ContractStatus[], 
-            'pending' as ContractStatus
-          ) 
+            invoice.contract_status,
+            ['pending', 'accepted'],
+            'pending'
+          ) as ContractStatus
         : undefined;
-      
+
       return {
         id: invoice.id,
         clientId: invoice.client_id,
@@ -848,7 +848,7 @@ export const getClientInvoices = async (clientId: string): Promise<Invoice[]> =>
       };
     });
   } catch (error) {
-    console.error('Error fetching client invoices:', error);
+    console.error('Error in getClientInvoices:', error);
     return [];
   }
 };

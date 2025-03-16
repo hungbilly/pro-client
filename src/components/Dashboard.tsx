@@ -31,10 +31,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useCompany } from './CompanySelector';
+import AddClientButton from './ui-custom/AddClientButton';
+import AddJobButton from './ui-custom/AddJobButton';
+import AddJobModal from './ui-custom/AddJobModal';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const [clientToDelete, setClientToDelete] = React.useState<string | null>(null);
+  const [isAddJobModalOpen, setIsAddJobModalOpen] = useState(false);
   
   const { companies, selectedCompanyId, loading: companyLoading } = useCompany();
   
@@ -205,12 +209,7 @@ const Dashboard: React.FC = () => {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
           <h1 className="text-3xl font-bold mb-3 md:mb-0">Wedding Client Management</h1>
           <div className="flex flex-wrap gap-2">
-            <Button asChild>
-              <Link to="/client/new">
-                <UserPlus className="h-4 w-4 mr-2" />
-                Add Client
-              </Link>
-            </Button>
+            <AddClientButton />
           </div>
         </div>
 
@@ -289,12 +288,7 @@ const Dashboard: React.FC = () => {
               <TabsContent value="clients">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-semibold">Your Clients</h2>
-                  <Button asChild size="sm">
-                    <Link to="/client/new">
-                      <UserPlus className="h-4 w-4 mr-2" />
-                      New Client
-                    </Link>
-                  </Button>
+                  <AddClientButton />
                 </div>
                 
                 {clients.length === 0 ? (
@@ -304,12 +298,7 @@ const Dashboard: React.FC = () => {
                     <p className="text-muted-foreground mb-6 max-w-md">
                       You haven't added any clients yet. Add your first client to get started.
                     </p>
-                    <Button asChild>
-                      <Link to="/client/new">
-                        <UserPlus className="h-4 w-4 mr-2" />
-                        Add First Client
-                      </Link>
-                    </Button>
+                    <AddClientButton />
                   </div>
                 ) : (
                   <div className="rounded-md border">
@@ -382,12 +371,7 @@ const Dashboard: React.FC = () => {
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-semibold">Current Jobs</h2>
                   {clients.length > 0 && (
-                    <Button asChild size="sm">
-                      <Link to={`/client/${clients[0].id}/job/create`}>
-                        <Briefcase className="h-4 w-4 mr-2" />
-                        New Job
-                      </Link>
-                    </Button>
+                    <AddJobButton />
                   )}
                 </div>
                 
@@ -399,11 +383,7 @@ const Dashboard: React.FC = () => {
                       You haven't created any jobs yet. Select a client to create your first job.
                     </p>
                     {clients.length > 0 && (
-                      <Button asChild>
-                        <Link to={`/client/${clients[0].id}`}>
-                          Select a Client
-                        </Link>
-                      </Button>
+                      <AddJobButton />
                     )}
                   </div>
                 ) : (
@@ -541,6 +521,11 @@ const Dashboard: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+      
+      <AddJobModal 
+        isOpen={isAddJobModalOpen} 
+        onClose={() => setIsAddJobModalOpen(false)} 
+      />
     </AnimatedBackground>
   );
 };

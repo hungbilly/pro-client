@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Trash2, FileEdit, CalendarDays, MapPin, FileText } from 'lucide-react';
+import { ArrowLeft, Trash2, FileEdit, CalendarDays, MapPin, FileText, User, Mail, Phone, Pencil, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import InvoiceList from '@/components/InvoiceList';
@@ -167,7 +167,7 @@ const JobDetail = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4">
+            <div className="grid gap-6">
               <div>
                 <h3 className="text-lg font-medium">Job Details</h3>
                 <CardDescription>
@@ -199,7 +199,65 @@ const JobDetail = () => {
                 </div>
               </div>
               
-              <Separator className="my-4" />
+              {/* Client information section */}
+              <div>
+                <div className="flex items-center gap-2">
+                  <User className="h-5 w-5 text-muted-foreground" />
+                  <h3 className="text-lg font-medium">Client</h3>
+                </div>
+                <Separator className="my-4" />
+                
+                <Card className="border bg-card/50">
+                  <CardContent className="pt-6">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1">
+                        <h4 className="text-xl font-semibold">{client.name}</h4>
+                        <p className="text-sm text-muted-foreground">(Primary)</p>
+                      </div>
+                      <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+                        <User className="h-8 w-8 text-muted-foreground" />
+                      </div>
+                    </div>
+                    
+                    <div className="mt-4 space-y-2">
+                      <div className="flex items-center">
+                        <Phone className="h-4 w-4 text-muted-foreground mr-2" />
+                        <span>{client.phone}</span>
+                      </div>
+                      <div className="flex items-center">
+                        <Mail className="h-4 w-4 text-muted-foreground mr-2" />
+                        <span>{client.email}</span>
+                      </div>
+                    </div>
+                    
+                    {client.notes && (
+                      <>
+                        <Separator className="my-4" />
+                        <div>
+                          <p className="text-sm">{client.notes}</p>
+                        </div>
+                      </>
+                    )}
+                    
+                    <Separator className="my-4" />
+                    
+                    <div className="flex gap-3">
+                      <Button variant="outline" className="w-full" asChild>
+                        <Link to={`/client/${client.id}/edit`}>
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Edit Client
+                        </Link>
+                      </Button>
+                      <Button variant="outline" className="w-full">
+                        <Send className="h-4 w-4 mr-2" />
+                        Send Email
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+              
+              <Separator className="my-2" />
               
               {/* Invoices section */}
               <div>

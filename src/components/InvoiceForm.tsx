@@ -155,6 +155,17 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
   
   const handleManualPackageEntry = (id: string) => {
     setActiveRowId(null);
+    
+    setItems(items.map(item => {
+      if (item.id === id) {
+        return { ...item, description: '' };
+      }
+      return item;
+    }));
+    
+    setTimeout(() => {
+      setActiveRowId(id);
+    }, 10);
   };
 
   const handleAddToGoogleCalendar = () => {

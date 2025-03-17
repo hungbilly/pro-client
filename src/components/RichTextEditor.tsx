@@ -54,25 +54,30 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     editorRef.current?.focus();
   };
 
-  // Improved approach for list formatting using execCommand directly
   const handleList = (listType: 'insertUnorderedList' | 'insertOrderedList') => {
-    if (editorRef.current) {
-      // Focus the editor first
-      editorRef.current.focus();
-      
-      // Use setTimeout to give the browser time to focus
-      setTimeout(() => {
-        // Execute the command directly using execCommand
-        document.execCommand(listType, false, null);
-        
-        // Update content after command execution
-        if (editorRef.current) {
-          const newContent = editorRef.current.innerHTML;
-          setHtml(newContent);
-          onChange(newContent);
-        }
-      }, 10);
+    // Make sure we have a reference to the editor
+    if (!editorRef.current) return;
+    
+    // Save current selection
+    const selection = window.getSelection();
+    const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
+    
+    // Focus the editor first to ensure commands work on it
+    editorRef.current.focus();
+    
+    // Execute the command
+    document.execCommand(listType, false, null);
+    
+    // Restore selection if needed
+    if (range && selection) {
+      selection.removeAllRanges();
+      selection.addRange(range);
     }
+    
+    // Update content after command execution
+    const newContent = editorRef.current.innerHTML;
+    setHtml(newContent);
+    onChange(newContent);
   };
 
   const handleInput = (e: React.FormEvent<HTMLDivElement>) => {

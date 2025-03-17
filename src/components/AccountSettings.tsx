@@ -157,10 +157,12 @@ const AccountSettings = () => {
       let result;
       // Update or insert based on whether settings exist
       if (existingData && typeof existingData === 'object' && 'id' in existingData && existingData.id) {
+        // We've confirmed existingData is not null and has an id property
+        const id = existingData.id;
         result = await supabase
           .from('user_settings' as any)
           .update(settingsData as any)
-          .eq('id', existingData.id);
+          .eq('id', id);
       } else {
         result = await supabase
           .from('user_settings' as any)

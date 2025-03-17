@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -12,6 +13,7 @@ interface RichTextEditorProps {
   alwaysShowToolbar?: boolean;
   onDone?: () => void;
   showDoneButton?: boolean;
+  id?: string; // Added id prop to the interface
 }
 
 const RichTextEditor: React.FC<RichTextEditorProps> = ({
@@ -23,6 +25,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   alwaysShowToolbar = false,
   onDone,
   showDoneButton = false,
+  id, // Destructure the id prop
 }) => {
   const editorRef = useRef<HTMLDivElement>(null);
   const [html, setHtml] = useState(value);
@@ -358,7 +361,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
       
       <div
         ref={editorRef}
-        id="editor"
+        id={id} // Added the id attribute
         className={cn(
           "min-h-[100px] p-2 focus:outline-none prose prose-sm max-w-none",
           "prose-ul:pl-5 prose-ol:pl-5 prose-ul:my-0 prose-ol:my-0", // Add proper list spacing
@@ -384,24 +387,24 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
       <style>
         {`
         /* Additional list styling for editor content */
-        #editor ol {
+        #editor ol, [id] ol {
           list-style-type: decimal !important;
           list-style-position: outside !important;
           padding-left: 1.5em !important;
         }
         
-        #editor ul {
+        #editor ul, [id] ul {
           list-style-type: disc !important;
           list-style-position: outside !important;
           padding-left: 1.5em !important;
         }
         
-        #editor li {
+        #editor li, [id] li {
           display: list-item !important;
           margin: 0.25em 0 !important;
         }
         
-        #editor li::marker {
+        #editor li::marker, [id] li::marker {
           color: currentColor !important;
         }
         `}

@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2, Calendar as CalendarIcon, Camera, CalendarPlus, GripVertical, Pencil, Copy } from 'lucide-react';
+import { Plus, Trash2, Calendar as CalendarIcon, Camera, CalendarPlus, GripVertical, Pencil, Copy, Package as PackageIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { getClient, saveInvoice, updateInvoice, getJob } from '@/lib/storage';
 import { format } from 'date-fns';
@@ -474,10 +474,23 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
           <div>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-medium">Line Items</h3>
-              <Button type="button" onClick={handleAddItem} variant="outline">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Line Item
-              </Button>
+              <div className="flex gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button type="button" variant="outline">
+                      <PackageIcon className="h-4 w-4 mr-2" />
+                      Add Existing Package
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[300px] p-0">
+                    <PackageSelector onPackageSelect={handlePackageSelect} />
+                  </PopoverContent>
+                </Popover>
+                <Button type="button" onClick={handleAddItem} variant="outline">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Line Item
+                </Button>
+              </div>
             </div>
             
             <div className="border rounded-md overflow-hidden">

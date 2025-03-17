@@ -39,6 +39,8 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
         if (error) throw error;
         
         console.log('Fetched packages:', data);
+        
+        // Always ensure packages is an array
         if (Array.isArray(data)) {
           setPackages(data);
         } else {
@@ -96,54 +98,71 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
     toast.success(`Added "${selectedPackage.name}" to invoice`);
   };
 
-  // Render a safe command group that ensures we have valid array data
-  const renderCommandGroup = () => {
-    console.log('Rendering command group with packages:', packages);
-    
-    if (!Array.isArray(packages)) {
-      console.error('Packages is not an array in renderCommandGroup');
-      return <CommandEmpty>No packages found. Create some in Settings.</CommandEmpty>;
-    }
-    
-    if (packages.length === 0) {
-      return <CommandEmpty>No packages found. Create some in Settings.</CommandEmpty>;
+  // This is a safer implementation that doesn't rely on using the command components directly
+  // when there's no data
+  if (!Array.isArray(packages) || packages.length === 0) {
+    const content = (
+      <div className="p-2 text-center text-sm text-muted-foreground">
+        No packages found. Create some in Settings.
+      </div>
+    );
+
+    if (variant === 'inline') {
+      return (
+        <Button
+          variant="ghost"
+          className="justify-start text-left text-muted-foreground hover:text-foreground w-full"
+          disabled={true}
+        >
+          <FileText className="mr-2 h-4 w-4" />
+          {loading ? "Loading packages..." : "No packages available"}
+        </Button>
+      );
     }
 
     return (
-      <>
-        <CommandEmpty>No package found.</CommandEmpty>
-        <CommandGroup>
-          {packages.map((pkg) => (
-            <CommandItem
-              key={pkg.id}
-              value={pkg.name}
-              onSelect={(currentValue) => {
-                console.log('Command item selected with value:', currentValue);
-                handlePackageSelection(currentValue);
-              }}
-            >
-              <div className="flex flex-col">
-                <div className="flex items-center">
-                  <span>{pkg.name}</span>
-                  <span className="ml-auto font-medium">
-                    {new Intl.NumberFormat('en-US', {
-                      style: 'currency',
-                      currency: 'USD',
-                    }).format(pkg.price)}
-                  </span>
-                </div>
-                {pkg.description && (
-                  <span className="text-xs text-muted-foreground truncate max-w-[250px]">
-                    {pkg.description}
-                  </span>
-                )}
-              </div>
-            </CommandItem>
-          ))}
-        </CommandGroup>
-      </>
+      <Button
+        variant="outline"
+        className="w-full justify-between"
+        disabled={true}
+      >
+        <div className="flex items-center">
+          <PackageIcon className="mr-2 h-4 w-4" />
+          <span>{loading ? "Loading packages..." : "No packages available"}</span>
+        </div>
+        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+      </Button>
     );
-  };
+  }
+
+  // Only render the Command component if we have packages
+  const packageItems = packages.map((pkg) => (
+    <CommandItem
+      key={pkg.id}
+      value={pkg.name}
+      onSelect={(currentValue) => {
+        console.log('Command item selected with value:', currentValue);
+        handlePackageSelection(currentValue);
+      }}
+    >
+      <div className="flex flex-col">
+        <div className="flex items-center">
+          <span>{pkg.name}</span>
+          <span className="ml-auto font-medium">
+            {new Intl.NumberFormat('en-US', {
+              style: 'currency',
+              currency: 'USD',
+            }).format(pkg.price)}
+          </span>
+        </div>
+        {pkg.description && (
+          <span className="text-xs text-muted-foreground truncate max-w-[250px]">
+            {pkg.description}
+          </span>
+        )}
+      </div>
+    </CommandItem>
+  ));
 
   // Render the component based on the variant
   if (variant === 'inline') {
@@ -165,7 +184,10 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
         <PopoverContent className="w-[300px] p-0" align="start">
           <Command>
             <CommandInput placeholder="Search packages..." />
-            {renderCommandGroup()}
+            <CommandEmpty>No package found.</CommandEmpty>
+            <CommandGroup>
+              {packageItems}
+            </CommandGroup>
           </Command>
         </PopoverContent>
       </Popover>
@@ -192,7 +214,10 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
       <PopoverContent className="w-[300px] p-0">
         <Command>
           <CommandInput placeholder="Search packages..." />
-          {renderCommandGroup()}
+          <CommandEmpty>No package found.</CommandEmpty>
+          <CommandGroup>
+            {packageItems}
+          </CommandGroup>
         </Command>
       </PopoverContent>
     </Popover>

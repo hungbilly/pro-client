@@ -8,10 +8,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Trash2, FileEdit, CalendarDays, MapPin, FileText } from 'lucide-react';
+import { ArrowLeft, Trash2, FileEdit, CalendarDays, MapPin, FileText, User, Building2, Mail, Phone } from 'lucide-react';
 import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import InvoiceList from '@/components/InvoiceList';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 const JobDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -89,6 +90,15 @@ const JobDetail = () => {
     }
   };
 
+  const getClientInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase()
+      .substring(0, 2);
+  };
+
   if (isLoading) {
     return (
       <PageTransition>
@@ -125,9 +135,19 @@ const JobDetail = () => {
             <div>
               <CardTitle className="text-2xl font-bold">{job.title}</CardTitle>
               <div className="flex items-center mt-2">
-                <Link to={`/client/${client.id}`} className="text-sm text-muted-foreground hover:underline">
-                  {client.name}
-                </Link>
+                <div className="flex items-center">
+                  <Avatar className="h-6 w-6 mr-2 bg-purple-100">
+                    <AvatarFallback className="text-purple-700 text-xs">
+                      {getClientInitials(client.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <Link 
+                    to={`/client/${client.id}`} 
+                    className="text-base font-semibold text-purple-700 hover:underline"
+                  >
+                    {client.name}
+                  </Link>
+                </div>
                 <Badge className={`ml-3 ${getStatusColor(job.status)}`}>
                   {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
                 </Badge>
@@ -168,34 +188,93 @@ const JobDetail = () => {
           </CardHeader>
           <CardContent>
             <div className="grid gap-4">
-              <div>
-                <h3 className="text-lg font-medium">Job Details</h3>
-                <CardDescription>
-                  View and manage job information.
-                </CardDescription>
-                <Separator className="my-4" />
-                
-                {job.description && (
-                  <div className="mb-4">
-                    <h4 className="font-semibold mb-1">Description</h4>
-                    <p className="text-sm">{job.description}</p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Client Information */}
+                <div className="md:col-span-1 bg-slate-50 p-4 rounded-lg border border-slate-200">
+                  <h3 className="text-md font-medium flex items-center gap-2 mb-3">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    Client Information
+                  </h3>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <div className="text-sm font-medium text-muted-foreground">Company</div>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span>{client.name}</span>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <div className="text-sm font-medium text-muted-foreground">Email</div>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                        <a href={`mailto:${client.email}`} className="hover:underline">
+                          {client.email}
+                        </a>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <div className="text-sm font-medium text-muted-foreground">Phone</div>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                        <a href={`tel:${client.phone}`} className="hover:underline">
+                          {client.phone}
+                        </a>
+                      </div>
+                    </div>
+                    
+                    {client.address && (
+                      <div>
+                        <div className="text-sm font-medium text-muted-foreground">Address</div>
+                        <div className="mt-0.5">
+                          {client.address}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {client.notes && (
+                      <div>
+                        <div className="text-sm font-medium text-muted-foreground">Notes</div>
+                        <div className="mt-0.5 text-sm line-clamp-3">
+                          {client.notes}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {job.date && (
-                    <div className="flex items-center">
-                      <CalendarDays className="h-4 w-4 text-muted-foreground mr-2" />
-                      <span>Date: {new Date(job.date).toLocaleDateString()}</span>
+                {/* Job Details */}
+                <div className="md:col-span-2">
+                  <h3 className="text-lg font-medium">Job Details</h3>
+                  <CardDescription>
+                    View and manage job information.
+                  </CardDescription>
+                  <Separator className="my-4" />
+                  
+                  {job.description && (
+                    <div className="mb-4">
+                      <h4 className="font-semibold mb-1">Description</h4>
+                      <p className="text-sm">{job.description}</p>
                     </div>
                   )}
                   
-                  {job.location && (
-                    <div className="flex items-center">
-                      <MapPin className="h-4 w-4 text-muted-foreground mr-2" />
-                      <span>Location: {job.location}</span>
-                    </div>
-                  )}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {job.date && (
+                      <div className="flex items-center">
+                        <CalendarDays className="h-4 w-4 text-muted-foreground mr-2" />
+                        <span>Date: {new Date(job.date).toLocaleDateString()}</span>
+                      </div>
+                    )}
+                    
+                    {job.location && (
+                      <div className="flex items-center">
+                        <MapPin className="h-4 w-4 text-muted-foreground mr-2" />
+                        <span>Location: {job.location}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
               
@@ -224,7 +303,7 @@ const JobDetail = () => {
                     </Button>
                   </div>
                 ) : (
-                  <InvoiceList invoices={invoices} client={client} />
+                  <InvoiceList invoices={invoices} client={client} showCreateButton={false} />
                 )}
               </div>
             </div>

@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -10,7 +9,7 @@ interface RichTextEditorProps {
   className?: string;
   placeholder?: string;
   onFocus?: () => void;
-  alwaysShowToolbar?: boolean; // Add new prop to control toolbar visibility
+  alwaysShowToolbar?: boolean;
 }
 
 const RichTextEditor: React.FC<RichTextEditorProps> = ({
@@ -19,7 +18,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   className,
   placeholder = 'Enter your text here...',
   onFocus,
-  alwaysShowToolbar = false, // Default to false for backward compatibility
+  alwaysShowToolbar = false,
 }) => {
   const editorRef = useRef<HTMLDivElement>(null);
   const [html, setHtml] = useState(value);
@@ -31,7 +30,6 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     }
   }, []);
 
-  // Add an effect to update the editor when value changes from outside
   useEffect(() => {
     if (editorRef.current && value !== html) {
       editorRef.current.innerHTML = value;
@@ -39,7 +37,6 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     }
   }, [value]);
 
-  // Update showToolbar when alwaysShowToolbar changes
   useEffect(() => {
     if (alwaysShowToolbar) {
       setShowToolbar(true);
@@ -56,23 +53,14 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     editorRef.current?.focus();
   };
 
-  // Specific handler for list formatting to ensure proper functionality
   const handleList = (listType: 'insertUnorderedList' | 'insertOrderedList') => {
-    // Make sure we have focus first
     if (editorRef.current) {
-      // Focus the editor before executing command
       editorRef.current.focus();
-      
-      // Execute the command after a brief delay to ensure focus is applied
-      setTimeout(() => {
-        document.execCommand(listType, false, null);
-        // Update the content
-        if (editorRef.current) {
-          const newContent = editorRef.current.innerHTML;
-          setHtml(newContent);
-          onChange(newContent);
-        }
-      }, 10);
+      document.execCommand(listType, false, null);
+      const newContent = editorRef.current.innerHTML;
+      setHtml(newContent);
+      onChange(newContent);
+      editorRef.current.focus();
     }
   };
 
@@ -87,7 +75,6 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     if (!alwaysShowToolbar) {
       setShowToolbar(true);
     }
-    // Call the onFocus prop if it exists
     if (onFocus) {
       onFocus();
     }
@@ -211,8 +198,8 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         onFocus={handleFocus}
         onBlur={handleBlur}  
         data-placeholder={placeholder}
-        dir="ltr" // Explicitly set text direction to left-to-right
-        style={{ textAlign: 'left' }} // Ensure text alignment is left
+        dir="ltr"
+        style={{ textAlign: 'left' }}
       />
     </div>
   );

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Invoice, Client } from '@/types';
@@ -12,6 +13,7 @@ interface InvoiceListProps {
   invoices: Invoice[];
   client: Client;
   showCreateButton?: boolean;
+  showTitle?: boolean;
 }
 
 const getStatusColor = (status: Invoice['status']) => {
@@ -39,7 +41,12 @@ const getContractStatusColor = (status?: 'pending' | 'accepted') => {
   }
 };
 
-const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateButton = true }) => {
+const InvoiceList: React.FC<InvoiceListProps> = ({ 
+  invoices, 
+  client, 
+  showCreateButton = true,
+  showTitle = true 
+}) => {
   const sortedInvoices = [...invoices].sort((a, b) => 
     new Date(b.date).getTime() - new Date(a.date).getTime()
   );
@@ -145,17 +152,19 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-semibold">Invoices</h2>
-        {showCreateButton && (
-          <Button asChild>
-            <Link to={`/invoice/create/${client.id}`}>
-              <FileEdit className="h-4 w-4 mr-2" />
-              Create Invoice
-            </Link>
-          </Button>
-        )}
-      </div>
+      {showTitle && (
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-semibold">Invoices</h2>
+          {showCreateButton && (
+            <Button asChild>
+              <Link to={`/invoice/create/${client.id}`}>
+                <FileEdit className="h-4 w-4 mr-2" />
+                Create Invoice
+              </Link>
+            </Button>
+          )}
+        </div>
+      )}
       
       {sortedInvoices.length === 0 ? (
         <Card>
@@ -165,7 +174,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
             <p className="text-muted-foreground mb-6 max-w-md">
               {showCreateButton 
                 ? "You haven't created any invoices for this client yet. Create your first invoice to get started."
-                : "No invoices have been created for this client yet. Invoices can be created from the job page."}
+                : "No invoices have been created for this client yet."}
             </p>
             {showCreateButton && (
               <Button asChild>

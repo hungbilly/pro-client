@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getJob, getClient, getJobInvoices, deleteJob } from '@/lib/storage';
@@ -289,7 +290,7 @@ const JobDetail = () => {
                     <p className="text-muted-foreground text-sm">No invoices have been created for this job yet.</p>
                   </div>
                 ) : (
-                  <InvoiceList invoices={invoices} client={client} />
+                  <InvoiceList invoices={invoices} client={client} showCreateButton={false} />
                 )}
               </CardContent>
             </Card>

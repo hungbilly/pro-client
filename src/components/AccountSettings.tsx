@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -40,7 +39,6 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-// Define the user settings type to match our database structure
 interface UserSettings {
   id: string;
   user_id: string;
@@ -54,7 +52,6 @@ interface UserSettings {
   updated_at: string;
 }
 
-// Helper function to validate if the data has UserSettings shape
 function isUserSettings(data: any): data is UserSettings {
   return (
     data &&
@@ -97,7 +94,6 @@ const AccountSettings = () => {
     setIsLoading(true);
     try {
       console.log("Loading settings for user:", user.id);
-      // Use type assertion to tell TypeScript this is a valid table
       const { data, error } = await supabase
         .from('user_settings' as any)
         .select('*')
@@ -110,7 +106,6 @@ const AccountSettings = () => {
       }
 
       console.log("Settings data received:", data);
-      // If settings exist, populate the form
       if (data && isUserSettings(data)) {
         form.reset({
           defaultCurrency: data.default_currency || 'USD',
@@ -135,7 +130,6 @@ const AccountSettings = () => {
     setIsLoading(true);
     try {
       console.log("Saving settings for user:", user.id);
-      // Check if settings already exist
       const { data: existingData, error: checkError } = await supabase
         .from('user_settings' as any)
         .select('id')
@@ -159,14 +153,12 @@ const AccountSettings = () => {
 
       let result;
       
-      // Make sure existingData is not null before accessing properties
-      if (existingData !== null && typeof existingData === 'object' && 'id' in existingData) {
-        const id = existingData.id as string;
-        console.log("Updating existing settings with ID:", id);
+      if (existingData) {
+        console.log("Updating existing settings with ID:", existingData.id);
         result = await supabase
           .from('user_settings' as any)
           .update(settingsData as any)
-          .eq('id', id);
+          .eq('id', existingData.id);
       } else {
         console.log("Creating new settings");
         result = await supabase

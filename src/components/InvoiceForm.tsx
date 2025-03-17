@@ -154,18 +154,9 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
   };
   
   const handleManualPackageEntry = (id: string) => {
-    setActiveRowId(null);
+    console.log('handleManualPackageEntry called for id:', id);
     
-    setItems(items.map(item => {
-      if (item.id === id) {
-        return { ...item, description: '' };
-      }
-      return item;
-    }));
-    
-    setTimeout(() => {
-      setActiveRowId(id);
-    }, 10);
+    setActiveRowId(id);
   };
 
   const handleAddToGoogleCalendar = () => {
@@ -492,30 +483,39 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
                         <GripVertical className="h-4 w-4 mx-auto text-muted-foreground" />
                       </TableCell>
                       <TableCell>
-                        {!item.description && activeRowId === item.id ? (
-                          <div className="space-y-1">
-                            <PackageSelector 
-                              onPackageSelect={handlePackageSelect} 
-                              variant="inline" 
-                              placeholder="Select an existing package..." 
-                            />
-                            <Button 
-                              variant="ghost" 
-                              className="w-full justify-start text-left text-muted-foreground hover:text-foreground"
-                              onClick={() => handleManualPackageEntry(item.id)}
-                            >
-                              <Pencil className="mr-2 h-4 w-4" />
-                              Add your own product/package...
-                            </Button>
-                          </div>
-                        ) : (
+                        {activeRowId === item.id ? (
                           <RichTextEditor
                             value={item.description}
                             onChange={(value) => handleItemChange(item.id, 'description', value)}
                             className="border-none min-h-0 p-0"
                             placeholder="Add description..."
-                            onFocus={() => !item.description && setActiveRowId(item.id)}
                           />
+                        ) : (
+                          item.description ? (
+                            <RichTextEditor
+                              value={item.description}
+                              onChange={(value) => handleItemChange(item.id, 'description', value)}
+                              className="border-none min-h-0 p-0"
+                              placeholder="Add description..."
+                              onFocus={() => setActiveRowId(item.id)}
+                            />
+                          ) : (
+                            <div className="space-y-1">
+                              <PackageSelector 
+                                onPackageSelect={handlePackageSelect} 
+                                variant="inline" 
+                                placeholder="Select an existing package..." 
+                              />
+                              <Button 
+                                variant="ghost" 
+                                className="w-full justify-start text-left text-muted-foreground hover:text-foreground"
+                                onClick={() => handleManualPackageEntry(item.id)}
+                              >
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Add your own product/package...
+                              </Button>
+                            </div>
+                          )
                         )}
                       </TableCell>
                       <TableCell className="text-right">

@@ -47,19 +47,27 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({ onPackageSelect }) =>
     fetchPackages();
   }, [user]);
 
-  const handleSelectPackage = (pkg: Package) => {
+  const handleSelectPackage = (packageName: string) => {
+    // Find the selected package by name
+    const selectedPackage = packages.find(pkg => pkg.name === packageName);
+    
+    if (!selectedPackage) {
+      console.error('Selected package not found:', packageName);
+      return;
+    }
+    
     // Convert the package to an invoice item
     const newItem: InvoiceItem = {
       id: Date.now().toString(),
-      description: `${pkg.name}${pkg.description ? ` - ${pkg.description}` : ''}`,
+      description: `${selectedPackage.name}${selectedPackage.description ? ` - ${selectedPackage.description}` : ''}`,
       quantity: 1,
-      rate: pkg.price,
-      amount: pkg.price
+      rate: selectedPackage.price,
+      amount: selectedPackage.price
     };
     
     onPackageSelect([newItem]);
     setOpen(false);
-    toast.success(`Added "${pkg.name}" to invoice`);
+    toast.success(`Added "${selectedPackage.name}" to invoice`);
   };
 
   return (
@@ -91,7 +99,7 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({ onPackageSelect }) =>
               <CommandItem
                 key={pkg.id}
                 value={pkg.name}
-                onSelect={() => handleSelectPackage(pkg)}
+                onSelect={handleSelectPackage}
               >
                 <div className="flex flex-col">
                   <div className="flex items-center">

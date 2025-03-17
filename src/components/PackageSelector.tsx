@@ -139,6 +139,18 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
   console.log('Creating CommandItems from packages:', packages);
   const packageItems = packages.map((pkg) => {
     console.log('Individual package being mapped:', pkg);
+    
+    // Check if pkg has the expected structure
+    if (!pkg || typeof pkg !== 'object') {
+      console.error('Invalid package object:', pkg);
+      return null;
+    }
+    
+    if (!pkg.id || !pkg.name) {
+      console.error('Package missing required properties:', pkg);
+      return null;
+    }
+    
     return (
       <CommandItem
         key={pkg.id}
@@ -166,13 +178,13 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
         </div>
       </CommandItem>
     );
-  });
+  }).filter(Boolean); // Filter out any null items
   
   console.log('packageItems array created with length:', packageItems.length);
 
   // For inline variant
   if (variant === 'inline') {
-    console.log('Rendering CommandGroup with packageItems (inline):', packageItems);
+    console.log('Rendering inline variant with', packageItems.length, 'items');
     return (
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
@@ -182,7 +194,10 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
             aria-expanded={open}
             className="justify-start text-left text-muted-foreground hover:text-foreground w-full"
             disabled={loading}
-            onClick={() => console.log('Package selector button clicked, current packages:', packages)}
+            onClick={() => {
+              console.log('Package selector button clicked, current packages:', packages);
+              setOpen(true);
+            }}
           >
             <FileText className="mr-2 h-4 w-4" />
             {placeholder}
@@ -202,7 +217,7 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
   }
 
   // For default variant
-  console.log('Rendering CommandGroup with packageItems (default):', packageItems);
+  console.log('Rendering default variant with', packageItems.length, 'items');
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -212,6 +227,10 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
           aria-expanded={open}
           className="w-full justify-between"
           disabled={loading}
+          onClick={() => {
+            console.log('Package selector button clicked, current packages:', packages);
+            setOpen(true);
+          }}
         >
           <div className="flex items-center">
             <PackageIcon className="mr-2 h-4 w-4" />

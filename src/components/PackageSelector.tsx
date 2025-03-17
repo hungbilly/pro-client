@@ -48,6 +48,9 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({ onPackageSelect }) =>
   }, [user]);
 
   const handleSelectPackage = (packageName: string) => {
+    console.log('Selected package name:', packageName);
+    console.log('Available packages:', packages);
+    
     // Find the selected package by name
     const selectedPackage = packages.find(pkg => pkg.name === packageName);
     
@@ -99,7 +102,10 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({ onPackageSelect }) =>
               <CommandItem
                 key={pkg.id}
                 value={pkg.name}
-                onSelect={handleSelectPackage}
+                onSelect={(value) => {
+                  console.log('Command item selected with value:', value);
+                  handleSelectPackage(value);
+                }}
               >
                 <div className="flex flex-col">
                   <div className="flex items-center">

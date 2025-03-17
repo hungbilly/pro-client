@@ -26,17 +26,29 @@ const Routes = () => {
       <Route path="/client/new" element={<ProtectedRoute><ClientNew /></ProtectedRoute>} />
       <Route path="/client/:id" element={<ProtectedRoute><ClientDetail /></ProtectedRoute>} />
       <Route path="/client/:id/edit" element={<ProtectedRoute><ClientEdit /></ProtectedRoute>} />
+      
+      {/* Add job creation routes */}
+      <Route path="/client/:clientId/job/new" element={<ProtectedRoute><JobCreate /></ProtectedRoute>} />
+      <Route path="/client/:clientId/job/create" element={<ProtectedRoute><JobCreate /></ProtectedRoute>} />
+      
+      {/* Invoice routes */}
       <Route path="/client/:clientId/invoice/new" element={<ProtectedRoute><InvoiceCreate /></ProtectedRoute>} />
+      <Route path="/client/:clientId/invoice/create" element={<ProtectedRoute><InvoiceCreate /></ProtectedRoute>} />
       <Route path="/client/:clientId/invoice/:invoiceId/edit" element={<ProtectedRoute><InvoiceCreate /></ProtectedRoute>} />
+      
+      {/* Job routes */}
       <Route path="/jobs" element={<ProtectedRoute><Jobs /></ProtectedRoute>} />
       <Route path="/job/new" element={<ProtectedRoute><JobCreate /></ProtectedRoute>} />
       <Route path="/job/:id" element={<ProtectedRoute><JobDetail /></ProtectedRoute>} />
       <Route path="/job/:id/edit" element={<ProtectedRoute><JobEdit /></ProtectedRoute>} />
+      
+      {/* Job-related invoice routes */}
       <Route path="/job/:jobId/invoice/new" element={<ProtectedRoute><InvoiceCreate /></ProtectedRoute>} />
+      <Route path="/job/:jobId/invoice/create" element={<ProtectedRoute><InvoiceCreate /></ProtectedRoute>} />
       <Route path="/job/:jobId/invoice/:invoiceId/edit" element={<ProtectedRoute><InvoiceCreate /></ProtectedRoute>} />
+      
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
       <Route path="/invoice/:viewLink" element={<InvoiceView />} />
-      {/* Add a new route for viewing an invoice by ID */}
       <Route path="/invoice/:id" element={<ProtectedRoute><InvoiceView /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </ReactRoutes>

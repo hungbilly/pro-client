@@ -34,7 +34,7 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({ onPackageSelect }) =>
         
         if (error) throw error;
         
-        setPackages(data || []);
+        setPackages(data as Package[] || []);
       } catch (error) {
         console.error('Error fetching packages:', error);
         toast.error('Failed to load packages');

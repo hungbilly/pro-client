@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { useCompany } from './CompanySelector';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import PackageSelector from './PackageSelector';
 
 interface InvoiceFormProps {
   invoice?: Invoice;
@@ -124,6 +125,10 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
       }
       return item;
     }));
+  };
+  
+  const handlePackageSelect = (newItems: InvoiceItem[]) => {
+    setItems([...items, ...newItems]);
   };
 
   const handleAddToGoogleCalendar = () => {
@@ -407,6 +412,13 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
               </p>
             </div>
           )}
+          
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <Label className="text-base">Package</Label>
+              <PackageSelector onPackageSelect={handlePackageSelect} />
+            </div>
+          </div>
           
           <div>
             <Label>Items</Label>

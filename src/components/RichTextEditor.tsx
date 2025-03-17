@@ -54,53 +54,24 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     editorRef.current?.focus();
   };
 
-  // New approach for list formatting
-  const handleList = (listType: 'ul' | 'ol') => {
-    // First ensure the editor has focus
+  // Improved approach for list formatting using execCommand directly
+  const handleList = (listType: 'insertUnorderedList' | 'insertOrderedList') => {
     if (editorRef.current) {
+      // Focus the editor first
       editorRef.current.focus();
       
-      // Get the current selection
-      const selection = window.getSelection();
-      if (!selection || selection.rangeCount === 0) return;
-      
-      const range = selection.getRangeAt(0);
-      const selectedText = range.toString();
-      
-      // Create a new list element
-      const listElement = document.createElement(listType);
-      const listItem = document.createElement('li');
-      
-      // If there's selected text, use it, otherwise use a placeholder
-      if (selectedText) {
-        listItem.textContent = selectedText;
-      } else {
-        listItem.textContent = 'List item';
-      }
-      
-      listElement.appendChild(listItem);
-      
-      // Delete current selection if any
-      if (selectedText) {
-        range.deleteContents();
-      }
-      
-      // Insert the list
-      range.insertNode(listElement);
-      
-      // Move cursor to the end of the inserted list
-      range.setStartAfter(listElement);
-      range.setEndAfter(listElement);
-      range.collapse(true);
-      selection.removeAllRanges();
-      selection.addRange(range);
-      
-      // Update content
-      if (editorRef.current) {
-        const newContent = editorRef.current.innerHTML;
-        setHtml(newContent);
-        onChange(newContent);
-      }
+      // Use setTimeout to give the browser time to focus
+      setTimeout(() => {
+        // Execute the command directly using execCommand
+        document.execCommand(listType, false, null);
+        
+        // Update content after command execution
+        if (editorRef.current) {
+          const newContent = editorRef.current.innerHTML;
+          setHtml(newContent);
+          onChange(newContent);
+        }
+      }, 10);
     }
   };
 
@@ -169,7 +140,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             type="button"
             variant="ghost"
             size="sm"
-            onClick={() => handleList('ul')}
+            onClick={() => handleList('insertUnorderedList')}
             className="h-8 w-8 p-0"
             title="Bullet List"
           >
@@ -180,7 +151,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             type="button"
             variant="ghost"
             size="sm"
-            onClick={() => handleList('ol')}
+            onClick={() => handleList('insertOrderedList')}
             className="h-8 w-8 p-0"
             title="Numbered List"
           >

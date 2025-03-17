@@ -54,22 +54,53 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     editorRef.current?.focus();
   };
 
-  // Fix for list formatting
-  const handleListCommand = (listType: 'insertUnorderedList' | 'insertOrderedList') => {
+  // New approach for list formatting
+  const handleList = (listType: 'ul' | 'ol') => {
+    // First ensure the editor has focus
     if (editorRef.current) {
-      // Focus the editor first
       editorRef.current.focus();
       
-      // Use setTimeout to ensure the focus is applied before executing the command
-      setTimeout(() => {
-        // Execute the command
-        document.execCommand(listType, false, null);
-        
-        // Update the content
-        const newContent = editorRef.current?.innerHTML || '';
+      // Get the current selection
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) return;
+      
+      const range = selection.getRangeAt(0);
+      const selectedText = range.toString();
+      
+      // Create a new list element
+      const listElement = document.createElement(listType);
+      const listItem = document.createElement('li');
+      
+      // If there's selected text, use it, otherwise use a placeholder
+      if (selectedText) {
+        listItem.textContent = selectedText;
+      } else {
+        listItem.textContent = 'List item';
+      }
+      
+      listElement.appendChild(listItem);
+      
+      // Delete current selection if any
+      if (selectedText) {
+        range.deleteContents();
+      }
+      
+      // Insert the list
+      range.insertNode(listElement);
+      
+      // Move cursor to the end of the inserted list
+      range.setStartAfter(listElement);
+      range.setEndAfter(listElement);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+      
+      // Update content
+      if (editorRef.current) {
+        const newContent = editorRef.current.innerHTML;
         setHtml(newContent);
         onChange(newContent);
-      }, 50);
+      }
     }
   };
 
@@ -134,6 +165,28 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             <Underline className="h-4 w-4" />
           </Button>
           
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => handleList('ul')}
+            className="h-8 w-8 p-0"
+            title="Bullet List"
+          >
+            <List className="h-4 w-4" />
+          </Button>
+          
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => handleList('ol')}
+            className="h-8 w-8 p-0"
+            title="Numbered List"
+          >
+            <ListOrdered className="h-4 w-4" />
+          </Button>
+          
           <span className="border-r mx-1 h-8"></span>
           
           <Button
@@ -167,30 +220,6 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             title="Align Right"
           >
             <AlignRight className="h-4 w-4" />
-          </Button>
-          
-          <span className="border-r mx-1 h-8"></span>
-          
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => handleListCommand('insertUnorderedList')}
-            className="h-8 w-8 p-0"
-            title="Bullet List"
-          >
-            <List className="h-4 w-4" />
-          </Button>
-          
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => handleListCommand('insertOrderedList')}
-            className="h-8 w-8 p-0"
-            title="Numbered List"
-          >
-            <ListOrdered className="h-4 w-4" />
           </Button>
         </div>
       )}

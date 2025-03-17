@@ -43,6 +43,7 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
         // Always ensure packages is an array
         if (Array.isArray(data)) {
           setPackages(data);
+          console.log('Package state set to array with length:', data.length);
         } else {
           console.error('Packages data is not an array:', data);
           setPackages([]);
@@ -98,8 +99,7 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
     toast.success(`Added "${selectedPackage.name}" to invoice`);
   };
 
-  // This is a safer implementation that doesn't rely on using the command components directly
-  // when there's no data
+  // Early return for empty or undefined packages
   if (!Array.isArray(packages) || packages.length === 0) {
     const content = (
       <div className="p-2 text-center text-sm text-muted-foreground">
@@ -135,34 +135,40 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
     );
   }
 
-  // Only render the Command component if we have packages
-  const packageItems = packages.map((pkg) => (
-    <CommandItem
-      key={pkg.id}
-      value={pkg.name}
-      onSelect={(currentValue) => {
-        console.log('Command item selected with value:', currentValue);
-        handlePackageSelection(currentValue);
-      }}
-    >
-      <div className="flex flex-col">
-        <div className="flex items-center">
-          <span>{pkg.name}</span>
-          <span className="ml-auto font-medium">
-            {new Intl.NumberFormat('en-US', {
-              style: 'currency',
-              currency: 'USD',
-            }).format(pkg.price)}
-          </span>
+  // Create the package items before rendering to add additional debugging
+  console.log('Creating CommandItems from packages:', packages);
+  const packageItems = packages.map((pkg) => {
+    console.log('Creating CommandItem for package:', pkg.id, pkg.name);
+    return (
+      <CommandItem
+        key={pkg.id}
+        value={pkg.name}
+        onSelect={(currentValue) => {
+          console.log('Command item selected with value:', currentValue);
+          handlePackageSelection(currentValue);
+        }}
+      >
+        <div className="flex flex-col">
+          <div className="flex items-center">
+            <span>{pkg.name}</span>
+            <span className="ml-auto font-medium">
+              {new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+              }).format(pkg.price)}
+            </span>
+          </div>
+          {pkg.description && (
+            <span className="text-xs text-muted-foreground truncate max-w-[250px]">
+              {pkg.description}
+            </span>
+          )}
         </div>
-        {pkg.description && (
-          <span className="text-xs text-muted-foreground truncate max-w-[250px]">
-            {pkg.description}
-          </span>
-        )}
-      </div>
-    </CommandItem>
-  ));
+      </CommandItem>
+    );
+  });
+  
+  console.log('packageItems array created with length:', packageItems.length);
 
   // Render the component based on the variant
   if (variant === 'inline') {
@@ -186,6 +192,7 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
             <CommandInput placeholder="Search packages..." />
             <CommandEmpty>No package found.</CommandEmpty>
             <CommandGroup>
+              {console.log('Rendering CommandGroup with packageItems:', packageItems)}
               {packageItems}
             </CommandGroup>
           </Command>
@@ -216,6 +223,7 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
           <CommandInput placeholder="Search packages..." />
           <CommandEmpty>No package found.</CommandEmpty>
           <CommandGroup>
+            {console.log('Rendering CommandGroup with packageItems:', packageItems)}
             {packageItems}
           </CommandGroup>
         </Command>

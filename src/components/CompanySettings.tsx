@@ -28,7 +28,6 @@ const CompanySettings = () => {
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   
   // Form state
   const [name, setName] = useState('');
@@ -47,23 +46,17 @@ const CompanySettings = () => {
 
   const fetchCompanies = async () => {
     setIsLoading(true);
-    setError(null);
     try {
-      console.log("Fetching companies for user:", user?.id);
       const { data, error } = await supabase
         .from('companies')
         .select('*')
-        .eq('user_id', user?.id)
         .order('is_default', { ascending: false })
         .order('name');
       
       if (error) {
-        console.error('Error fetching companies:', error);
-        setError('Failed to load companies: ' + error.message);
         throw error;
       }
       
-      console.log("Companies data received:", data);
       setCompanies(data || []);
       
       // If there's at least one company, select the default or first one
@@ -126,18 +119,13 @@ const CompanySettings = () => {
       return;
     }
 
-    if (!user) {
-      toast.error('You must be logged in to save a company');
-      return;
-    }
-
     try {
       if (isAddingNew) {
         // Create new company
         const { data, error } = await supabase
           .from('companies')
           .insert({
-            user_id: user.id,
+            user_id: user?.id,
             name,
             address,
             phone,
@@ -186,9 +174,9 @@ const CompanySettings = () => {
         toast.success('Company updated successfully');
         fetchCompanies();
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error saving company:', error);
-      toast.error('Failed to save company: ' + error.message);
+      toast.error('Failed to save company');
     }
   };
 
@@ -201,9 +189,9 @@ const CompanySettings = () => {
         .neq('id', newDefaultId);
       
       if (error) throw error;
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error updating default company:', error);
-      toast.error('Failed to update default company: ' + error.message);
+      toast.error('Failed to update default company');
     }
   };
 
@@ -223,26 +211,15 @@ const CompanySettings = () => {
         
         toast.success('Company deleted successfully');
         fetchCompanies();
-      } catch (error: any) {
+      } catch (error) {
         console.error('Error deleting company:', error);
-        toast.error('Failed to delete company: ' + error.message);
+        toast.error('Failed to delete company');
       }
     }
   };
 
   if (isLoading) {
     return <div className="text-center p-8">Loading company data...</div>;
-  }
-
-  if (error) {
-    return (
-      <div className="p-8">
-        <div className="bg-red-50 border border-red-200 text-red-800 rounded-md p-4 mb-4">
-          <p>{error}</p>
-        </div>
-        <Button onClick={fetchCompanies}>Try Again</Button>
-      </div>
-    );
   }
 
   return (

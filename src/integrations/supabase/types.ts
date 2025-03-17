@@ -260,45 +260,6 @@ export type Database = {
           },
         ]
       }
-      user_settings: {
-        Row: {
-          contract_template: string | null
-          created_at: string
-          custom_format: string | null
-          default_currency: string
-          id: string
-          invoice_number_format: string
-          invoice_template: string | null
-          updated_at: string
-          use_custom_format: boolean
-          user_id: string
-        }
-        Insert: {
-          contract_template?: string | null
-          created_at?: string
-          custom_format?: string | null
-          default_currency?: string
-          id?: string
-          invoice_number_format?: string
-          invoice_template?: string | null
-          updated_at?: string
-          use_custom_format?: boolean
-          user_id: string
-        }
-        Update: {
-          contract_template?: string | null
-          created_at?: string
-          custom_format?: string | null
-          default_currency?: string
-          id?: string
-          invoice_number_format?: string
-          invoice_template?: string | null
-          updated_at?: string
-          use_custom_format?: boolean
-          user_id?: string
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never

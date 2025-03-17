@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -53,14 +54,22 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     editorRef.current?.focus();
   };
 
-  const handleList = (listType: 'insertUnorderedList' | 'insertOrderedList') => {
+  // Fix for list formatting
+  const handleListCommand = (listType: 'insertUnorderedList' | 'insertOrderedList') => {
     if (editorRef.current) {
+      // Focus the editor first
       editorRef.current.focus();
-      document.execCommand(listType, false, null);
-      const newContent = editorRef.current.innerHTML;
-      setHtml(newContent);
-      onChange(newContent);
-      editorRef.current.focus();
+      
+      // Use setTimeout to ensure the focus is applied before executing the command
+      setTimeout(() => {
+        // Execute the command
+        document.execCommand(listType, false, null);
+        
+        // Update the content
+        const newContent = editorRef.current?.innerHTML || '';
+        setHtml(newContent);
+        onChange(newContent);
+      }, 50);
     }
   };
 
@@ -166,7 +175,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             type="button"
             variant="ghost"
             size="sm"
-            onClick={() => handleList('insertUnorderedList')}
+            onClick={() => handleListCommand('insertUnorderedList')}
             className="h-8 w-8 p-0"
             title="Bullet List"
           >
@@ -177,7 +186,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             type="button"
             variant="ghost"
             size="sm"
-            onClick={() => handleList('insertOrderedList')}
+            onClick={() => handleListCommand('insertOrderedList')}
             className="h-8 w-8 p-0"
             title="Numbered List"
           >

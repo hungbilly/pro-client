@@ -158,6 +158,10 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
     setActiveRowId(id);
   };
 
+  const handleDoneEditing = () => {
+    setActiveRowId(null);
+  };
+
   const handleAddToGoogleCalendar = () => {
     if (!shootingDate || !client) return;
     
@@ -489,6 +493,8 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
                             className="border-none min-h-0 p-0"
                             placeholder="Add description..."
                             alwaysShowToolbar={true}
+                            showDoneButton={true}
+                            onDone={handleDoneEditing}
                           />
                         ) : (
                           item.description ? (

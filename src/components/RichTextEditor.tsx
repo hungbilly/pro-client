@@ -1,7 +1,8 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List, ListOrdered } from 'lucide-react';
+import { Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Check } from 'lucide-react';
 
 interface RichTextEditorProps {
   value: string;
@@ -10,6 +11,8 @@ interface RichTextEditorProps {
   placeholder?: string;
   onFocus?: () => void;
   alwaysShowToolbar?: boolean;
+  onDone?: () => void;
+  showDoneButton?: boolean;
 }
 
 const RichTextEditor: React.FC<RichTextEditorProps> = ({
@@ -19,6 +22,8 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   placeholder = 'Enter your text here...',
   onFocus,
   alwaysShowToolbar = false,
+  onDone,
+  showDoneButton = false,
 }) => {
   const editorRef = useRef<HTMLDivElement>(null);
   const [html, setHtml] = useState(value);
@@ -213,107 +218,132 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     }
   };
 
+  const handleDone = () => {
+    if (onDone) {
+      onDone();
+    }
+    if (!alwaysShowToolbar) {
+      setShowToolbar(false);
+    }
+  };
+
   return (
     <div className={cn("rounded-md border", className)}>
       {showToolbar && (
-        <div className="flex flex-wrap gap-1 p-2 border-b bg-muted/30">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => handleCommand('bold')}
-            className="h-8 w-8 p-0"
-            title="Bold"
-          >
-            <Bold className="h-4 w-4" />
-          </Button>
+        <div className="flex flex-wrap gap-1 p-2 border-b bg-muted/30 justify-between">
+          <div className="flex flex-wrap gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => handleCommand('bold')}
+              className="h-8 w-8 p-0"
+              title="Bold"
+            >
+              <Bold className="h-4 w-4" />
+            </Button>
+            
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => handleCommand('italic')}
+              className="h-8 w-8 p-0"
+              title="Italic"
+            >
+              <Italic className="h-4 w-4" />
+            </Button>
+            
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => handleCommand('underline')}
+              className="h-8 w-8 p-0"
+              title="Underline"
+            >
+              <Underline className="h-4 w-4" />
+            </Button>
+            
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => handleList('insertUnorderedList')}
+              className="h-8 w-8 p-0"
+              title="Bullet List"
+              onMouseDown={(e) => {
+                e.preventDefault(); // Prevent focus loss
+                console.log('Bullet list button pressed');
+              }}
+            >
+              <List className="h-4 w-4" />
+            </Button>
+            
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => handleList('insertOrderedList')}
+              className="h-8 w-8 p-0"
+              title="Numbered List"
+              onMouseDown={(e) => {
+                e.preventDefault(); // Prevent focus loss
+                console.log('Numbered list button pressed');
+              }}
+            >
+              <ListOrdered className="h-4 w-4" />
+            </Button>
+            
+            <span className="border-r mx-1 h-8"></span>
+            
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => handleCommand('justifyLeft')}
+              className="h-8 w-8 p-0"
+              title="Align Left"
+            >
+              <AlignLeft className="h-4 w-4" />
+            </Button>
+            
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => handleCommand('justifyCenter')}
+              className="h-8 w-8 p-0"
+              title="Align Center"
+            >
+              <AlignCenter className="h-4 w-4" />
+            </Button>
+            
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => handleCommand('justifyRight')}
+              className="h-8 w-8 p-0"
+              title="Align Right"
+            >
+              <AlignRight className="h-4 w-4" />
+            </Button>
+          </div>
           
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => handleCommand('italic')}
-            className="h-8 w-8 p-0"
-            title="Italic"
-          >
-            <Italic className="h-4 w-4" />
-          </Button>
-          
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => handleCommand('underline')}
-            className="h-8 w-8 p-0"
-            title="Underline"
-          >
-            <Underline className="h-4 w-4" />
-          </Button>
-          
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => handleList('insertUnorderedList')}
-            className="h-8 w-8 p-0"
-            title="Bullet List"
-            onMouseDown={(e) => {
-              e.preventDefault(); // Prevent focus loss
-              console.log('Bullet list button pressed');
-            }}
-          >
-            <List className="h-4 w-4" />
-          </Button>
-          
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => handleList('insertOrderedList')}
-            className="h-8 w-8 p-0"
-            title="Numbered List"
-            onMouseDown={(e) => {
-              e.preventDefault(); // Prevent focus loss
-              console.log('Numbered list button pressed');
-            }}
-          >
-            <ListOrdered className="h-4 w-4" />
-          </Button>
-          
-          <span className="border-r mx-1 h-8"></span>
-          
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => handleCommand('justifyLeft')}
-            className="h-8 w-8 p-0"
-            title="Align Left"
-          >
-            <AlignLeft className="h-4 w-4" />
-          </Button>
-          
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => handleCommand('justifyCenter')}
-            className="h-8 w-8 p-0"
-            title="Align Center"
-          >
-            <AlignCenter className="h-4 w-4" />
-          </Button>
-          
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => handleCommand('justifyRight')}
-            className="h-8 w-8 p-0"
-            title="Align Right"
-          >
-            <AlignRight className="h-4 w-4" />
-          </Button>
+          {showDoneButton && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleDone}
+              className="ml-auto"
+              title="Done"
+            >
+              <Check className="h-4 w-4 mr-1" />
+              Done
+            </Button>
+          )}
         </div>
       )}
       

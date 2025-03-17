@@ -1,22 +1,21 @@
-
 import React, { useState, useEffect } from 'react';
-import { useParams, Link, useLocation } from 'react-router-dom';
+import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { getInvoiceByViewLink, getClient, updateInvoiceStatus, getInvoice, updateContractStatus } from '@/lib/storage';
 import { Invoice, Client } from '@/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Check, Calendar, FileText, DollarSign, Send, Camera, MailCheck, FileCheck } from 'lucide-react';
+import { ArrowLeft, Check, Calendar, FileText, DollarSign, Send, Camera, MailCheck, FileCheck, Edit } from 'lucide-react';
 import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { useAuth } from '@/context/AuthContext';
 import { format } from 'date-fns';
 import { supabase } from "@/integrations/supabase/client";
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import RichTextEditor from '@/components/RichTextEditor';
 
 const InvoiceView = () => {
   const { viewLink } = useParams<{ viewLink: string }>();
@@ -26,6 +25,7 @@ const InvoiceView = () => {
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const { isAdmin } = useAuth();
   const [emailLogs, setEmailLogs] = useState<Array<{timestamp: Date, message: string, success: boolean}>>([]);
 
@@ -279,6 +279,16 @@ const InvoiceView = () => {
     }
   };
 
+  const handleEditInvoice = () => {
+    if (invoice && client) {
+      if (invoice.jobId) {
+        navigate(`/job/${invoice.jobId}/invoice/${invoice.id}/edit`);
+      } else {
+        navigate(`/client/${client.id}/invoice/${invoice.id}/edit`);
+      }
+    }
+  };
+
   if (loading) {
     return (
       <PageTransition>
@@ -351,8 +361,19 @@ const InvoiceView = () => {
                 )}
               </div>
             </CardTitle>
-            <CardDescription>
-              View invoice details and contract terms.
+            <CardDescription className="flex justify-between items-center">
+              <span>View invoice details and contract terms.</span>
+              {!isClientView && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleEditInvoice}
+                  className="flex items-center gap-1"
+                >
+                  <Edit className="h-3 w-3" />
+                  Edit Invoice
+                </Button>
+              )}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -498,13 +519,12 @@ const InvoiceView = () => {
                   />
                   
                   <Label htmlFor="emailContent">Email Content</Label>
-                  <Textarea
+                  <RichTextEditor
                     id="emailContent"
                     value={emailContent}
-                    onChange={(e) => setEmailContent(e.target.value)}
+                    onChange={setEmailContent}
                     placeholder={generateDefaultEmailContent()}
                     className="min-h-[100px]"
-                    rows={5}
                   />
                   
                   {emailLogs.length > 0 && (

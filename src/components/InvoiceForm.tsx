@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Client, Invoice, InvoiceItem, Job } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Trash2, Calendar as CalendarIcon, Camera, CalendarPlus, GripVertical, Pencil, Copy, Package as PackageIcon } from 'lucide-react';
 import { toast } from 'sonner';
-import { getClient, saveInvoice, updateInvoice, getJob } from '@/lib/storage';
+import { getClient, saveInvoice, updateInvoice, getJob, getInvoice } from '@/lib/storage';
 import { format } from 'date-fns';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -22,8 +22,9 @@ import RichTextEditor from './RichTextEditor';
 
 interface InvoiceFormProps {
   invoice?: Invoice;
-  clientId: string;
+  clientId?: string;
   jobId?: string;
+  invoiceId?: string;
 }
 
 interface Template {
@@ -32,55 +33,115 @@ interface Template {
   content: string;
 }
 
-const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, clientId, jobId }) => {
+const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientId: propClientId, jobId: propJobId, invoiceId: propInvoiceId }) => {
   const navigate = useNavigate();
   const { selectedCompanyId } = useCompany();
+  const params = useParams();
+  
+  const clientId = propClientId || params.clientId;
+  const jobId = propJobId || params.jobId;
+  const invoiceId = propInvoiceId || params.invoiceId;
   
   const [client, setClient] = useState<Client | null>(null);
   const [job, setJob] = useState<Job | null>(null);
-  const [number, setNumber] = useState(existingInvoice?.number || '');
-  const [date, setDate] = useState<Date | null>(existingInvoice ? new Date(existingInvoice.date) : new Date());
-  const [dueDate, setDueDate] = useState<Date | null>(existingInvoice ? new Date(existingInvoice.dueDate) : new Date());
-  const [shootingDate, setShootingDate] = useState<Date | null>(existingInvoice?.shootingDate ? new Date(existingInvoice.shootingDate) : null);
-  const [status, setStatus] = useState<'draft' | 'sent' | 'accepted' | 'paid'>(existingInvoice?.status || 'draft');
-  const [contractStatus, setContractStatus] = useState<'pending' | 'accepted'>(existingInvoice?.contractStatus || 'pending');
-  const [items, setItems] = useState<InvoiceItem[]>(existingInvoice?.items || [{ id: Date.now().toString(), description: '', quantity: 1, rate: 0, amount: 0 }]);
-  const [notes, setNotes] = useState(existingInvoice?.notes || '');
-  const [contractTerms, setContractTerms] = useState(existingInvoice?.contractTerms || '');
+  const [invoice, setInvoice] = useState<Invoice | undefined>(propInvoice);
+  const [number, setNumber] = useState('');
+  const [date, setDate] = useState<Date | null>(new Date());
+  const [dueDate, setDueDate] = useState<Date | null>(new Date());
+  const [shootingDate, setShootingDate] = useState<Date | null>(null);
+  const [status, setStatus] = useState<'draft' | 'sent' | 'accepted' | 'paid'>('draft');
+  const [contractStatus, setContractStatus] = useState<'pending' | 'accepted'>('pending');
+  const [items, setItems] = useState<InvoiceItem[]>([{ id: Date.now().toString(), description: '', quantity: 1, rate: 0, amount: 0 }]);
+  const [notes, setNotes] = useState('');
+  const [contractTerms, setContractTerms] = useState('');
+  const [loading, setLoading] = useState(true);
 
   const [templates, setTemplates] = useState<Template[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const { user } = useAuth();
 
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
+  const [isEditMode, setIsEditMode] = useState(!!invoiceId);
 
   useEffect(() => {
+    const fetchInvoiceData = async () => {
+      if (invoiceId) {
+        try {
+          const fetchedInvoice = await getInvoice(invoiceId);
+          if (fetchedInvoice) {
+            setInvoice(fetchedInvoice);
+            setNumber(fetchedInvoice.number || '');
+            setDate(fetchedInvoice.date ? new Date(fetchedInvoice.date) : new Date());
+            setDueDate(fetchedInvoice.dueDate ? new Date(fetchedInvoice.dueDate) : new Date());
+            setShootingDate(fetchedInvoice.shootingDate ? new Date(fetchedInvoice.shootingDate) : null);
+            setStatus(fetchedInvoice.status as 'draft' | 'sent' | 'accepted' | 'paid');
+            setContractStatus(fetchedInvoice.contractStatus as 'pending' | 'accepted');
+            setItems(fetchedInvoice.items || []);
+            setNotes(fetchedInvoice.notes || '');
+            setContractTerms(fetchedInvoice.contractTerms || '');
+          } else {
+            toast.error('Invoice not found.');
+          }
+        } catch (error) {
+          console.error('Error fetching invoice:', error);
+          toast.error('Failed to load invoice data.');
+        }
+      }
+    };
+
     const fetchClientData = async () => {
       if (clientId) {
-        const fetchedClient = await getClient(clientId);
-        if (fetchedClient) {
-          setClient(fetchedClient);
-        } else {
-          toast.error('Client not found.');
+        try {
+          const fetchedClient = await getClient(clientId);
+          if (fetchedClient) {
+            setClient(fetchedClient);
+          } else {
+            toast.error('Client not found.');
+          }
+        } catch (error) {
+          console.error('Error fetching client:', error);
+          toast.error('Failed to load client data.');
+        }
+      } else if (invoice?.clientId) {
+        try {
+          const fetchedClient = await getClient(invoice.clientId);
+          if (fetchedClient) {
+            setClient(fetchedClient);
+          }
+        } catch (error) {
+          console.error('Error fetching client from invoice:', error);
         }
       }
     };
 
     const fetchJobData = async () => {
       if (jobId) {
-        const fetchedJob = await getJob(jobId);
-        if (fetchedJob) {
-          setJob(fetchedJob);
-        } else {
-          toast.error('Job not found.');
+        try {
+          const fetchedJob = await getJob(jobId);
+          if (fetchedJob) {
+            setJob(fetchedJob);
+            if (!client && fetchedJob.clientId) {
+              const jobClient = await getClient(fetchedJob.clientId);
+              if (jobClient) setClient(jobClient);
+            }
+          } else {
+            toast.error('Job not found.');
+          }
+        } catch (error) {
+          console.error('Error fetching job:', error);
+          toast.error('Failed to load job data.');
+        }
+      } else if (invoice?.jobId) {
+        try {
+          const fetchedJob = await getJob(invoice.jobId);
+          if (fetchedJob) {
+            setJob(fetchedJob);
+          }
+        } catch (error) {
+          console.error('Error fetching job from invoice:', error);
         }
       }
     };
-
-    fetchClientData();
-    if (jobId) {
-      fetchJobData();
-    }
 
     const fetchTemplates = async () => {
       if (!user) return;
@@ -98,10 +159,17 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
       }
     };
     
-    if (user) {
-      fetchTemplates();
-    }
-  }, [clientId, jobId, user]);
+    const loadAllData = async () => {
+      setLoading(true);
+      await fetchInvoiceData();
+      await fetchClientData();
+      await fetchJobData();
+      if (user) await fetchTemplates();
+      setLoading(false);
+    };
+    
+    loadAllData();
+  }, [clientId, jobId, invoiceId, user, invoice?.clientId, invoice?.jobId]);
 
   const calculateTotalAmount = () => {
     return items.reduce((total, item) => total + item.amount, 0);
@@ -161,7 +229,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
     setItems(updatedItems);
     setActiveRowId(null);
     
-    // Log the current state after update
     setTimeout(() => {
       console.log('Current items state after update:', items);
     }, 100);
@@ -226,32 +293,13 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
 
     const amount = calculateTotalAmount();
 
-    const invoiceData: Omit<Invoice, 'id' | 'viewLink'> = {
-      clientId: client.id,
-      companyId: selectedCompanyId,
-      jobId,
-      number,
-      amount,
-      date: format(date, 'yyyy-MM-dd'),
-      dueDate: format(dueDate, 'yyyy-MM-dd'),
-      status,
-      contractStatus,
-      items,
-      notes,
-      contractTerms,
-    };
-
-    if (shootingDate) {
-      invoiceData.shootingDate = format(shootingDate, 'yyyy-MM-dd');
-    }
-
     try {
-      if (existingInvoice) {
+      if (isEditMode && invoice) {
         const updatedInvoice: Invoice = {
-          id: existingInvoice.id,
+          id: invoice.id,
           clientId: client.id,
           companyId: selectedCompanyId,
-          jobId,
+          jobId: job?.id || invoice.jobId,
           number,
           amount,
           date: format(date, 'yyyy-MM-dd'),
@@ -261,7 +309,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
           items,
           notes,
           contractTerms,
-          viewLink: existingInvoice.viewLink,
+          viewLink: invoice.viewLink,
         };
 
         if (shootingDate) {
@@ -271,14 +319,35 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
         await updateInvoice(updatedInvoice);
         toast.success('Invoice updated successfully!');
       } else {
+        const invoiceData: Omit<Invoice, 'id' | 'viewLink'> = {
+          clientId: client.id,
+          companyId: selectedCompanyId,
+          jobId: job?.id,
+          number,
+          amount,
+          date: format(date, 'yyyy-MM-dd'),
+          dueDate: format(dueDate, 'yyyy-MM-dd'),
+          status,
+          contractStatus,
+          items,
+          notes,
+          contractTerms,
+        };
+
+        if (shootingDate) {
+          invoiceData.shootingDate = format(shootingDate, 'yyyy-MM-dd');
+        }
+
         await saveInvoice(invoiceData);
         toast.success('Invoice saved successfully!');
       }
       
-      if (jobId) {
-        navigate(`/job/${jobId}`);
-      } else {
+      if (job?.id) {
+        navigate(`/job/${job.id}`);
+      } else if (client) {
         navigate(`/client/${client.id}`);
+      } else {
+        navigate('/');
       }
     } catch (error) {
       console.error('Failed to save/update invoice:', error);
@@ -286,11 +355,21 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
     }
   };
 
+  if (loading) {
+    return (
+      <Card className="w-full max-w-5xl mx-auto">
+        <CardContent className="pt-6">
+          <div className="text-center p-8">Loading data...</div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (!client) {
     return (
       <Card className="w-full max-w-5xl mx-auto">
         <CardContent className="pt-6">
-          <div className="text-center p-8">Loading client data...</div>
+          <div className="text-center p-8">Client data not available. Please go back and try again.</div>
         </CardContent>
       </Card>
     );
@@ -307,9 +386,9 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
   return (
     <Card className="w-full max-w-5xl mx-auto">
       <CardHeader>
-        <CardTitle>{existingInvoice ? 'Edit Invoice' : 'Create Invoice'}</CardTitle>
+        <CardTitle>{isEditMode ? 'Edit Invoice' : 'Create Invoice'}</CardTitle>
         <CardDescription>
-          {job ? `Creating invoice for job: ${job.title}` : 'Fill in the details to create the invoice.'}
+          {job ? `${isEditMode ? 'Editing' : 'Creating'} invoice for job: ${job.title}` : 'Fill in the details to create the invoice.'}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -650,8 +729,8 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
         <Button 
           variant="outline" 
           onClick={() => {
-            if (jobId) {
-              navigate(`/job/${jobId}`);
+            if (job?.id) {
+              navigate(`/job/${job.id}`);
             } else if (client) {
               navigate(`/client/${client.id}`);
             } else {
@@ -661,7 +740,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
         >
           Cancel
         </Button>
-        <Button onClick={handleSubmit}>{existingInvoice ? 'Update Invoice' : 'Create Invoice'}</Button>
+        <Button onClick={handleSubmit}>{isEditMode ? 'Update Invoice' : 'Create Invoice'}</Button>
       </CardFooter>
     </Card>
   );

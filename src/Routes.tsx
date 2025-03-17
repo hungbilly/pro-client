@@ -1,121 +1,44 @@
 
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
-import Index from '@/pages/Index';
-import Clients from '@/pages/Clients';
-import ClientDetail from '@/pages/ClientDetail';
-import ClientNew from '@/pages/ClientNew';
-import ClientEdit from '@/pages/ClientEdit';
-import Jobs from '@/pages/Jobs';
-import InvoiceCreate from '@/pages/InvoiceCreate';
-import InvoiceView from '@/pages/InvoiceView';
-import JobCreate from '@/pages/JobCreate';
-import JobEdit from '@/pages/JobEdit';
-import JobDetail from '@/pages/JobDetail';
-import Settings from '@/pages/Settings';
-import NotFound from '@/pages/NotFound';
-import MainNavbar from '@/components/MainNavbar';
-import Auth from '@/pages/Auth';
-import { useAuth } from '@/context/AuthContext';
-import ProtectedRoute from '@/components/ProtectedRoute';
+import { Route, Routes as ReactRoutes } from 'react-router-dom';
+import Index from './pages/Index';
+import Auth from './pages/Auth';
+import NotFound from './pages/NotFound';
+import Clients from './pages/Clients';
+import ClientDetail from './pages/ClientDetail';
+import ClientNew from './pages/ClientNew';
+import ClientEdit from './pages/ClientEdit';
+import InvoiceView from './pages/InvoiceView';
+import InvoiceCreate from './pages/InvoiceCreate';
+import ProtectedRoute from './components/ProtectedRoute';
+import Settings from './pages/Settings';
+import Jobs from './pages/Jobs';
+import JobDetail from './pages/JobDetail';
+import JobCreate from './pages/JobCreate';
+import JobEdit from './pages/JobEdit';
 
-console.log("Routes is loading...");
-
-const AppRoutes = () => {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return <div className="flex h-screen items-center justify-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-    </div>;
-  }
-
+const Routes = () => {
   return (
-    <>
-      {user && <MainNavbar />}
-      <Routes>
-        <Route path="/auth" element={
-          user ? <Navigate to="/" replace /> : <Auth />
-        } />
-        
-        <Route path="/" element={
-          <ProtectedRoute>
-            <Index />
-          </ProtectedRoute>
-        } />
-        
-        <Route path="/clients" element={
-          <ProtectedRoute>
-            <Clients />
-          </ProtectedRoute>
-        } />
-        
-        <Route path="/client/new" element={
-          <ProtectedRoute>
-            <ClientNew />
-          </ProtectedRoute>
-        } />
-        
-        <Route path="/client/:id" element={
-          <ProtectedRoute>
-            <ClientDetail />
-          </ProtectedRoute>
-        } />
-        
-        <Route path="/client/edit/:id" element={
-          <ProtectedRoute>
-            <ClientEdit />
-          </ProtectedRoute>
-        } />
-        
-        <Route path="/jobs" element={
-          <ProtectedRoute>
-            <Jobs />
-          </ProtectedRoute>
-        } />
-        
-        <Route path="/client/:clientId/job/create" element={
-          <ProtectedRoute>
-            <JobCreate />
-          </ProtectedRoute>
-        } />
-        
-        <Route path="/job/create" element={
-          <ProtectedRoute>
-            <JobCreate />
-          </ProtectedRoute>
-        } />
-        
-        <Route path="/client/:clientId/job/edit/:id" element={
-          <ProtectedRoute>
-            <JobEdit />
-          </ProtectedRoute>
-        } />
-        
-        <Route path="/job/:id" element={
-          <ProtectedRoute>
-            <JobDetail />
-          </ProtectedRoute>
-        } />
-        
-        <Route path="/job/:jobId/invoice/create" element={
-          <ProtectedRoute>
-            <InvoiceCreate />
-          </ProtectedRoute>
-        } />
-        
-        <Route path="/invoice/:viewLink" element={<InvoiceView />} />
-        
-        <Route path="/settings" element={
-          <ProtectedRoute>
-            <Settings />
-          </ProtectedRoute>
-        } />
-        
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </>
+    <ReactRoutes>
+      <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+      <Route path="/auth" element={<Auth />} />
+      <Route path="/clients" element={<ProtectedRoute><Clients /></ProtectedRoute>} />
+      <Route path="/client/new" element={<ProtectedRoute><ClientNew /></ProtectedRoute>} />
+      <Route path="/client/:id" element={<ProtectedRoute><ClientDetail /></ProtectedRoute>} />
+      <Route path="/client/:id/edit" element={<ProtectedRoute><ClientEdit /></ProtectedRoute>} />
+      <Route path="/client/:clientId/invoice/new" element={<ProtectedRoute><InvoiceCreate /></ProtectedRoute>} />
+      <Route path="/client/:clientId/invoice/:invoiceId/edit" element={<ProtectedRoute><InvoiceCreate /></ProtectedRoute>} />
+      <Route path="/jobs" element={<ProtectedRoute><Jobs /></ProtectedRoute>} />
+      <Route path="/job/new" element={<ProtectedRoute><JobCreate /></ProtectedRoute>} />
+      <Route path="/job/:id" element={<ProtectedRoute><JobDetail /></ProtectedRoute>} />
+      <Route path="/job/:id/edit" element={<ProtectedRoute><JobEdit /></ProtectedRoute>} />
+      <Route path="/job/:jobId/invoice/new" element={<ProtectedRoute><InvoiceCreate /></ProtectedRoute>} />
+      <Route path="/job/:jobId/invoice/:invoiceId/edit" element={<ProtectedRoute><InvoiceCreate /></ProtectedRoute>} />
+      <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+      <Route path="/invoice/:viewLink" element={<InvoiceView />} />
+      <Route path="*" element={<NotFound />} />
+    </ReactRoutes>
   );
 };
 
-export default AppRoutes;
+export default Routes;

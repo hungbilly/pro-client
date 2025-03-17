@@ -1,75 +1,73 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import InvoiceForm from '@/components/InvoiceForm';
-import { getJob } from '@/lib/storage';
-import { Job } from '@/types';
-import PageTransition from '@/components/ui-custom/PageTransition';
+import { getInvoice } from '@/lib/storage';
+import { Invoice } from '@/types';
 import { toast } from 'sonner';
+import PageTransition from '@/components/ui-custom/PageTransition';
 
 const InvoiceCreate = () => {
-  const { jobId } = useParams<{ jobId: string }>();
+  const { clientId, jobId, invoiceId } = useParams();
   const navigate = useNavigate();
-  const [job, setJob] = useState<Job | null>(null);
-  const [loading, setLoading] = useState(true);
-
+  const [invoice, setInvoice] = useState<Invoice | undefined>(undefined);
+  const [loading, setLoading] = useState(!!invoiceId);
+  
   useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      
-      try {
-        // JobId is required for invoice creation
-        if (!jobId) {
-          toast.error('Job information is required to create an invoice');
-          navigate('/');
-          return;
+    const fetchInvoice = async () => {
+      if (invoiceId) {
+        try {
+          const fetchedInvoice = await getInvoice(invoiceId);
+          if (fetchedInvoice) {
+            setInvoice(fetchedInvoice);
+          } else {
+            toast.error('Invoice not found');
+            // Navigate back based on available params
+            if (jobId) {
+              navigate(`/job/${jobId}`);
+            } else if (clientId) {
+              navigate(`/client/${clientId}`);
+            } else {
+              navigate('/');
+            }
+          }
+        } catch (error) {
+          console.error('Failed to fetch invoice:', error);
+          toast.error('Failed to load invoice data');
+        } finally {
+          setLoading(false);
         }
-
-        const fetchedJob = await getJob(jobId);
-        if (fetchedJob) {
-          setJob(fetchedJob);
-        } else {
-          toast.error('Job not found');
-          navigate('/');
-          return;
-        }
-      } catch (error) {
-        console.error('Failed to fetch data:', error);
-        toast.error('Failed to load data');
-        navigate('/');
-      } finally {
+      } else {
         setLoading(false);
       }
     };
 
-    loadData();
-  }, [jobId, navigate]);
+    if (invoiceId) {
+      fetchInvoice();
+    }
+  }, [invoiceId, clientId, jobId, navigate]);
 
   if (loading) {
     return (
       <PageTransition>
-        <div className="container mx-auto py-8">
-          <div className="text-center">Loading data...</div>
+        <div className="container py-8 flex justify-center items-center">
+          <div>Loading invoice data...</div>
         </div>
       </PageTransition>
     );
   }
 
-  if (!job) {
-    return (
-      <PageTransition>
-        <div className="container mx-auto py-8">
-          <div className="text-center">Job information not available</div>
-        </div>
-      </PageTransition>
-    );
-  }
-
+  // If only jobId and clientId are provided, it's a new invoice
+  // If invoiceId is provided, it's an edit operation
   return (
     <PageTransition>
-      <div className="container mx-auto py-8">
-        <h1 className="text-3xl font-bold mb-8 text-center">Create Invoice for {job.title}</h1>
-        <InvoiceForm clientId={job.clientId} jobId={jobId} />
+      <div className="container py-8">
+        <InvoiceForm 
+          invoice={invoice}
+          clientId={clientId}
+          jobId={jobId}
+          invoiceId={invoiceId}
+        />
       </div>
     </PageTransition>
   );

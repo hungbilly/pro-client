@@ -40,6 +40,20 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
+// Define the user settings type to match our database structure
+interface UserSettings {
+  id: string;
+  user_id: string;
+  default_currency: string;
+  invoice_number_format: string;
+  use_custom_format: boolean;
+  custom_format: string | null;
+  invoice_template: string | null;
+  contract_template: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 const AccountSettings = () => {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
@@ -66,27 +80,31 @@ const AccountSettings = () => {
   }, [user]);
 
   const loadSettings = async () => {
+    if (!user) return;
+    
     setIsLoading(true);
     try {
       const { data, error } = await supabase
         .from('user_settings')
         .select('*')
-        .eq('user_id', user?.id)
-        .single();
+        .eq('user_id', user.id)
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
+      if (error) {
+        console.error('Error loading settings:', error);
         throw error;
       }
 
       // If settings exist, populate the form
       if (data) {
+        const settings = data as UserSettings;
         form.reset({
-          defaultCurrency: data.default_currency || 'USD',
-          invoiceNumberFormat: data.invoice_number_format || 'numeric',
-          useCustomFormat: data.use_custom_format || false,
-          customFormat: data.custom_format || '',
-          invoiceTemplate: data.invoice_template || '',
-          contractTemplate: data.contract_template || '',
+          defaultCurrency: settings.default_currency || 'USD',
+          invoiceNumberFormat: settings.invoice_number_format || 'numeric',
+          useCustomFormat: settings.use_custom_format || false,
+          customFormat: settings.custom_format || '',
+          invoiceTemplate: settings.invoice_template || '',
+          contractTemplate: settings.contract_template || '',
         });
       }
     } catch (error) {
@@ -107,9 +125,10 @@ const AccountSettings = () => {
         .from('user_settings')
         .select('id')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (checkError && checkError.code !== 'PGRST116') {
+      if (checkError) {
+        console.error('Error checking settings:', checkError);
         throw checkError;
       }
 

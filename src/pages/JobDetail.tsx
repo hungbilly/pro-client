@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getJob, getClient, getJobInvoices, deleteJob } from '@/lib/storage';
@@ -36,7 +35,6 @@ const JobDetail = () => {
         if (fetchedJob) {
           setJob(fetchedJob);
           
-          // Fetch client data
           const fetchedClient = await getClient(fetchedJob.clientId);
           if (fetchedClient) {
             setClient(fetchedClient);
@@ -44,7 +42,6 @@ const JobDetail = () => {
             toast.error('Client not found.');
           }
           
-          // Fetch invoices related to this job
           const fetchedInvoices = await getJobInvoices(id);
           setInvoices(fetchedInvoices);
         } else {
@@ -172,10 +169,8 @@ const JobDetail = () => {
           </div>
         </div>
         
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left column - Job details and invoices */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Job details card */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+          <div className="md:col-span-7 space-y-6">
             <Card className="overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200">
               <CardHeader className="bg-muted/30 pb-2">
                 <div className="flex items-center gap-2">
@@ -207,13 +202,6 @@ const JobDetail = () => {
                   )}
                   
                   <div className="flex items-center gap-2">
-                    <Building className="h-4 w-4 text-muted-foreground" />
-                    <Link to={`/client/${client.id}`} className="text-sm text-primary hover:underline">
-                      {client.name}
-                    </Link>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm text-muted-foreground">
                       Created {new Date(job.createdAt).toLocaleDateString()}
@@ -222,36 +210,9 @@ const JobDetail = () => {
                 </div>
               </CardContent>
             </Card>
-            
-            {/* Invoices card */}
-            <Card className="overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200">
-              <CardHeader className="bg-muted/30 pb-2 flex flex-row items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-primary" />
-                  <CardTitle className="text-lg">Invoices</CardTitle>
-                </div>
-                <Button size="sm" asChild>
-                  <Link to={`/job/${job.id}/invoice/create`}>
-                    Create Invoice
-                  </Link>
-                </Button>
-              </CardHeader>
-              
-              <CardContent className="pt-4">
-                {invoices.length === 0 ? (
-                  <div className="bg-muted/20 rounded-lg p-6 text-center">
-                    <FileText className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
-                    <p className="text-muted-foreground text-sm">No invoices have been created for this job yet.</p>
-                  </div>
-                ) : (
-                  <InvoiceList invoices={invoices} client={client} />
-                )}
-              </CardContent>
-            </Card>
           </div>
           
-          {/* Right column - Client details */}
-          <div className="space-y-6">
+          <div className="md:col-span-5 space-y-6">
             <Card className="overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200">
               <CardHeader className="bg-muted/30 pb-2">
                 <div className="flex items-center gap-2">
@@ -305,8 +266,33 @@ const JobDetail = () => {
                 </div>
               </CardContent>
             </Card>
-            
-            {/* You could add more client-related cards here, like payment history, etc. */}
+          </div>
+          
+          <div className="md:col-span-12 space-y-6">
+            <Card className="overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200">
+              <CardHeader className="bg-muted/30 pb-2 flex flex-row items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-primary" />
+                  <CardTitle className="text-lg">Invoices</CardTitle>
+                </div>
+                <Button size="sm" asChild>
+                  <Link to={`/job/${job.id}/invoice/create`}>
+                    Create Invoice
+                  </Link>
+                </Button>
+              </CardHeader>
+              
+              <CardContent className="pt-4">
+                {invoices.length === 0 ? (
+                  <div className="bg-muted/20 rounded-lg p-6 text-center">
+                    <FileText className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
+                    <p className="text-muted-foreground text-sm">No invoices have been created for this job yet.</p>
+                  </div>
+                ) : (
+                  <InvoiceList invoices={invoices} client={client} />
+                )}
+              </CardContent>
+            </Card>
           </div>
         </div>
         

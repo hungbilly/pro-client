@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Client, Invoice, InvoiceItem, Job } from '@/types';
@@ -384,7 +385,8 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
         await updateInvoice(updatedInvoice);
         toast.success('Invoice updated successfully!');
         
-        navigate(`/invoice/${invoice.viewLink}`);
+        // Fix: Use relative path instead of absolute URL
+        navigate(`/invoice/${invoice.id}`);
       } else {
         const allInvoices = await getInvoicesByDate();
         const duplicateExists = allInvoices.some(inv => inv.number === number);
@@ -416,8 +418,8 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
         const newInvoice = await saveInvoice(invoiceData);
         toast.success('Invoice saved successfully!');
         
-        if (newInvoice && newInvoice.viewLink) {
-          navigate(`/invoice/${newInvoice.viewLink}`);
+        if (newInvoice && newInvoice.id) {
+          navigate(`/invoice/${newInvoice.id}`);
         } else if (job?.id) {
           navigate(`/job/${job.id}`);
         } else if (client) {
@@ -836,4 +838,3 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
 };
 
 export default InvoiceForm;
-

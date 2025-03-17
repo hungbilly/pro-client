@@ -18,7 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import RichTextEditor from '@/components/RichTextEditor';
 
 const InvoiceView = () => {
-  const { viewLink } = useParams<{ viewLink: string }>();
+  const { viewLink, id } = useParams<{ viewLink: string, id: string }>();
   const [invoice, setInvoice] = useState<Invoice | undefined>(undefined);
   const [client, setClient] = useState<Client | undefined>(undefined);
   const [loading, setLoading] = useState(true);
@@ -48,47 +48,54 @@ const InvoiceView = () => {
   const [emailSubject, setEmailSubject] = useState(generateDefaultSubject());
 
   useEffect(() => {
-    if (!viewLink) {
-      setError('Invoice link is missing.');
+    if (!viewLink && !id) {
+      setError('Invoice identifier is missing.');
       setLoading(false);
       return;
     }
 
     const fetchInvoice = async () => {
       try {
-        console.log('Attempting to fetch invoice with ID:', viewLink);
+        let fetchedInvoice: Invoice | null = null;
         
-        const fetchedInvoice = await getInvoice(viewLink);
+        if (id) {
+          console.log('Attempting to fetch invoice with ID:', id);
+          fetchedInvoice = await getInvoice(id);
+        }
+        
+        if (!fetchedInvoice && viewLink) {
+          console.log('Invoice not found by ID or using viewLink, trying by view link');
+          
+          const isFullUrl = viewLink.startsWith('http');
+          let searchLink = viewLink;
+          
+          if (isFullUrl) {
+            searchLink = viewLink;
+          } else {
+            searchLink = `${window.location.origin}/invoice/${viewLink}`;
+          }
+          
+          console.log('Trying with view link:', searchLink);
+          fetchedInvoice = await getInvoiceByViewLink(searchLink);
+        }
         
         if (!fetchedInvoice) {
-          console.log('Invoice not found by ID, trying by view link');
-          const fullViewLink = `${window.location.origin}/invoice/${viewLink}`;
-          console.log('Trying with view link:', fullViewLink);
-          
-          const invoiceByViewLink = await getInvoiceByViewLink(fullViewLink);
-          if (!invoiceByViewLink) {
-            setError('Invoice not found.');
+          setError('Invoice not found.');
+          setLoading(false);
+          return;
+        }
+        
+        setInvoice(fetchedInvoice);
+
+        if (fetchedInvoice.clientId) {
+          const fetchedClient = await getClient(fetchedInvoice.clientId);
+          if (!fetchedClient) {
+            setError('Client not found.');
             setLoading(false);
             return;
           }
           
-          setInvoice(invoiceByViewLink);
-        } else {
-          setInvoice(fetchedInvoice);
-        }
-
-        if (fetchedInvoice || invoice) {
-          const clientId = (fetchedInvoice || invoice)?.clientId;
-          if (clientId) {
-            const fetchedClient = await getClient(clientId);
-            if (!fetchedClient) {
-              setError('Client not found.');
-              setLoading(false);
-              return;
-            }
-            
-            setClient(fetchedClient);
-          }
+          setClient(fetchedClient);
         }
         
         setLoading(false);
@@ -100,7 +107,7 @@ const InvoiceView = () => {
     };
 
     fetchInvoice();
-  }, [viewLink]);
+  }, [viewLink, id]);
 
   useEffect(() => {
     if (client && invoice) {

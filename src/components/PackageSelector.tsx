@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Check, ChevronsUpDown, Package as PackageIcon } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
@@ -26,16 +25,17 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({ onPackageSelect }) =>
       
       setLoading(true);
       try {
-        // Use type assertion to bypass TypeScript checks
-        const { data, error } = await (supabase
-          .from('packages') as any)
+        const { data, error } = await supabase
+          .from('packages')
           .select('*')
-          .eq('user_id', user.id)
-          .order('name', { ascending: true });
+          .eq('user_id', user.id);
         
         if (error) throw error;
         
-        setPackages(data as Package[] || []);
+        setPackages(data || []);
+        
+        // Log the fetched packages to troubleshoot
+        console.log('Fetched packages:', data);
       } catch (error) {
         console.error('Error fetching packages:', error);
         toast.error('Failed to load packages');
@@ -70,7 +70,7 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({ onPackageSelect }) =>
           role="combobox"
           aria-expanded={open}
           className="w-full justify-between"
-          disabled={loading || packages.length === 0}
+          disabled={loading}
         >
           <div className="flex items-center">
             <PackageIcon className="mr-2 h-4 w-4" />
@@ -89,7 +89,7 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({ onPackageSelect }) =>
             {packages.map((pkg) => (
               <CommandItem
                 key={pkg.id}
-                value={pkg.id}
+                value={pkg.name}
                 onSelect={() => handleSelectPackage(pkg)}
               >
                 <div className="flex flex-col">

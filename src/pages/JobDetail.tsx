@@ -131,7 +131,7 @@ const JobDetail = () => {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button variant="outline" size="sm" asChild>
-                    <Link to={`/client/${client.id}/job/edit/${job.id}`}>
+                    <Link to={`/job/${job.id}/edit`}>
                       <FileEdit className="h-4 w-4" />
                     </Link>
                   </Button>

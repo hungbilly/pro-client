@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Client, Invoice, InvoiceItem, Job } from '@/types';
@@ -16,6 +15,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from '@/lib/utils';
 import { useCompany } from './CompanySelector';
+import { useAuth } from '@/context/AuthContext';
 
 interface InvoiceFormProps {
   invoice?: Invoice;
@@ -26,7 +26,7 @@ interface InvoiceFormProps {
 const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, clientId, jobId }) => {
   const navigate = useNavigate();
   const { selectedCompanyId } = useCompany();
-
+  
   const [client, setClient] = useState<Client | null>(null);
   const [job, setJob] = useState<Job | null>(null);
   const [number, setNumber] = useState(existingInvoice?.number || '');
@@ -38,6 +38,10 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
   const [items, setItems] = useState<InvoiceItem[]>(existingInvoice?.items || [{ id: Date.now().toString(), description: '', quantity: 1, rate: 0, amount: 0 }]);
   const [notes, setNotes] = useState(existingInvoice?.notes || '');
   const [contractTerms, setContractTerms] = useState(existingInvoice?.contractTerms || '');
+
+  const [templates, setTemplates] = useState<{ id: string; name: string; content: string }[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const { user } = useAuth();
 
   useEffect(() => {
     const fetchClientData = async () => {
@@ -66,7 +70,28 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
     if (jobId) {
       fetchJobData();
     }
-  }, [clientId, jobId]);
+
+    // Also fetch invoice templates
+    const fetchTemplates = async () => {
+      if (!user) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('invoice_templates')
+          .select('id, name, content')
+          .eq('user_id', user.id);
+          
+        if (error) throw error;
+        setTemplates(data || []);
+      } catch (error) {
+        console.error('Error fetching templates:', error);
+      }
+    };
+    
+    if (user) {
+      fetchTemplates();
+    }
+  }, [clientId, jobId, user]);
 
   const calculateTotalAmount = () => {
     return items.reduce((total, item) => total + item.amount, 0);
@@ -107,6 +132,20 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
     
     window.open(googleCalendarUrl, '_blank');
     toast.success('Opening Google Calendar...');
+  };
+
+  const handleTemplateSelect = (templateId: string) => {
+    const template = templates.find(t => t.id === templateId);
+    if (template) {
+      setSelectedTemplateId(templateId);
+      
+      // Apply template to the invoice (this is a simple implementation, you can expand it)
+      if (template.content) {
+        setNotes(template.content);
+      }
+      
+      toast.success(`Template "${template.name}" applied`);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -338,6 +377,29 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
               </Select>
             </div>
           </div>
+          
+          {templates.length > 0 && (
+            <div>
+              <Label htmlFor="template">Invoice Template</Label>
+              <Select 
+                value={selectedTemplateId || ''} 
+                onValueChange={handleTemplateSelect}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a template" />
+                </SelectTrigger>
+                <SelectContent>
+                  {templates.map(template => (
+                    <SelectItem key={template.id} value={template.id}>{template.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-muted-foreground mt-1">
+                Select a template to quickly fill in invoice details
+              </p>
+            </div>
+          )}
+          
           <div>
             <Label>Items</Label>
             {items.map((item) => (

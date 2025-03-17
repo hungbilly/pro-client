@@ -44,40 +44,74 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     }
   }, [alwaysShowToolbar]);
 
+  // Generic command handler for most formatting options
   const handleCommand = (command: string, value: string | null = null) => {
-    document.execCommand(command, false, value);
+    // First, ensure the editor has focus
     if (editorRef.current) {
+      // Store current selection
+      const selection = window.getSelection();
+      const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
+      
+      // Focus the editor
+      editorRef.current.focus();
+      
+      // Execute the command
+      document.execCommand(command, false, value);
+      
+      // Restore selection if needed
+      if (range && selection) {
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+      
+      // Update state with new content
       const newContent = editorRef.current.innerHTML;
       setHtml(newContent);
       onChange(newContent);
     }
-    editorRef.current?.focus();
   };
 
+  // Specialized handler for list operations that ensures proper selection handling
   const handleList = (listType: 'insertUnorderedList' | 'insertOrderedList') => {
-    // Make sure we have a reference to the editor
-    if (!editorRef.current) return;
-    
-    // Save current selection
-    const selection = window.getSelection();
-    const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
-    
-    // Focus the editor first to ensure commands work on it
-    editorRef.current.focus();
-    
-    // Execute the command
-    document.execCommand(listType, false, null);
-    
-    // Restore selection if needed
-    if (range && selection) {
-      selection.removeAllRanges();
-      selection.addRange(range);
+    if (editorRef.current) {
+      try {
+        // Store current selection
+        const selection = window.getSelection();
+        if (!selection) return;
+        
+        const hasRange = selection.rangeCount > 0;
+        const range = hasRange ? selection.getRangeAt(0) : null;
+        
+        // Focus the editor element explicitly
+        editorRef.current.focus();
+        
+        // If there's no selection or it's collapsed (cursor), create some content
+        if (!hasRange || range?.collapsed) {
+          // Create a new list item only if we don't have a selection
+          const listItem = document.createElement('li');
+          listItem.textContent = '\u200B'; // Zero-width space to ensure item exists
+          
+          // Insert at cursor position
+          document.execCommand('insertHTML', false, listItem.outerHTML);
+        }
+        
+        // Now execute the list command
+        document.execCommand(listType, false, null);
+        
+        // Restore selection if we had one
+        if (range && selection) {
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+        
+        // Update state with new content
+        const newContent = editorRef.current.innerHTML;
+        setHtml(newContent);
+        onChange(newContent);
+      } catch (error) {
+        console.error('Error applying list formatting:', error);
+      }
     }
-    
-    // Update content after command execution
-    const newContent = editorRef.current.innerHTML;
-    setHtml(newContent);
-    onChange(newContent);
   };
 
   const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
@@ -148,6 +182,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             onClick={() => handleList('insertUnorderedList')}
             className="h-8 w-8 p-0"
             title="Bullet List"
+            onMouseDown={(e) => e.preventDefault()} // Prevent losing focus
           >
             <List className="h-4 w-4" />
           </Button>
@@ -159,6 +194,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             onClick={() => handleList('insertOrderedList')}
             className="h-8 w-8 p-0"
             title="Numbered List"
+            onMouseDown={(e) => e.preventDefault()} // Prevent losing focus
           >
             <ListOrdered className="h-4 w-4" />
           </Button>

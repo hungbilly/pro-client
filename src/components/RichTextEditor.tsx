@@ -56,6 +56,26 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     editorRef.current?.focus();
   };
 
+  // Specific handler for list formatting to ensure proper functionality
+  const handleList = (listType: 'insertUnorderedList' | 'insertOrderedList') => {
+    // Make sure we have focus first
+    if (editorRef.current) {
+      // Focus the editor before executing command
+      editorRef.current.focus();
+      
+      // Execute the command after a brief delay to ensure focus is applied
+      setTimeout(() => {
+        document.execCommand(listType, false, null);
+        // Update the content
+        if (editorRef.current) {
+          const newContent = editorRef.current.innerHTML;
+          setHtml(newContent);
+          onChange(newContent);
+        }
+      }, 10);
+    }
+  };
+
   const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
     const target = e.target as HTMLDivElement;
     const newContent = target.innerHTML;
@@ -159,7 +179,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             type="button"
             variant="ghost"
             size="sm"
-            onClick={() => handleCommand('insertUnorderedList')}
+            onClick={() => handleList('insertUnorderedList')}
             className="h-8 w-8 p-0"
             title="Bullet List"
           >
@@ -170,7 +190,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             type="button"
             variant="ghost"
             size="sm"
-            onClick={() => handleCommand('insertOrderedList')}
+            onClick={() => handleList('insertOrderedList')}
             className="h-8 w-8 p-0"
             title="Numbered List"
           >

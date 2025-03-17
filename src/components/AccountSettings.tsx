@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -54,6 +53,18 @@ interface UserSettings {
   updated_at: string;
 }
 
+// Helper function to validate if the data has UserSettings shape
+function isUserSettings(data: any): data is UserSettings {
+  return (
+    data &&
+    typeof data === 'object' &&
+    'id' in data &&
+    'user_id' in data &&
+    'default_currency' in data &&
+    'invoice_number_format' in data
+  );
+}
+
 const AccountSettings = () => {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
@@ -97,16 +108,14 @@ const AccountSettings = () => {
       }
 
       // If settings exist, populate the form
-      if (data) {
-        // Safely cast data to UserSettings type after checking it exists
-        const settings = data as UserSettings;
+      if (data && isUserSettings(data)) {
         form.reset({
-          defaultCurrency: settings.default_currency || 'USD',
-          invoiceNumberFormat: settings.invoice_number_format || 'numeric',
-          useCustomFormat: settings.use_custom_format || false,
-          customFormat: settings.custom_format || '',
-          invoiceTemplate: settings.invoice_template || '',
-          contractTemplate: settings.contract_template || '',
+          defaultCurrency: data.default_currency || 'USD',
+          invoiceNumberFormat: data.invoice_number_format || 'numeric',
+          useCustomFormat: data.use_custom_format || false,
+          customFormat: data.custom_format || '',
+          invoiceTemplate: data.invoice_template || '',
+          contractTemplate: data.contract_template || '',
         });
       }
     } catch (error) {
@@ -146,7 +155,7 @@ const AccountSettings = () => {
 
       let result;
       // Update or insert based on whether settings exist
-      if (existingData && 'id' in existingData) {
+      if (existingData && typeof existingData === 'object' && 'id' in existingData) {
         result = await supabase
           .from('user_settings' as any)
           .update(settingsData as any)

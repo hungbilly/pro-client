@@ -96,6 +96,7 @@ const AccountSettings = () => {
     
     setIsLoading(true);
     try {
+      console.log("Loading settings for user:", user.id);
       // Use type assertion to tell TypeScript this is a valid table
       const { data, error } = await supabase
         .from('user_settings' as any)
@@ -108,6 +109,7 @@ const AccountSettings = () => {
         throw error;
       }
 
+      console.log("Settings data received:", data);
       // If settings exist, populate the form
       if (data && isUserSettings(data)) {
         form.reset({
@@ -132,6 +134,7 @@ const AccountSettings = () => {
 
     setIsLoading(true);
     try {
+      console.log("Saving settings for user:", user.id);
       // Check if settings already exist
       const { data: existingData, error: checkError } = await supabase
         .from('user_settings' as any)
@@ -155,15 +158,17 @@ const AccountSettings = () => {
       };
 
       let result;
-      // Update or insert based on whether settings exist
-      if (existingData && typeof existingData === 'object' && 'id' in existingData && existingData.id) {
-        // We've confirmed existingData is not null and has an id property
-        const id = existingData.id;
+      
+      // Make sure existingData is not null before accessing properties
+      if (existingData !== null && typeof existingData === 'object' && 'id' in existingData) {
+        const id = existingData.id as string;
+        console.log("Updating existing settings with ID:", id);
         result = await supabase
           .from('user_settings' as any)
           .update(settingsData as any)
           .eq('id', id);
       } else {
+        console.log("Creating new settings");
         result = await supabase
           .from('user_settings' as any)
           .insert(settingsData as any);

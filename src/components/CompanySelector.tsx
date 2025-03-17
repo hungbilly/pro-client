@@ -33,15 +33,25 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const fetchCompanies = async () => {
     setLoading(true);
     try {
-      console.log("CompanyProvider: Fetching companies for user:", user?.id);
+      if (!user) {
+        console.log("CompanyProvider: No user found, cannot fetch companies");
+        setCompanies([]);
+        setSelectedCompanyId(null);
+        return;
+      }
+      
+      console.log("CompanyProvider: Fetching companies for user:", user.id);
       const { data, error } = await supabase
         .from('companies')
         .select('id, name, is_default')
-        .eq('user_id', user?.id)
+        .eq('user_id', user.id)
         .order('is_default', { ascending: false })
         .order('name');
       
-      if (error) throw error;
+      if (error) {
+        console.error("CompanyProvider: Error fetching companies:", error);
+        throw error;
+      }
       
       console.log("CompanyProvider: Fetched companies:", data?.length);
       setCompanies(data || []);
@@ -53,6 +63,7 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
         console.log("CompanyProvider: Setting selected company to:", companyId);
         setSelectedCompanyId(companyId);
       } else {
+        console.log("CompanyProvider: No companies found");
         setSelectedCompanyId(null);
       }
     } catch (error) {
@@ -65,6 +76,10 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     if (user) {
       fetchCompanies();
+    } else {
+      setCompanies([]);
+      setSelectedCompanyId(null);
+      setLoading(false);
     }
   }, [user]);
 
@@ -99,7 +114,8 @@ interface CompanySelectorProps {
 }
 
 const CompanySelector: React.FC<CompanySelectorProps> = ({ onCompanySelect, className, showLabel = false }) => {
-  const { companies, selectedCompanyId, setSelectedCompanyId, loading } = useCompany();
+  const { companies, selectedCompanyId, setSelectedCompanyId, loading, refreshCompanies } = useCompany();
+  const { user } = useAuth();
 
   const handleCompanyChange = (value: string) => {
     console.log("CompanySelector: Company changed to:", value);
@@ -109,14 +125,32 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({ onCompanySelect, clas
     }
   };
 
+  const handleRefresh = () => {
+    refreshCompanies();
+  };
+
+  if (!user) {
+    return (
+      <div className="text-sm text-muted-foreground">
+        Please sign in to access companies.
+      </div>
+    );
+  }
+
   if (loading) {
     return <div className="text-sm text-muted-foreground">Loading companies...</div>;
   }
 
   if (companies.length === 0) {
     return (
-      <div className="text-sm text-muted-foreground">
-        No companies found. Please add a company in Settings.
+      <div className="text-sm text-muted-foreground flex space-x-2 items-center">
+        <span>No companies found. Please add a company in Settings.</span>
+        <button 
+          className="text-xs text-primary hover:underline" 
+          onClick={handleRefresh}
+        >
+          Refresh
+        </button>
       </div>
     );
   }

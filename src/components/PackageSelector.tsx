@@ -4,16 +4,22 @@ import { Package, InvoiceItem } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Check, ChevronsUpDown, Package as PackageIcon, Plus } from 'lucide-react';
+import { Check, ChevronsUpDown, Package as PackageIcon, FileText } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 
 interface PackageSelectorProps {
   onPackageSelect: (items: InvoiceItem[]) => void;
+  variant?: 'default' | 'inline';
+  placeholder?: string;
 }
 
-const PackageSelector: React.FC<PackageSelectorProps> = ({ onPackageSelect }) => {
+const PackageSelector: React.FC<PackageSelectorProps> = ({ 
+  onPackageSelect, 
+  variant = 'default',
+  placeholder = 'Select package...'
+}) => {
   const [open, setOpen] = useState(false);
   const [packages, setPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState(false);
@@ -82,6 +88,63 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({ onPackageSelect }) =>
     toast.success(`Added "${selectedPackage.name}" to invoice`);
   };
 
+  // Render the component based on the variant
+  if (variant === 'inline') {
+    return (
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="ghost"
+            role="combobox"
+            aria-expanded={open}
+            className="justify-start text-left text-muted-foreground hover:text-foreground w-full"
+            disabled={loading}
+          >
+            <FileText className="mr-2 h-4 w-4" />
+            {placeholder}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[300px] p-0" align="start">
+          <Command>
+            <CommandInput placeholder="Search packages..." />
+            <CommandEmpty>
+              {packages.length === 0 ? 'No packages found. Create some in Settings.' : 'No package found.'}
+            </CommandEmpty>
+            <CommandGroup>
+              {(Array.isArray(packages) ? packages : []).map((pkg) => (
+                <CommandItem
+                  key={pkg.id}
+                  value={pkg.name}
+                  onSelect={(currentValue) => {
+                    console.log('Command item selected with value:', currentValue);
+                    handlePackageSelection(currentValue);
+                  }}
+                >
+                  <div className="flex flex-col">
+                    <div className="flex items-center">
+                      <span>{pkg.name}</span>
+                      <span className="ml-auto font-medium">
+                        {new Intl.NumberFormat('en-US', {
+                          style: 'currency',
+                          currency: 'USD',
+                        }).format(pkg.price)}
+                      </span>
+                    </div>
+                    {pkg.description && (
+                      <span className="text-xs text-muted-foreground truncate max-w-[250px]">
+                        {pkg.description}
+                      </span>
+                    )}
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    );
+  }
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -93,8 +156,7 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({ onPackageSelect }) =>
           disabled={loading}
         >
           <div className="flex items-center">
-            <Plus className="mr-1 h-4 w-4" />
-            <PackageIcon className="mr-1 h-4 w-4" />
+            <PackageIcon className="mr-2 h-4 w-4" />
             <span>Existing Package</span>
           </div>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />

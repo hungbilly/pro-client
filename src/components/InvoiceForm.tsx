@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Client, Invoice, InvoiceItem, Job } from '@/types';
@@ -8,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2, Calendar as CalendarIcon, Camera, CalendarPlus, GripVertical, Pencil, Copy } from 'lucide-react';
+import { Plus, Trash2, Calendar as CalendarIcon, Camera, CalendarPlus, GripVertical, Pencil, Copy, PackagePlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { getClient, saveInvoice, updateInvoice, getJob } from '@/lib/storage';
 import { format } from 'date-fns';
@@ -54,6 +53,8 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const { user } = useAuth();
 
+  const [activeRowId, setActiveRowId] = useState<string | null>(null);
+
   useEffect(() => {
     const fetchClientData = async () => {
       if (clientId) {
@@ -82,7 +83,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
       fetchJobData();
     }
 
-    // Also fetch invoice templates
     const fetchTemplates = async () => {
       if (!user) return;
       
@@ -109,11 +109,16 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
   };
 
   const handleAddItem = () => {
-    setItems([...items, { id: Date.now().toString(), description: '', quantity: 1, rate: 0, amount: 0 }]);
+    const newItemId = Date.now().toString();
+    setItems([...items, { id: newItemId, description: '', quantity: 1, rate: 0, amount: 0 }]);
+    setActiveRowId(newItemId);
   };
 
   const handleRemoveItem = (id: string) => {
     setItems(items.filter(item => item.id !== id));
+    if (activeRowId === id) {
+      setActiveRowId(null);
+    }
   };
 
   const handleItemChange = (id: string, field: string, value: any) => {
@@ -146,6 +151,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
   
   const handlePackageSelect = (newItems: InvoiceItem[]) => {
     setItems([...items, ...newItems]);
+    setActiveRowId(null);
   };
 
   const handleAddToGoogleCalendar = () => {
@@ -169,7 +175,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
     if (template) {
       setSelectedTemplateId(templateId);
       
-      // Apply template to the invoice (this is a simple implementation, you can expand it)
       if (template.content) {
         setNotes(template.content);
       }
@@ -247,7 +252,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
         toast.success('Invoice saved successfully!');
       }
       
-      // Navigate to the appropriate page based on context
       if (jobId) {
         navigate(`/job/${jobId}`);
       } else {
@@ -447,13 +451,10 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
           <div>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-medium">Line Items</h3>
-              <div className="flex space-x-2">
-                <PackageSelector onPackageSelect={handlePackageSelect} />
-                <Button type="button" onClick={handleAddItem} variant="outline">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Line Item
-                </Button>
-              </div>
+              <Button type="button" onClick={handleAddItem} variant="outline">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Line Item
+              </Button>
             </div>
             
             <div className="border rounded-md overflow-hidden">
@@ -477,12 +478,33 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
                         <GripVertical className="h-4 w-4 mx-auto text-muted-foreground" />
                       </TableCell>
                       <TableCell>
-                        <RichTextEditor
-                          value={item.description}
-                          onChange={(value) => handleItemChange(item.id, 'description', value)}
-                          className="border-none min-h-0 p-0"
-                          placeholder="Add description..."
-                        />
+                        {!item.description && activeRowId === item.id ? (
+                          <div className="space-y-1">
+                            <PackageSelector 
+                              onPackageSelect={handlePackageSelect} 
+                              variant="inline" 
+                              placeholder="Select an existing package..." 
+                            />
+                            <Button 
+                              variant="ghost" 
+                              className="w-full justify-start text-left text-muted-foreground hover:text-foreground"
+                              onClick={() => {
+                                setActiveRowId(null);
+                              }}
+                            >
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Add your own product/package...
+                            </Button>
+                          </div>
+                        ) : (
+                          <RichTextEditor
+                            value={item.description}
+                            onChange={(value) => handleItemChange(item.id, 'description', value)}
+                            className="border-none min-h-0 p-0"
+                            placeholder="Add description..."
+                            onFocus={() => !item.description && setActiveRowId(item.id)}
+                          />
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         <Input

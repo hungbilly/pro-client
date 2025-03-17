@@ -19,6 +19,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
 }) => {
   const editorRef = useRef<HTMLDivElement>(null);
   const [html, setHtml] = useState(value);
+  const [showToolbar, setShowToolbar] = useState(false);
 
   useEffect(() => {
     if (editorRef.current) {
@@ -36,118 +37,133 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     editorRef.current?.focus();
   };
 
-  const handleInput = (e: React.ChangeEvent<HTMLDivElement>) => {
-    const newContent = e.target.innerHTML;
+  const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLDivElement;
+    const newContent = target.innerHTML;
     setHtml(newContent);
     onChange(newContent);
   };
 
+  const handleFocus = () => {
+    setShowToolbar(true);
+  };
+
+  const handleBlur = () => {
+    setTimeout(() => {
+      setShowToolbar(false);
+    }, 200);
+  };
+
   return (
-    <div className="flex flex-col border rounded-md">
-      <div className="flex flex-wrap gap-1 p-2 border-b bg-muted/30">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => handleCommand('bold')}
-          className="h-8 w-8 p-0"
-          title="Bold"
-        >
-          <Bold className="h-4 w-4" />
-        </Button>
-        
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => handleCommand('italic')}
-          className="h-8 w-8 p-0"
-          title="Italic"
-        >
-          <Italic className="h-4 w-4" />
-        </Button>
-        
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => handleCommand('underline')}
-          className="h-8 w-8 p-0"
-          title="Underline"
-        >
-          <Underline className="h-4 w-4" />
-        </Button>
-        
-        <span className="border-r mx-1 h-8"></span>
-        
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => handleCommand('justifyLeft')}
-          className="h-8 w-8 p-0"
-          title="Align Left"
-        >
-          <AlignLeft className="h-4 w-4" />
-        </Button>
-        
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => handleCommand('justifyCenter')}
-          className="h-8 w-8 p-0"
-          title="Align Center"
-        >
-          <AlignCenter className="h-4 w-4" />
-        </Button>
-        
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => handleCommand('justifyRight')}
-          className="h-8 w-8 p-0"
-          title="Align Right"
-        >
-          <AlignRight className="h-4 w-4" />
-        </Button>
-        
-        <span className="border-r mx-1 h-8"></span>
-        
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => handleCommand('insertUnorderedList')}
-          className="h-8 w-8 p-0"
-          title="Bullet List"
-        >
-          <List className="h-4 w-4" />
-        </Button>
-        
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => handleCommand('insertOrderedList')}
-          className="h-8 w-8 p-0"
-          title="Numbered List"
-        >
-          <ListOrdered className="h-4 w-4" />
-        </Button>
-      </div>
+    <div className={cn("rounded-md border", className)}>
+      {showToolbar && (
+        <div className="flex flex-wrap gap-1 p-2 border-b bg-muted/30">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => handleCommand('bold')}
+            className="h-8 w-8 p-0"
+            title="Bold"
+          >
+            <Bold className="h-4 w-4" />
+          </Button>
+          
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => handleCommand('italic')}
+            className="h-8 w-8 p-0"
+            title="Italic"
+          >
+            <Italic className="h-4 w-4" />
+          </Button>
+          
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => handleCommand('underline')}
+            className="h-8 w-8 p-0"
+            title="Underline"
+          >
+            <Underline className="h-4 w-4" />
+          </Button>
+          
+          <span className="border-r mx-1 h-8"></span>
+          
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => handleCommand('justifyLeft')}
+            className="h-8 w-8 p-0"
+            title="Align Left"
+          >
+            <AlignLeft className="h-4 w-4" />
+          </Button>
+          
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => handleCommand('justifyCenter')}
+            className="h-8 w-8 p-0"
+            title="Align Center"
+          >
+            <AlignCenter className="h-4 w-4" />
+          </Button>
+          
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => handleCommand('justifyRight')}
+            className="h-8 w-8 p-0"
+            title="Align Right"
+          >
+            <AlignRight className="h-4 w-4" />
+          </Button>
+          
+          <span className="border-r mx-1 h-8"></span>
+          
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => handleCommand('insertUnorderedList')}
+            className="h-8 w-8 p-0"
+            title="Bullet List"
+          >
+            <List className="h-4 w-4" />
+          </Button>
+          
+          <Button
+            type="button"
+            avariant="ghost"
+            size="sm"
+            onClick={() => handleCommand('insertOrderedList')}
+            cllassName="h-8 w-8 p-0"
+            title="Numbered List"
+          >
+            <ListOrdered className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
       
       <div
         ref={editorRef}
         id="editor"
         className={cn(
-          "min-h-[150px] max-h-[500px] overflow-y-auto p-3 focus:outline-none",
+          "min-h-[100px] p-2 focus:outline-none",
           className
         )}
         contentEditable={true}
         dangerouslySetInnerHTML={{ __html: html }}
         onInput={handleInput}
+        onFocus={handleFocus}
+        onBlur={handleBlur}  
         data-placeholder={placeholder}
       />
     </div>

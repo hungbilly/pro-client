@@ -76,6 +76,8 @@ export interface InvoiceItem {
   quantity: number;
   rate: number;
   amount: number;
+  discount?: string;
+  tax?: string;
 }
 
 // Local storage keys

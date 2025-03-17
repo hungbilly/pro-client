@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Trash2, Calendar as CalendarIcon, Camera, CalendarPlus, GripVertical, Pencil, Copy, Package as PackageIcon } from 'lucide-react';
 import { toast } from 'sonner';
-import { getClient, saveInvoice, updateInvoice, getJob, getInvoice } from '@/lib/storage';
+import { getClient, saveInvoice, updateInvoice, getJob, getInvoice, getInvoicesByDate } from '@/lib/storage';
 import { format } from 'date-fns';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -55,6 +55,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
   const [notes, setNotes] = useState('');
   const [contractTerms, setContractTerms] = useState('');
   const [loading, setLoading] = useState(true);
+  const [generatingInvoiceNumber, setGeneratingInvoiceNumber] = useState(false);
 
   const [templates, setTemplates] = useState<Template[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
@@ -86,6 +87,8 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
           console.error('Error fetching invoice:', error);
           toast.error('Failed to load invoice data.');
         }
+      } else {
+        generateInvoiceNumber();
       }
     };
 
@@ -170,6 +173,53 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
     
     loadAllData();
   }, [clientId, jobId, invoiceId, user, invoice?.clientId, invoice?.jobId]);
+
+  const generateInvoiceNumber = async () => {
+    if (isEditMode || generatingInvoiceNumber) return;
+    
+    setGeneratingInvoiceNumber(true);
+    try {
+      const today = new Date();
+      const datePrefix = format(today, 'yyyyMMdd');
+      
+      const todayInvoices = await getInvoicesByDate(format(today, 'yyyy-MM-dd'));
+      
+      const sequenceNumbers: number[] = [];
+      todayInvoices.forEach(inv => {
+        if (inv.number && inv.number.startsWith(datePrefix)) {
+          const parts = inv.number.split('-');
+          if (parts.length === 2) {
+            const seq = parseInt(parts[1], 10);
+            if (!isNaN(seq)) {
+              sequenceNumbers.push(seq);
+            }
+          }
+        }
+      });
+      
+      let nextSequence = 1;
+      if (sequenceNumbers.length > 0) {
+        nextSequence = Math.max(...sequenceNumbers) + 1;
+      }
+      
+      const newInvoiceNumber = `${datePrefix}-${nextSequence}`;
+      
+      const duplicateExists = todayInvoices.some(inv => inv.number === newInvoiceNumber);
+      if (duplicateExists) {
+        toast.warning(`Invoice number ${newInvoiceNumber} already exists. This could indicate a system issue.`);
+        nextSequence += 1;
+        const altInvoiceNumber = `${datePrefix}-${nextSequence}`;
+        setNumber(altInvoiceNumber);
+      } else {
+        setNumber(newInvoiceNumber);
+      }
+    } catch (error) {
+      console.error('Error generating invoice number:', error);
+      toast.error('Failed to generate invoice number automatically.');
+    } finally {
+      setGeneratingInvoiceNumber(false);
+    }
+  };
 
   const calculateTotalAmount = () => {
     return items.reduce((total, item) => total + item.amount, 0);
@@ -291,10 +341,25 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
       return;
     }
 
+    if (!number.trim()) {
+      toast.error('Invoice number is required.');
+      return;
+    }
+
     const amount = calculateTotalAmount();
 
     try {
       if (isEditMode && invoice) {
+        if (number !== invoice.number) {
+          const allInvoices = await getInvoicesByDate();
+          const duplicateExists = allInvoices.some(inv => inv.number === number && inv.id !== invoice.id);
+          
+          if (duplicateExists) {
+            toast.error(`Invoice number ${number} already exists. Please use a different number.`);
+            return;
+          }
+        }
+
         const updatedInvoice: Invoice = {
           id: invoice.id,
           clientId: client.id,
@@ -321,6 +386,14 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
         
         navigate(`/invoice/${invoice.viewLink}`);
       } else {
+        const allInvoices = await getInvoicesByDate();
+        const duplicateExists = allInvoices.some(inv => inv.number === number);
+        
+        if (duplicateExists) {
+          toast.error(`Invoice number ${number} already exists. Please use a different number.`);
+          return;
+        }
+
         const invoiceData: Omit<Invoice, 'id' | 'viewLink'> = {
           clientId: client.id,
           companyId: selectedCompanyId,
@@ -407,7 +480,14 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
                   value={number}
                   onChange={(e) => setNumber(e.target.value)}
                   required
+                  placeholder="Auto-generated (YYYYMMDD-X)"
+                  disabled={generatingInvoiceNumber}
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  {isEditMode ? 
+                    "You can change the invoice number, but it must be unique." : 
+                    "Automatically generated with format YYYYMMDD-X. X is the sequence number for today."}
+                </p>
               </div>
               
               <div>
@@ -429,7 +509,12 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
                     <DatePicker
                       mode="single"
                       selected={date}
-                      onSelect={setDate}
+                      onSelect={(newDate) => {
+                        setDate(newDate);
+                        if (!isEditMode && newDate) {
+                          generateInvoiceNumber();
+                        }
+                      }}
                       initialFocus
                     />
                   </PopoverContent>
@@ -751,3 +836,4 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
 };
 
 export default InvoiceForm;
+

@@ -638,6 +638,58 @@ export const getInvoices = async (companyId?: string | null) => {
   }
 };
 
+export const getInvoicesByDate = async (date?: string): Promise<Invoice[]> => {
+  try {
+    let query = supabase.from('invoices').select('*, invoice_items(*)');
+    
+    // If date is provided, filter by it
+    if (date) {
+      query = query.eq('date', date);
+    }
+    
+    const { data, error } = await query;
+    
+    if (error) {
+      console.error('Error fetching invoices by date:', error);
+      throw error;
+    }
+    
+    // Transform the data to match our type
+    const invoices = (data || []).map(invoice => {
+      const items = invoice.invoice_items.map((item: any) => ({
+        id: item.id,
+        description: item.description,
+        quantity: item.quantity,
+        rate: item.rate,
+        amount: item.amount
+      }));
+      
+      return {
+        id: invoice.id,
+        clientId: invoice.client_id,
+        companyId: invoice.company_id,
+        jobId: invoice.job_id,
+        number: invoice.number,
+        amount: invoice.amount,
+        date: invoice.date,
+        dueDate: invoice.due_date,
+        shootingDate: invoice.shooting_date,
+        status: invoice.status as InvoiceStatus,
+        contractStatus: invoice.contract_status as ContractStatus,
+        items,
+        notes: invoice.notes,
+        contractTerms: invoice.contract_terms,
+        viewLink: invoice.view_link
+      };
+    });
+    
+    return invoices;
+  } catch (error) {
+    console.error('Error in getInvoicesByDate:', error);
+    return [];
+  }
+};
+
 export const getInvoice = async (id: string): Promise<Invoice | undefined> => {
   try {
     // First get the invoice
@@ -838,7 +890,6 @@ export const getClientInvoices = async (clientId: string): Promise<Invoice[]> =>
         amount: invoice.amount,
         date: invoice.date,
         dueDate: invoice.due_date,
-        shootingDate: invoice.shooting_date,
         status,
         contractStatus,
         items: invoiceItems,

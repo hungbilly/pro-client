@@ -84,8 +84,9 @@ const AccountSettings = () => {
     
     setIsLoading(true);
     try {
+      // Use type assertion to tell TypeScript this is a valid table
       const { data, error } = await supabase
-        .from('user_settings')
+        .from('user_settings' as any)
         .select('*')
         .eq('user_id', user.id)
         .maybeSingle();
@@ -122,7 +123,7 @@ const AccountSettings = () => {
     try {
       // Check if settings already exist
       const { data: existingData, error: checkError } = await supabase
-        .from('user_settings')
+        .from('user_settings' as any)
         .select('id')
         .eq('user_id', user.id)
         .maybeSingle();
@@ -146,13 +147,13 @@ const AccountSettings = () => {
       // Update or insert based on whether settings exist
       if (existingData) {
         result = await supabase
-          .from('user_settings')
-          .update(settingsData)
+          .from('user_settings' as any)
+          .update(settingsData as any)
           .eq('id', existingData.id);
       } else {
         result = await supabase
-          .from('user_settings')
-          .insert(settingsData);
+          .from('user_settings' as any)
+          .insert(settingsData as any);
       }
 
       if (result.error) throw result.error;

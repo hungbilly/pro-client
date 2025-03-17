@@ -141,10 +141,10 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
           
           <Button
             type="button"
-            avariant="ghost"
+            variant="ghost"
             size="sm"
             onClick={() => handleCommand('insertOrderedList')}
-            cllassName="h-8 w-8 p-0"
+            className="h-8 w-8 p-0"
             title="Numbered List"
           >
             <ListOrdered className="h-4 w-4" />

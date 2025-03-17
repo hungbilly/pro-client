@@ -172,7 +172,7 @@ const JobDetail = () => {
         
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
           <div className="md:col-span-7 space-y-6">
-            <Card className="overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200">
+            <Card className="overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200 h-full">
               <CardHeader className="bg-muted/30 pb-2">
                 <div className="flex items-center gap-2">
                   <FileEdit className="h-5 w-5 text-primary" />
@@ -214,7 +214,7 @@ const JobDetail = () => {
           </div>
           
           <div className="md:col-span-5 space-y-6">
-            <Card className="overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200">
+            <Card className="overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200 h-full flex flex-col">
               <CardHeader className="bg-muted/30 pb-2">
                 <div className="flex items-center gap-2">
                   <User className="h-5 w-5 text-primary" />
@@ -222,13 +222,13 @@ const JobDetail = () => {
                 </div>
               </CardHeader>
               
-              <CardContent className="pt-4">
+              <CardContent className="pt-4 flex-grow">
                 <div className="flex items-start gap-3">
                   <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                     <User className="h-6 w-6 text-primary" />
                   </div>
                   
-                  <div>
+                  <div className="flex-grow">
                     <h4 className="font-semibold">{client.name}</h4>
                     <div className="mt-3 space-y-2">
                       <div className="flex items-center gap-2">
@@ -248,7 +248,7 @@ const JobDetail = () => {
                     <Separator className="my-4" />
                     <div>
                       <h4 className="text-sm font-medium mb-1">Notes</h4>
-                      <p className="text-sm text-muted-foreground">{client.notes}</p>
+                      <p className="text-sm text-muted-foreground line-clamp-3">{client.notes}</p>
                     </div>
                   </>
                 )}
@@ -290,7 +290,7 @@ const JobDetail = () => {
                     <p className="text-muted-foreground text-sm">No invoices have been created for this job yet.</p>
                   </div>
                 ) : (
-                  <InvoiceList invoices={invoices} client={client} showCreateButton={false} />
+                  <InvoiceList invoices={invoices} client={client} showCreateButton={false} showTitle={false} />
                 )}
               </CardContent>
             </Card>

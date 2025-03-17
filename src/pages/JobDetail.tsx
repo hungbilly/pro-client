@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getJob, getClient, getJobInvoices, deleteJob } from '@/lib/storage';
@@ -36,7 +35,6 @@ const JobDetail = () => {
         if (fetchedJob) {
           setJob(fetchedJob);
           
-          // Fetch client data
           const fetchedClient = await getClient(fetchedJob.clientId);
           if (fetchedClient) {
             setClient(fetchedClient);
@@ -44,7 +42,6 @@ const JobDetail = () => {
             toast.error('Client not found.');
           }
           
-          // Fetch invoices related to this job
           const fetchedInvoices = await getJobInvoices(id);
           setInvoices(fetchedInvoices);
         } else {
@@ -159,7 +156,7 @@ const JobDetail = () => {
                 Back to Client
               </Button>
               <Button size="sm" asChild>
-                <Link to={`/client/${client.id}/job/edit/${job.id}`}>
+                <Link to={`/job/${job.id}/edit`}>
                   <FileEdit className="h-4 w-4 mr-2" />
                   Edit Job
                 </Link>
@@ -189,7 +186,6 @@ const JobDetail = () => {
           <CardContent>
             <div className="grid gap-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Client Information */}
                 <div className="md:col-span-1 bg-slate-50 p-4 rounded-lg border border-slate-200">
                   <h3 className="text-md font-medium flex items-center gap-2 mb-3">
                     <User className="h-4 w-4 text-muted-foreground" />
@@ -245,7 +241,6 @@ const JobDetail = () => {
                   </div>
                 </div>
                 
-                {/* Job Details */}
                 <div className="md:col-span-2">
                   <h3 className="text-lg font-medium">Job Details</h3>
                   <CardDescription>
@@ -280,7 +275,6 @@ const JobDetail = () => {
               
               <Separator className="my-4" />
               
-              {/* Invoices section */}
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-medium">Invoices</h3>

@@ -105,7 +105,7 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
                 className="h-8 w-8 mr-1"
                 asChild
               >
-                <Link to={`/client/${client.id}/job/edit/${job.id}`}>
+                <Link to={`/job/${job.id}/edit`}>
                   <FileEdit className="h-4 w-4" />
                 </Link>
               </Button>

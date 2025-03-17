@@ -167,7 +167,7 @@ const ClientDetail = () => {
             <Separator className="my-4" />
             <JobList jobs={jobs} client={client} onJobDelete={handleJobDelete} />
             <Separator className="my-4" />
-            <InvoiceList invoices={invoices} client={client} />
+            <InvoiceList invoices={invoices} client={client} showCreateButton={false} />
           </div>
         </CardContent>
         <CardFooter>

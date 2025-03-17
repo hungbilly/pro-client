@@ -90,6 +90,48 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
     toast.success(`Added "${selectedPackage.name}" to invoice`);
   };
 
+  // Render a safe command group that ensures we have valid array data
+  const renderCommandGroup = () => {
+    if (!Array.isArray(packages) || packages.length === 0) {
+      return <CommandEmpty>No packages found. Create some in Settings.</CommandEmpty>;
+    }
+
+    return (
+      <>
+        <CommandEmpty>No package found.</CommandEmpty>
+        <CommandGroup>
+          {packages.map((pkg) => (
+            <CommandItem
+              key={pkg.id}
+              value={pkg.name}
+              onSelect={(currentValue) => {
+                console.log('Command item selected with value:', currentValue);
+                handlePackageSelection(currentValue);
+              }}
+            >
+              <div className="flex flex-col">
+                <div className="flex items-center">
+                  <span>{pkg.name}</span>
+                  <span className="ml-auto font-medium">
+                    {new Intl.NumberFormat('en-US', {
+                      style: 'currency',
+                      currency: 'USD',
+                    }).format(pkg.price)}
+                  </span>
+                </div>
+                {pkg.description && (
+                  <span className="text-xs text-muted-foreground truncate max-w-[250px]">
+                    {pkg.description}
+                  </span>
+                )}
+              </div>
+            </CommandItem>
+          ))}
+        </CommandGroup>
+      </>
+    );
+  };
+
   // Render the component based on the variant
   if (variant === 'inline') {
     return (
@@ -110,38 +152,7 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
         <PopoverContent className="w-[300px] p-0" align="start">
           <Command>
             <CommandInput placeholder="Search packages..." />
-            <CommandEmpty>
-              {packages.length === 0 ? 'No packages found. Create some in Settings.' : 'No package found.'}
-            </CommandEmpty>
-            <CommandGroup>
-              {(Array.isArray(packages) ? packages : []).map((pkg) => (
-                <CommandItem
-                  key={pkg.id}
-                  value={pkg.name}
-                  onSelect={(currentValue) => {
-                    console.log('Command item selected with value:', currentValue);
-                    handlePackageSelection(currentValue);
-                  }}
-                >
-                  <div className="flex flex-col">
-                    <div className="flex items-center">
-                      <span>{pkg.name}</span>
-                      <span className="ml-auto font-medium">
-                        {new Intl.NumberFormat('en-US', {
-                          style: 'currency',
-                          currency: 'USD',
-                        }).format(pkg.price)}
-                      </span>
-                    </div>
-                    {pkg.description && (
-                      <span className="text-xs text-muted-foreground truncate max-w-[250px]">
-                        {pkg.description}
-                      </span>
-                    )}
-                  </div>
-                </CommandItem>
-              ))}
-            </CommandGroup>
+            {renderCommandGroup()}
           </Command>
         </PopoverContent>
       </Popover>
@@ -168,38 +179,7 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
       <PopoverContent className="w-[300px] p-0">
         <Command>
           <CommandInput placeholder="Search packages..." />
-          <CommandEmpty>
-            {packages.length === 0 ? 'No packages found. Create some in Settings.' : 'No package found.'}
-          </CommandEmpty>
-          <CommandGroup>
-            {(Array.isArray(packages) ? packages : []).map((pkg) => (
-              <CommandItem
-                key={pkg.id}
-                value={pkg.name}
-                onSelect={(currentValue) => {
-                  console.log('Command item selected with value:', currentValue);
-                  handlePackageSelection(currentValue);
-                }}
-              >
-                <div className="flex flex-col">
-                  <div className="flex items-center">
-                    <span>{pkg.name}</span>
-                    <span className="ml-auto font-medium">
-                      {new Intl.NumberFormat('en-US', {
-                        style: 'currency',
-                        currency: 'USD',
-                      }).format(pkg.price)}
-                    </span>
-                  </div>
-                  {pkg.description && (
-                    <span className="text-xs text-muted-foreground truncate max-w-[250px]">
-                      {pkg.description}
-                    </span>
-                  )}
-                </div>
-              </CommandItem>
-            ))}
-          </CommandGroup>
+          {renderCommandGroup()}
         </Command>
       </PopoverContent>
     </Popover>

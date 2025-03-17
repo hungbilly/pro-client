@@ -54,22 +54,23 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     editorRef.current?.focus();
   };
 
-  // Fix for list formatting
+  // Improved list command function
   const handleListCommand = (listType: 'insertUnorderedList' | 'insertOrderedList') => {
+    // Make sure we have focus first
     if (editorRef.current) {
-      // Focus the editor first
       editorRef.current.focus();
       
-      // Use setTimeout to ensure the focus is applied before executing the command
+      // Execute immediately but add a small delay to ensure content update
+      document.execCommand(listType, false, null);
+      
+      // Use setTimeout to ensure we capture the updated content
       setTimeout(() => {
-        // Execute the command
-        document.execCommand(listType, false, null);
-        
-        // Update the content
-        const newContent = editorRef.current?.innerHTML || '';
-        setHtml(newContent);
-        onChange(newContent);
-      }, 50);
+        if (editorRef.current) {
+          const newContent = editorRef.current.innerHTML;
+          setHtml(newContent);
+          onChange(newContent);
+        }
+      }, 10);
     }
   };
 
@@ -134,6 +135,28 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             <Underline className="h-4 w-4" />
           </Button>
           
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => handleListCommand('insertUnorderedList')}
+            className="h-8 w-8 p-0"
+            title="Bullet List"
+          >
+            <List className="h-4 w-4" />
+          </Button>
+          
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => handleListCommand('insertOrderedList')}
+            className="h-8 w-8 p-0"
+            title="Numbered List"
+          >
+            <ListOrdered className="h-4 w-4" />
+          </Button>
+          
           <span className="border-r mx-1 h-8"></span>
           
           <Button
@@ -167,30 +190,6 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             title="Align Right"
           >
             <AlignRight className="h-4 w-4" />
-          </Button>
-          
-          <span className="border-r mx-1 h-8"></span>
-          
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => handleListCommand('insertUnorderedList')}
-            className="h-8 w-8 p-0"
-            title="Bullet List"
-          >
-            <List className="h-4 w-4" />
-          </Button>
-          
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => handleListCommand('insertOrderedList')}
-            className="h-8 w-8 p-0"
-            title="Numbered List"
-          >
-            <ListOrdered className="h-4 w-4" />
           </Button>
         </div>
       )}

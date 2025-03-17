@@ -44,74 +44,52 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     }
   }, [alwaysShowToolbar]);
 
-  // Generic command handler for most formatting options
   const handleCommand = (command: string, value: string | null = null) => {
-    // First, ensure the editor has focus
     if (editorRef.current) {
-      // Store current selection
-      const selection = window.getSelection();
-      const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
-      
-      // Focus the editor
       editorRef.current.focus();
-      
-      // Execute the command
       document.execCommand(command, false, value);
-      
-      // Restore selection if needed
-      if (range && selection) {
-        selection.removeAllRanges();
-        selection.addRange(range);
-      }
-      
-      // Update state with new content
       const newContent = editorRef.current.innerHTML;
       setHtml(newContent);
       onChange(newContent);
     }
   };
 
-  // Specialized handler for list operations that ensures proper selection handling
   const handleList = (listType: 'insertUnorderedList' | 'insertOrderedList') => {
-    if (editorRef.current) {
-      try {
-        // Store current selection
-        const selection = window.getSelection();
-        if (!selection) return;
-        
-        const hasRange = selection.rangeCount > 0;
-        const range = hasRange ? selection.getRangeAt(0) : null;
-        
-        // Focus the editor element explicitly
-        editorRef.current.focus();
-        
-        // If there's no selection or it's collapsed (cursor), create some content
-        if (!hasRange || range?.collapsed) {
-          // Create a new list item only if we don't have a selection
-          const listItem = document.createElement('li');
-          listItem.textContent = '\u200B'; // Zero-width space to ensure item exists
-          
-          // Insert at cursor position
-          document.execCommand('insertHTML', false, listItem.outerHTML);
-        }
-        
-        // Now execute the list command
-        document.execCommand(listType, false, null);
-        
-        // Restore selection if we had one
-        if (range && selection) {
-          selection.removeAllRanges();
-          selection.addRange(range);
-        }
-        
-        // Update state with new content
-        const newContent = editorRef.current.innerHTML;
-        setHtml(newContent);
-        onChange(newContent);
-      } catch (error) {
-        console.error('Error applying list formatting:', error);
-      }
+    if (!editorRef.current) return;
+    
+    // Store selection
+    const selection = window.getSelection();
+    if (!selection) return;
+    
+    // Focus the editor
+    editorRef.current.focus();
+    
+    // We need to ensure there's content to make a list from
+    const hasContent = editorRef.current.textContent?.trim().length > 0;
+    const isSelectionInEditor = editorRef.current.contains(selection.anchorNode);
+    
+    if (!hasContent && !selection.rangeCount) {
+      // If there's no content and no selection, insert a placeholder
+      document.execCommand('insertHTML', false, '<div>•&nbsp;</div>');
+    } else if (!isSelectionInEditor) {
+      // If selection is outside editor, place cursor in editor
+      const range = document.createRange();
+      range.setStart(editorRef.current, 0);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
     }
+    
+    // Apply the list format
+    document.execCommand(listType, false, null);
+    
+    // Update content state
+    const newContent = editorRef.current.innerHTML;
+    setHtml(newContent);
+    onChange(newContent);
+    
+    // Ensure editor retains focus
+    editorRef.current.focus();
   };
 
   const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
@@ -182,7 +160,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             onClick={() => handleList('insertUnorderedList')}
             className="h-8 w-8 p-0"
             title="Bullet List"
-            onMouseDown={(e) => e.preventDefault()} // Prevent losing focus
+            onMouseDown={(e) => e.preventDefault()} // Prevent focus loss
           >
             <List className="h-4 w-4" />
           </Button>
@@ -194,7 +172,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             onClick={() => handleList('insertOrderedList')}
             className="h-8 w-8 p-0"
             title="Numbered List"
-            onMouseDown={(e) => e.preventDefault()} // Prevent losing focus
+            onMouseDown={(e) => e.preventDefault()} // Prevent focus loss
           >
             <ListOrdered className="h-4 w-4" />
           </Button>
@@ -240,7 +218,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         ref={editorRef}
         id="editor"
         className={cn(
-          "min-h-[100px] p-2 focus:outline-none",
+          "min-h-[100px] p-2 focus:outline-none prose prose-sm max-w-none",
           className
         )}
         contentEditable={true}

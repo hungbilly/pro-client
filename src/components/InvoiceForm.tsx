@@ -149,8 +149,22 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
   };
   
   const handlePackageSelect = (newItems: InvoiceItem[]) => {
-    setItems([...items, ...newItems]);
+    console.log('handlePackageSelect called with items:', newItems);
+    
+    if (!newItems || newItems.length === 0) {
+      console.warn('No items provided to handlePackageSelect');
+      return;
+    }
+    
+    const updatedItems = [...items, ...newItems];
+    console.log('Updated items after package selection:', updatedItems);
+    setItems(updatedItems);
     setActiveRowId(null);
+    
+    // Log the current state after update
+    setTimeout(() => {
+      console.log('Current items state after update:', items);
+    }, 100);
   };
   
   const handleManualPackageEntry = (id: string) => {
@@ -159,6 +173,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
   };
 
   const handleDoneEditing = () => {
+    console.log('handleDoneEditing called, current activeRowId:', activeRowId);
     setActiveRowId(null);
   };
 

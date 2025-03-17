@@ -38,10 +38,8 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
         
         if (error) throw error;
         
-        setPackages(data || []);
-        
-        // Log the fetched packages to troubleshoot
         console.log('Fetched packages:', data);
+        setPackages(data || []);
       } catch (error) {
         console.error('Error fetching packages:', error);
         toast.error('Failed to load packages');
@@ -73,6 +71,8 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
       return;
     }
     
+    console.log('Found selected package:', selectedPackage);
+    
     // Convert the package to an invoice item
     const newItem: InvoiceItem = {
       id: Date.now().toString(),
@@ -81,6 +81,8 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
       rate: selectedPackage.price,
       amount: selectedPackage.price
     };
+    
+    console.log('Created invoice item from package:', newItem);
     
     // Close popover and add the item
     setOpen(false);
@@ -99,6 +101,7 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
             aria-expanded={open}
             className="justify-start text-left text-muted-foreground hover:text-foreground w-full"
             disabled={loading}
+            onClick={() => console.log('Package selector button clicked, current packages:', packages)}
           >
             <FileText className="mr-2 h-4 w-4" />
             {placeholder}

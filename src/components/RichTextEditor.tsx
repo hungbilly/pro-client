@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -36,13 +35,17 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   }, []);
 
   useEffect(() => {
+    console.log('RichTextEditor value changed:', value);
+    console.log('RichTextEditor html state:', html);
     if (editorRef.current && value !== html) {
+      console.log('Updating editorRef.current.innerHTML with value');
       editorRef.current.innerHTML = value;
       setHtml(value);
     }
   }, [value, html]);
 
   useEffect(() => {
+    console.log('alwaysShowToolbar changed:', alwaysShowToolbar);
     if (alwaysShowToolbar) {
       setShowToolbar(true);
     }
@@ -195,12 +198,13 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
     const target = e.target as HTMLDivElement;
     const newContent = target.innerHTML;
+    console.log('Editor input detected, new content:', newContent);
     setHtml(newContent);
     onChange(newContent);
   };
 
   const handleFocus = () => {
-    console.log('Editor focused');
+    console.log('Editor focused, alwaysShowToolbar:', alwaysShowToolbar);
     if (!alwaysShowToolbar) {
       setShowToolbar(true);
     }
@@ -210,7 +214,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   };
 
   const handleBlur = () => {
-    console.log('Editor blurred');
+    console.log('Editor blurred, alwaysShowToolbar:', alwaysShowToolbar);
     if (!alwaysShowToolbar) {
       setTimeout(() => {
         setShowToolbar(false);
@@ -219,6 +223,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   };
 
   const handleDone = () => {
+    console.log('Done button clicked');
     if (onDone) {
       onDone();
     }
@@ -226,6 +231,14 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
       setShowToolbar(false);
     }
   };
+
+  console.log('RichTextEditor rendering with:', {
+    showToolbar,
+    alwaysShowToolbar,
+    showDoneButton,
+    hasValue: !!value,
+    valueLength: value?.length || 0
+  });
 
   return (
     <div className={cn("rounded-md border", className)}>

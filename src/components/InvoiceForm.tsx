@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Client, Invoice, InvoiceItem, Job, PaymentSchedule } from '@/types';
@@ -903,4 +904,168 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
                             <SelectItem value="paid">Paid</SelectItem>
                           </SelectContent>
                         </Select>
-                      </TableCell
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleRemovePaymentSchedule(schedule.id)}
+                          className="ml-auto h-8 w-8"
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+          
+          {/* Invoice Items Section */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium">Invoice Items</h3>
+              <div className="flex space-x-2">
+                <PackageSelector onSelect={handlePackageSelect} />
+                <Button type="button" onClick={handleAddItem} variant="outline">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Item
+                </Button>
+              </div>
+            </div>
+            
+            <div className="border rounded-md overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead style={{ width: '40%' }}>Description</TableHead>
+                    <TableHead className="text-right">Quantity</TableHead>
+                    <TableHead className="text-right">Rate</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {items.map((item) => (
+                    <TableRow key={item.id} className={activeRowId === item.id ? "bg-muted/30" : ""}>
+                      <TableCell>
+                        <Input
+                          type="text"
+                          value={item.description}
+                          onChange={(e) => handleItemChange(item.id, 'description', e.target.value)}
+                          placeholder="Item description"
+                          className="w-full"
+                        />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Input
+                          type="number"
+                          value={item.quantity}
+                          onChange={(e) => handleItemChange(item.id, 'quantity', parseFloat(e.target.value) || 0)}
+                          min="0"
+                          className="w-16 text-right ml-auto"
+                        />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Input
+                          type="number"
+                          value={item.rate}
+                          onChange={(e) => handleItemChange(item.id, 'rate', parseFloat(e.target.value) || 0)}
+                          min="0"
+                          className="w-20 text-right ml-auto"
+                        />
+                      </TableCell>
+                      <TableCell className="text-right font-medium">{formatCurrency(item.amount)}</TableCell>
+                      <TableCell>
+                        <div className="flex justify-end">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDuplicateItem(item.id)}
+                            className="h-8 w-8"
+                            title="Duplicate item"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleRemoveItem(item.id)}
+                            className="h-8 w-8"
+                            title="Remove item"
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  
+                  <TableRow className="bg-muted/10 font-medium">
+                    <TableCell colSpan={3} className="text-right">Total:</TableCell>
+                    <TableCell className="text-right">{formatCurrency(calculateTotalAmount())}</TableCell>
+                    <TableCell></TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+          
+          {/* Notes Section */}
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="notes">Notes (will appear on invoice)</Label>
+              <div className="mt-2">
+                <RichTextEditor
+                  value={notes}
+                  onChange={setNotes}
+                  placeholder="Enter any additional notes that should appear on the invoice..."
+                  className="min-h-32"
+                />
+              </div>
+            </div>
+            
+            <div>
+              <Label htmlFor="contractTerms">Contract Terms</Label>
+              <div className="mt-2">
+                <RichTextEditor
+                  value={contractTerms}
+                  onChange={setContractTerms}
+                  placeholder="Enter contract terms and conditions..."
+                  className="min-h-40"
+                />
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex justify-end space-x-3 pt-4">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => {
+                if (job?.id) {
+                  navigate(`/job/${job.id}`);
+                } else if (client) {
+                  navigate(`/client/${client.id}`);
+                } else {
+                  navigate('/');
+                }
+              }}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={loading}>
+              {isEditMode ? 'Update Invoice' : 'Create Invoice'}
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  );
+};
+
+export default InvoiceForm;

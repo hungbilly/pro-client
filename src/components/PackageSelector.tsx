@@ -47,7 +47,14 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({ onPackageSelect }) =>
     fetchPackages();
   }, [user]);
 
-  const handleSelectPackage = (packageName: string) => {
+  const handlePackageSelection = (packageName: string) => {
+    // Safety check to ensure packages is defined and is an array
+    if (!Array.isArray(packages) || packages.length === 0) {
+      console.error('Packages array is undefined or empty');
+      toast.error('Unable to select package');
+      return;
+    }
+    
     console.log('Selected package name:', packageName);
     console.log('Available packages:', packages);
     
@@ -56,6 +63,7 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({ onPackageSelect }) =>
     
     if (!selectedPackage) {
       console.error('Selected package not found:', packageName);
+      toast.error('Selected package not found');
       return;
     }
     
@@ -68,8 +76,9 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({ onPackageSelect }) =>
       amount: selectedPackage.price
     };
     
-    onPackageSelect([newItem]);
+    // Close popover and add the item
     setOpen(false);
+    onPackageSelect([newItem]);
     toast.success(`Added "${selectedPackage.name}" to invoice`);
   };
 
@@ -98,13 +107,13 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({ onPackageSelect }) =>
             {packages.length === 0 ? 'No packages found. Create some in Settings.' : 'No package found.'}
           </CommandEmpty>
           <CommandGroup>
-            {packages.map((pkg) => (
+            {(Array.isArray(packages) ? packages : []).map((pkg) => (
               <CommandItem
                 key={pkg.id}
                 value={pkg.name}
-                onSelect={(value) => {
-                  console.log('Command item selected with value:', value);
-                  handleSelectPackage(value);
+                onSelect={(currentValue) => {
+                  console.log('Command item selected with value:', currentValue);
+                  handlePackageSelection(currentValue);
                 }}
               >
                 <div className="flex flex-col">

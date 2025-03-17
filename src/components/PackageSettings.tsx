@@ -1,11 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Package } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from 'sonner';
@@ -14,6 +12,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useCompany } from './CompanySelector';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
+import RichTextEditor from './RichTextEditor';
 
 const PackageSettings = () => {
   const [packages, setPackages] = useState<Package[]>([]);
@@ -97,6 +96,10 @@ const PackageSettings = () => {
     } else {
       setFormData({ ...formData, [name]: value });
     }
+  };
+  
+  const handleRichTextChange = (value: string) => {
+    setFormData({ ...formData, description: value });
   };
   
   const handleSubmit = async (e: React.FormEvent) => {
@@ -246,7 +249,9 @@ const PackageSettings = () => {
                 {packages.map((pkg) => (
                   <TableRow key={pkg.id}>
                     <TableCell className="font-medium">{pkg.name}</TableCell>
-                    <TableCell className="max-w-[300px] truncate">{pkg.description}</TableCell>
+                    <TableCell className="max-w-[300px] truncate">
+                      <div className="line-clamp-2" dangerouslySetInnerHTML={{ __html: pkg.description || '' }} />
+                    </TableCell>
                     <TableCell>{formatCurrency(pkg.price)}</TableCell>
                     <TableCell>{pkg.tax_rate ? `${pkg.tax_rate}%` : 'No Tax'}</TableCell>
                     <TableCell className="flex space-x-2">
@@ -297,11 +302,9 @@ const PackageSettings = () => {
             
             <div>
               <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                name="description"
-                value={formData.description}
-                onChange={handleInputChange}
+              <RichTextEditor
+                value={formData.description || ''}
+                onChange={handleRichTextChange}
                 placeholder="Describe what's included in this package"
               />
             </div>

@@ -5,9 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2, Calendar as CalendarIcon, Camera, CalendarPlus, GripVertical, Pencil, Copy, PackagePlus } from 'lucide-react';
+import { Plus, Trash2, Calendar as CalendarIcon, Camera, CalendarPlus, GripVertical, Pencil, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { getClient, saveInvoice, updateInvoice, getJob } from '@/lib/storage';
 import { format } from 'date-fns';
@@ -151,6 +150,10 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
   
   const handlePackageSelect = (newItems: InvoiceItem[]) => {
     setItems([...items, ...newItems]);
+    setActiveRowId(null);
+  };
+  
+  const handleManualPackageEntry = (id: string) => {
     setActiveRowId(null);
   };
 
@@ -488,9 +491,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
                             <Button 
                               variant="ghost" 
                               className="w-full justify-start text-left text-muted-foreground hover:text-foreground"
-                              onClick={() => {
-                                setActiveRowId(null);
-                              }}
+                              onClick={() => handleManualPackageEntry(item.id)}
                             >
                               <Pencil className="mr-2 h-4 w-4" />
                               Add your own product/package...

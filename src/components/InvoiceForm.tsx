@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Client, Invoice, InvoiceItem, Job, PaymentSchedule } from '@/types';
+import { Client, Invoice, InvoiceItem, Job } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -57,9 +57,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
   const [contractTerms, setContractTerms] = useState('');
   const [loading, setLoading] = useState(true);
   const [generatingInvoiceNumber, setGeneratingInvoiceNumber] = useState(false);
-  const [paymentSchedules, setPaymentSchedules] = useState<PaymentSchedule[]>([
-    { id: Date.now().toString(), dueDate: format(new Date(), 'yyyy-MM-dd'), percentage: 100, status: 'unpaid' }
-  ]);
 
   const [templates, setTemplates] = useState<Template[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
@@ -84,20 +81,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
             setItems(fetchedInvoice.items || []);
             setNotes(fetchedInvoice.notes || '');
             setContractTerms(fetchedInvoice.contractTerms || '');
-            
-            // Set payment schedules if available, otherwise use default
-            if (fetchedInvoice.paymentSchedules && fetchedInvoice.paymentSchedules.length > 0) {
-              setPaymentSchedules(fetchedInvoice.paymentSchedules);
-            } else {
-              setPaymentSchedules([
-                { 
-                  id: Date.now().toString(), 
-                  dueDate: fetchedInvoice.dueDate, 
-                  percentage: 100, 
-                  status: 'unpaid' 
-                }
-              ]);
-            }
           } else {
             toast.error('Invoice not found.');
           }
@@ -190,7 +173,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
     };
     
     loadAllData();
-  }, [clientId, jobId, invoiceId, user, invoice?.clientId, invoice?.jobId, client]);
+  }, [clientId, jobId, invoiceId, user, invoice?.clientId, invoice?.jobId]);
 
   const generateInvoiceNumber = async () => {
     if (isEditMode || generatingInvoiceNumber) return;
@@ -273,141 +256,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
     }));
   };
   
-  // New functions for payment schedules
-  const handleAddPaymentSchedule = () => {
-    // Split the current percentages equally
-    const newCount = paymentSchedules.length + 1;
-    const equalPercentage = Math.floor(100 / newCount);
-    
-    // Distribute percentages
-    const updatedSchedules = paymentSchedules.map(schedule => ({
-      ...schedule,
-      percentage: equalPercentage
-    }));
-    
-    // Add remaining percentage to the first schedule to ensure total is 100%
-    const remainingPercentage = 100 - (equalPercentage * newCount);
-    if (updatedSchedules.length > 0 && remainingPercentage !== 0) {
-      updatedSchedules[0].percentage += remainingPercentage;
-    }
-    
-    // Add new payment schedule
-    const newSchedule: PaymentSchedule = {
-      id: Date.now().toString(),
-      dueDate: format(dueDate || new Date(), 'yyyy-MM-dd'),
-      percentage: equalPercentage,
-      status: 'unpaid'
-    };
-    
-    setPaymentSchedules([...updatedSchedules, newSchedule]);
-  };
-  
-  const handleRemovePaymentSchedule = (id: string) => {
-    // Don't remove if it's the last schedule
-    if (paymentSchedules.length <= 1) {
-      toast.warning("You must have at least one payment schedule");
-      return;
-    }
-    
-    // Remove the schedule
-    const filteredSchedules = paymentSchedules.filter(s => s.id !== id);
-    
-    // Redistribute percentages
-    const totalRemainingPercentage = filteredSchedules.reduce((sum, s) => sum + s.percentage, 0);
-    if (totalRemainingPercentage !== 100) {
-      // Normalize to ensure total is 100%
-      const multiplier = 100 / totalRemainingPercentage;
-      const updatedSchedules = filteredSchedules.map((s, index) => {
-        if (index === filteredSchedules.length - 1) {
-          // Last item gets the remaining to ensure exactly 100%
-          const sumOfPrevious = filteredSchedules.slice(0, -1).reduce(
-            (sum, s) => sum + Math.round(s.percentage * multiplier), 0
-          );
-          return { ...s, percentage: 100 - sumOfPrevious };
-        }
-        return { ...s, percentage: Math.round(s.percentage * multiplier) };
-      });
-      
-      setPaymentSchedules(updatedSchedules);
-    } else {
-      setPaymentSchedules(filteredSchedules);
-    }
-  };
-  
-  const handlePaymentScheduleChange = (id: string, field: string, value: any) => {
-    // Handle payment schedule changes, particularly percentage changes
-    if (field === 'percentage') {
-      const numValue = parseInt(value, 10);
-      if (isNaN(numValue) || numValue < 0 || numValue > 100) {
-        return; // Invalid percentage
-      }
-      
-      // Find the schedule we're updating
-      const scheduleIndex = paymentSchedules.findIndex(s => s.id === id);
-      if (scheduleIndex < 0) return;
-      
-      // Calculate the old percentage
-      const oldPercentage = paymentSchedules[scheduleIndex].percentage;
-      
-      // Calculate the difference
-      const difference = numValue - oldPercentage;
-      
-      // If no change or there's only one schedule, just update it
-      if (difference === 0 || paymentSchedules.length === 1) {
-        setPaymentSchedules(
-          paymentSchedules.map(s => s.id === id ? { ...s, [field]: numValue } : s)
-        );
-        return;
-      }
-      
-      // We need to adjust other percentages
-      const updatedSchedules = [...paymentSchedules];
-      updatedSchedules[scheduleIndex] = { ...updatedSchedules[scheduleIndex], percentage: numValue };
-      
-      // Distribute the difference across other schedules
-      const otherSchedules = updatedSchedules.filter(s => s.id !== id);
-      const totalOtherPercentage = otherSchedules.reduce((sum, s) => sum + s.percentage, 0);
-      
-      if (totalOtherPercentage === 0) {
-        // Edge case - can't distribute
-        toast.warning("Cannot adjust percentages - other items have 0%");
-        return;
-      }
-      
-      // Calculate a redistribution ratio for the other schedules
-      const ratio = (totalOtherPercentage - difference) / totalOtherPercentage;
-      
-      // Apply the ratio to adjust each other schedule
-      const adjustedSchedules = updatedSchedules.map(s => {
-        if (s.id === id) return s; // Skip the one we're directly changing
-        return {
-          ...s,
-          percentage: Math.max(0, Math.round(s.percentage * ratio))
-        };
-      });
-      
-      // Ensure the total is exactly 100%
-      const adjustedTotal = adjustedSchedules.reduce((sum, s) => sum + s.percentage, 0);
-      if (adjustedTotal !== 100) {
-        // Find a non-zero item to adjust (preferably not the one we're changing)
-        const itemToAdjust = adjustedSchedules.find(s => 
-          s.id !== id && s.percentage > 0
-        ) || adjustedSchedules.find(s => s.percentage > 0);
-        
-        if (itemToAdjust) {
-          itemToAdjust.percentage += (100 - adjustedTotal);
-        }
-      }
-      
-      setPaymentSchedules(adjustedSchedules);
-    } else {
-      // For non-percentage fields (like dueDate), simply update the field
-      setPaymentSchedules(
-        paymentSchedules.map(s => s.id === id ? { ...s, [field]: value } : s)
-      );
-    }
-  };
-
   const handleDuplicateItem = (id: string) => {
     const itemToDuplicate = items.find(item => item.id === id);
     if (itemToDuplicate) {
@@ -498,13 +346,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
       toast.error('Invoice number is required.');
       return;
     }
-    
-    // Validate payment schedules total 100%
-    const totalPercentage = paymentSchedules.reduce((total, schedule) => total + schedule.percentage, 0);
-    if (totalPercentage !== 100) {
-      toast.error('Payment schedule percentages must total 100%.');
-      return;
-    }
 
     const amount = calculateTotalAmount();
 
@@ -535,7 +376,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
           notes,
           contractTerms,
           viewLink: invoice.viewLink,
-          paymentSchedules,
         };
 
         if (shootingDate) {
@@ -569,7 +409,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
           items,
           notes,
           contractTerms,
-          paymentSchedules,
         };
 
         if (shootingDate) {
@@ -685,7 +524,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
               </div>
               
               <div>
-                <Label>Default Due Date</Label>
+                <Label>Due Date</Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
@@ -802,136 +641,24 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
             </div>
           )}
           
-          {/* Payment Schedule Section */}
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium">Payment Schedule</h3>
-              <Button type="button" onClick={handleAddPaymentSchedule} variant="outline">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Payment Schedule
-              </Button>
-            </div>
-            
-            <div className="border rounded-md overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead>Due Date</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead className="w-32 text-right">Percentage</TableHead>
-                    <TableHead className="w-32 text-right">Amount</TableHead>
-                    <TableHead className="w-28 text-right">Status</TableHead>
-                    <TableHead className="w-24 text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paymentSchedules.map((schedule) => (
-                    <TableRow key={schedule.id}>
-                      <TableCell>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "w-full justify-start text-left font-normal"
-                              )}
-                            >
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {format(new Date(schedule.dueDate), "PPP")}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <DatePicker
-                              mode="single"
-                              selected={new Date(schedule.dueDate)}
-                              onSelect={(newDate) => {
-                                if (newDate) {
-                                  handlePaymentScheduleChange(
-                                    schedule.id, 
-                                    'dueDate', 
-                                    format(newDate, 'yyyy-MM-dd')
-                                  );
-                                }
-                              }}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                      </TableCell>
-                      <TableCell>
-                        <Input
-                          type="text"
-                          placeholder="E.g., Deposit, Final Payment"
-                          value={schedule.description || ''}
-                          onChange={(e) => handlePaymentScheduleChange(schedule.id, 'description', e.target.value)}
-                          className="w-full"
-                        />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end">
-                          <Input
-                            type="number"
-                            min="0"
-                            max="100"
-                            value={schedule.percentage}
-                            onChange={(e) => handlePaymentScheduleChange(
-                              schedule.id, 
-                              'percentage', 
-                              parseInt(e.target.value, 10) || 0
-                            )}
-                            className="w-20 text-right"
-                          />
-                          <span className="ml-1">%</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatCurrency((calculateTotalAmount() * schedule.percentage) / 100)}
-                      </TableCell>
-                      <TableCell>
-                        <Select 
-                          value={schedule.status || 'unpaid'} 
-                          onValueChange={(value) => handlePaymentScheduleChange(
-                            schedule.id, 
-                            'status', 
-                            value
-                          )}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="unpaid">Unpaid</SelectItem>
-                            <SelectItem value="paid">Paid</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleRemovePaymentSchedule(schedule.id)}
-                          className="ml-auto h-8 w-8"
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-          
-          {/* Invoice Items Section */}
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium">Invoice Items</h3>
-              <div className="flex space-x-2">
-                <PackageSelector onSelect={handlePackageSelect} />
+              <h3 className="text-lg font-medium">Line Items</h3>
+              <div className="flex gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button type="button" variant="outline">
+                      <PackageIcon className="h-4 w-4 mr-2" />
+                      Add Existing Package
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[300px] p-0">
+                    <PackageSelector onPackageSelect={handlePackageSelect} variant="direct-list" />
+                  </PopoverContent>
+                </Popover>
                 <Button type="button" onClick={handleAddItem} variant="outline">
                   <Plus className="h-4 w-4 mr-2" />
-                  Add Item
+                  Add Line Item
                 </Button>
               </div>
             </div>
@@ -940,130 +667,172 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
-                    <TableHead style={{ width: '40%' }}>Description</TableHead>
-                    <TableHead className="text-right">Quantity</TableHead>
-                    <TableHead className="text-right">Rate</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="w-12"></TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead className="w-28 text-right">Unit Price</TableHead>
+                    <TableHead className="w-24 text-right">Quantity</TableHead>
+                    <TableHead className="w-24 text-right">Discount</TableHead>
+                    <TableHead className="w-24 text-right">Tax</TableHead>
+                    <TableHead className="w-32 text-right">Amount</TableHead>
+                    <TableHead className="w-24 text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {items.map((item) => (
-                    <TableRow key={item.id} className={activeRowId === item.id ? "bg-muted/30" : ""}>
+                    <TableRow key={item.id}>
+                      <TableCell className="p-2 text-center">
+                        <GripVertical className="h-4 w-4 mx-auto text-muted-foreground" />
+                      </TableCell>
                       <TableCell>
-                        <Input
-                          type="text"
-                          value={item.description}
-                          onChange={(e) => handleItemChange(item.id, 'description', e.target.value)}
-                          placeholder="Item description"
-                          className="w-full"
-                        />
+                        {activeRowId === item.id ? (
+                          <RichTextEditor
+                            value={item.description}
+                            onChange={(value) => handleItemChange(item.id, 'description', value)}
+                            className="border-none min-h-0 p-0"
+                            placeholder="Add description..."
+                            alwaysShowToolbar={true}
+                            showDoneButton={true}
+                            onDone={handleDoneEditing}
+                          />
+                        ) : (
+                          item.description ? (
+                            <RichTextEditor
+                              value={item.description}
+                              onChange={(value) => handleItemChange(item.id, 'description', value)}
+                              className="border-none min-h-0 p-0"
+                              placeholder="Add description..."
+                              onFocus={() => setActiveRowId(item.id)}
+                            />
+                          ) : (
+                            <div className="space-y-1">
+                              <PackageSelector 
+                                onPackageSelect={handlePackageSelect} 
+                                variant="inline" 
+                                placeholder="Select an existing package..." 
+                              />
+                              <Button 
+                                variant="ghost" 
+                                className="w-full justify-start text-left text-muted-foreground hover:text-foreground"
+                                onClick={() => handleManualPackageEntry(item.id)}
+                              >
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Add your own product/package...
+                              </Button>
+                            </div>
+                          )
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         <Input
                           type="number"
-                          value={item.quantity}
-                          onChange={(e) => handleItemChange(item.id, 'quantity', parseFloat(e.target.value) || 0)}
-                          min="0"
-                          className="w-16 text-right ml-auto"
-                        />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Input
-                          type="number"
+                          placeholder="0.00"
                           value={item.rate}
                           onChange={(e) => handleItemChange(item.id, 'rate', parseFloat(e.target.value) || 0)}
-                          min="0"
-                          className="w-20 text-right ml-auto"
+                          className="max-w-24 text-right ml-auto"
                         />
                       </TableCell>
-                      <TableCell className="text-right font-medium">{formatCurrency(item.amount)}</TableCell>
+                      <TableCell className="text-right">
+                        <Input
+                          type="number"
+                          placeholder="1"
+                          value={item.quantity}
+                          onChange={(e) => handleItemChange(item.id, 'quantity', parseFloat(e.target.value) || 0)}
+                          className="max-w-16 text-right ml-auto"
+                        />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Input
+                          type="text"
+                          placeholder="0%"
+                          defaultValue="0%"
+                          className="max-w-16 text-right ml-auto"
+                          disabled
+                        />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Input
+                          type="text"
+                          placeholder="No Tax"
+                          defaultValue="No Tax"
+                          className="max-w-16 text-right ml-auto"
+                          disabled
+                        />
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        {formatCurrency(item.amount)}
+                      </TableCell>
                       <TableCell>
-                        <div className="flex justify-end">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDuplicateItem(item.id)}
-                            className="h-8 w-8"
-                            title="Duplicate item"
-                          >
+                        <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => handleDuplicateItem(item.id)}>
                             <Copy className="h-4 w-4" />
                           </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleRemoveItem(item.id)}
-                            className="h-8 w-8"
-                            title="Remove item"
-                          >
+                          <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.id)}>
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </div>
                       </TableCell>
                     </TableRow>
                   ))}
-                  
-                  <TableRow className="bg-muted/10 font-medium">
-                    <TableCell colSpan={3} className="text-right">Total:</TableCell>
-                    <TableCell className="text-right">{formatCurrency(calculateTotalAmount())}</TableCell>
-                    <TableCell></TableCell>
-                  </TableRow>
                 </TableBody>
               </Table>
             </div>
+            
+            <div className="mt-4 flex justify-end">
+              <div className="w-72 space-y-2">
+                <div className="flex justify-between py-2 border-t">
+                  <span className="font-medium">Subtotal</span>
+                  <span className="font-medium">{formatCurrency(calculateTotalAmount())}</span>
+                </div>
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <span>Discount</span>
+                  <span>None</span>
+                </div>
+                <div className="flex justify-between py-2 border-t border-b">
+                  <span className="font-medium">Total Due</span>
+                  <span className="font-bold">{formatCurrency(calculateTotalAmount())}</span>
+                </div>
+              </div>
+            </div>
           </div>
           
-          {/* Notes Section */}
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <Label htmlFor="notes">Notes (will appear on invoice)</Label>
-              <div className="mt-2">
-                <RichTextEditor
-                  value={notes}
-                  onChange={setNotes}
-                  placeholder="Enter any additional notes that should appear on the invoice..."
-                  className="min-h-32"
-                />
-              </div>
+              <Label htmlFor="notes">Invoice Notes</Label>
+              <RichTextEditor
+                value={notes}
+                onChange={(value) => setNotes(value)}
+                placeholder="Enter invoice notes..."
+              />
             </div>
             
             <div>
               <Label htmlFor="contractTerms">Contract Terms</Label>
-              <div className="mt-2">
-                <RichTextEditor
-                  value={contractTerms}
-                  onChange={setContractTerms}
-                  placeholder="Enter contract terms and conditions..."
-                  className="min-h-40"
-                />
-              </div>
+              <RichTextEditor
+                value={contractTerms}
+                onChange={(value) => setContractTerms(value)}
+                placeholder="Enter contract terms..."
+              />
             </div>
-          </div>
-          
-          <div className="flex justify-end space-x-3 pt-4">
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => {
-                if (job?.id) {
-                  navigate(`/job/${job.id}`);
-                } else if (client) {
-                  navigate(`/client/${client.id}`);
-                } else {
-                  navigate('/');
-                }
-              }}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {isEditMode ? 'Update Invoice' : 'Create Invoice'}
-            </Button>
           </div>
         </form>
       </CardContent>
+      <CardFooter className="flex justify-between">
+        <Button 
+          variant="outline" 
+          onClick={() => {
+            if (job?.id) {
+              navigate(`/job/${job.id}`);
+            } else if (client) {
+              navigate(`/client/${client.id}`);
+            } else {
+              navigate('/');
+            }
+          }}
+        >
+          Cancel
+        </Button>
+        <Button onClick={handleSubmit}>{isEditMode ? 'Update Invoice' : 'Create Invoice'}</Button>
+      </CardFooter>
     </Card>
   );
 };

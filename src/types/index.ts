@@ -52,14 +52,6 @@ export interface Package {
 export type InvoiceStatus = 'draft' | 'sent' | 'accepted' | 'paid';
 export type ContractStatus = 'pending' | 'accepted';
 
-export interface PaymentSchedule {
-  id: string;
-  dueDate: string;
-  percentage: number;
-  description?: string;
-  status?: 'unpaid' | 'paid';
-}
-
 export interface Invoice {
   id: string;
   clientId: string;
@@ -76,7 +68,6 @@ export interface Invoice {
   notes?: string;
   contractTerms?: string;
   viewLink: string;
-  paymentSchedules?: PaymentSchedule[];
 }
 
 export interface InvoiceItem {

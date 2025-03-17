@@ -334,44 +334,6 @@ export type Database = {
           },
         ]
       }
-      payment_schedules: {
-        Row: {
-          created_at: string
-          description: string | null
-          due_date: string
-          id: string
-          invoice_id: string
-          percentage: number
-          status: string | null
-        }
-        Insert: {
-          created_at?: string
-          description?: string | null
-          due_date: string
-          id?: string
-          invoice_id: string
-          percentage: number
-          status?: string | null
-        }
-        Update: {
-          created_at?: string
-          description?: string | null
-          due_date?: string
-          id?: string
-          invoice_id?: string
-          percentage?: number
-          status?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "payment_schedules_invoice_id_fkey"
-            columns: ["invoice_id"]
-            isOneToOne: false
-            referencedRelation: "invoices"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       user_settings: {
         Row: {
           contract_template: string | null

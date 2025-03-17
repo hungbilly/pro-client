@@ -33,10 +33,10 @@ const Routes = () => {
       <Route path="/job/:id" element={<ProtectedRoute><JobDetail /></ProtectedRoute>} />
       <Route path="/job/:id/edit" element={<ProtectedRoute><JobEdit /></ProtectedRoute>} />
       <Route path="/job/:jobId/invoice/new" element={<ProtectedRoute><InvoiceCreate /></ProtectedRoute>} />
-      <Route path="/job/:jobId/invoice/create" element={<ProtectedRoute><InvoiceCreate /></ProtectedRoute>} />
       <Route path="/job/:jobId/invoice/:invoiceId/edit" element={<ProtectedRoute><InvoiceCreate /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
       <Route path="/invoice/:viewLink" element={<InvoiceView />} />
+      {/* Add a new route for viewing an invoice by ID */}
       <Route path="/invoice/:id" element={<ProtectedRoute><InvoiceView /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </ReactRoutes>

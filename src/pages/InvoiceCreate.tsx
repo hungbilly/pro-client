@@ -57,8 +57,6 @@ const InvoiceCreate = () => {
     );
   }
 
-  // If only jobId and clientId are provided, it's a new invoice
-  // If invoiceId is provided, it's an edit operation
   return (
     <PageTransition>
       <div className="container py-8">

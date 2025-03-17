@@ -318,6 +318,8 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
 
         await updateInvoice(updatedInvoice);
         toast.success('Invoice updated successfully!');
+        
+        navigate(`/invoice/${invoice.viewLink}`);
       } else {
         const invoiceData: Omit<Invoice, 'id' | 'viewLink'> = {
           clientId: client.id,
@@ -338,16 +340,18 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
           invoiceData.shootingDate = format(shootingDate, 'yyyy-MM-dd');
         }
 
-        await saveInvoice(invoiceData);
+        const newInvoice = await saveInvoice(invoiceData);
         toast.success('Invoice saved successfully!');
-      }
-      
-      if (job?.id) {
-        navigate(`/job/${job.id}`);
-      } else if (client) {
-        navigate(`/client/${client.id}`);
-      } else {
-        navigate('/');
+        
+        if (newInvoice && newInvoice.viewLink) {
+          navigate(`/invoice/${newInvoice.viewLink}`);
+        } else if (job?.id) {
+          navigate(`/job/${job.id}`);
+        } else if (client) {
+          navigate(`/client/${client.id}`);
+        } else {
+          navigate('/');
+        }
       }
     } catch (error) {
       console.error('Failed to save/update invoice:', error);

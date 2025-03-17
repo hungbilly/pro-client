@@ -205,9 +205,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
   const handleFocus = () => {
     console.log('Editor focused, alwaysShowToolbar:', alwaysShowToolbar);
-    if (!alwaysShowToolbar) {
-      setShowToolbar(true);
-    }
+    setShowToolbar(true);
     if (onFocus) {
       onFocus();
     }
@@ -227,9 +225,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     if (onDone) {
       onDone();
     }
-    if (!alwaysShowToolbar) {
-      setShowToolbar(false);
-    }
+    setShowToolbar(false);
   };
 
   console.log('RichTextEditor rendering with:', {

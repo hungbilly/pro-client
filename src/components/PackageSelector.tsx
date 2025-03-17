@@ -26,8 +26,9 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({ onPackageSelect }) =>
       
       setLoading(true);
       try {
-        const { data, error } = await supabase
-          .from('packages')
+        // Use type assertion to bypass TypeScript checks
+        const { data, error } = await (supabase
+          .from('packages') as any)
           .select('*')
           .eq('user_id', user.id)
           .order('name', { ascending: true });

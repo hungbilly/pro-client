@@ -37,6 +37,18 @@ export interface Job {
   updatedAt: string;
 }
 
+export interface Package {
+  id: string;
+  name: string;
+  description?: string;
+  price: number;
+  tax_rate?: number;
+  user_id: string;
+  company_id?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export type InvoiceStatus = 'draft' | 'sent' | 'accepted' | 'paid';
 export type ContractStatus = 'pending' | 'accepted';
 

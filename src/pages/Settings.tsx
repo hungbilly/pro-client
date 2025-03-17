@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import CompanySettings from '@/components/CompanySettings';
 import InvoiceTemplateSettings from '@/components/InvoiceTemplateSettings';
+import PackageSettings from '@/components/PackageSettings';
 import { CompanyProvider } from '@/components/CompanySelector';
 
 const Settings = () => {
@@ -17,8 +18,9 @@ const Settings = () => {
         <Tabs defaultValue="company" className="space-y-4">
           <TabsList>
             <TabsTrigger value="company">Company</TabsTrigger>
-            <TabsTrigger value="account">Account</TabsTrigger>
+            <TabsTrigger value="packages">Products & Packages</TabsTrigger>
             <TabsTrigger value="templates">Templates</TabsTrigger>
+            <TabsTrigger value="account">Account</TabsTrigger>
             <TabsTrigger value="notifications">Notifications</TabsTrigger>
             <TabsTrigger value="billing">Billing</TabsTrigger>
           </TabsList>
@@ -29,16 +31,22 @@ const Settings = () => {
             </CompanyProvider>
           </TabsContent>
           
-          <TabsContent value="account" className="space-y-4">
-            <div className="rounded-lg border p-6">
-              <h2 className="text-xl font-semibold mb-4">Account Settings</h2>
-              <p className="text-muted-foreground">Account settings will be available in a future update.</p>
-            </div>
+          <TabsContent value="packages" className="space-y-4">
+            <CompanyProvider>
+              <PackageSettings />
+            </CompanyProvider>
           </TabsContent>
           
           <TabsContent value="templates" className="space-y-4">
             <div className="rounded-lg border p-6">
               <InvoiceTemplateSettings />
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="account" className="space-y-4">
+            <div className="rounded-lg border p-6">
+              <h2 className="text-xl font-semibold mb-4">Account Settings</h2>
+              <p className="text-muted-foreground">Account settings will be available in a future update.</p>
             </div>
           </TabsContent>
           

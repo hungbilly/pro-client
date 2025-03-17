@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import CompanySettings from '@/components/CompanySettings';
 import InvoiceTemplateSettings from '@/components/InvoiceTemplateSettings';
+import { CompanyProvider } from '@/components/CompanySelector';
 
 const Settings = () => {
   console.log("Settings page rendering");
@@ -23,7 +24,9 @@ const Settings = () => {
           </TabsList>
           
           <TabsContent value="company" className="space-y-4">
-            <CompanySettings />
+            <CompanyProvider>
+              <CompanySettings />
+            </CompanyProvider>
           </TabsContent>
           
           <TabsContent value="account" className="space-y-4">

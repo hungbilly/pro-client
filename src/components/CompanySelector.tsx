@@ -33,11 +33,17 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const fetchCompanies = async () => {
     setLoading(true);
     try {
-      console.log("CompanyProvider: Fetching companies for user:", user?.id);
+      if (!user) {
+        console.log("No user found in CompanyProvider, aborting fetch");
+        setLoading(false);
+        return;
+      }
+      
+      console.log("CompanyProvider: Fetching companies for user:", user.id);
       const { data, error } = await supabase
         .from('companies')
         .select('id, name, is_default')
-        .eq('user_id', user?.id)
+        .eq('user_id', user.id)
         .order('is_default', { ascending: false })
         .order('name');
       
@@ -57,6 +63,7 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
     } catch (error) {
       console.error('Error fetching companies:', error);
+      toast.error('Failed to load companies. Please refresh the page.');
     } finally {
       setLoading(false);
     }
@@ -65,6 +72,8 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     if (user) {
       fetchCompanies();
+    } else {
+      setLoading(false);
     }
   }, [user]);
 

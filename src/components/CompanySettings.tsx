@@ -10,6 +10,8 @@ import { PlusCircle, Trash2, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
+import { useCompany } from './CompanySelector';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface Company {
   id: string;
@@ -24,7 +26,7 @@ interface Company {
 
 const CompanySettings = () => {
   const { user } = useAuth();
-  const [companies, setCompanies] = useState<Company[]>([]);
+  const { companies, loading: companyContextLoading, refreshCompanies } = useCompany();
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -39,43 +41,25 @@ const CompanySettings = () => {
   const [isDefault, setIsDefault] = useState(false);
 
   useEffect(() => {
-    if (user) {
-      fetchCompanies();
-    }
-  }, [user]);
-
-  const fetchCompanies = async () => {
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('companies')
-        .select('*')
-        .order('is_default', { ascending: false })
-        .order('name');
+    console.log("CompanySettings: Companies from context:", companies);
+    console.log("CompanySettings: companyContextLoading:", companyContextLoading);
+    
+    if (!companyContextLoading) {
+      setIsLoading(false);
       
-      if (error) {
-        throw error;
-      }
-      
-      setCompanies(data || []);
-      
-      // If there's at least one company, select the default or first one
-      if (data && data.length > 0) {
-        const defaultCompany = data.find(c => c.is_default);
-        setSelectedCompanyId(defaultCompany ? defaultCompany.id : data[0].id);
-        populateFormWithCompany(defaultCompany || data[0]);
+      // If there's at least one company, select the first one
+      if (companies && companies.length > 0) {
+        const defaultCompany = companies.find(c => c.is_default);
+        const companyToSelect = defaultCompany || companies[0];
+        setSelectedCompanyId(companyToSelect.id);
+        populateFormWithCompany(companyToSelect);
       } else {
         // If no companies exist, show the add new form
         setIsAddingNew(true);
         resetForm();
       }
-    } catch (error) {
-      console.error('Error fetching companies:', error);
-      toast.error('Failed to load companies');
-    } finally {
-      setIsLoading(false);
     }
-  };
+  }, [companies, companyContextLoading]);
 
   const populateFormWithCompany = (company: Company) => {
     setName(company.name);
@@ -119,13 +103,19 @@ const CompanySettings = () => {
       return;
     }
 
+    if (!user) {
+      toast.error('You must be logged in to save company information');
+      return;
+    }
+
+    setIsLoading(true);
     try {
       if (isAddingNew) {
         // Create new company
         const { data, error } = await supabase
           .from('companies')
           .insert({
-            user_id: user?.id,
+            user_id: user.id,
             name,
             address,
             phone,
@@ -147,7 +137,7 @@ const CompanySettings = () => {
         toast.success('Company created successfully');
         setIsAddingNew(false);
         setSelectedCompanyId(data.id);
-        fetchCompanies();
+        await refreshCompanies();
       } else if (selectedCompanyId) {
         // Update existing company
         const { error } = await supabase
@@ -172,11 +162,13 @@ const CompanySettings = () => {
         }
         
         toast.success('Company updated successfully');
-        fetchCompanies();
+        await refreshCompanies();
       }
     } catch (error) {
       console.error('Error saving company:', error);
       toast.error('Failed to save company');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -210,7 +202,7 @@ const CompanySettings = () => {
         if (error) throw error;
         
         toast.success('Company deleted successfully');
-        fetchCompanies();
+        await refreshCompanies();
       } catch (error) {
         console.error('Error deleting company:', error);
         toast.error('Failed to delete company');
@@ -218,8 +210,33 @@ const CompanySettings = () => {
     }
   };
 
-  if (isLoading) {
-    return <div className="text-center p-8">Loading company data...</div>;
+  // Display loading skeleton while the initial data is being fetched
+  if (companyContextLoading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-10 w-full max-w-md" />
+        <div className="space-y-4">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-32 w-full" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+          <Skeleton className="h-10 w-32" />
+        </div>
+        <Skeleton className="h-10 w-40" />
+      </div>
+    );
+  }
+
+  // Display message if no companies and not in adding mode
+  if (companies.length === 0 && !isAddingNew) {
+    return (
+      <div className="text-center p-8">
+        <p className="mb-4">No companies found. Please create your first company.</p>
+        <Button onClick={handleAddNew}>Create Company</Button>
+      </div>
+    );
   }
 
   return (
@@ -340,7 +357,7 @@ const CompanySettings = () => {
           </Button>
         )}
         <div className={!isAddingNew && selectedCompanyId ? '' : 'ml-auto'}>
-          <Button onClick={handleSave}>
+          <Button onClick={handleSave} disabled={isLoading}>
             <Check className="h-4 w-4 mr-2" />
             {isAddingNew ? 'Create Company' : 'Update Company'}
           </Button>

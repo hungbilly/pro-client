@@ -4,7 +4,7 @@ import { Package, InvoiceItem } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Check, ChevronsUpDown, Package as PackageIcon } from 'lucide-react';
+import { Check, ChevronsUpDown, Package as PackageIcon, Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
@@ -73,8 +73,9 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({ onPackageSelect }) =>
           disabled={loading}
         >
           <div className="flex items-center">
-            <PackageIcon className="mr-2 h-4 w-4" />
-            <span>Select a package</span>
+            <Plus className="mr-1 h-4 w-4" />
+            <PackageIcon className="mr-1 h-4 w-4" />
+            <span>Existing Package</span>
           </div>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>

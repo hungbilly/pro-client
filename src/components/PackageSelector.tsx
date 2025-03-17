@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Package, InvoiceItem } from '@/types';
 import { Button } from '@/components/ui/button';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Check, ChevronsUpDown, Package as PackageIcon, FileText } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -207,9 +207,11 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
           <Command>
             <CommandInput placeholder="Search packages..." />
             <CommandEmpty>No package found.</CommandEmpty>
-            <CommandGroup>
-              {packageItems}
-            </CommandGroup>
+            <CommandList>
+              <CommandGroup>
+                {packageItems}
+              </CommandGroup>
+            </CommandList>
           </Command>
         </PopoverContent>
       </Popover>
@@ -243,9 +245,11 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
         <Command>
           <CommandInput placeholder="Search packages..." />
           <CommandEmpty>No package found.</CommandEmpty>
-          <CommandGroup>
-            {packageItems}
-          </CommandGroup>
+          <CommandList>
+            <CommandGroup>
+              {packageItems}
+            </CommandGroup>
+          </CommandList>
         </Command>
       </PopoverContent>
     </Popover>

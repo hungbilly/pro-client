@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { getInvoiceByViewLink, getClient, updateInvoiceStatus, getInvoice, updateContractStatus } from '@/lib/storage';
@@ -433,7 +434,16 @@ const InvoiceView = () => {
                   <ul className="list-disc pl-5">
                     {invoice.items.map((item) => (
                       <li key={item.id} className="mb-2">
-                        {item.description} - {item.quantity} x ${item.rate.toFixed(2)} = ${item.amount.toFixed(2)}
+                        {item.description ? (
+                          <div>
+                            <div dangerouslySetInnerHTML={{ __html: item.description }} />
+                            <div className="mt-1 text-sm text-muted-foreground">
+                              {item.quantity} x ${item.rate.toFixed(2)} = ${item.amount.toFixed(2)}
+                            </div>
+                          </div>
+                        ) : (
+                          `${item.quantity} x $${item.rate.toFixed(2)} = $${item.amount.toFixed(2)}`
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -443,7 +453,7 @@ const InvoiceView = () => {
 
                 <div>
                   <h4 className="text-lg font-semibold mb-2">Notes</h4>
-                  <p>{invoice.notes || 'No notes provided.'}</p>
+                  <div dangerouslySetInnerHTML={{ __html: invoice.notes || 'No notes provided.' }} />
                 </div>
               </TabsContent>
               
@@ -469,7 +479,7 @@ const InvoiceView = () => {
                     <FileText className="h-4 w-4 mr-1" />
                     Contract Terms
                   </h4>
-                  <p className="whitespace-pre-line">{invoice.contractTerms}</p>
+                  <div className="whitespace-pre-line" dangerouslySetInnerHTML={{ __html: invoice.contractTerms }} />
                 </div>
               </TabsContent>
             </Tabs>

@@ -32,7 +32,6 @@ const Routes = () => {
       <Route path="/job/new" element={<ProtectedRoute><JobCreate /></ProtectedRoute>} />
       <Route path="/job/:id" element={<ProtectedRoute><JobDetail /></ProtectedRoute>} />
       <Route path="/job/:id/edit" element={<ProtectedRoute><JobEdit /></ProtectedRoute>} />
-      <Route path="/client/:clientId/job/edit/:id" element={<ProtectedRoute><JobEdit /></ProtectedRoute>} />
       <Route path="/job/:jobId/invoice/new" element={<ProtectedRoute><InvoiceCreate /></ProtectedRoute>} />
       <Route path="/job/:jobId/invoice/:invoiceId/edit" element={<ProtectedRoute><InvoiceCreate /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />

@@ -144,6 +144,31 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
       return null;
     }
     
+    // For direct-list variant, use a simplified item layout
+    if (variant === 'direct-list') {
+      return (
+        <CommandItem
+          key={pkg.id}
+          value={pkg.name}
+          onSelect={(currentValue) => {
+            console.log('Command item selected with value:', currentValue);
+            handlePackageSelection(currentValue);
+          }}
+        >
+          <div className="flex items-center justify-between w-full">
+            <span>{pkg.name}</span>
+            <span className="font-medium">
+              {new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+              }).format(pkg.price)}
+            </span>
+          </div>
+        </CommandItem>
+      );
+    }
+    
+    // For other variants, use the original layout with description
     return (
       <CommandItem
         key={pkg.id}

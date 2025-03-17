@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Client, Invoice, InvoiceItem, Job } from '@/types';
@@ -16,11 +17,18 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from '@/lib/utils';
 import { useCompany } from './CompanySelector';
 import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 interface InvoiceFormProps {
   invoice?: Invoice;
   clientId: string;
   jobId?: string;
+}
+
+interface Template {
+  id: string;
+  name: string;
+  content: string;
 }
 
 const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, clientId, jobId }) => {
@@ -39,7 +47,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
   const [notes, setNotes] = useState(existingInvoice?.notes || '');
   const [contractTerms, setContractTerms] = useState(existingInvoice?.contractTerms || '');
 
-  const [templates, setTemplates] = useState<{ id: string; name: string; content: string }[]>([]);
+  const [templates, setTemplates] = useState<Template[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const { user } = useAuth();
 

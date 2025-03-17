@@ -63,24 +63,26 @@ const InvoiceView = () => {
           fetchedInvoice = await getInvoice(id);
         }
         
-        if (!fetchedInvoice && viewLink) {
-          console.log('Invoice not found by ID or using viewLink, trying by view link');
+        if (!fetchedInvoice) {
+          const urlPath = location.pathname;
+          const lastPartOfUrl = urlPath.split('/').pop() || '';
           
-          const isFullUrl = viewLink.startsWith('http');
-          let searchLink = viewLink;
+          console.log('URL path identifier:', lastPartOfUrl);
           
-          if (isFullUrl) {
-            searchLink = viewLink;
-          } else {
-            searchLink = `${window.location.origin}/invoice/${viewLink}`;
+          if (lastPartOfUrl && lastPartOfUrl !== viewLink) {
+            console.log('Trying with path identifier as ID:', lastPartOfUrl);
+            fetchedInvoice = await getInvoice(lastPartOfUrl);
           }
           
-          console.log('Trying with view link:', searchLink);
-          fetchedInvoice = await getInvoiceByViewLink(searchLink);
+          if (!fetchedInvoice) {
+            const linkToUse = viewLink || lastPartOfUrl;
+            console.log('Trying with view link:', linkToUse);
+            fetchedInvoice = await getInvoiceByViewLink(linkToUse);
+          }
         }
         
         if (!fetchedInvoice) {
-          setError('Invoice not found.');
+          setError('Invoice not found. Please check the URL or contact support.');
           setLoading(false);
           return;
         }
@@ -90,7 +92,7 @@ const InvoiceView = () => {
         if (fetchedInvoice.clientId) {
           const fetchedClient = await getClient(fetchedInvoice.clientId);
           if (!fetchedClient) {
-            setError('Client not found.');
+            setError('Client information not found.');
             setLoading(false);
             return;
           }
@@ -101,13 +103,13 @@ const InvoiceView = () => {
         setLoading(false);
       } catch (err) {
         console.error('Failed to load invoice:', err);
-        setError('Failed to load invoice.');
+        setError('Failed to load invoice. Please try again later.');
         setLoading(false);
       }
     };
 
     fetchInvoice();
-  }, [viewLink, id]);
+  }, [viewLink, id, location.pathname]);
 
   useEffect(() => {
     if (client && invoice) {

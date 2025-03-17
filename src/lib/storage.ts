@@ -749,8 +749,9 @@ export const getInvoice = async (id: string): Promise<Invoice | undefined> => {
 
 export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | undefined> => {
   try {
-    console.log('Searching for invoice with view_link:', viewLink);
-    // Try a simple query without the exact matching to see if we can find any invoices with similar view links
+    console.log('Searching for invoice with view_link parameter:', viewLink);
+    
+    // Get all invoices to search more flexibly
     const { data: allInvoices, error: invoiceQueryError } = await supabase
       .from('invoices')
       .select('*');
@@ -760,17 +761,37 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
       return undefined;
     }
     
-    console.log('Found invoices:', allInvoices?.map(inv => inv.view_link));
+    // Log available invoices for debugging
+    console.log('Found invoices (view_links):', allInvoices?.map(inv => inv.view_link));
     
-    // Try to find an invoice with a matching view_link
-    const matchingInvoice = allInvoices?.find(inv => 
-      inv.view_link === viewLink || 
-      inv.view_link.includes(viewLink) || 
-      viewLink.includes(inv.view_link.split('/').pop() || '')
-    );
+    // First try direct match
+    let matchingInvoice = allInvoices?.find(inv => inv.view_link === viewLink);
+    
+    // If no direct match, try to match just the ID portion
+    if (!matchingInvoice) {
+      // Extract the ID portion if it's a full URL
+      const idPortion = viewLink.includes('/invoice/') 
+        ? viewLink.split('/invoice/')[1]
+        : viewLink;
+      
+      console.log('Trying to match with ID portion:', idPortion);
+      
+      // Try to find by ID directly
+      matchingInvoice = allInvoices?.find(inv => inv.id === idPortion);
+      
+      // If still not found, try to find by partial view_link match
+      if (!matchingInvoice) {
+        matchingInvoice = allInvoices?.find(inv => {
+          if (!inv.view_link) return false;
+          return inv.view_link.includes(idPortion) || 
+                 (inv.view_link.includes('/invoice/') && 
+                  inv.view_link.split('/invoice/')[1] === idPortion);
+        });
+      }
+    }
     
     if (!matchingInvoice) {
-      console.error('No invoice found with matching view link');
+      console.error('No invoice found with matching view link or ID');
       return undefined;
     }
     
@@ -814,6 +835,7 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
       amount: matchingInvoice.amount,
       date: matchingInvoice.date,
       dueDate: matchingInvoice.due_date,
+      shootingDate: matchingInvoice.shooting_date,
       status,
       contractStatus,
       items: invoiceItems,
@@ -1113,3 +1135,4 @@ export const deleteInvoice = async (id: string): Promise<void> => {
     throw error;
   }
 };
+

@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -95,24 +96,55 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     
     // Clean up any problematic styling that might interfere with list display
     const cleanupStyling = () => {
-      // If we have styled spans that might interfere with list display, clean them up
-      const styledSpans = editorRef.current?.querySelectorAll('span[style*="background-color"]');
-      styledSpans?.forEach(span => {
-        // Remove background-color style but keep other formatting like bold/italic
-        const style = span.getAttribute('style');
-        if (style) {
-          const newStyle = style.replace(/background-color:[^;]+;?/g, '');
-          if (newStyle.trim()) {
-            span.setAttribute('style', newStyle);
-          } else {
-            // If no style left, unwrap the span content
-            const parent = span.parentNode;
-            while (span.firstChild) {
-              parent?.insertBefore(span.firstChild, span);
+      if (!editorRef.current) return;
+      
+      // Process all list items to ensure they have proper styles
+      const listItems = editorRef.current.querySelectorAll('li');
+      listItems.forEach(li => {
+        // Remove text-align from list items as it can interfere with markers
+        li.style.textAlign = '';
+        
+        // Handle span elements with background color inside list items
+        const spans = li.querySelectorAll('span[style*="background-color"]');
+        spans.forEach(span => {
+          const style = span.getAttribute('style');
+          if (style) {
+            // Remove background-color style but preserve other styles
+            const newStyle = style.replace(/background-color:[^;]+;?/g, '');
+            if (newStyle.trim()) {
+              span.setAttribute('style', newStyle);
+            } else {
+              // If no style left, unwrap the span content
+              const parent = span.parentNode;
+              if (parent) {
+                while (span.firstChild) {
+                  parent.insertBefore(span.firstChild, span);
+                }
+                parent.removeChild(span);
+              }
             }
-            parent?.removeChild(span);
           }
+        });
+        
+        // Ensure list items have proper text color for visibility
+        if (!li.style.color) {
+          li.style.color = 'currentColor';
         }
+      });
+      
+      // Ensure list containers have proper styling
+      const lists = editorRef.current.querySelectorAll('ol, ul');
+      lists.forEach(list => {
+        // Explicitly set the list style type
+        if (list.tagName === 'OL') {
+          (list as HTMLElement).style.listStyleType = 'decimal';
+        } else if (list.tagName === 'UL') {
+          (list as HTMLElement).style.listStyleType = 'disc';
+        }
+        
+        // Ensure proper padding for marker visibility
+        (list as HTMLElement).style.paddingLeft = '1.5em';
+        (list as HTMLElement).style.margin = '0.5em 0';
       });
     };
     
@@ -303,8 +335,37 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         onBlur={handleBlur}  
         data-placeholder={placeholder}
         dir="ltr"
-        style={{ textAlign: 'left' }}
+        style={{ 
+          textAlign: 'left',
+          // Add explicit CSS for list styling
+          '--tw-prose-bullets': 'currentColor',
+          '--tw-prose-counters': 'currentColor',
+        } as React.CSSProperties}
       />
+      
+      <style jsx>{`
+        /* Additional list styling for editor content */
+        #editor ol {
+          list-style-type: decimal !important;
+          list-style-position: outside !important;
+          padding-left: 1.5em !important;
+        }
+        
+        #editor ul {
+          list-style-type: disc !important;
+          list-style-position: outside !important;
+          padding-left: 1.5em !important;
+        }
+        
+        #editor li {
+          display: list-item !important;
+          margin: 0.25em 0 !important;
+        }
+        
+        #editor li::marker {
+          color: currentColor !important;
+        }
+      `}</style>
     </div>
   );
 };

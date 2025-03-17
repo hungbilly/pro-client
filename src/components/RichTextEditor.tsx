@@ -29,6 +29,14 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     }
   }, []);
 
+  // Add an effect to update the editor when value changes from outside
+  useEffect(() => {
+    if (editorRef.current && value !== html) {
+      editorRef.current.innerHTML = value;
+      setHtml(value);
+    }
+  }, [value]);
+
   const handleCommand = (command: string, value: string | null = null) => {
     document.execCommand(command, false, value);
     if (editorRef.current) {
@@ -166,11 +174,12 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
           className
         )}
         contentEditable={true}
-        dangerouslySetInnerHTML={{ __html: html }}
         onInput={handleInput}
         onFocus={handleFocus}
         onBlur={handleBlur}  
         data-placeholder={placeholder}
+        dir="ltr" // Explicitly set text direction to left-to-right
+        style={{ textAlign: 'left' }} // Ensure text alignment is left
       />
     </div>
   );

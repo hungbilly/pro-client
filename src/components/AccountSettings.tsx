@@ -98,6 +98,7 @@ const AccountSettings = () => {
 
       // If settings exist, populate the form
       if (data) {
+        // Safely cast data to UserSettings type after checking it exists
         const settings = data as UserSettings;
         form.reset({
           defaultCurrency: settings.default_currency || 'USD',
@@ -145,7 +146,7 @@ const AccountSettings = () => {
 
       let result;
       // Update or insert based on whether settings exist
-      if (existingData) {
+      if (existingData && 'id' in existingData) {
         result = await supabase
           .from('user_settings' as any)
           .update(settingsData as any)

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -155,7 +156,7 @@ const AccountSettings = () => {
 
       let result;
       // Update or insert based on whether settings exist
-      if (existingData && typeof existingData === 'object' && 'id' in existingData) {
+      if (existingData && typeof existingData === 'object' && 'id' in existingData && existingData.id) {
         result = await supabase
           .from('user_settings' as any)
           .update(settingsData as any)

@@ -154,13 +154,14 @@ const AccountSettings = () => {
 
       let result;
       
-      // Check if existingData exists and has an id property
+      // Only proceed if existingData exists and has an id property
       if (existingData && typeof existingData === 'object' && 'id' in existingData) {
-        console.log("Updating existing settings with ID:", existingData.id);
+        const id = existingData.id;
+        console.log("Updating existing settings with ID:", id);
         result = await supabase
           .from('user_settings' as any)
           .update(settingsData as any)
-          .eq('id', existingData.id);
+          .eq('id', id);
       } else {
         console.log("Creating new settings");
         result = await supabase

@@ -9,13 +9,15 @@ interface RichTextEditorProps {
   onChange: (value: string) => void;
   className?: string;
   placeholder?: string;
+  onFocus?: () => void; // Add the onFocus prop definition
 }
 
 const RichTextEditor: React.FC<RichTextEditorProps> = ({
   value,
   onChange,
   className,
-  placeholder = 'Enter your text here...'
+  placeholder = 'Enter your text here...',
+  onFocus, // Add the prop to the component parameters
 }) => {
   const editorRef = useRef<HTMLDivElement>(null);
   const [html, setHtml] = useState(value);
@@ -46,6 +48,10 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
   const handleFocus = () => {
     setShowToolbar(true);
+    // Call the onFocus prop if it exists
+    if (onFocus) {
+      onFocus();
+    }
   };
 
   const handleBlur = () => {

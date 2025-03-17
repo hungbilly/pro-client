@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getJob, getClient, getJobInvoices, deleteJob } from '@/lib/storage';
@@ -170,131 +169,128 @@ const JobDetail = () => {
           </div>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-          <div className="md:col-span-7 space-y-6">
-            <Card className="overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200 h-full">
-              <CardHeader className="bg-muted/30 pb-2">
-                <div className="flex items-center gap-2">
-                  <FileEdit className="h-5 w-5 text-primary" />
-                  <CardTitle className="text-lg">Job Details</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-4">
-                {job.description && (
-                  <div className="mb-4">
-                    <p className="text-sm mb-4">{job.description}</p>
-                    <Separator />
-                  </div>
-                )}
-                
-                <div className="grid grid-cols-2 gap-4 mt-4">
-                  {job.date && (
-                    <div className="flex items-center gap-2">
-                      <CalendarDays className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">{new Date(job.date).toLocaleDateString()}</span>
+        <div className="grid grid-cols-1 gap-6">
+          <Card className="overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200">
+            <CardHeader className="bg-muted/30 pb-2">
+              <div className="flex items-center gap-2">
+                <FileEdit className="h-5 w-5 text-primary" />
+                <CardTitle className="text-lg">Job Details</CardTitle>
+              </div>
+            </CardHeader>
+            
+            <CardContent className="pt-4">
+              <div className="grid grid-cols-1 lg:grid-cols-7 gap-6">
+                {/* Job Details Section */}
+                <div className="lg:col-span-4 space-y-4">
+                  {job.description && (
+                    <div className="mb-4">
+                      <p className="text-sm">{job.description}</p>
                     </div>
                   )}
                   
-                  {job.location && (
+                  <div className="grid grid-cols-2 gap-4 mt-2">
+                    {job.date && (
+                      <div className="flex items-center gap-2">
+                        <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm">{new Date(job.date).toLocaleDateString()}</span>
+                      </div>
+                    )}
+                    
+                    {job.location && (
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm">{job.location}</span>
+                      </div>
+                    )}
+                    
                     <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">{job.location}</span>
-                    </div>
-                  )}
-                  
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">
-                      Created {new Date(job.createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-          
-          <div className="md:col-span-5 space-y-6">
-            <Card className="overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200 h-full flex flex-col">
-              <CardHeader className="bg-muted/30 pb-2">
-                <div className="flex items-center gap-2">
-                  <User className="h-5 w-5 text-primary" />
-                  <CardTitle className="text-lg">Client Information</CardTitle>
-                </div>
-              </CardHeader>
-              
-              <CardContent className="pt-4 flex-grow">
-                <div className="flex items-start gap-3">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <User className="h-6 w-6 text-primary" />
-                  </div>
-                  
-                  <div className="flex-grow">
-                    <h4 className="font-semibold">{client.name}</h4>
-                    <div className="mt-3 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Phone className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">{client.phone}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Mail className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">{client.email}</span>
-                      </div>
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">
+                        Created {new Date(job.createdAt).toLocaleDateString()}
+                      </span>
                     </div>
                   </div>
                 </div>
                 
-                {client.notes && (
-                  <>
-                    <Separator className="my-4" />
-                    <div>
-                      <h4 className="text-sm font-medium mb-1">Notes</h4>
-                      <p className="text-sm text-muted-foreground line-clamp-3">{client.notes}</p>
+                {/* Client Information Section */}
+                <div className="lg:col-span-3">
+                  <div className="rounded-lg border p-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <User className="h-5 w-5 text-primary" />
+                      <h3 className="font-semibold">Client Information</h3>
                     </div>
-                  </>
-                )}
-                
-                <div className="mt-4 flex gap-2">
-                  <Button variant="outline" size="sm" className="w-full" asChild>
-                    <Link to={`/client/${client.id}/edit`}>
-                      <Pencil className="h-3.5 w-3.5 mr-1" />
-                      Edit
-                    </Link>
-                  </Button>
-                  <Button variant="outline" size="sm" className="w-full">
-                    <Send className="h-3.5 w-3.5 mr-1" />
-                    Email
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-          
-          <div className="md:col-span-12 space-y-6">
-            <Card className="overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200">
-              <CardHeader className="bg-muted/30 pb-2 flex flex-row items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-primary" />
-                  <CardTitle className="text-lg">Invoices</CardTitle>
-                </div>
-                <Button size="sm" asChild>
-                  <Link to={`/job/${job.id}/invoice/create`}>
-                    Create Invoice
-                  </Link>
-                </Button>
-              </CardHeader>
-              
-              <CardContent className="pt-4">
-                {invoices.length === 0 ? (
-                  <div className="bg-muted/20 rounded-lg p-6 text-center">
-                    <FileText className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
-                    <p className="text-muted-foreground text-sm">No invoices have been created for this job yet.</p>
+                    
+                    <Separator className="mb-4" />
+                    
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <User className="h-5 w-5 text-primary" />
+                      </div>
+                      
+                      <div className="flex-grow">
+                        <h4 className="font-semibold">{client.name}</h4>
+                        <div className="mt-2 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span className="text-sm">{client.phone}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span className="text-sm">{client.email}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {client.notes && (
+                      <div className="mt-3">
+                        <h4 className="text-xs font-medium mb-1 text-muted-foreground">Notes</h4>
+                        <p className="text-sm text-muted-foreground line-clamp-2">{client.notes}</p>
+                      </div>
+                    )}
+                    
+                    <div className="mt-3 flex gap-2">
+                      <Button variant="outline" size="sm" className="text-xs" asChild>
+                        <Link to={`/client/${client.id}/edit`}>
+                          <Pencil className="h-3 w-3 mr-1" />
+                          Edit
+                        </Link>
+                      </Button>
+                      <Button variant="outline" size="sm" className="text-xs">
+                        <Send className="h-3 w-3 mr-1" />
+                        Email
+                      </Button>
+                    </div>
                   </div>
-                ) : (
-                  <InvoiceList invoices={invoices} client={client} showCreateButton={false} showTitle={false} />
-                )}
-              </CardContent>
-            </Card>
-          </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200">
+            <CardHeader className="bg-muted/30 pb-2 flex flex-row items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-primary" />
+                <CardTitle className="text-lg">Invoices</CardTitle>
+              </div>
+              <Button size="sm" asChild>
+                <Link to={`/job/${job.id}/invoice/create`}>
+                  Create Invoice
+                </Link>
+              </Button>
+            </CardHeader>
+            
+            <CardContent className="pt-4">
+              {invoices.length === 0 ? (
+                <div className="bg-muted/20 rounded-lg p-6 text-center">
+                  <FileText className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
+                  <p className="text-muted-foreground text-sm">No invoices have been created for this job yet.</p>
+                </div>
+              ) : (
+                <InvoiceList invoices={invoices} client={client} showCreateButton={false} showTitle={false} />
+              )}
+            </CardContent>
+          </Card>
         </div>
         
         <CardFooter className="px-0 mt-6 opacity-70">

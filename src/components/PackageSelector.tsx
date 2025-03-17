@@ -138,7 +138,7 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
   // Create the package items before rendering to add additional debugging
   console.log('Creating CommandItems from packages:', packages);
   const packageItems = packages.map((pkg) => {
-    console.log('Creating CommandItem for package:', pkg.id, pkg.name);
+    console.log('Individual package being mapped:', pkg);
     return (
       <CommandItem
         key={pkg.id}

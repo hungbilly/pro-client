@@ -39,10 +39,16 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
         if (error) throw error;
         
         console.log('Fetched packages:', data);
-        setPackages(data || []);
+        if (Array.isArray(data)) {
+          setPackages(data);
+        } else {
+          console.error('Packages data is not an array:', data);
+          setPackages([]);
+        }
       } catch (error) {
         console.error('Error fetching packages:', error);
         toast.error('Failed to load packages');
+        setPackages([]);
       } finally {
         setLoading(false);
       }
@@ -92,7 +98,14 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
 
   // Render a safe command group that ensures we have valid array data
   const renderCommandGroup = () => {
-    if (!Array.isArray(packages) || packages.length === 0) {
+    console.log('Rendering command group with packages:', packages);
+    
+    if (!Array.isArray(packages)) {
+      console.error('Packages is not an array in renderCommandGroup');
+      return <CommandEmpty>No packages found. Create some in Settings.</CommandEmpty>;
+    }
+    
+    if (packages.length === 0) {
       return <CommandEmpty>No packages found. Create some in Settings.</CommandEmpty>;
     }
 

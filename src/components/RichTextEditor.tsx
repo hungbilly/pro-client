@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -343,7 +342,8 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         } as React.CSSProperties}
       />
       
-      <style jsx>{`
+      <style>
+        {`
         /* Additional list styling for editor content */
         #editor ol {
           list-style-type: decimal !important;
@@ -365,7 +365,8 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         #editor li::marker {
           color: currentColor !important;
         }
-      `}</style>
+        `}
+      </style>
     </div>
   );
 };

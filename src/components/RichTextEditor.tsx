@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -94,6 +93,29 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
       editorHtml: editorRef.current.innerHTML
     });
     
+    // Clean up any problematic styling that might interfere with list display
+    const cleanupStyling = () => {
+      // If we have styled spans that might interfere with list display, clean them up
+      const styledSpans = editorRef.current?.querySelectorAll('span[style*="background-color"]');
+      styledSpans?.forEach(span => {
+        // Remove background-color style but keep other formatting like bold/italic
+        const style = span.getAttribute('style');
+        if (style) {
+          const newStyle = style.replace(/background-color:[^;]+;?/g, '');
+          if (newStyle.trim()) {
+            span.setAttribute('style', newStyle);
+          } else {
+            // If no style left, unwrap the span content
+            const parent = span.parentNode;
+            while (span.firstChild) {
+              parent?.insertBefore(span.firstChild, span);
+            }
+            parent?.removeChild(span);
+          }
+        }
+      });
+    };
+    
     if (!hasContent && !selection.rangeCount) {
       console.log('No content and no selection, inserting placeholder...');
       // If there's no content and no selection, insert a placeholder
@@ -113,6 +135,9 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     // Apply the list format
     const success = document.execCommand(listType, false, null);
     console.log(`List command execution ${success ? 'succeeded' : 'failed'}`);
+    
+    // Clean up problematic styling after list creation
+    cleanupStyling();
     
     // Update content state
     const newContent = editorRef.current.innerHTML;
@@ -268,6 +293,8 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
           "min-h-[100px] p-2 focus:outline-none prose prose-sm max-w-none",
           "prose-ul:pl-5 prose-ol:pl-5 prose-ul:my-0 prose-ol:my-0", // Add proper list spacing
           "prose-li:my-1", // Ensure proper list item spacing
+          "prose-li:marker:text-foreground", // Make list markers (bullets/numbers) visible
+          "prose-ol:list-decimal prose-ul:list-disc", // Explicitly set list style types
           className
         )}
         contentEditable={true}

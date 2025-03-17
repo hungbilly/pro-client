@@ -3,6 +3,7 @@ import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import CompanySettings from '@/components/CompanySettings';
+import AccountSettings from '@/components/AccountSettings';
 
 const Settings = () => {
   console.log("Settings page rendering");
@@ -25,10 +26,7 @@ const Settings = () => {
           </TabsContent>
           
           <TabsContent value="account" className="space-y-4">
-            <div className="rounded-lg border p-6">
-              <h2 className="text-xl font-semibold mb-4">Account Settings</h2>
-              <p className="text-muted-foreground">Account settings will be available in a future update.</p>
-            </div>
+            <AccountSettings />
           </TabsContent>
           
           <TabsContent value="notifications" className="space-y-4">

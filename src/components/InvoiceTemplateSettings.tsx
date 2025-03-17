@@ -8,10 +8,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Plus, Save, Trash2 } from 'lucide-react';
+import RichTextEditor from './RichTextEditor';
 
 // Schema for template form
 const templateFormSchema = z.object({
@@ -262,10 +262,11 @@ const InvoiceTemplateSettings = () => {
                         <FormItem>
                           <FormLabel>Template Content</FormLabel>
                           <FormControl>
-                            <Textarea 
-                              placeholder="Enter your template content here..." 
+                            <RichTextEditor 
+                              value={field.value}
+                              onChange={field.onChange}
+                              placeholder="Enter your template content here..."
                               className="min-h-[200px]"
-                              {...field} 
                             />
                           </FormControl>
                           <FormDescription>

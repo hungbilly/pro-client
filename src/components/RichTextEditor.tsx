@@ -36,7 +36,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
       editorRef.current.innerHTML = value;
       setHtml(value);
     }
-  }, [value]);
+  }, [value, html]);
 
   useEffect(() => {
     if (alwaysShowToolbar) {
@@ -266,6 +266,8 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         id="editor"
         className={cn(
           "min-h-[100px] p-2 focus:outline-none prose prose-sm max-w-none",
+          "prose-ul:pl-5 prose-ol:pl-5 prose-ul:my-0 prose-ol:my-0", // Add proper list spacing
+          "prose-li:my-1", // Ensure proper list item spacing
           className
         )}
         contentEditable={true}

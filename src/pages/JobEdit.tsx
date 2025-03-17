@@ -43,6 +43,10 @@ const JobEdit = () => {
     fetchJob();
   }, [id, navigate]);
 
+  const handleSuccess = () => {
+    navigate(`/job/${id}`);
+  };
+
   if (isLoading) {
     return (
       <PageTransition>
@@ -75,7 +79,7 @@ const JobEdit = () => {
     <PageTransition>
       <div className="container mx-auto py-8">
         <h1 className="text-3xl font-bold mb-8 text-center">Edit Job</h1>
-        <JobForm job={job} />
+        <JobForm job={job} onSuccess={handleSuccess} />
       </div>
     </PageTransition>
   );

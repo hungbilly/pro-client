@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Client, Job } from '@/types';
@@ -118,7 +117,11 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
       if (onSuccess) {
         onSuccess();
       } else {
-        navigate(`/client/${client.id}`);
+        if (existingJob) {
+          navigate(`/job/${existingJob.id}`);
+        } else {
+          navigate(`/client/${client.id}`);
+        }
       }
     } catch (error) {
       console.error('Failed to save/update job:', error);

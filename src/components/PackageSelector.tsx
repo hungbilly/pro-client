@@ -170,8 +170,9 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
   
   console.log('packageItems array created with length:', packageItems.length);
 
-  // Render the component based on the variant
+  // For inline variant
   if (variant === 'inline') {
+    console.log('Rendering CommandGroup with packageItems (inline):', packageItems);
     return (
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
@@ -192,7 +193,6 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
             <CommandInput placeholder="Search packages..." />
             <CommandEmpty>No package found.</CommandEmpty>
             <CommandGroup>
-              {console.log('Rendering CommandGroup with packageItems:', packageItems)}
               {packageItems}
             </CommandGroup>
           </Command>
@@ -201,6 +201,8 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
     );
   }
 
+  // For default variant
+  console.log('Rendering CommandGroup with packageItems (default):', packageItems);
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -223,7 +225,6 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
           <CommandInput placeholder="Search packages..." />
           <CommandEmpty>No package found.</CommandEmpty>
           <CommandGroup>
-            {console.log('Rendering CommandGroup with packageItems:', packageItems)}
             {packageItems}
           </CommandGroup>
         </Command>

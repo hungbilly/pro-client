@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Home, 
   Users, 
@@ -9,19 +9,35 @@ import {
   Calendar, 
   DollarSign, 
   Settings,
-  Building
+  LogOut
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import CompanySelector from './CompanySelector';
+import { useAuth } from '@/context/AuthContext';
+import { Button } from './ui/button';
+import { toast } from 'sonner';
 
 const MainNavbar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { signOut, user } = useAuth();
   
   const isActive = (path: string) => {
     if (path === '/') {
       return location.pathname === '/';
     }
     return location.pathname.startsWith(path);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      toast.success('Successfully logged out');
+      navigate('/auth');
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast.error('Failed to log out');
+    }
   };
 
   const menuItems = [
@@ -45,8 +61,22 @@ const MainNavbar = () => {
             Wedding Studio Manager
           </Link>
           
-          <div className="hidden md:flex items-center">
+          <div className="hidden md:flex items-center space-x-4">
             <CompanySelector className="mr-4" />
+            {user && (
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-gray-600">{user.email}</span>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleLogout}
+                  className="flex items-center gap-1"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Logout</span>
+                </Button>
+              </div>
+            )}
           </div>
           
           <div className="flex space-x-1 md:space-x-4">
@@ -68,9 +98,20 @@ const MainNavbar = () => {
           </div>
         </div>
         
-        {/* Mobile company selector */}
-        <div className="md:hidden pb-2">
+        {/* Mobile company selector and logout */}
+        <div className="md:hidden flex flex-col pb-2 space-y-2">
           <CompanySelector className="w-full" />
+          {user && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleLogout}
+              className="flex items-center justify-center gap-1 w-full"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>Logout ({user.email})</span>
+            </Button>
+          )}
         </div>
       </div>
     </nav>

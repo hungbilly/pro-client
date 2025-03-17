@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,13 +9,22 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { AnimatedBackground } from '@/components/ui-custom/AnimatedBackground';
 import PageTransition from '@/components/ui-custom/PageTransition';
+import { useAuth } from '@/context/AuthContext';
 
 const Auth = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  
+  useEffect(() => {
+    // If user is already logged in, redirect to home
+    if (user) {
+      navigate('/');
+    }
+  }, [user, navigate]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,7 +49,7 @@ const Auth = () => {
           password,
           options: {
             data: {
-              is_admin: true // Store admin status in user metadata
+              is_admin: false // Set default user role
             }
           }
         });
@@ -50,6 +59,7 @@ const Auth = () => {
         toast.success('Registration successful! Please check your email for confirmation.');
       }
     } catch (error: any) {
+      console.error('Auth error:', error);
       toast.error(error.message || 'Authentication failed');
     } finally {
       setLoading(false);
@@ -62,10 +72,10 @@ const Auth = () => {
         <Card className="w-full max-w-md backdrop-blur-sm bg-white/80 border-transparent shadow-soft">
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl text-center">
-              {isLogin ? 'Admin Login' : 'Admin Registration'}
+              {isLogin ? 'Sign In' : 'Create Account'}
             </CardTitle>
             <CardDescription className="text-center">
-              Enter your credentials to {isLogin ? 'sign in' : 'create an account'}
+              Enter your credentials to {isLogin ? 'sign in to' : 'create'} your account
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleAuth}>

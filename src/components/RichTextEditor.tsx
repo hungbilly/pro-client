@@ -9,7 +9,8 @@ interface RichTextEditorProps {
   onChange: (value: string) => void;
   className?: string;
   placeholder?: string;
-  onFocus?: () => void; // Add the onFocus prop definition
+  onFocus?: () => void;
+  alwaysShowToolbar?: boolean; // Add new prop to control toolbar visibility
 }
 
 const RichTextEditor: React.FC<RichTextEditorProps> = ({
@@ -17,11 +18,12 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   onChange,
   className,
   placeholder = 'Enter your text here...',
-  onFocus, // Add the prop to the component parameters
+  onFocus,
+  alwaysShowToolbar = false, // Default to false for backward compatibility
 }) => {
   const editorRef = useRef<HTMLDivElement>(null);
   const [html, setHtml] = useState(value);
-  const [showToolbar, setShowToolbar] = useState(false);
+  const [showToolbar, setShowToolbar] = useState(alwaysShowToolbar);
 
   useEffect(() => {
     if (editorRef.current) {
@@ -36,6 +38,13 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
       setHtml(value);
     }
   }, [value]);
+
+  // Update showToolbar when alwaysShowToolbar changes
+  useEffect(() => {
+    if (alwaysShowToolbar) {
+      setShowToolbar(true);
+    }
+  }, [alwaysShowToolbar]);
 
   const handleCommand = (command: string, value: string | null = null) => {
     document.execCommand(command, false, value);
@@ -55,7 +64,9 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   };
 
   const handleFocus = () => {
-    setShowToolbar(true);
+    if (!alwaysShowToolbar) {
+      setShowToolbar(true);
+    }
     // Call the onFocus prop if it exists
     if (onFocus) {
       onFocus();
@@ -63,9 +74,11 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   };
 
   const handleBlur = () => {
-    setTimeout(() => {
-      setShowToolbar(false);
-    }, 200);
+    if (!alwaysShowToolbar) {
+      setTimeout(() => {
+        setShowToolbar(false);
+      }, 200);
+    }
   };
 
   return (

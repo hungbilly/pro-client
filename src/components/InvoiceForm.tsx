@@ -155,7 +155,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
   
   const handleManualPackageEntry = (id: string) => {
     console.log('handleManualPackageEntry called for id:', id);
-    
     setActiveRowId(id);
   };
 
@@ -489,6 +488,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
                             onChange={(value) => handleItemChange(item.id, 'description', value)}
                             className="border-none min-h-0 p-0"
                             placeholder="Add description..."
+                            alwaysShowToolbar={true}
                           />
                         ) : (
                           item.description ? (

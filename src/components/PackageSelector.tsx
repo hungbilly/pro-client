@@ -11,7 +11,7 @@ import { useAuth } from '@/context/AuthContext';
 
 interface PackageSelectorProps {
   onPackageSelect: (items: InvoiceItem[]) => void;
-  variant?: 'default' | 'inline';
+  variant?: 'default' | 'inline' | 'direct-list';
   placeholder?: string;
 }
 
@@ -120,18 +120,11 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
       );
     }
 
+    // For both default and direct-list variants
     return (
-      <Button
-        variant="outline"
-        className="w-full justify-between"
-        disabled={true}
-      >
-        <div className="flex items-center">
-          <PackageIcon className="mr-2 h-4 w-4" />
-          <span>{loading ? "Loading packages..." : "No packages available"}</span>
-        </div>
-        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-      </Button>
+      <div className="p-4 text-center text-sm text-muted-foreground">
+        {loading ? "Loading packages..." : "No packages available. Create some in Settings."}
+      </div>
     );
   }
 
@@ -181,6 +174,21 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
   }).filter(Boolean); // Filter out any null items
   
   console.log('packageItems array created with length:', packageItems.length);
+
+  // Direct list variant (new) - just shows the Command component with the list
+  if (variant === 'direct-list') {
+    return (
+      <Command>
+        <CommandInput placeholder="Search packages..." />
+        <CommandEmpty>No package found.</CommandEmpty>
+        <CommandList>
+          <CommandGroup>
+            {packageItems}
+          </CommandGroup>
+        </CommandList>
+      </Command>
+    );
+  }
 
   // For inline variant
   if (variant === 'inline') {

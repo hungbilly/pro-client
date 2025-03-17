@@ -483,7 +483,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: existingInvoice, cli
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-[300px] p-0">
-                    <PackageSelector onPackageSelect={handlePackageSelect} />
+                    <PackageSelector onPackageSelect={handlePackageSelect} variant="direct-list" />
                   </PopoverContent>
                 </Popover>
                 <Button type="button" onClick={handleAddItem} variant="outline">

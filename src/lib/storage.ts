@@ -1,4 +1,4 @@
-import { Client, Invoice, STORAGE_KEYS, InvoiceItem, Job, Company, InvoiceStatus, ContractStatus } from "@/types";
+import { Client, Invoice, STORAGE_KEYS, InvoiceItem, Job, Company, InvoiceStatus, ContractStatus, PaymentStatus, PaymentSchedule } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 
 // Helper function to safely parse enum values
@@ -736,12 +736,12 @@ export const getInvoice = async (id: string): Promise<Invoice | undefined> => {
     }));
 
     // Map payment schedules
-    const paymentSchedules = (schedulesData || []).map(schedule => ({
+    const paymentSchedules: PaymentSchedule[] = (schedulesData || []).map(schedule => ({
       id: schedule.id,
       description: schedule.description,
       dueDate: schedule.due_date,
       percentage: schedule.percentage,
-      status: schedule.status || 'unpaid'
+      status: parseEnum(schedule.status, ['paid', 'unpaid'], 'unpaid') as PaymentStatus
     }));
     
     return {
@@ -1011,7 +1011,7 @@ export const saveInvoice = async (invoice: Omit<Invoice, 'id' | 'viewLink'>): Pr
         description: schedule.description,
         due_date: schedule.dueDate,
         percentage: schedule.percentage,
-        status: schedule.status || 'unpaid'
+        status: schedule.status
       }));
 
       const { error: schedulesError } = await supabase
@@ -1132,7 +1132,7 @@ export const updateInvoice = async (invoice: Invoice): Promise<Invoice> => {
         description: schedule.description,
         due_date: schedule.dueDate,
         percentage: schedule.percentage,
-        status: schedule.status || 'unpaid'
+        status: schedule.status
       }));
 
       const { error: schedulesError } = await supabase

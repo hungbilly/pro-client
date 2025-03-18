@@ -738,11 +738,13 @@ export const getInvoice = async (id: string): Promise<Invoice | undefined> => {
     // Map payment schedules
     const paymentSchedules: PaymentSchedule[] = (schedulesData || []).map(schedule => ({
       id: schedule.id,
-      description: schedule.description,
+      description: schedule.description || '',
       dueDate: schedule.due_date,
       percentage: schedule.percentage,
       status: parseEnum(schedule.status, ['paid', 'unpaid'], 'unpaid') as PaymentStatus
     }));
+    
+    console.log('Payment schedules fetched:', paymentSchedules);
     
     return {
       id: invoice.id,
@@ -1006,9 +1008,11 @@ export const saveInvoice = async (invoice: Omit<Invoice, 'id' | 'viewLink'>): Pr
 
     // Insert payment schedules if provided
     if (invoice.paymentSchedules && invoice.paymentSchedules.length > 0) {
+      console.log('Saving payment schedules:', invoice.paymentSchedules);
+      
       const scheduleItems = invoice.paymentSchedules.map(schedule => ({
         invoice_id: newInvoice.id,
-        description: schedule.description,
+        description: schedule.description || '',
         due_date: schedule.dueDate,
         percentage: schedule.percentage,
         status: schedule.status
@@ -1116,6 +1120,8 @@ export const updateInvoice = async (invoice: Invoice): Promise<Invoice> => {
 
     // Update payment schedules
     if (invoice.paymentSchedules && invoice.paymentSchedules.length > 0) {
+      console.log('Updating payment schedules:', invoice.paymentSchedules);
+      
       // Delete existing payment schedules first
       const { error: deleteSchedulesError } = await supabase
         .from('payment_schedules')
@@ -1124,12 +1130,13 @@ export const updateInvoice = async (invoice: Invoice): Promise<Invoice> => {
       
       if (deleteSchedulesError) {
         console.error('Error deleting existing payment schedules:', deleteSchedulesError);
+        // Continue despite error
       }
 
       // Insert updated payment schedules
       const scheduleItems = invoice.paymentSchedules.map(schedule => ({
         invoice_id: invoice.id,
-        description: schedule.description,
+        description: schedule.description || '',
         due_date: schedule.dueDate,
         percentage: schedule.percentage,
         status: schedule.status
@@ -1141,6 +1148,17 @@ export const updateInvoice = async (invoice: Invoice): Promise<Invoice> => {
 
       if (schedulesError) {
         console.error('Error updating payment schedules:', schedulesError);
+        // Continue despite error
+      }
+    } else {
+      // If no payment schedules provided, delete any existing ones
+      const { error: deleteSchedulesError } = await supabase
+        .from('payment_schedules')
+        .delete()
+        .eq('invoice_id', invoice.id);
+      
+      if (deleteSchedulesError) {
+        console.error('Error deleting existing payment schedules:', deleteSchedulesError);
       }
     }
     

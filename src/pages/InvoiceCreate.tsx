@@ -19,6 +19,7 @@ const InvoiceCreate = () => {
         try {
           const fetchedInvoice = await getInvoice(invoiceId);
           if (fetchedInvoice) {
+            console.log('Fetched invoice with payment schedules:', fetchedInvoice.paymentSchedules);
             setInvoice(fetchedInvoice);
           } else {
             toast.error('Invoice not found');

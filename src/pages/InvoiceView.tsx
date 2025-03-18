@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Check, Calendar, FileText, DollarSign, Send, Camera, MailCheck, FileCheck, Edit, CalendarDays } from 'lucide-react';
+import { ArrowLeft, Check, Calendar, FileText, DollarSign, Send, Camera, MailCheck, FileCheck, Edit, CalendarDays, Package } from 'lucide-react';
 import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { useAuth } from '@/context/AuthContext';
@@ -299,6 +299,14 @@ const InvoiceView = () => {
     }
   };
 
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    }).format(amount);
+  };
+
   if (loading) {
     return (
       <PageTransition>
@@ -347,14 +355,6 @@ const InvoiceView = () => {
 
   const canClientAcceptInvoice = ['draft', 'sent'].includes(invoice.status);
   const canClientAcceptContract = invoice.contractStatus !== 'accepted';
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-    }).format(amount);
-  };
 
   return (
     <PageTransition>
@@ -428,13 +428,10 @@ const InvoiceView = () => {
                     {new Date(invoice.shootingDate).toLocaleDateString()}
                   </p>
                 )}
-                <p>
-                  <strong>Amount:</strong> ${invoice.amount.toFixed(2)}
-                </p>
               </div>
             </div>
 
-            <Separator />
+            <Separator className="my-6" />
 
             <Tabs defaultValue="invoice" className="w-full mt-4">
               <TabsList className="w-full">
@@ -445,12 +442,6 @@ const InvoiceView = () => {
                       <FileCheck className="h-3 w-3 inline text-green-600" />
                     </span>
                   )}
-                </TabsTrigger>
-                <TabsTrigger value="payments" className="flex-1">
-                  Payment Schedule
-                  <span className="ml-2">
-                    <DollarSign className="h-3 w-3 inline" />
-                  </span>
                 </TabsTrigger>
                 <TabsTrigger value="contract" className="flex-1">
                   Contract Terms
@@ -479,40 +470,70 @@ const InvoiceView = () => {
                   </div>
                 )}
                 
-                <div>
-                  <h4 className="text-lg font-semibold mb-2">Items</h4>
-                  <ul className="list-disc pl-5">
-                    {invoice.items.map((item) => (
-                      <li key={item.id} className="mb-2">
-                        {item.description ? (
-                          <div>
-                            <div dangerouslySetInnerHTML={{ __html: item.description }} />
-                            <div className="mt-1 text-sm text-muted-foreground">
-                              {item.quantity} x ${item.rate.toFixed(2)} = ${item.amount.toFixed(2)}
-                            </div>
-                          </div>
-                        ) : (
-                          `${item.quantity} x $${item.rate.toFixed(2)} = $${item.amount.toFixed(2)}`
-                        )}
-                      </li>
-                    ))}
-                  </ul>
+                <div className="mb-6">
+                  <div className="flex items-center mb-3">
+                    <Package className="h-5 w-5 mr-2" />
+                    <h4 className="text-lg font-semibold">Products / Packages</h4>
+                  </div>
+                  
+                  <div className="border rounded-md overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/50">
+                          <TableHead className="w-1/4">Product / Package</TableHead>
+                          <TableHead className="w-2/5">Description</TableHead>
+                          <TableHead className="text-right">Unit Price</TableHead>
+                          <TableHead className="text-right">Quantity</TableHead>
+                          <TableHead className="text-right">Amount</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {invoice.items.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell className="font-medium">
+                              {item.description ? item.description.split('<')[0] : 'Product'}
+                            </TableCell>
+                            <TableCell>
+                              {item.description ? (
+                                <div dangerouslySetInnerHTML={{ __html: item.description }} />
+                              ) : (
+                                'No description'
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {formatCurrency(item.rate)}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {item.quantity}
+                            </TableCell>
+                            <TableCell className="text-right font-medium">
+                              {formatCurrency(item.amount)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  
+                  <div className="mt-4 flex justify-end">
+                    <div className="w-72 space-y-2">
+                      <div className="flex justify-between py-2">
+                        <span className="font-medium">Subtotal</span>
+                        <span className="font-medium">{formatCurrency(invoice.amount)}</span>
+                      </div>
+                      <div className="flex justify-between py-2 border-t border-b">
+                        <span className="font-medium">Total Due</span>
+                        <span className="font-bold">{formatCurrency(invoice.amount)}</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-
-                <Separator className="my-4" />
-
-                <div>
-                  <h4 className="text-lg font-semibold mb-2">Notes</h4>
-                  <div dangerouslySetInnerHTML={{ __html: invoice.notes || 'No notes provided.' }} />
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="payments" className="mt-4">
-                <div>
-                  <h4 className="text-lg font-semibold mb-2 flex items-center gap-1">
-                    <CalendarDays className="h-4 w-4 mr-1" />
-                    Payment Schedule
-                  </h4>
+                
+                <div className="mt-6">
+                  <div className="flex items-center mb-3">
+                    <CalendarDays className="h-5 w-5 mr-2" />
+                    <h4 className="text-lg font-semibold">Payment Schedule</h4>
+                  </div>
                   
                   {invoice.paymentSchedules && invoice.paymentSchedules.length > 0 ? (
                     <div className="border rounded-md overflow-hidden">
@@ -550,16 +571,18 @@ const InvoiceView = () => {
                       </Table>
                     </div>
                   ) : (
-                    <div className="text-muted-foreground">
+                    <div className="text-muted-foreground border rounded-md p-4">
                       Full payment of {formatCurrency(invoice.amount)} due on {new Date(invoice.dueDate).toLocaleDateString()}
                     </div>
                   )}
-                  
-                  <div className="mt-4 p-4 bg-muted/30 rounded-md">
-                    <div className="flex justify-between font-medium">
-                      <span>Total Invoice Amount:</span>
-                      <span>{formatCurrency(invoice.amount)}</span>
-                    </div>
+                </div>
+
+                <Separator className="my-6" />
+                
+                <div>
+                  <h4 className="text-lg font-semibold mb-2">Notes</h4>
+                  <div className="border rounded-md p-4">
+                    <div dangerouslySetInnerHTML={{ __html: invoice.notes || 'No notes provided.' }} />
                   </div>
                 </div>
               </TabsContent>
@@ -582,11 +605,13 @@ const InvoiceView = () => {
                     </div>
                   )}
                   
-                  <h4 className="text-lg font-semibold mb-2 flex items-center gap-1">
-                    <FileText className="h-4 w-4 mr-1" />
-                    Contract Terms
-                  </h4>
-                  <div className="whitespace-pre-line" dangerouslySetInnerHTML={{ __html: invoice.contractTerms }} />
+                  <div className="flex items-center mb-3">
+                    <FileText className="h-5 w-5 mr-2" />
+                    <h4 className="text-lg font-semibold">Contract Terms</h4>
+                  </div>
+                  <div className="border rounded-md p-4">
+                    <div className="whitespace-pre-line" dangerouslySetInnerHTML={{ __html: invoice.contractTerms }} />
+                  </div>
                 </div>
               </TabsContent>
             </Tabs>

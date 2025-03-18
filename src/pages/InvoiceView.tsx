@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { getInvoiceByViewLink, getClient, updateInvoiceStatus, getInvoice, updateContractStatus } from '@/lib/storage';
@@ -29,6 +30,7 @@ const InvoiceView = () => {
   const navigate = useNavigate();
   const { isAdmin } = useAuth();
   const [emailLogs, setEmailLogs] = useState<Array<{timestamp: Date, message: string, success: boolean}>>([]);
+  const [paymentScheduleLogs, setPaymentScheduleLogs] = useState<string[]>([]);
 
   const isClientView = (location.search.includes('client=true') || !location.search) && !isAdmin;
 
@@ -86,6 +88,49 @@ const InvoiceView = () => {
           setError('Invoice not found. Please check the URL or contact support.');
           setLoading(false);
           return;
+        }
+        
+        // Direct check of fetched invoice payment schedules
+        if (fetchedInvoice.paymentSchedules) {
+          console.log('PAYMENT SCHEDULES FOUND IN FETCHED INVOICE:', JSON.stringify(fetchedInvoice.paymentSchedules));
+          setPaymentScheduleLogs(prev => [...prev, `Fetched invoice has ${fetchedInvoice.paymentSchedules?.length || 0} payment schedules`]);
+        } else {
+          console.log('NO PAYMENT SCHEDULES FOUND IN FETCHED INVOICE');
+          setPaymentScheduleLogs(prev => [...prev, 'No payment schedules in fetched invoice']);
+        }
+        
+        // Direct check in database
+        if (fetchedInvoice.id) {
+          const { data: schedulesData, error: schedulesError } = await supabase
+            .from('payment_schedules')
+            .select('*')
+            .eq('invoice_id', fetchedInvoice.id);
+          
+          if (schedulesError) {
+            console.error('Error directly fetching payment schedules:', schedulesError);
+            setPaymentScheduleLogs(prev => [...prev, `Error fetching schedules: ${schedulesError.message}`]);
+          } else {
+            console.log('DIRECT DB QUERY FOR PAYMENT SCHEDULES:', JSON.stringify(schedulesData));
+            setPaymentScheduleLogs(prev => [...prev, `Direct DB query found ${schedulesData.length} payment schedules`]);
+            
+            // If there's a mismatch, update the invoice's payment schedules
+            if (schedulesData && 
+                (!fetchedInvoice.paymentSchedules || 
+                 fetchedInvoice.paymentSchedules.length !== schedulesData.length)) {
+              console.log('MISMATCH DETECTED - Updating payment schedules from direct query');
+              setPaymentScheduleLogs(prev => [...prev, 'Mismatch detected - updating from direct query']);
+              
+              const mappedSchedules: PaymentSchedule[] = schedulesData.map(schedule => ({
+                id: schedule.id,
+                description: schedule.description || '',
+                dueDate: schedule.due_date,
+                percentage: schedule.percentage,
+                status: schedule.status === 'paid' ? 'paid' : 'unpaid'
+              }));
+              
+              fetchedInvoice.paymentSchedules = mappedSchedules;
+            }
+          }
         }
         
         setInvoice(fetchedInvoice);
@@ -356,6 +401,12 @@ const InvoiceView = () => {
   const canClientAcceptInvoice = ['draft', 'sent'].includes(invoice.status);
   const canClientAcceptContract = invoice.contractStatus !== 'accepted';
 
+  // Debug: Log payment schedules before rendering
+  console.log('RENDERING INVOICE VIEW WITH PAYMENT SCHEDULES:', 
+              invoice.paymentSchedules ? JSON.stringify(invoice.paymentSchedules) : 'undefined');
+  console.log('Payment schedules type:', Array.isArray(invoice.paymentSchedules) ? 'array' : typeof invoice.paymentSchedules);
+  console.log('Payment schedules length:', Array.isArray(invoice.paymentSchedules) ? invoice.paymentSchedules.length : 0);
+
   return (
     <PageTransition>
       <div className="container py-8">
@@ -534,6 +585,21 @@ const InvoiceView = () => {
                     <CalendarDays className="h-5 w-5 mr-2" />
                     <h4 className="text-lg font-semibold">Payment Schedule</h4>
                   </div>
+                  
+                  {/* Debug info visible only to admin */}
+                  {!isClientView && paymentScheduleLogs.length > 0 && (
+                    <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-900 rounded-md text-xs">
+                      <strong>Debug Payment Schedules:</strong>
+                      <ul className="list-disc pl-5 mt-1">
+                        {paymentScheduleLogs.map((log, i) => (
+                          <li key={i}>{log}</li>
+                        ))}
+                      </ul>
+                      <div className="mt-1">
+                        <strong>Current state:</strong> {JSON.stringify(invoice.paymentSchedules)}
+                      </div>
+                    </div>
+                  )}
                   
                   {Array.isArray(invoice.paymentSchedules) && invoice.paymentSchedules.length > 0 ? (
                     <div className="border rounded-md overflow-hidden">

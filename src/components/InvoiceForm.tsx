@@ -346,7 +346,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
       return;
     }
     
-    const newDueDate = new Date();
+    let newDueDate = new Date();
     if (paymentSchedules.length > 0) {
       const latestDueDate = Math.max(
         ...paymentSchedules.map(s => new Date(s.dueDate).getTime())

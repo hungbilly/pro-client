@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { getInvoiceByViewLink, getClient, updateInvoiceStatus, getInvoice, updateContractStatus } from '@/lib/storage';
-import { Invoice, Client } from '@/types';
+import { Invoice, Client, PaymentSchedule } from '@/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Check, Calendar, FileText, DollarSign, Send, Camera, MailCheck, FileCheck, Edit } from 'lucide-react';
+import { ArrowLeft, Check, Calendar, FileText, DollarSign, Send, Camera, MailCheck, FileCheck, Edit, CalendarDays } from 'lucide-react';
 import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { useAuth } from '@/context/AuthContext';
@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import RichTextEditor from '@/components/RichTextEditor';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 const InvoiceView = () => {
   const { viewLink, id } = useParams<{ viewLink: string, id: string }>();
@@ -339,8 +340,21 @@ const InvoiceView = () => {
     ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
     : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
 
+  const paymentStatusColors = {
+    paid: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+    unpaid: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+  };
+
   const canClientAcceptInvoice = ['draft', 'sent'].includes(invoice.status);
   const canClientAcceptContract = invoice.contractStatus !== 'accepted';
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    }).format(amount);
+  };
 
   return (
     <PageTransition>
@@ -422,7 +436,7 @@ const InvoiceView = () => {
 
             <Separator />
 
-            <Tabs defaultValue="invoice" className="w-full">
+            <Tabs defaultValue="invoice" className="w-full mt-4">
               <TabsList className="w-full">
                 <TabsTrigger value="invoice" className="flex-1">
                   Invoice Details
@@ -431,6 +445,12 @@ const InvoiceView = () => {
                       <FileCheck className="h-3 w-3 inline text-green-600" />
                     </span>
                   )}
+                </TabsTrigger>
+                <TabsTrigger value="payments" className="flex-1">
+                  Payment Schedule
+                  <span className="ml-2">
+                    <DollarSign className="h-3 w-3 inline" />
+                  </span>
                 </TabsTrigger>
                 <TabsTrigger value="contract" className="flex-1">
                   Contract Terms
@@ -484,6 +504,63 @@ const InvoiceView = () => {
                 <div>
                   <h4 className="text-lg font-semibold mb-2">Notes</h4>
                   <div dangerouslySetInnerHTML={{ __html: invoice.notes || 'No notes provided.' }} />
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="payments" className="mt-4">
+                <div>
+                  <h4 className="text-lg font-semibold mb-2 flex items-center gap-1">
+                    <CalendarDays className="h-4 w-4 mr-1" />
+                    Payment Schedule
+                  </h4>
+                  
+                  {invoice.paymentSchedules && invoice.paymentSchedules.length > 0 ? (
+                    <div className="border rounded-md overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted/50">
+                            <TableHead>Description</TableHead>
+                            <TableHead>Due Date</TableHead>
+                            <TableHead className="text-right">Percentage</TableHead>
+                            <TableHead className="text-right">Amount</TableHead>
+                            <TableHead>Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {invoice.paymentSchedules.map((schedule) => (
+                            <TableRow key={schedule.id}>
+                              <TableCell>{schedule.description}</TableCell>
+                              <TableCell>
+                                {new Date(schedule.dueDate).toLocaleDateString()}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {schedule.percentage}%
+                              </TableCell>
+                              <TableCell className="text-right font-medium">
+                                {formatCurrency((invoice.amount * schedule.percentage) / 100)}
+                              </TableCell>
+                              <TableCell>
+                                <Badge className={paymentStatusColors[schedule.status]}>
+                                  {schedule.status.toUpperCase()}
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  ) : (
+                    <div className="text-muted-foreground">
+                      Full payment of {formatCurrency(invoice.amount)} due on {new Date(invoice.dueDate).toLocaleDateString()}
+                    </div>
+                  )}
+                  
+                  <div className="mt-4 p-4 bg-muted/30 rounded-md">
+                    <div className="flex justify-between font-medium">
+                      <span>Total Invoice Amount:</span>
+                      <span>{formatCurrency(invoice.amount)}</span>
+                    </div>
+                  </div>
                 </div>
               </TabsContent>
               

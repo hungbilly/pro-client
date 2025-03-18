@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Client, Invoice, InvoiceItem, Job } from '@/types';
+import { Client, Invoice, InvoiceItem, Job, PaymentSchedule } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -58,6 +57,16 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
   const [loading, setLoading] = useState(true);
   const [generatingInvoiceNumber, setGeneratingInvoiceNumber] = useState(false);
 
+  const [paymentSchedules, setPaymentSchedules] = useState<PaymentSchedule[]>([
+    { 
+      id: Date.now().toString(), 
+      dueDate: format(new Date(), 'yyyy-MM-dd'),
+      percentage: 100,
+      description: 'Full payment',
+      status: 'unpaid'
+    }
+  ]);
+
   const [templates, setTemplates] = useState<Template[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const { user } = useAuth();
@@ -81,6 +90,10 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
             setItems(fetchedInvoice.items || []);
             setNotes(fetchedInvoice.notes || '');
             setContractTerms(fetchedInvoice.contractTerms || '');
+            
+            if (fetchedInvoice.paymentSchedules && fetchedInvoice.paymentSchedules.length > 0) {
+              setPaymentSchedules(fetchedInvoice.paymentSchedules);
+            }
           } else {
             toast.error('Invoice not found.');
           }
@@ -324,6 +337,85 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
     }
   };
 
+  const handleAddPaymentSchedule = () => {
+    const currentTotal = paymentSchedules.reduce((sum, schedule) => sum + schedule.percentage, 0);
+    const remainingPercentage = Math.max(0, 100 - currentTotal);
+    
+    if (remainingPercentage <= 0) {
+      toast.warning("Payment schedules already total 100%. Adjust existing schedules first.");
+      return;
+    }
+    
+    const newDueDate = new Date();
+    if (paymentSchedules.length > 0) {
+      const latestDueDate = Math.max(
+        ...paymentSchedules.map(s => new Date(s.dueDate).getTime())
+      );
+      newDueDate = new Date(latestDueDate);
+      newDueDate.setDate(newDueDate.getDate() + 30);
+    }
+    
+    setPaymentSchedules([
+      ...paymentSchedules,
+      {
+        id: Date.now().toString(),
+        dueDate: format(newDueDate, 'yyyy-MM-dd'),
+        percentage: remainingPercentage,
+        description: `Payment ${paymentSchedules.length + 1}`,
+        status: 'unpaid'
+      }
+    ]);
+  };
+  
+  const handleRemovePaymentSchedule = (id: string) => {
+    if (paymentSchedules.length <= 1) {
+      toast.warning("At least one payment schedule is required.");
+      return;
+    }
+    
+    const filteredSchedules = paymentSchedules.filter(schedule => schedule.id !== id);
+    
+    const newTotal = filteredSchedules.reduce((sum, schedule) => sum + schedule.percentage, 0);
+    if (newTotal < 100) {
+      const firstSchedule = filteredSchedules[0];
+      firstSchedule.percentage += (100 - newTotal);
+    }
+    
+    setPaymentSchedules(filteredSchedules);
+  };
+  
+  const handleScheduleChange = (id: string, field: 'percentage' | 'description' | 'dueDate', value: any) => {
+    setPaymentSchedules(schedules => {
+      const updatedSchedules = schedules.map(schedule => {
+        if (schedule.id === id) {
+          if (field === 'percentage') {
+            const newPercentage = Math.min(100, Math.max(0, parseInt(value) || 0));
+            return { ...schedule, [field]: newPercentage };
+          }
+          return { ...schedule, [field]: value };
+        }
+        return schedule;
+      });
+      
+      validateSchedulePercentages(updatedSchedules);
+      
+      return updatedSchedules;
+    });
+  };
+  
+  const validateSchedulePercentages = (schedules: PaymentSchedule[]) => {
+    const total = schedules.reduce((sum, schedule) => sum + schedule.percentage, 0);
+    if (total !== 100) {
+      console.warn(`Payment schedules total ${total}% instead of 100%`);
+      return false;
+    }
+    return true;
+  };
+  
+  const formatPercentage = (value: number) => {
+    return `${value}%`;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -344,6 +436,11 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
 
     if (!number.trim()) {
       toast.error('Invoice number is required.');
+      return;
+    }
+    
+    if (!validateSchedulePercentages(paymentSchedules)) {
+      toast.error('Payment schedules must add up to exactly 100%.');
       return;
     }
 
@@ -376,6 +473,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
           notes,
           contractTerms,
           viewLink: invoice.viewLink,
+          paymentSchedules: paymentSchedules,
         };
 
         if (shootingDate) {
@@ -385,7 +483,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
         await updateInvoice(updatedInvoice);
         toast.success('Invoice updated successfully!');
         
-        // Fix: Use relative path instead of absolute URL
         navigate(`/invoice/${invoice.id}`);
       } else {
         const allInvoices = await getInvoicesByDate();
@@ -409,6 +506,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
           items,
           notes,
           contractTerms,
+          paymentSchedules: paymentSchedules,
         };
 
         if (shootingDate) {

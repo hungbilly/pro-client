@@ -912,6 +912,97 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
               />
             </div>
           </div>
+          
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-medium">Payment Schedule</h3>
+            <Button type="button" onClick={handleAddPaymentSchedule} variant="outline">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Payment
+            </Button>
+          </div>
+          
+          <div className="border rounded-md overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50">
+                  <TableHead>Description</TableHead>
+                  <TableHead>Due Date</TableHead>
+                  <TableHead className="text-right">Percentage</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="w-24 text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paymentSchedules.map((schedule) => {
+                  const scheduleAmount = calculateTotalAmount() * (schedule.percentage / 100);
+                  
+                  return (
+                    <TableRow key={schedule.id}>
+                      <TableCell>
+                        <Input
+                          type="text"
+                          value={schedule.description}
+                          onChange={(e) => handleScheduleChange(schedule.id, 'description', e.target.value)}
+                          className="w-full"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant={"outline"}
+                              className={cn(
+                                "w-full justify-start text-left font-normal",
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {format(new Date(schedule.dueDate), "PPP")}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <DatePicker
+                              mode="single"
+                              selected={new Date(schedule.dueDate)}
+                              onSelect={(date) => date && handleScheduleChange(schedule.id, 'dueDate', format(date, 'yyyy-MM-dd'))}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Input
+                            type="number"
+                            value={schedule.percentage}
+                            onChange={(e) => handleScheduleChange(schedule.id, 'percentage', e.target.value)}
+                            className="max-w-16 text-right"
+                          />
+                          <span className="text-muted-foreground">%</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        {formatCurrency(scheduleAmount)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex justify-end">
+                          <Button variant="ghost" size="icon" onClick={() => handleRemovePaymentSchedule(schedule.id)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                {paymentSchedules.reduce((total, schedule) => total + schedule.percentage, 0) !== 100 && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center text-amber-600">
+                      Warning: Payment schedules must add up to 100%. Current total: {paymentSchedules.reduce((total, schedule) => total + schedule.percentage, 0)}%
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </form>
       </CardContent>
       <CardFooter className="flex justify-between">

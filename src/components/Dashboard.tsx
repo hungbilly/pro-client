@@ -451,9 +451,8 @@ const Dashboard: React.FC = () => {
                   <h2 className="text-xl font-semibold">Your Invoices</h2>
                   {jobs.length > 0 && (
                     <Button asChild size="sm">
-                      <Link to={`/invoice/create/${defaultClient?.id}`}>
-                        <FileText className="h-4 w-4 mr-2" />
-                        New Invoice
+                      <Link to={`/jobs`}>
+                        View Jobs
                       </Link>
                     </Button>
                   )}
@@ -490,7 +489,7 @@ const Dashboard: React.FC = () => {
                       </TableHeader>
                       <TableBody>
                         {invoices.map((invoice) => {
-                          const invoiceClient = clients.find((c) => c.id === invoice.clientId) || defaultClient;
+                          const invoiceClient = clients.find((c) => c.id === invoice.clientId) || null;
                           return (
                             <TableRow 
                               key={invoice.id}
@@ -514,8 +513,8 @@ const Dashboard: React.FC = () => {
                               <TableCell className="text-right">
                                 <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
                                   <Button variant="outline" size="sm" asChild>
-                                    <Link to={`/invoice/edit/${invoice.id}`}>
-                                      <FileEdit className="h-4 w-4" />
+                                    <Link to={`/invoice/${invoice.id}`}>
+                                      <Eye className="h-4 w-4" />
                                     </Link>
                                   </Button>
                                 </div>

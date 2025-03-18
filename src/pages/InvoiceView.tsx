@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { getInvoiceByViewLink, getClient, updateInvoiceStatus, getInvoice, updateContractStatus } from '@/lib/storage';
@@ -585,21 +584,6 @@ const InvoiceView = () => {
                     <CalendarDays className="h-5 w-5 mr-2" />
                     <h4 className="text-lg font-semibold">Payment Schedule</h4>
                   </div>
-                  
-                  {/* Debug info visible only to admin */}
-                  {!isClientView && paymentScheduleLogs.length > 0 && (
-                    <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-900 rounded-md text-xs">
-                      <strong>Debug Payment Schedules:</strong>
-                      <ul className="list-disc pl-5 mt-1">
-                        {paymentScheduleLogs.map((log, i) => (
-                          <li key={i}>{log}</li>
-                        ))}
-                      </ul>
-                      <div className="mt-1">
-                        <strong>Current state:</strong> {JSON.stringify(invoice.paymentSchedules)}
-                      </div>
-                    </div>
-                  )}
                   
                   {Array.isArray(invoice.paymentSchedules) && invoice.paymentSchedules.length > 0 ? (
                     <div className="border rounded-md overflow-hidden">

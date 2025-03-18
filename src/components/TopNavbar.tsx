@@ -4,12 +4,9 @@ import { Link, useLocation } from 'react-router-dom';
 import { 
   Home, 
   Users, 
-  Target, 
   Briefcase, 
   Calendar, 
-  CircleDollarSign, 
   Settings,
-  FileText
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -27,10 +24,8 @@ const TopNavbar = () => {
   const menuItems = [
     { path: '/', label: 'Dashboard', icon: <Home className="w-5 h-5" /> },
     { path: '/clients', label: 'Clients', icon: <Users className="w-5 h-5" /> },
-    { path: '/leads', label: 'Leads', icon: <Target className="w-5 h-5" />, disabled: true },
     { path: '/jobs', label: 'Jobs', icon: <Briefcase className="w-5 h-5" /> },
     { path: '/calendar', label: 'Calendar', icon: <Calendar className="w-5 h-5" />, disabled: true },
-    { path: '/payments', label: 'Payments', icon: <CircleDollarSign className="w-5 h-5" />, disabled: true },
     { path: '/settings', label: 'Settings', icon: <Settings className="w-5 h-5" /> },
   ];
 
@@ -39,11 +34,6 @@ const TopNavbar = () => {
       <div className="container mx-auto flex items-center justify-between">
         <div className="flex items-center">
           <Link to="/" className="flex items-center text-xl font-bold mr-8">
-            <img 
-              src="/lovable-uploads/2064d358-e017-4fd2-8734-d3f4e2669227.png" 
-              alt="Wedding Studio Manager" 
-              className="h-10 mr-2" 
-            />
             <span>Wedding Studio Manager</span>
           </Link>
           <nav className="hidden md:flex space-x-1">

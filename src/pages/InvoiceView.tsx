@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { getInvoiceByViewLink, getClient, updateInvoiceStatus, getInvoice, updateContractStatus } from '@/lib/storage';
@@ -17,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import RichTextEditor from '@/components/RichTextEditor';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 const InvoiceView = () => {
   const { viewLink, id } = useParams<{ viewLink: string, id: string }>();
@@ -30,6 +32,7 @@ const InvoiceView = () => {
   const { isAdmin } = useAuth();
   const [emailLogs, setEmailLogs] = useState<Array<{timestamp: Date, message: string, success: boolean}>>([]);
   const [paymentScheduleLogs, setPaymentScheduleLogs] = useState<string[]>([]);
+  const [showEmailDialog, setShowEmailDialog] = useState(false);
 
   const isClientView = (location.search.includes('client=true') || !location.search) && !isAdmin;
 
@@ -305,6 +308,9 @@ const InvoiceView = () => {
             ]);
           }
         }
+        
+        // Close the dialog after successful send
+        setShowEmailDialog(false);
       } else {
         console.warn('Email response:', data);
         toast.error(data?.message || 'Email failed to send.');
@@ -670,45 +676,77 @@ const InvoiceView = () => {
           <CardFooter className="justify-end gap-2 flex-wrap">
             {!isClientView && (
               <>
-                <div className="w-full flex flex-col gap-2 mb-4">
-                  <Label htmlFor="emailSubject">Email Subject</Label>
-                  <Input
-                    id="emailSubject"
-                    value={emailSubject}
-                    onChange={(e) => setEmailSubject(e.target.value)}
-                    placeholder={generateDefaultSubject()}
-                  />
-                  
-                  <Label htmlFor="emailContent">Email Content</Label>
-                  <RichTextEditor
-                    id="emailContent"
-                    value={emailContent}
-                    onChange={setEmailContent}
-                    placeholder={generateDefaultEmailContent()}
-                    className="min-h-[100px]"
-                  />
-                  
-                  {emailLogs.length > 0 && (
-                    <div className="w-full mt-2 bg-muted p-2 rounded-md max-h-[150px] overflow-y-auto text-sm">
-                      <h5 className="font-semibold">Email Logs:</h5>
-                      {emailLogs.map((log, index) => (
-                        <div key={index} className={`my-1 ${log.success ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                          <span className="text-xs opacity-70">{log.timestamp.toLocaleTimeString()}: </span>
-                          {log.message}
+                <Dialog open={showEmailDialog} onOpenChange={setShowEmailDialog}>
+                  <DialogTrigger asChild>
+                    <Button
+                      variant="default"
+                      disabled={!client?.email}
+                    >
+                      <Send className="h-4 w-4 mr-2" />
+                      Send Invoice
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[600px]">
+                    <DialogHeader>
+                      <DialogTitle>Send Invoice to Client</DialogTitle>
+                      <DialogDescription>
+                        Customize the email that will be sent to {client.name} ({client.email})
+                      </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="flex flex-col gap-4 py-4">
+                      <div className="flex flex-col gap-2">
+                        <Label htmlFor="emailSubject">Email Subject</Label>
+                        <Input
+                          id="emailSubject"
+                          value={emailSubject}
+                          onChange={(e) => setEmailSubject(e.target.value)}
+                          placeholder={generateDefaultSubject()}
+                        />
+                      </div>
+                      
+                      <div className="flex flex-col gap-2">
+                        <Label htmlFor="emailContent">Email Content</Label>
+                        <RichTextEditor
+                          id="emailContent"
+                          value={emailContent}
+                          onChange={setEmailContent}
+                          placeholder={generateDefaultEmailContent()}
+                          className="min-h-[200px]"
+                        />
+                      </div>
+                      
+                      {emailLogs.length > 0 && (
+                        <div className="w-full mt-2 bg-muted p-2 rounded-md max-h-[150px] overflow-y-auto text-sm">
+                          <h5 className="font-semibold">Email Logs:</h5>
+                          {emailLogs.map((log, index) => (
+                            <div key={index} className={`my-1 ${log.success ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                              <span className="text-xs opacity-70">{log.timestamp.toLocaleTimeString()}: </span>
+                              {log.message}
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      )}
                     </div>
-                  )}
-                </div>
-                
-                <Button 
-                  onClick={handleSendEmail} 
-                  variant="default" 
-                  disabled={sending || !client?.email}
-                >
-                  <Send className="h-4 w-4 mr-2" />
-                  Send Email
-                </Button>
+                    
+                    <DialogFooter>
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        onClick={() => setShowEmailDialog(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button 
+                        onClick={handleSendEmail} 
+                        variant="default" 
+                        disabled={sending || !client?.email}
+                      >
+                        {sending ? 'Sending...' : 'Send Email'}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </>
             )}
           </CardFooter>

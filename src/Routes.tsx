@@ -16,40 +16,47 @@ import Jobs from './pages/Jobs';
 import JobDetail from './pages/JobDetail';
 import JobCreate from './pages/JobCreate';
 import JobEdit from './pages/JobEdit';
+import AppLayout from './components/AppLayout';
 
 const Routes = () => {
   return (
     <ReactRoutes>
-      <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+      {/* Auth route outside of the layout */}
       <Route path="/auth" element={<Auth />} />
-      <Route path="/clients" element={<ProtectedRoute><Clients /></ProtectedRoute>} />
-      <Route path="/client/new" element={<ProtectedRoute><ClientNew /></ProtectedRoute>} />
-      <Route path="/client/:id" element={<ProtectedRoute><ClientDetail /></ProtectedRoute>} />
-      <Route path="/client/:id/edit" element={<ProtectedRoute><ClientEdit /></ProtectedRoute>} />
-      
-      {/* Add job creation routes */}
-      <Route path="/client/:clientId/job/new" element={<ProtectedRoute><JobCreate /></ProtectedRoute>} />
-      <Route path="/client/:clientId/job/create" element={<ProtectedRoute><JobCreate /></ProtectedRoute>} />
-      
-      {/* Invoice routes */}
-      <Route path="/client/:clientId/invoice/new" element={<ProtectedRoute><InvoiceCreate /></ProtectedRoute>} />
-      <Route path="/client/:clientId/invoice/create" element={<ProtectedRoute><InvoiceCreate /></ProtectedRoute>} />
-      <Route path="/client/:clientId/invoice/:invoiceId/edit" element={<ProtectedRoute><InvoiceCreate /></ProtectedRoute>} />
-      
-      {/* Job routes */}
-      <Route path="/jobs" element={<ProtectedRoute><Jobs /></ProtectedRoute>} />
-      <Route path="/job/new" element={<ProtectedRoute><JobCreate /></ProtectedRoute>} />
-      <Route path="/job/:id" element={<ProtectedRoute><JobDetail /></ProtectedRoute>} />
-      <Route path="/job/:id/edit" element={<ProtectedRoute><JobEdit /></ProtectedRoute>} />
-      
-      {/* Job-related invoice routes */}
-      <Route path="/job/:jobId/invoice/new" element={<ProtectedRoute><InvoiceCreate /></ProtectedRoute>} />
-      <Route path="/job/:jobId/invoice/create" element={<ProtectedRoute><InvoiceCreate /></ProtectedRoute>} />
-      <Route path="/job/:jobId/invoice/:invoiceId/edit" element={<ProtectedRoute><InvoiceCreate /></ProtectedRoute>} />
-      
-      <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
       <Route path="/invoice/:viewLink" element={<InvoiceView />} />
-      <Route path="/invoice/:id" element={<ProtectedRoute><InvoiceView /></ProtectedRoute>} />
+      
+      {/* Protected routes with layout */}
+      <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+        <Route path="/" element={<Index />} />
+        <Route path="/clients" element={<Clients />} />
+        <Route path="/client/new" element={<ClientNew />} />
+        <Route path="/client/:id" element={<ClientDetail />} />
+        <Route path="/client/:id/edit" element={<ClientEdit />} />
+        
+        {/* Job routes */}
+        <Route path="/jobs" element={<Jobs />} />
+        <Route path="/job/new" element={<JobCreate />} />
+        <Route path="/job/:id" element={<JobDetail />} />
+        <Route path="/job/:id/edit" element={<JobEdit />} />
+        
+        {/* Client-specific job routes */}
+        <Route path="/client/:clientId/job/new" element={<JobCreate />} />
+        <Route path="/client/:clientId/job/create" element={<JobCreate />} />
+        
+        {/* Invoice routes */}
+        <Route path="/client/:clientId/invoice/new" element={<InvoiceCreate />} />
+        <Route path="/client/:clientId/invoice/create" element={<InvoiceCreate />} />
+        <Route path="/client/:clientId/invoice/:invoiceId/edit" element={<InvoiceCreate />} />
+        
+        {/* Job-related invoice routes */}
+        <Route path="/job/:jobId/invoice/new" element={<InvoiceCreate />} />
+        <Route path="/job/:jobId/invoice/create" element={<InvoiceCreate />} />
+        <Route path="/job/:jobId/invoice/:invoiceId/edit" element={<InvoiceCreate />} />
+        <Route path="/invoice/:id" element={<InvoiceView />} />
+        
+        <Route path="/settings" element={<Settings />} />
+      </Route>
+      
       <Route path="*" element={<NotFound />} />
     </ReactRoutes>
   );

@@ -535,7 +535,7 @@ const InvoiceView = () => {
                     <h4 className="text-lg font-semibold">Payment Schedule</h4>
                   </div>
                   
-                  {invoice.paymentSchedules && invoice.paymentSchedules.length > 0 ? (
+                  {Array.isArray(invoice.paymentSchedules) && invoice.paymentSchedules.length > 0 ? (
                     <div className="border rounded-md overflow-hidden">
                       <Table>
                         <TableHeader>

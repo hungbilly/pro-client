@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
@@ -23,6 +24,14 @@ import {
   DrawerContent,
   DrawerTrigger,
 } from "@/components/ui/drawer";
+
+// Define the proper type for menu items
+interface MenuItem {
+  path: string;
+  label: string;
+  icon: React.ReactNode;
+  disabled?: boolean;
+}
 
 const TopNavbar = () => {
   const location = useLocation();
@@ -63,7 +72,7 @@ const TopNavbar = () => {
     }
   };
 
-  const menuItems = [
+  const menuItems: MenuItem[] = [
     { path: '/', label: 'Dashboard', icon: <Home className="w-5 h-5" /> },
     { path: '/clients', label: 'Clients', icon: <Users className="w-5 h-5" /> },
     { path: '/jobs', label: 'Jobs', icon: <Briefcase className="w-5 h-5" /> },

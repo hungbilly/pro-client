@@ -25,7 +25,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useCompany } from '@/components/CompanySelector';
+import { useCompanyContext } from '@/context/CompanyContext';
 import { Job } from '@/types';
 
 const Jobs = () => {
@@ -65,7 +65,8 @@ const formatTimeDisplay = (job: Job) => {
 };
 
 const JobsTable = () => {
-  const { selectedCompanyId } = useCompany();
+  const { selectedCompany } = useCompanyContext();
+  const selectedCompanyId = selectedCompany?.id;
   
   const { data: jobs = [], isLoading, error } = useQuery({
     queryKey: ['jobs', selectedCompanyId],

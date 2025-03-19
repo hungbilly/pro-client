@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -17,7 +18,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useCompany } from '@/components/CompanySelector';
+import { useCompanyContext } from '@/context/CompanyContext';
 import { useNavigate } from 'react-router-dom';
 import {
   AlertDialog,
@@ -58,7 +59,9 @@ const Clients = () => {
 const ClientsTable = () => {
   const navigate = useNavigate();
   const [clientToDelete, setClientToDelete] = useState<string | null>(null);
-  const { selectedCompanyId } = useCompany();
+  const { selectedCompany } = useCompanyContext();
+  const selectedCompanyId = selectedCompany?.id;
+  
   const { data: clients = [], isLoading, error, refetch } = useQuery({
     queryKey: ['clients', selectedCompanyId],
     queryFn: () => getClients(selectedCompanyId),

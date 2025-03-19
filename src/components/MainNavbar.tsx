@@ -13,9 +13,12 @@ const MainNavbar = () => {
   
   const handleLogout = async () => {
     try {
+      console.log('MainNavbar: Initiating logout');
       await signOut();
+      console.log('MainNavbar: Logout successful');
       toast.success('Successfully logged out');
-      navigate('/auth');
+      // Force navigation to auth page
+      window.location.href = '/auth';
     } catch (error) {
       console.error('Logout error:', error);
       toast.error('Failed to log out');

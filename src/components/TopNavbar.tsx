@@ -17,12 +17,14 @@ import { useCompany } from './CompanySelector';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import CompanySelector from './CompanySelector';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const TopNavbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { selectedCompany } = useCompany();
   const { signOut } = useAuth();
+  const isMobile = useIsMobile();
   
   const isActive = (path: string) => {
     if (path === '/') {
@@ -53,56 +55,60 @@ const TopNavbar = () => {
 
   return (
     <div className="bg-slate-900 text-white py-2 px-4 shadow-md sticky top-0 z-50">
-      <div className="container mx-auto flex items-center justify-between">
-        <div className="flex items-center">
-          <Link to="/" className="flex items-center text-xl font-bold mr-8">
-            <span>Wedding Studio Manager</span>
-          </Link>
-          <nav className="hidden md:flex space-x-1">
-            {menuItems.map((item) => (
-              <Button
-                key={item.path}
-                variant="ghost"
-                size="sm"
-                asChild={!item.disabled}
-                disabled={item.disabled}
-                className={cn(
-                  "flex items-center px-3 py-2 text-sm rounded-md transition-colors",
-                  isActive(item.path)
-                    ? "bg-slate-800 text-white"
-                    : "text-slate-300 hover:text-white hover:bg-slate-800",
-                  item.disabled && "opacity-50 cursor-not-allowed"
-                )}
-              >
-                {!item.disabled ? (
-                  <Link to={item.path} className="flex items-center gap-2">
-                    {item.icon}
-                    <span>{item.label}</span>
-                  </Link>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    {item.icon}
-                    <span>{item.label}</span>
-                  </div>
-                )}
-              </Button>
-            ))}
-          </nav>
+      <div className="container mx-auto flex flex-col">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <Link to="/" className="flex items-center text-xl font-bold mr-8">
+              <span>Wedding Studio Manager</span>
+            </Link>
+            <nav className="hidden md:flex space-x-1">
+              {menuItems.map((item) => (
+                <Button
+                  key={item.path}
+                  variant="ghost"
+                  size="sm"
+                  asChild={!item.disabled}
+                  disabled={item.disabled}
+                  className={cn(
+                    "flex items-center px-3 py-2 text-sm rounded-md transition-colors",
+                    isActive(item.path)
+                      ? "bg-slate-800 text-white"
+                      : "text-slate-300 hover:text-white hover:bg-slate-800",
+                    item.disabled && "opacity-50 cursor-not-allowed"
+                  )}
+                >
+                  {!item.disabled ? (
+                    <Link to={item.path} className="flex items-center gap-2">
+                      {item.icon}
+                      <span>{item.label}</span>
+                    </Link>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      {item.icon}
+                      <span>{item.label}</span>
+                    </div>
+                  )}
+                </Button>
+              ))}
+            </nav>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-white hover:bg-slate-800"
+              onClick={handleLogout}
+            >
+              <LogOut className="w-4 h-4 mr-1" />
+              <span className="hidden md:inline-block">Logout</span>
+            </Button>
+          </div>
         </div>
         
-        <div className="flex items-center gap-3">
-          <div className="hidden sm:flex">
-            <CompanySelector className="min-w-[200px]" />
-          </div>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="text-white hover:bg-slate-800"
-            onClick={handleLogout}
-          >
-            <LogOut className="w-4 h-4 mr-1" />
-            <span className="hidden md:inline-block">Logout</span>
-          </Button>
+        {/* Company selector moved below the menu */}
+        <div className="flex justify-center mt-2 mb-1">
+          <CompanySelector className="w-[250px]" />
         </div>
       </div>
     </div>

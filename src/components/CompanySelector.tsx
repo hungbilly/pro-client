@@ -44,12 +44,10 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({ onCompanySelect, clas
 
   return (
     <div className={className}>
-      {showLabel && (
-        <div className="flex items-center gap-1 mb-1 text-sm font-medium">
-          <Building className="h-4 w-4" />
-          <span>Company</span>
-        </div>
-      )}
+      <div className="flex items-center gap-1 mb-1 text-sm font-medium text-white">
+        <Building className="h-4 w-4" />
+        <span>Current Company</span>
+      </div>
       <div>
         <Select 
           value={selectedCompany?.id || ''}
@@ -57,12 +55,7 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({ onCompanySelect, clas
           disabled={companies.length === 0}
         >
           <SelectTrigger 
-            className={cn(
-              "min-w-[180px]", 
-              showLabel 
-                ? "bg-white border-gray-300" 
-                : "text-white border-slate-700 bg-slate-800 hover:bg-slate-700"
-            )}
+            className="w-full text-white border-slate-700 bg-slate-800 hover:bg-slate-700"
           >
             <SelectValue placeholder="Select a company">
               {selectedCompany?.name || "Select a company"}

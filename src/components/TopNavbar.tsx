@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
@@ -194,7 +193,7 @@ const TopNavbar = () => {
               </nav>
             </div>
             
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center gap-2">
               <Button 
                 variant="ghost" 
                 size="sm" 
@@ -206,9 +205,9 @@ const TopNavbar = () => {
               </Button>
               
               {user && (
-                <div className="hidden md:flex items-center ml-2 overflow-hidden" style={{ maxWidth: "clamp(120px, 15vw, 180px)" }}>
+                <div className="hidden md:flex items-center overflow-hidden max-w-[0]" style={{ maxWidth: "min(180px, 15vw)" }}>
                   <User className="h-4 w-4 text-slate-400 mr-1 flex-shrink-0" />
-                  <span className="text-xs text-slate-300 truncate whitespace-nowrap overflow-hidden">
+                  <span className="text-xs text-slate-300 truncate">
                     {user.email}
                   </span>
                 </div>

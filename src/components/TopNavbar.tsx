@@ -23,7 +23,7 @@ const TopNavbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { selectedCompany } = useCompany();
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const isMobile = useIsMobile();
   
   const isActive = (path: string) => {
@@ -106,7 +106,7 @@ const TopNavbar = () => {
             </nav>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col items-end">
             <Button 
               variant="ghost" 
               size="sm" 
@@ -116,6 +116,9 @@ const TopNavbar = () => {
               <LogOut className="w-4 h-4 mr-1" />
               <span className="hidden md:inline-block">Logout</span>
             </Button>
+            {user && (
+              <span className="text-xs text-slate-300 mt-1">{user.email}</span>
+            )}
           </div>
         </div>
         

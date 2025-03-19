@@ -80,6 +80,7 @@ const TopNavbar = () => {
     { path: '/settings', label: 'Settings', icon: <Settings className="w-5 h-5" /> },
   ];
 
+  // Modified function to close drawer when a menu item is clicked
   const renderMenuItems = () => {
     return menuItems.map((item) => (
       <Button
@@ -97,7 +98,11 @@ const TopNavbar = () => {
         )}
       >
         {!item.disabled ? (
-          <Link to={item.path} className="flex items-center gap-2 w-full">
+          <Link 
+            to={item.path} 
+            className="flex items-center gap-2 w-full"
+            onClick={() => isMobile && setIsDrawerOpen(false)}
+          >
             {item.icon}
             <span>{item.label}</span>
           </Link>
@@ -142,7 +147,10 @@ const TopNavbar = () => {
                             variant="ghost" 
                             size="sm" 
                             className="text-white hover:bg-slate-800 flex flex-col items-center w-full"
-                            onClick={handleLogout}
+                            onClick={() => {
+                              setIsDrawerOpen(false);
+                              handleLogout();
+                            }}
                           >
                             <div className="flex items-center justify-center w-full">
                               <LogOut className="w-4 h-4 mr-2" />

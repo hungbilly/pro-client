@@ -1,25 +1,43 @@
 
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Home, 
   Users, 
   Briefcase, 
   Calendar, 
   Settings,
-  Wallet
+  Wallet,
+  LogOut
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
+import { useCompany } from './CompanySelector';
+import { useAuth } from '@/context/AuthContext';
+import { toast } from 'sonner';
 
 const TopNavbar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { selectedCompany } = useCompany();
+  const { signOut } = useAuth();
   
   const isActive = (path: string) => {
     if (path === '/') {
       return location.pathname === '/';
     }
     return location.pathname.startsWith(path);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      toast.success('Logged out successfully');
+      navigate('/auth');
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast.error('Failed to log out');
+    }
   };
 
   const menuItems = [
@@ -72,7 +90,18 @@ const TopNavbar = () => {
         
         <div className="flex items-center space-x-2">
           <Button variant="outline" size="sm" className="text-white border-slate-700 hover:bg-slate-800">
-            <span className="hidden md:inline-block">Billy ONAIR Photography</span>
+            <span className="hidden md:inline-block">
+              {selectedCompany ? selectedCompany.name : 'Select Company'}
+            </span>
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="text-white hover:bg-slate-800"
+            onClick={handleLogout}
+          >
+            <LogOut className="w-4 h-4 mr-1" />
+            <span className="hidden md:inline-block">Logout</span>
           </Button>
         </div>
       </div>

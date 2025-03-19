@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { 
   DropdownMenu, 
@@ -14,19 +15,32 @@ import {
   Settings
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { toast } from 'sonner';
+import { useCompany } from './CompanySelector';
 
 const AdminHeader = () => {
   const { signOut, user } = useAuth();
+  const navigate = useNavigate();
+  const { selectedCompany } = useCompany();
 
   const handleSignOut = async () => {
-    await signOut();
+    try {
+      await signOut();
+      toast.success('Logged out successfully');
+      navigate('/auth');
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast.error('Failed to log out');
+    }
   };
 
   return (
     <header className="bg-white border-b border-gray-200 p-4 text-black shadow-sm">
       <div className="container mx-auto flex justify-between items-center">
-        <div>
-          {/* Mobile company and user dropdown options will go here */}
+        <div className="flex items-center">
+          {selectedCompany && (
+            <span className="font-medium">{selectedCompany.name}</span>
+          )}
         </div>
         
         <div className="flex items-center gap-2">

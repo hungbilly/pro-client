@@ -1,120 +1,27 @@
 
-import React, { useState, useEffect, createContext, useContext } from 'react';
+import React from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/context/AuthContext';
-import { toast } from 'sonner';
+import { useCompanyContext } from '@/context/CompanyContext';
 import { cn } from '@/lib/utils';
 import { Building } from 'lucide-react';
 
-export interface Company {
-  id: string;
-  name: string;
-  is_default: boolean;
-}
-
-interface CompanyContextType {
-  companies: Company[];
-  selectedCompanyId: string | null;
-  setSelectedCompanyId: (id: string) => void;
-  loading: boolean;
-  refreshCompanies: () => Promise<void>;
-}
-
-// Create a context to share company state across components
-const CompanyContext = createContext<CompanyContextType | undefined>(undefined);
-
-export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const fetchCompanies = async () => {
-    setLoading(true);
-    try {
-      if (!user) {
-        console.log("No user found in CompanyProvider, aborting fetch");
-        setLoading(false);
-        return;
-      }
-      
-      console.log("CompanyProvider: Fetching companies for user:", user.id);
-      const { data, error } = await supabase
-        .from('companies')
-        .select('id, name, is_default')
-        .eq('user_id', user.id)
-        .order('is_default', { ascending: false })
-        .order('name');
-      
-      if (error) throw error;
-      
-      console.log("CompanyProvider: Fetched companies:", data?.length);
-      setCompanies(data || []);
-      
-      // Select default company or first one
-      if (data && data.length > 0) {
-        const defaultCompany = data.find(c => c.is_default);
-        const companyId = defaultCompany ? defaultCompany.id : data[0].id;
-        console.log("CompanyProvider: Setting selected company to:", companyId);
-        setSelectedCompanyId(companyId);
-      } else {
-        setSelectedCompanyId(null);
-      }
-    } catch (error) {
-      console.error('Error fetching companies:', error);
-      toast.error('Failed to load companies. Please refresh the page.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (user) {
-      fetchCompanies();
-    } else {
-      setLoading(false);
-    }
-  }, [user]);
-
-  console.log("CompanyProvider rendering with selectedCompanyId:", selectedCompanyId);
-
-  return (
-    <CompanyContext.Provider value={{ 
-      companies, 
-      selectedCompanyId, 
-      setSelectedCompanyId, 
-      loading, 
-      refreshCompanies: fetchCompanies 
-    }}>
-      {children}
-    </CompanyContext.Provider>
-  );
-};
-
-export const useCompany = () => {
-  const context = useContext(CompanyContext);
-  if (context === undefined) {
-    console.error("useCompany called outside of CompanyProvider! Check component hierarchy.");
-    throw new Error('useCompany must be used within a CompanyProvider');
-  }
-  return context;
-};
-
 interface CompanySelectorProps {
-  onCompanySelect?: (companyId: string) => void;
+  onCompanySelect?: (company: {id: string, name: string}) => void;
   className?: string;
   showLabel?: boolean;
 }
 
 const CompanySelector: React.FC<CompanySelectorProps> = ({ onCompanySelect, className, showLabel = false }) => {
-  const { companies, selectedCompanyId, setSelectedCompanyId, loading } = useCompany();
+  const { companies, selectedCompany, setSelectedCompany, loading } = useCompanyContext();
 
   const handleCompanyChange = (value: string) => {
     console.log("CompanySelector: Company changed to:", value);
-    setSelectedCompanyId(value);
-    if (onCompanySelect) {
-      onCompanySelect(value);
+    const company = companies.find(c => c.id === value);
+    if (company) {
+      setSelectedCompany(company);
+      if (onCompanySelect) {
+        onCompanySelect({id: company.id, name: company.name});
+      }
     }
   };
 
@@ -140,7 +47,7 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({ onCompanySelect, clas
       )}
       <div>
         <Select 
-          value={selectedCompanyId || ''} 
+          value={selectedCompany?.id || ''} 
           onValueChange={handleCompanyChange}
           disabled={companies.length === 0}
         >

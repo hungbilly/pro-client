@@ -350,6 +350,7 @@ export type Database = {
           due_date: string
           id: string
           invoice_id: string
+          payment_date: string | null
           percentage: number
           status: string | null
         }
@@ -359,6 +360,7 @@ export type Database = {
           due_date: string
           id?: string
           invoice_id: string
+          payment_date?: string | null
           percentage: number
           status?: string | null
         }
@@ -368,6 +370,7 @@ export type Database = {
           due_date?: string
           id?: string
           invoice_id?: string
+          payment_date?: string | null
           percentage?: number
           status?: string | null
         }

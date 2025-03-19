@@ -1,38 +1,20 @@
 
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter } from "react-router-dom";
-import { AuthProvider } from "./context/AuthContext";
-import { CompanyProvider } from "./components/CompanySelector";
-import AppRoutes from "./Routes";
+import React from 'react';
+import { BrowserRouter } from 'react-router-dom';
+import Routes from './Routes';
+import ToastProvider from './components/ToastProvider';
+import CompanyProvider from './context/CompanyContext';
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-      staleTime: 1000 * 60 * 5, // 5 minutes
-    },
-  },
-});
-
-console.log("App is loading...");
-
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <CompanyProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <AppRoutes />
-          </BrowserRouter>
-        </TooltipProvider>
-      </CompanyProvider>
-    </AuthProvider>
-  </QueryClientProvider>
-);
+function App() {
+  return (
+    <BrowserRouter>
+      <ToastProvider>
+        <CompanyProvider>
+          <Routes />
+        </CompanyProvider>
+      </ToastProvider>
+    </BrowserRouter>
+  );
+}
 
 export default App;

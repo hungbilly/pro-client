@@ -105,7 +105,7 @@ const Payments = () => {
           description: schedule.description || '',
           dueDate: schedule.due_date,
           percentage: schedule.percentage,
-          status: schedule.status || 'unpaid',
+          status: (schedule.status || 'unpaid') as 'paid' | 'unpaid' | 'write-off',
           amount: amount,
           invoiceId: schedule.invoice_id,
           invoiceNumber: invoice.number,

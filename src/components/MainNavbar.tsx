@@ -17,11 +17,19 @@ const MainNavbar = () => {
       await signOut();
       console.log('MainNavbar: Logout successful');
       toast.success('Successfully logged out');
-      // Force navigation to auth page
-      window.location.href = '/auth';
+      
+      // Ensure we redirect to auth page after logout
+      setTimeout(() => {
+        window.location.href = '/auth';
+      }, 100);
     } catch (error) {
       console.error('Logout error:', error);
       toast.error('Failed to log out');
+      
+      // Even if logout fails, redirect to auth page as a fallback
+      setTimeout(() => {
+        window.location.href = '/auth';
+      }, 500);
     }
   };
 

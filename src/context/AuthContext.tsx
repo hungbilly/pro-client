@@ -20,13 +20,56 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
+    // Handle OAuth redirects - check URL hash for access_token
+    const handleOAuthRedirect = async () => {
+      const hasHashParams = window.location.hash && window.location.hash.length > 1;
+      if (hasHashParams) {
+        try {
+          // Let Supabase handle the access token in the URL
+          const { data, error } = await supabase.auth.getUser();
+          if (error) {
+            console.error('OAuth redirect error:', error);
+          } else if (data.user) {
+            console.log('User authenticated via OAuth redirect');
+          }
+          // Clean up the URL
+          window.history.replaceState({}, document.title, window.location.pathname);
+        } catch (error) {
+          console.error('Error handling OAuth redirect:', error);
+        }
+      }
+    };
+
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setIsAdmin(session?.user?.user_metadata?.is_admin || false);
-      setLoading(false);
-    });
+    const initAuth = async () => {
+      try {
+        await handleOAuthRedirect();
+        
+        const { data: { session } } = await supabase.auth.getSession();
+        setSession(session);
+        setUser(session?.user ?? null);
+        setIsAdmin(session?.user?.user_metadata?.is_admin || false);
+        
+        // For Google auth, make sure we have the is_admin field set
+        if (session?.user && session.user.app_metadata.provider === 'google' && 
+            !session.user.user_metadata.hasOwnProperty('is_admin')) {
+          // Set default admin status for Google auth users if not already set
+          try {
+            await supabase.auth.updateUser({
+              data: { is_admin: false }
+            });
+          } catch (error) {
+            console.error('Error updating user metadata:', error);
+          }
+        }
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initAuth();
 
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(

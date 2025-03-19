@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCompanyContext } from '@/context/CompanyContext';
 import { cn } from '@/lib/utils';
@@ -13,6 +13,11 @@ interface CompanySelectorProps {
 
 const CompanySelector: React.FC<CompanySelectorProps> = ({ onCompanySelect, className, showLabel = false }) => {
   const { companies, selectedCompany, setSelectedCompany, loading } = useCompanyContext();
+
+  useEffect(() => {
+    console.log("CompanySelector render: selectedCompany =", selectedCompany?.name);
+    console.log("Companies available:", companies.map(c => c.name).join(', '));
+  }, [selectedCompany, companies]);
 
   const handleCompanyChange = (value: string) => {
     console.log("CompanySelector: Company changed to:", value);
@@ -51,9 +56,17 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({ onCompanySelect, clas
           onValueChange={handleCompanyChange}
           disabled={companies.length === 0}
         >
-          <SelectTrigger className={cn("min-w-[180px] bg-opacity-70 border-slate-700", 
-            !showLabel && "text-white border-slate-700 bg-slate-800 hover:bg-slate-700")}>
-            <SelectValue placeholder="Select a company" />
+          <SelectTrigger 
+            className={cn(
+              "min-w-[180px]", 
+              showLabel 
+                ? "bg-white border-gray-300" 
+                : "text-white border-slate-700 bg-slate-800 hover:bg-slate-700"
+            )}
+          >
+            <SelectValue placeholder="Select a company">
+              {selectedCompany?.name || "Select a company"}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {companies.map(company => (

@@ -91,7 +91,7 @@ const TopNavbar = () => {
         </div>
         
         <div className="flex items-center gap-3">
-          <div className="hidden sm:block">
+          <div className="hidden sm:flex">
             <CompanySelector className="min-w-[200px]" />
           </div>
           <Button 

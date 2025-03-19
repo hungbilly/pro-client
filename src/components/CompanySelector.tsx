@@ -67,4 +67,6 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({ onCompanySelect, clas
   );
 };
 
+// Export CompanyProvider directly from context file
+export { useCompanyContext as useCompany } from '@/context/CompanyContext';
 export default CompanySelector;

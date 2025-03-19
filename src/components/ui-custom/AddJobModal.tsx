@@ -16,8 +16,8 @@ const AddJobModal: React.FC<AddJobModalProps> = ({ isOpen, onClose, clientId: in
   const [selectedClientId, setSelectedClientId] = useState<string | null>(initialClientId || null);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
 
-  const handleCompanySelect = (companyId: string) => {
-    setSelectedCompanyId(companyId);
+  const handleCompanySelect = (company: {id: string, name: string}) => {
+    setSelectedCompanyId(company.id);
   };
 
   const handleClientSelect = (clientId: string) => {

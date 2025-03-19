@@ -14,8 +14,8 @@ const JobCreate = () => {
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(clientId || null);
 
-  const handleCompanySelect = (companyId: string) => {
-    setSelectedCompanyId(companyId);
+  const handleCompanySelect = (company: {id: string, name: string}) => {
+    setSelectedCompanyId(company.id);
   };
 
   const handleClientSelect = (clientId: string) => {

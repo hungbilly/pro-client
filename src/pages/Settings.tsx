@@ -5,7 +5,7 @@ import PageTransition from '@/components/ui-custom/PageTransition';
 import CompanySettings from '@/components/CompanySettings';
 import InvoiceTemplateSettings from '@/components/InvoiceTemplateSettings';
 import PackageSettings from '@/components/PackageSettings';
-import { CompanyProvider } from '@/components/CompanySelector';
+import CompanyProvider from '@/context/CompanyContext';
 
 const Settings = () => {
   console.log("Settings page rendering");

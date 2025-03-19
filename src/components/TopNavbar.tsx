@@ -10,7 +10,8 @@ import {
   Wallet,
   LogOut,
   Building,
-  Menu
+  Menu,
+  User
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -110,7 +111,7 @@ const TopNavbar = () => {
       <div className="bg-slate-900 w-full">
         <div className="max-w-screen-2xl mx-auto px-4 py-3">
           {/* Top section: Logo and main navigation */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between w-full">
             <div className="flex items-center">
               {isMobile && (
                 <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
@@ -142,7 +143,7 @@ const TopNavbar = () => {
                               <span>Logout</span>
                             </div>
                             {user && (
-                              <span className="text-xs text-slate-300 mt-1">{user.email}</span>
+                              <span className="text-xs text-slate-300 mt-1 truncate max-w-full">{user.email}</span>
                             )}
                           </Button>
                         </div>
@@ -191,17 +192,18 @@ const TopNavbar = () => {
               <Button 
                 variant="ghost" 
                 size="sm" 
-                className="text-white hover:bg-slate-800 flex flex-col items-end"
+                className="text-white hover:bg-slate-800 flex items-center gap-2"
                 onClick={handleLogout}
               >
-                <div className="flex items-center">
-                  <LogOut className="w-4 h-4 mr-2" />
-                  <span className="hidden md:inline-block">Logout</span>
-                </div>
-                {user && (
-                  <span className="text-xs text-slate-300 mt-1">{user.email}</span>
-                )}
+                <LogOut className="h-4 w-4" />
+                <span className="hidden md:inline-block">Logout</span>
               </Button>
+              {user && (
+                <div className="flex items-center ml-3 max-w-[180px]">
+                  <User className="h-4 w-4 text-slate-400 mr-1" />
+                  <span className="text-xs text-slate-300 truncate">{user.email}</span>
+                </div>
+              )}
             </div>
           </div>
         </div>

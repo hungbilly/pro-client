@@ -355,6 +355,9 @@ export const getJobs = async (companyId?: string | null) => {
       status: job.status as 'active' | 'completed' | 'cancelled',
       date: job.date || undefined,
       location: job.location || undefined,
+      startTime: job.start_time || undefined,
+      endTime: job.end_time || undefined,
+      isFullDay: job.is_full_day || false,
       createdAt: job.created_at,
       updatedAt: job.updated_at
     })) || [];
@@ -386,6 +389,9 @@ export const getJob = async (id: string): Promise<Job | undefined> => {
       status: data.status as 'active' | 'completed' | 'cancelled',
       date: data.date || undefined,
       location: data.location || undefined,
+      startTime: data.start_time || undefined,
+      endTime: data.end_time || undefined,
+      isFullDay: data.is_full_day || false,
       createdAt: data.created_at,
       updatedAt: data.updated_at
     };
@@ -416,6 +422,9 @@ export const getClientJobs = async (clientId: string): Promise<Job[]> => {
       status: job.status as 'active' | 'completed' | 'cancelled',
       date: job.date || undefined,
       location: job.location || undefined,
+      startTime: job.start_time || undefined,
+      endTime: job.end_time || undefined,
+      isFullDay: job.is_full_day || false,
       createdAt: job.created_at,
       updatedAt: job.updated_at
     }));
@@ -499,7 +508,10 @@ export const saveJob = async (job: Omit<Job, 'id' | 'createdAt' | 'updatedAt'>):
         description: job.description,
         status: job.status,
         date: job.date,
-        location: job.location
+        location: job.location,
+        start_time: job.startTime,
+        end_time: job.endTime,
+        is_full_day: job.isFullDay
       })
       .select()
       .single();
@@ -518,6 +530,9 @@ export const saveJob = async (job: Omit<Job, 'id' | 'createdAt' | 'updatedAt'>):
       status: data.status as 'active' | 'completed' | 'cancelled',
       date: data.date || undefined,
       location: data.location || undefined,
+      startTime: data.start_time || undefined,
+      endTime: data.end_time || undefined,
+      isFullDay: data.is_full_day || false,
       createdAt: data.created_at,
       updatedAt: data.updated_at
     };
@@ -539,6 +554,9 @@ export const updateJob = async (job: Job): Promise<Job> => {
         status: job.status,
         date: job.date,
         location: job.location,
+        start_time: job.startTime,
+        end_time: job.endTime,
+        is_full_day: job.isFullDay,
         updated_at: new Date().toISOString()
       })
       .eq('id', job.id)
@@ -559,6 +577,9 @@ export const updateJob = async (job: Job): Promise<Job> => {
       status: data.status as 'active' | 'completed' | 'cancelled',
       date: data.date || undefined,
       location: data.location || undefined,
+      startTime: data.start_time || undefined,
+      endTime: data.end_time || undefined,
+      isFullDay: data.is_full_day || false,
       createdAt: data.created_at,
       updatedAt: data.updated_at
     };

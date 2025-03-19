@@ -67,13 +67,15 @@ const TopNavbar = () => {
   ];
 
   return (
-    <div className="bg-slate-900 text-white py-2 px-4 shadow-md sticky top-0 z-50 w-full">
-      <div className="container mx-auto flex flex-col">
-        <div className="flex items-center justify-between w-full">
+    <div className="bg-slate-900 w-full">
+      <div className="max-w-screen-2xl mx-auto px-4 py-3">
+        {/* Top section: Logo and main navigation */}
+        <div className="flex items-center justify-between">
           <div className="flex items-center">
-            <Link to="/" className="flex items-center text-xl font-bold mr-8">
+            <Link to="/" className="flex items-center text-xl font-bold text-white mr-8">
               <span>Wedding Studio Manager</span>
             </Link>
+            
             <nav className="hidden md:flex space-x-1">
               {menuItems.map((item) => (
                 <Button
@@ -83,7 +85,7 @@ const TopNavbar = () => {
                   asChild={!item.disabled}
                   disabled={item.disabled}
                   className={cn(
-                    "flex items-center px-3 py-2 text-sm rounded-md transition-colors",
+                    "flex items-center gap-2 px-4 py-2 text-sm rounded-md transition-colors",
                     isActive(item.path)
                       ? "bg-slate-800 text-white"
                       : "text-slate-300 hover:text-white hover:bg-slate-800",
@@ -106,25 +108,31 @@ const TopNavbar = () => {
             </nav>
           </div>
           
-          <div className="flex flex-col items-end">
+          <div className="flex items-center">
             <Button 
               variant="ghost" 
               size="sm" 
-              className="text-white hover:bg-slate-800"
+              className="text-white hover:bg-slate-800 flex flex-col items-end"
               onClick={handleLogout}
             >
-              <LogOut className="w-4 h-4 mr-1" />
-              <span className="hidden md:inline-block">Logout</span>
+              <div className="flex items-center">
+                <LogOut className="w-4 h-4 mr-2" />
+                <span className="hidden md:inline-block">Logout</span>
+              </div>
+              {user && (
+                <span className="text-xs text-slate-300 mt-1">{user.email}</span>
+              )}
             </Button>
-            {user && (
-              <span className="text-xs text-slate-300 mt-1">{user.email}</span>
-            )}
           </div>
         </div>
         
-        {/* Company selector moved below the menu */}
-        <div className="flex justify-center mt-2 mb-1">
-          <CompanySelector className="w-[250px]" />
+        {/* Bottom section: Company selector */}
+        <div className="mt-3 pt-2 border-t border-slate-800">
+          <div className="flex items-center justify-center">
+            <Building className="w-4 h-4 text-slate-400 mr-2" />
+            <span className="text-sm text-slate-400 mr-2">Current Company:</span>
+            <CompanySelector className="w-[250px]" />
+          </div>
         </div>
       </div>
     </div>

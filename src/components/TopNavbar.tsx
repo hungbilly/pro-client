@@ -67,9 +67,9 @@ const TopNavbar = () => {
   ];
 
   return (
-    <div className="bg-slate-900 text-white py-2 px-4 shadow-md sticky top-0 z-50">
+    <div className="bg-slate-900 text-white py-2 px-4 shadow-md sticky top-0 z-50 w-full">
       <div className="container mx-auto flex flex-col">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between w-full">
           <div className="flex items-center">
             <Link to="/" className="flex items-center text-xl font-bold mr-8">
               <span>Wedding Studio Manager</span>

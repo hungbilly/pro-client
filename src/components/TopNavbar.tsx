@@ -194,7 +194,7 @@ const TopNavbar = () => {
               </nav>
             </div>
             
-            <div className="flex items-center">
+            <div className="flex items-center space-x-2">
               <Button 
                 variant="ghost" 
                 size="sm" 
@@ -204,10 +204,11 @@ const TopNavbar = () => {
                 <LogOut className="h-4 w-4" />
                 <span className="hidden md:inline-block">Logout</span>
               </Button>
+              
               {user && (
-                <div className="hidden md:flex items-center ml-3 max-w-[140px]">
+                <div className="hidden md:flex items-center ml-2 overflow-hidden" style={{ maxWidth: "clamp(120px, 15vw, 180px)" }}>
                   <User className="h-4 w-4 text-slate-400 mr-1 flex-shrink-0" />
-                  <span className="text-xs text-slate-300 truncate">
+                  <span className="text-xs text-slate-300 truncate whitespace-nowrap overflow-hidden">
                     {user.email}
                   </span>
                 </div>

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
@@ -192,27 +193,6 @@ const TopNavbar = () => {
                 ))}
               </nav>
             </div>
-            
-            <div className="flex items-center gap-2">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="text-white hover:bg-slate-800 flex items-center gap-2"
-                onClick={handleLogout}
-              >
-                <LogOut className="h-4 w-4" />
-                <span className="hidden md:inline-block">Logout</span>
-              </Button>
-              
-              {user && (
-                <div className="hidden md:flex items-center overflow-hidden max-w-[0]" style={{ maxWidth: "min(180px, 15vw)" }}>
-                  <User className="h-4 w-4 text-slate-400 mr-1 flex-shrink-0" />
-                  <span className="text-xs text-slate-300 truncate">
-                    {user.email}
-                  </span>
-                </div>
-              )}
-            </div>
           </div>
         </div>
       </div>
@@ -220,9 +200,30 @@ const TopNavbar = () => {
       {/* Company selector - different background color */}
       <div className="bg-slate-800 w-full py-2">
         <div className="max-w-screen-2xl mx-auto px-4">
-          <div className="flex items-center">
+          <div className="flex items-center justify-between">
             <div className="w-full md:w-auto">
               <CompanySelector className="w-full md:w-[300px]" showLabel={false} />
+            </div>
+            
+            <div className="hidden md:flex items-center gap-4">
+              {user && (
+                <div className="flex items-center overflow-hidden max-w-[200px]">
+                  <User className="h-4 w-4 text-slate-400 mr-1 flex-shrink-0" />
+                  <span className="text-xs text-slate-300 truncate">
+                    {user.email}
+                  </span>
+                </div>
+              )}
+              
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-white hover:bg-slate-700 flex items-center gap-2"
+                onClick={handleLogout}
+              >
+                <LogOut className="h-4 w-4" />
+                <span>Logout</span>
+              </Button>
             </div>
           </div>
         </div>

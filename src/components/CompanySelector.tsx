@@ -31,7 +31,7 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({ onCompanySelect, clas
 
   if (companies.length === 0) {
     return (
-      <div className="text-sm text-muted-foreground">
+      <div className={cn("text-sm", className)}>
         No companies found. Please add a company in Settings.
       </div>
     );
@@ -47,11 +47,12 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({ onCompanySelect, clas
       )}
       <div>
         <Select 
-          value={selectedCompany?.id || ''} 
+          value={selectedCompany?.id || ''}
           onValueChange={handleCompanyChange}
           disabled={companies.length === 0}
         >
-          <SelectTrigger className="min-w-[200px]">
+          <SelectTrigger className={cn("min-w-[180px] bg-opacity-70 border-slate-700", 
+            !showLabel && "text-white border-slate-700 bg-slate-800 hover:bg-slate-700")}>
             <SelectValue placeholder="Select a company" />
           </SelectTrigger>
           <SelectContent>

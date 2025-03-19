@@ -8,13 +8,15 @@ import {
   Calendar, 
   Settings,
   Wallet,
-  LogOut
+  LogOut,
+  Building
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
 import { useCompany } from './CompanySelector';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
+import CompanySelector from './CompanySelector';
 
 const TopNavbar = () => {
   const location = useLocation();
@@ -88,12 +90,10 @@ const TopNavbar = () => {
           </nav>
         </div>
         
-        <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm" className="text-white border-slate-700 hover:bg-slate-800">
-            <span className="hidden md:inline-block">
-              {selectedCompany ? selectedCompany.name : 'Select Company'}
-            </span>
-          </Button>
+        <div className="flex items-center gap-3">
+          <div className="hidden sm:block">
+            <CompanySelector className="min-w-[200px]" />
+          </div>
           <Button 
             variant="ghost" 
             size="sm" 

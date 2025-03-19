@@ -7,6 +7,7 @@ import {
   Briefcase, 
   Calendar, 
   Settings,
+  Wallet
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -25,6 +26,7 @@ const TopNavbar = () => {
     { path: '/', label: 'Dashboard', icon: <Home className="w-5 h-5" /> },
     { path: '/clients', label: 'Clients', icon: <Users className="w-5 h-5" /> },
     { path: '/jobs', label: 'Jobs', icon: <Briefcase className="w-5 h-5" /> },
+    { path: '/payments', label: 'Payments', icon: <Wallet className="w-5 h-5" /> },
     { path: '/calendar', label: 'Calendar', icon: <Calendar className="w-5 h-5" />, disabled: true },
     { path: '/settings', label: 'Settings', icon: <Settings className="w-5 h-5" /> },
   ];

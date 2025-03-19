@@ -17,6 +17,7 @@ import JobDetail from './pages/JobDetail';
 import JobCreate from './pages/JobCreate';
 import JobEdit from './pages/JobEdit';
 import AppLayout from './components/AppLayout';
+import Payments from './pages/Payments';
 
 const Routes = () => {
   return (
@@ -53,6 +54,9 @@ const Routes = () => {
         <Route path="/job/:jobId/invoice/create" element={<InvoiceCreate />} />
         <Route path="/job/:jobId/invoice/:invoiceId/edit" element={<InvoiceCreate />} />
         <Route path="/invoice/:id" element={<InvoiceView />} />
+        
+        {/* Payments route */}
+        <Route path="/payments" element={<Payments />} />
         
         <Route path="/settings" element={<Settings />} />
       </Route>

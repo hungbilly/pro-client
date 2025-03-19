@@ -1,11 +1,9 @@
-
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Home, 
   Users, 
   Briefcase, 
-  Calendar, 
   Settings,
   Wallet,
   LogOut,
@@ -70,7 +68,6 @@ const TopNavbar = () => {
     { path: '/clients', label: 'Clients', icon: <Users className="w-5 h-5" /> },
     { path: '/jobs', label: 'Jobs', icon: <Briefcase className="w-5 h-5" /> },
     { path: '/payments', label: 'Payments', icon: <Wallet className="w-5 h-5" /> },
-    { path: '/calendar', label: 'Calendar', icon: <Calendar className="w-5 h-5" />, disabled: true },
     { path: '/settings', label: 'Settings', icon: <Settings className="w-5 h-5" /> },
   ];
 

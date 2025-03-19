@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2, Calendar as CalendarIcon, Camera, CalendarPlus, GripVertical, Pencil, Copy, Package as PackageIcon } from 'lucide-react';
+import { Plus, Trash2, Calendar as CalendarIcon, CalendarPlus, GripVertical, Pencil, Copy, Package as PackageIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { getClient, saveInvoice, updateInvoice, getJob, getInvoice, getInvoicesByDate } from '@/lib/storage';
 import { format } from 'date-fns';
@@ -48,7 +48,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
   const [number, setNumber] = useState('');
   const [date, setDate] = useState<Date | null>(new Date());
   const [dueDate, setDueDate] = useState<Date | null>(new Date());
-  const [shootingDate, setShootingDate] = useState<Date | null>(null);
+  const [jobDate, setJobDate] = useState<Date | null>(null);
   const [status, setStatus] = useState<'draft' | 'sent' | 'accepted' | 'paid'>('draft');
   const [contractStatus, setContractStatus] = useState<'pending' | 'accepted'>('pending');
   const [items, setItems] = useState<InvoiceItem[]>([{ id: Date.now().toString(), description: '', quantity: 1, rate: 0, amount: 0 }]);
@@ -84,7 +84,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
             setNumber(fetchedInvoice.number || '');
             setDate(fetchedInvoice.date ? new Date(fetchedInvoice.date) : new Date());
             setDueDate(fetchedInvoice.dueDate ? new Date(fetchedInvoice.dueDate) : new Date());
-            setShootingDate(fetchedInvoice.shootingDate ? new Date(fetchedInvoice.shootingDate) : null);
+            setJobDate(fetchedInvoice.shootingDate ? new Date(fetchedInvoice.shootingDate) : null);
             setStatus(fetchedInvoice.status as 'draft' | 'sent' | 'accepted' | 'paid');
             setContractStatus(fetchedInvoice.contractStatus as 'pending' | 'accepted');
             setItems(fetchedInvoice.items || []);
@@ -137,6 +137,9 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
           const fetchedJob = await getJob(jobId);
           if (fetchedJob) {
             setJob(fetchedJob);
+            if (fetchedJob.date) {
+              setJobDate(new Date(fetchedJob.date));
+            }
             if (!client && fetchedJob.clientId) {
               const jobClient = await getClient(fetchedJob.clientId);
               if (jobClient) setClient(jobClient);
@@ -153,6 +156,9 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
           const fetchedJob = await getJob(invoice.jobId);
           if (fetchedJob) {
             setJob(fetchedJob);
+            if (fetchedJob.date && !jobDate) {
+              setJobDate(new Date(fetchedJob.date));
+            }
           }
         } catch (error) {
           console.error('Error fetching job from invoice:', error);
@@ -186,7 +192,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
     };
     
     loadAllData();
-  }, [clientId, jobId, invoiceId, user, invoice?.clientId, invoice?.jobId]);
+  }, [clientId, jobId, invoiceId, user, invoice?.clientId, invoice?.jobId, jobDate]);
 
   const generateInvoiceNumber = async () => {
     if (isEditMode || generatingInvoiceNumber) return;
@@ -309,9 +315,9 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
   };
 
   const handleAddToGoogleCalendar = () => {
-    if (!shootingDate || !client) return;
+    if (!jobDate || !client) return;
     
-    const formattedDate = format(shootingDate, 'yyyyMMdd');
+    const formattedDate = format(jobDate, 'yyyyMMdd');
     const title = `Photo Shoot - ${client.name} - Invoice #${number}`;
     const details = `Photo shooting session for ${client.name}.\n\nClient Contact:\nEmail: ${client.email}\nPhone: ${client.phone}\n\nAddress: ${client.address}\n\nInvoice #${number}`;
     
@@ -476,8 +482,8 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
           paymentSchedules: paymentSchedules,
         };
 
-        if (shootingDate) {
-          updatedInvoice.shootingDate = format(shootingDate, 'yyyy-MM-dd');
+        if (jobDate) {
+          updatedInvoice.shootingDate = format(jobDate, 'yyyy-MM-dd');
         }
 
         await updateInvoice(updatedInvoice);
@@ -509,8 +515,8 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
           paymentSchedules: paymentSchedules,
         };
 
-        if (shootingDate) {
-          invoiceData.shootingDate = format(shootingDate, 'yyyy-MM-dd');
+        if (jobDate) {
+          invoiceData.shootingDate = format(jobDate, 'yyyy-MM-dd');
         }
 
         const newInvoice = await saveInvoice(invoiceData);
@@ -650,31 +656,20 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
             
             <div className="space-y-4">
               <div>
-                <Label>Shooting Date</Label>
+                <Label>Job Date</Label>
                 <div className="flex gap-2">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant={"outline"}
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !shootingDate && "text-muted-foreground"
-                        )}
-                      >
-                        <Camera className="mr-2 h-4 w-4" />
-                        {shootingDate ? format(shootingDate, "PPP") : <span>Pick a date</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <DatePicker
-                        mode="single"
-                        selected={shootingDate}
-                        onSelect={setShootingDate}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  {shootingDate && (
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !jobDate && "text-muted-foreground"
+                    )}
+                    disabled={true}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {jobDate ? format(jobDate, "PPP") : <span>No job date available</span>}
+                  </Button>
+                  {jobDate && (
                     <Button 
                       type="button"
                       variant="outline"
@@ -685,6 +680,9 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
                     </Button>
                   )}
                 </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Job date is imported from the job and cannot be modified here.
+                </p>
               </div>
               
               <div>

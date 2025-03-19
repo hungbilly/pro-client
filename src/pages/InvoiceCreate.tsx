@@ -43,10 +43,10 @@ const InvoiceCreate = () => {
       }
     };
 
-    if (invoiceId) {
+    if (invoiceId && loading) {
       fetchInvoice();
     }
-  }, [invoiceId, clientId, jobId, navigate]);
+  }, [invoiceId, clientId, jobId, navigate, loading]);
 
   if (loading) {
     return (

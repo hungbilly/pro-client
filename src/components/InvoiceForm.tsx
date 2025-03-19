@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Client, Invoice, InvoiceItem, Job, PaymentSchedule } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -56,6 +56,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
   const [contractTerms, setContractTerms] = useState('');
   const [loading, setLoading] = useState(true);
   const [generatingInvoiceNumber, setGeneratingInvoiceNumber] = useState(false);
+  const [initialized, setInitialized] = useState(false);
 
   const [paymentSchedules, setPaymentSchedules] = useState<PaymentSchedule[]>([
     { 
@@ -73,8 +74,57 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
 
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
   const [isEditMode, setIsEditMode] = useState(!!invoiceId);
+  
+  const generateInvoiceNumber = useCallback(async () => {
+    if (isEditMode || generatingInvoiceNumber) return;
+    
+    setGeneratingInvoiceNumber(true);
+    try {
+      const today = new Date();
+      const datePrefix = format(today, 'yyyyMMdd');
+      
+      const todayInvoices = await getInvoicesByDate(format(today, 'yyyy-MM-dd'));
+      
+      const sequenceNumbers: number[] = [];
+      todayInvoices.forEach(inv => {
+        if (inv.number && inv.number.startsWith(datePrefix)) {
+          const parts = inv.number.split('-');
+          if (parts.length === 2) {
+            const seq = parseInt(parts[1], 10);
+            if (!isNaN(seq)) {
+              sequenceNumbers.push(seq);
+            }
+          }
+        }
+      });
+      
+      let nextSequence = 1;
+      if (sequenceNumbers.length > 0) {
+        nextSequence = Math.max(...sequenceNumbers) + 1;
+      }
+      
+      const newInvoiceNumber = `${datePrefix}-${nextSequence}`;
+      
+      const duplicateExists = todayInvoices.some(inv => inv.number === newInvoiceNumber);
+      if (duplicateExists) {
+        toast.warning(`Invoice number ${newInvoiceNumber} already exists. This could indicate a system issue.`);
+        nextSequence += 1;
+        const altInvoiceNumber = `${datePrefix}-${nextSequence}`;
+        setNumber(altInvoiceNumber);
+      } else {
+        setNumber(newInvoiceNumber);
+      }
+    } catch (error) {
+      console.error('Error generating invoice number:', error);
+      toast.error('Failed to generate invoice number automatically.');
+    } finally {
+      setGeneratingInvoiceNumber(false);
+    }
+  }, [isEditMode, generatingInvoiceNumber]);
 
   useEffect(() => {
+    if (initialized) return;
+    
     const fetchInvoiceData = async () => {
       if (invoiceId) {
         try {
@@ -102,7 +152,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
           toast.error('Failed to load invoice data.');
         }
       } else {
-        generateInvoiceNumber();
+        await generateInvoiceNumber();
       }
     };
 
@@ -189,57 +239,11 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
       await fetchJobData();
       if (user) await fetchTemplates();
       setLoading(false);
+      setInitialized(true);
     };
     
     loadAllData();
-  }, [clientId, jobId, invoiceId, user, invoice?.clientId, invoice?.jobId, jobDate]);
-
-  const generateInvoiceNumber = async () => {
-    if (isEditMode || generatingInvoiceNumber) return;
-    
-    setGeneratingInvoiceNumber(true);
-    try {
-      const today = new Date();
-      const datePrefix = format(today, 'yyyyMMdd');
-      
-      const todayInvoices = await getInvoicesByDate(format(today, 'yyyy-MM-dd'));
-      
-      const sequenceNumbers: number[] = [];
-      todayInvoices.forEach(inv => {
-        if (inv.number && inv.number.startsWith(datePrefix)) {
-          const parts = inv.number.split('-');
-          if (parts.length === 2) {
-            const seq = parseInt(parts[1], 10);
-            if (!isNaN(seq)) {
-              sequenceNumbers.push(seq);
-            }
-          }
-        }
-      });
-      
-      let nextSequence = 1;
-      if (sequenceNumbers.length > 0) {
-        nextSequence = Math.max(...sequenceNumbers) + 1;
-      }
-      
-      const newInvoiceNumber = `${datePrefix}-${nextSequence}`;
-      
-      const duplicateExists = todayInvoices.some(inv => inv.number === newInvoiceNumber);
-      if (duplicateExists) {
-        toast.warning(`Invoice number ${newInvoiceNumber} already exists. This could indicate a system issue.`);
-        nextSequence += 1;
-        const altInvoiceNumber = `${datePrefix}-${nextSequence}`;
-        setNumber(altInvoiceNumber);
-      } else {
-        setNumber(newInvoiceNumber);
-      }
-    } catch (error) {
-      console.error('Error generating invoice number:', error);
-      toast.error('Failed to generate invoice number automatically.');
-    } finally {
-      setGeneratingInvoiceNumber(false);
-    }
-  };
+  }, [clientId, jobId, invoiceId, user, invoice?.clientId, invoice?.jobId, initialized, generateInvoiceNumber]);
 
   const calculateTotalAmount = () => {
     return items.reduce((total, item) => total + item.amount, 0);
@@ -615,12 +619,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
                     <DatePicker
                       mode="single"
                       selected={date}
-                      onSelect={(newDate) => {
-                        setDate(newDate);
-                        if (!isEditMode && newDate) {
-                          generateInvoiceNumber();
-                        }
-                      }}
+                      onSelect={setDate}
                       initialFocus
                     />
                   </PopoverContent>

@@ -205,9 +205,11 @@ const TopNavbar = () => {
                 <span className="hidden md:inline-block">Logout</span>
               </Button>
               {user && (
-                <div className="flex items-center ml-3 max-w-[180px]">
-                  <User className="h-4 w-4 text-slate-400 mr-1" />
-                  <span className="text-xs text-slate-300 truncate">{user.email}</span>
+                <div className="hidden md:flex items-center ml-3 max-w-[140px]">
+                  <User className="h-4 w-4 text-slate-400 mr-1 flex-shrink-0" />
+                  <span className="text-xs text-slate-300 truncate">
+                    {user.email}
+                  </span>
                 </div>
               )}
             </div>

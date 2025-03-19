@@ -123,15 +123,18 @@ const Auth = () => {
       setErrorMessage(null);
       
       console.log('Starting Google sign-in process...');
-      console.log('Redirect URL:', `${window.location.origin}/auth/callback`);
       
+      // Create the redirect URL
+      const redirectUrl = `${window.location.origin}/auth/callback`;
+      console.log('Redirect URL:', redirectUrl);
+      
+      // Open Google OAuth in the current window, not in an iframe
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-          queryParams: {
-            prompt: 'select_account'
-          }
+          redirectTo: redirectUrl,
+          // Don't use prompt parameter as it might cause issues
+          skipBrowserRedirect: false // Ensure browser redirects automatically
         }
       });
       
@@ -139,8 +142,15 @@ const Auth = () => {
       
       if (error) throw error;
       
-      // No need for toast here as we're being redirected
-      console.log('Google sign-in initiated, redirect URL:', data.url);
+      // For debugging purposes
+      if (data && data.url) {
+        console.log('Google auth URL:', data.url);
+        // Let the browser handle the redirect naturally
+        window.location.href = data.url;
+      } else {
+        console.error('No redirect URL received from Supabase');
+        setErrorMessage('Failed to initiate Google sign-in. No redirect URL received.');
+      }
     } catch (error: any) {
       console.error('Google auth error:', error);
       setErrorMessage(error.message || 'Google authentication failed');

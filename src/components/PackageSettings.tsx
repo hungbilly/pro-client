@@ -34,7 +34,6 @@ const PackageSettings = () => {
     
     setLoading(true);
     try {
-      // Use type assertion to bypass TypeScript checks
       const { data, error } = await (supabase
         .from('packages') as any)
         .select('*')
@@ -117,7 +116,6 @@ const PackageSettings = () => {
     
     try {
       if (currentPackageId) {
-        // Update existing package
         const { error } = await (supabase
           .from('packages') as any)
           .update({
@@ -134,7 +132,6 @@ const PackageSettings = () => {
         
         toast.success('Package updated successfully');
       } else {
-        // Create new package
         const { error } = await (supabase
           .from('packages') as any)
           .insert({

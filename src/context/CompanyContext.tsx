@@ -19,7 +19,9 @@ export interface Company {
 interface CompanyContextType {
   companies: Company[];
   selectedCompany: Company | null;
+  selectedCompanyId: string | null; // Add this property
   setSelectedCompany: (company: Company) => void;
+  setSelectedCompanyId: (id: string | null) => void; // Add this property
   loading: boolean;
   refreshCompanies: () => Promise<void>;
   error: Error | null;
@@ -33,6 +35,22 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+
+  // Computed property based on selectedCompany
+  const selectedCompanyId = selectedCompany?.id || null;
+
+  // Function to set selectedCompany by ID
+  const setSelectedCompanyId = (id: string | null) => {
+    if (!id) {
+      setSelectedCompany(null);
+      return;
+    }
+    
+    const company = companies.find(c => c.id === id);
+    if (company) {
+      setSelectedCompany(company);
+    }
+  };
 
   const fetchCompanies = async () => {
     setLoading(true);
@@ -93,7 +111,9 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
     <CompanyContext.Provider value={{ 
       companies, 
       selectedCompany, 
+      selectedCompanyId,
       setSelectedCompany, 
+      setSelectedCompanyId,
       loading, 
       refreshCompanies: fetchCompanies,
       error

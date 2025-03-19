@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { getInvoiceByViewLink, getClient, updateInvoiceStatus, getInvoice, updateContractStatus } from '@/lib/storage';
@@ -33,6 +32,7 @@ const InvoiceView = () => {
   const [emailLogs, setEmailLogs] = useState<Array<{timestamp: Date, message: string, success: boolean}>>([]);
   const [paymentScheduleLogs, setPaymentScheduleLogs] = useState<string[]>([]);
   const [showEmailDialog, setShowEmailDialog] = useState(false);
+  const [showEmailForm, setShowEmailForm] = useState(false);
 
   const isClientView = (location.search.includes('client=true') || !location.search) && !isAdmin;
 
@@ -309,8 +309,7 @@ const InvoiceView = () => {
           }
         }
         
-        // Close the dialog after successful send
-        setShowEmailDialog(false);
+        setShowEmailForm(false);
       } else {
         console.warn('Email response:', data);
         toast.error(data?.message || 'Email failed to send.');
@@ -406,7 +405,6 @@ const InvoiceView = () => {
   const canClientAcceptInvoice = ['draft', 'sent'].includes(invoice.status);
   const canClientAcceptContract = invoice.contractStatus !== 'accepted';
 
-  // Debug: Log payment schedules before rendering
   console.log('RENDERING INVOICE VIEW WITH PAYMENT SCHEDULES:', 
               invoice.paymentSchedules ? JSON.stringify(invoice.paymentSchedules) : 'undefined');
   console.log('Payment schedules type:', Array.isArray(invoice.paymentSchedules) ? 'array' : typeof invoice.paymentSchedules);
@@ -472,10 +470,7 @@ const InvoiceView = () => {
               <div>
                 <h4 className="text-lg font-semibold mb-2">Invoice Details</h4>
                 <p>
-                  <strong>Date:</strong> {new Date(invoice.date).toLocaleDateString()}
-                </p>
-                <p>
-                  <strong>Due Date:</strong> {new Date(invoice.dueDate).toLocaleDateString()}
+                  <strong>Job Date:</strong> {new Date(invoice.date).toLocaleDateString()}
                 </p>
                 {invoice.shootingDate && (
                   <p className="flex items-center">

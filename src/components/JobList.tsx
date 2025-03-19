@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Job, Client } from '@/types';
@@ -6,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { BriefcaseBusiness, CalendarDays, MapPin, Plus, Eye, FileEdit, Trash2 } from 'lucide-react';
+import { BriefcaseBusiness, CalendarDays, MapPin, Plus, Eye, FileEdit, Trash2, Clock } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { deleteJob } from '@/lib/storage';
 import { toast } from 'sonner';
@@ -30,15 +29,25 @@ const getStatusColor = (status: Job['status']) => {
   }
 };
 
+const formatTimeDisplay = (job: Job) => {
+  if (job.isFullDay) {
+    return "Full Day";
+  }
+  
+  if (job.startTime && job.endTime) {
+    return `${job.startTime} - ${job.endTime}`;
+  }
+  
+  return null;
+};
+
 const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
-  // Sort jobs by date (newest first)
   const sortedJobs = [...jobs].sort((a, b) => {
     if (!a.date) return 1;
     if (!b.date) return -1;
     return new Date(b.date).getTime() - new Date(a.date).getTime();
   });
 
-  // Group jobs by status
   const activeJobs = sortedJobs.filter(job => job.status === 'active');
   const completedJobs = sortedJobs.filter(job => job.status === 'completed');
   const cancelledJobs = sortedJobs.filter(job => job.status === 'cancelled');
@@ -82,9 +91,17 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
               {job.date && (
                 <div className="flex justify-between items-center">
                   <div className="text-sm text-muted-foreground">Date:</div>
-                  <div className="text-sm font-medium flex items-center">
-                    <CalendarDays className="h-3 w-3 mr-1 text-muted-foreground" />
-                    {new Date(job.date).toLocaleDateString()}
+                  <div className="text-sm font-medium">
+                    <div className="flex items-center">
+                      <CalendarDays className="h-3 w-3 mr-1 text-muted-foreground" />
+                      {new Date(job.date).toLocaleDateString()}
+                    </div>
+                    {(job.startTime || job.isFullDay) && (
+                      <div className="flex items-center mt-1 justify-end">
+                        <Clock className="h-3 w-3 mr-1 text-muted-foreground" />
+                        <span className="text-muted-foreground">{formatTimeDisplay(job)}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

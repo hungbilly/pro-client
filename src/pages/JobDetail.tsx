@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Trash2, FileEdit, CalendarDays, MapPin, FileText, User, Building2, Mail, Phone } from 'lucide-react';
+import { ArrowLeft, Trash2, FileEdit, CalendarDays, MapPin, FileText, User, Building2, Mail, Phone, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import InvoiceList from '@/components/InvoiceList';
@@ -94,6 +94,18 @@ const JobDetail = () => {
       .join('')
       .toUpperCase()
       .substring(0, 2);
+  };
+
+  const formatTimeDisplay = (job: Job) => {
+    if (job.isFullDay) {
+      return "Full Day";
+    }
+    
+    if (job.startTime && job.endTime) {
+      return `${job.startTime} - ${job.endTime}`;
+    }
+    
+    return null;
   };
 
   if (isLoading) {
@@ -259,7 +271,15 @@ const JobDetail = () => {
                     {job.date && (
                       <div className="flex items-center">
                         <CalendarDays className="h-4 w-4 text-muted-foreground mr-2" />
-                        <span>Date: {new Date(job.date).toLocaleDateString()}</span>
+                        <div>
+                          <span>Date: {new Date(job.date).toLocaleDateString()}</span>
+                          {(job.startTime || job.isFullDay) && (
+                            <div className="flex items-center text-sm text-muted-foreground mt-1">
+                              <Clock className="h-3.5 w-3.5 mr-1" />
+                              <span>{formatTimeDisplay(job)}</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                     

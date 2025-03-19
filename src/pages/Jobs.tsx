@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getJobs, getClients } from '@/lib/storage';
@@ -25,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useCompany } from '@/components/CompanySelector';
+import { Job } from '@/types';
 
 const Jobs = () => {
   console.log("Jobs page rendering");
@@ -48,6 +50,18 @@ const Jobs = () => {
       <p className="text-red-500">{error instanceof Error ? error.message : String(error)}</p>
     </div>;
   }
+};
+
+const formatTimeDisplay = (job: Job) => {
+  if (job.isFullDay) {
+    return "Full Day";
+  }
+  
+  if (job.startTime && job.endTime) {
+    return `${job.startTime} - ${job.endTime}`;
+  }
+  
+  return null;
 };
 
 const JobsTable = () => {
@@ -108,7 +122,7 @@ const JobsTable = () => {
                 <TableRow>
                   <TableHead>Title</TableHead>
                   <TableHead>Client</TableHead>
-                  <TableHead className="hidden md:table-cell">Date</TableHead>
+                  <TableHead className="hidden md:table-cell">Date/Time</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -121,7 +135,15 @@ const JobsTable = () => {
                       <TableCell className="font-medium">{job.title}</TableCell>
                       <TableCell>{jobClient?.name}</TableCell>
                       <TableCell className="hidden md:table-cell">
-                        {job.date ? new Date(job.date).toLocaleDateString() : 'N/A'}
+                        <div>
+                          {job.date ? new Date(job.date).toLocaleDateString() : 'N/A'}
+                          {(job.startTime || job.isFullDay) && job.date && (
+                            <div className="flex items-center text-xs text-muted-foreground mt-1">
+                              <Clock className="h-3 w-3 mr-1" />
+                              <span>{formatTimeDisplay(job)}</span>
+                            </div>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Badge className={getStatusColor(job.status)}>

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -22,24 +21,19 @@ const Auth = () => {
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
-  // Check if we were redirected here after a logout
   useEffect(() => {
     const checkForLogoutRedirect = async () => {
-      // If there's a 'logout' search param, ensure we're fully logged out
       if (window.location.search.includes('logout')) {
         try {
-          // Clear all storage
           window.localStorage.clear();
           window.sessionStorage.clear();
           
-          // Try to sign out again to be sure
           try {
             await supabase.auth.signOut({ scope: 'global' });
           } catch (error) {
             console.log('Already signed out or error signing out:', error);
           }
           
-          // Remove the logout param from URL
           window.history.replaceState({}, document.title, window.location.pathname);
         } catch (error) {
           console.error('Error during cleanup:', error);
@@ -51,13 +45,11 @@ const Auth = () => {
   }, []);
   
   useEffect(() => {
-    // If user is already logged in, redirect to home
     if (user) {
       navigate('/');
     }
   }, [user, navigate]);
 
-  // Check URL params for error information
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const errorParam = urlParams.get('error');
@@ -68,7 +60,6 @@ const Auth = () => {
       setErrorMessage(errorMsg);
       console.error('Auth error from URL params:', { errorParam, errorDescription });
       
-      // Clean the URL
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
@@ -80,7 +71,6 @@ const Auth = () => {
 
     try {
       if (isLogin) {
-        // Sign in
         const { error, data } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -92,13 +82,12 @@ const Auth = () => {
         toast.success('Successfully signed in!');
         navigate('/');
       } else {
-        // Sign up
         const { error, data } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: {
-              is_admin: false // Set default user role
+              is_admin: false
             }
           }
         });
@@ -124,28 +113,26 @@ const Auth = () => {
       
       console.log('Starting Google sign-in process...');
       
-      // Create the redirect URL
       const redirectUrl = `${window.location.origin}/auth/callback`;
       console.log('Redirect URL:', redirectUrl);
       
-      // Open Google OAuth in the current window, not in an iframe
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: redirectUrl,
-          // Don't use prompt parameter as it might cause issues
-          skipBrowserRedirect: false // Ensure browser redirects automatically
+          skipBrowserRedirect: false
         }
       });
       
       console.log('Google sign-in response:', { data, error });
       
-      if (error) throw error;
+      if (error) {
+        console.error('OAuth error:', error);
+        throw error;
+      }
       
-      // For debugging purposes
       if (data && data.url) {
-        console.log('Google auth URL:', data.url);
-        // Let the browser handle the redirect naturally
+        console.log('Redirecting to Google auth URL:', data.url);
         window.location.href = data.url;
       } else {
         console.error('No redirect URL received from Supabase');

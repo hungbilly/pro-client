@@ -18,9 +18,11 @@ const MainNavbar = () => {
       console.log('MainNavbar: Logout successful');
       toast.success('Successfully logged out');
       
-      // Ensure we redirect to auth page after logout
+      // Force a hard reload to the auth page to clear all state
+      window.localStorage.clear();
+      window.sessionStorage.clear();
       setTimeout(() => {
-        window.location.href = '/auth';
+        window.location.replace('/auth');
       }, 100);
     } catch (error) {
       console.error('Logout error:', error);
@@ -28,7 +30,7 @@ const MainNavbar = () => {
       
       // Even if logout fails, redirect to auth page as a fallback
       setTimeout(() => {
-        window.location.href = '/auth';
+        window.location.replace('/auth');
       }, 500);
     }
   };

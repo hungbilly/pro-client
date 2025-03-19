@@ -13,11 +13,39 @@ import { useAuth } from '@/context/AuthContext';
 
 const Auth = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  
+  // Check if we were redirected here after a logout
+  useEffect(() => {
+    const checkForLogoutRedirect = async () => {
+      // If there's a 'logout' search param, ensure we're fully logged out
+      if (window.location.search.includes('logout')) {
+        try {
+          // Clear all storage
+          window.localStorage.clear();
+          window.sessionStorage.clear();
+          
+          // Try to sign out again to be sure
+          try {
+            await supabase.auth.signOut({ scope: 'global' });
+          } catch (error) {
+            console.log('Already signed out or error signing out:', error);
+          }
+          
+          // Remove the logout param from URL
+          window.history.replaceState({}, document.title, window.location.pathname);
+        } catch (error) {
+          console.error('Error during cleanup:', error);
+        }
+      }
+    };
+    
+    checkForLogoutRedirect();
+  }, []);
   
   useEffect(() => {
     // If user is already logged in, redirect to home

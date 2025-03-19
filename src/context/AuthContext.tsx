@@ -59,17 +59,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
       
-      // Try to call supabase sign out but don't throw if it fails due to missing session
+      // Attempt to sign out via Supabase API
       try {
-        await supabase.auth.signOut();
+        await supabase.auth.signOut({ scope: 'global' });
         console.log('Successfully called supabase.auth.signOut()');
       } catch (error: any) {
-        // If error is AuthSessionMissingError, it's okay - we've already cleared the state
         if (error.name === 'AuthSessionMissingError') {
           console.log('No active session to sign out from (already signed out)');
         } else {
           console.error('Error during supabase.auth.signOut():', error);
         }
+      }
+
+      // Reset IndexedDB storage which might contain session data
+      try {
+        window.indexedDB.deleteDatabase('supabase.auth.token');
+      } catch (error) {
+        console.error('Error clearing IndexedDB:', error);
       }
       
       console.log('Successfully signed out');

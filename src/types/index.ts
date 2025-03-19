@@ -33,6 +33,9 @@ export interface Job {
   status: 'active' | 'completed' | 'cancelled';
   date?: string;
   location?: string;
+  startTime?: string;
+  endTime?: string;
+  isFullDay?: boolean;
   createdAt: string;
   updatedAt: string;
 }

@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { getClient, saveJob, updateJob, getJob } from '@/lib/storage';
 import { format } from 'date-fns';
@@ -16,6 +16,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from '@/lib/utils';
 import { useCompany } from './CompanySelector';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface JobFormProps {
   job?: Job;
@@ -34,6 +35,9 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
   const [status, setStatus] = useState<'active' | 'completed' | 'cancelled'>(existingJob?.status || 'active');
   const [date, setDate] = useState<Date | null>(existingJob?.date ? new Date(existingJob.date) : null);
   const [location, setLocation] = useState(existingJob?.location || '');
+  const [startTime, setStartTime] = useState(existingJob?.startTime || '09:00');
+  const [endTime, setEndTime] = useState(existingJob?.endTime || '17:00');
+  const [isFullDay, setIsFullDay] = useState(existingJob?.isFullDay || false);
 
   const clientId = predefinedClientId || clientIdParam || existingJob?.clientId || '';
   const { selectedCompanyId, setSelectedCompanyId } = useCompany();
@@ -94,6 +98,9 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
           status,
           date: formattedDate,
           location,
+          startTime: isFullDay ? undefined : startTime,
+          endTime: isFullDay ? undefined : endTime,
+          isFullDay,
           createdAt: existingJob.createdAt,
           updatedAt: new Date().toISOString()
         };
@@ -108,7 +115,10 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
           description,
           status,
           date: formattedDate,
-          location
+          location,
+          startTime: isFullDay ? undefined : startTime,
+          endTime: isFullDay ? undefined : endTime,
+          isFullDay
         };
 
         await saveJob(newJob);
@@ -216,6 +226,51 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
               />
+            </div>
+          </div>
+          
+          {/* Time Selection */}
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="isFullDay" 
+                checked={isFullDay} 
+                onCheckedChange={(checked) => {
+                  setIsFullDay(checked === true);
+                }}
+              />
+              <Label htmlFor="isFullDay">Full Day</Label>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="startTime">Start Time</Label>
+                <div className="flex items-center">
+                  <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="time"
+                    id="startTime"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                    disabled={isFullDay}
+                    className={isFullDay ? "opacity-50" : ""}
+                  />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="endTime">End Time</Label>
+                <div className="flex items-center">
+                  <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="time"
+                    id="endTime"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                    disabled={isFullDay}
+                    className={isFullDay ? "opacity-50" : ""}
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </form>

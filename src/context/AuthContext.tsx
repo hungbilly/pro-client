@@ -20,31 +20,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    // Handle OAuth redirects - check URL hash for access_token
-    const handleOAuthRedirect = async () => {
-      const hasHashParams = window.location.hash && window.location.hash.length > 1;
-      if (hasHashParams) {
-        try {
-          // Let Supabase handle the access token in the URL
-          const { data, error } = await supabase.auth.getUser();
-          if (error) {
-            console.error('OAuth redirect error:', error);
-          } else if (data.user) {
-            console.log('User authenticated via OAuth redirect');
-          }
-          // Clean up the URL
-          window.history.replaceState({}, document.title, window.location.pathname);
-        } catch (error) {
-          console.error('Error handling OAuth redirect:', error);
-        }
-      }
-    };
-
     // Get initial session
     const initAuth = async () => {
       try {
-        await handleOAuthRedirect();
-        
+        // Check for active session
         const { data: { session } } = await supabase.auth.getSession();
         setSession(session);
         setUser(session?.user ?? null);

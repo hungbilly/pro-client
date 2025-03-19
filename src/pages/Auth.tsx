@@ -98,13 +98,13 @@ const Auth = () => {
   const handleGoogleSignIn = async () => {
     try {
       setLoading(true);
+      // Updated Google sign-in configuration
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin,
+          redirectTo: `${window.location.origin}/auth/callback`,
           queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
+            prompt: 'select_account'
           }
         }
       });

@@ -23,8 +23,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Get initial session
     const initAuth = async () => {
       try {
+        console.log('Initializing auth, checking for session...');
         // Check for active session
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Error getting session:', error);
+        } else {
+          console.log('Session check result:', session ? 'Session found' : 'No session');
+        }
+        
         setSession(session);
         setUser(session?.user ?? null);
         setIsAdmin(session?.user?.user_metadata?.is_admin || false);
@@ -32,6 +40,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // For Google auth, make sure we have the is_admin field set
         if (session?.user && session.user.app_metadata.provider === 'google' && 
             !session.user.user_metadata.hasOwnProperty('is_admin')) {
+          console.log('Adding is_admin metadata for Google auth user');
           // Set default admin status for Google auth users if not already set
           try {
             await supabase.auth.updateUser({

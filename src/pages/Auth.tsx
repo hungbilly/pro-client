@@ -11,6 +11,7 @@ import { AnimatedBackground } from '@/components/ui-custom/AnimatedBackground';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { useAuth } from '@/context/AuthContext';
 import { Separator } from '@/components/ui/separator';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -19,6 +20,7 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
   // Check if we were redirected here after a logout
   useEffect(() => {
@@ -55,25 +57,43 @@ const Auth = () => {
     }
   }, [user, navigate]);
 
+  // Check URL params for error information
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const errorParam = urlParams.get('error');
+    const errorDescription = urlParams.get('error_description');
+    
+    if (errorParam || errorDescription) {
+      const errorMsg = errorDescription || errorParam || 'Authentication error occurred';
+      setErrorMessage(errorMsg);
+      console.error('Auth error from URL params:', { errorParam, errorDescription });
+      
+      // Clean the URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setErrorMessage(null);
 
     try {
       if (isLogin) {
         // Sign in
-        const { error } = await supabase.auth.signInWithPassword({
+        const { error, data } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
 
         if (error) throw error;
         
+        console.log('Sign in successful:', data);
         toast.success('Successfully signed in!');
         navigate('/');
       } else {
         // Sign up
-        const { error } = await supabase.auth.signUp({
+        const { error, data } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -85,10 +105,12 @@ const Auth = () => {
 
         if (error) throw error;
         
+        console.log('Sign up successful:', data);
         toast.success('Registration successful! Please check your email for confirmation.');
       }
     } catch (error: any) {
       console.error('Auth error:', error);
+      setErrorMessage(error.message || 'Authentication failed');
       toast.error(error.message || 'Authentication failed');
     } finally {
       setLoading(false);
@@ -98,8 +120,12 @@ const Auth = () => {
   const handleGoogleSignIn = async () => {
     try {
       setLoading(true);
-      // Updated Google sign-in configuration
-      const { error } = await supabase.auth.signInWithOAuth({
+      setErrorMessage(null);
+      
+      console.log('Starting Google sign-in process...');
+      console.log('Redirect URL:', `${window.location.origin}/auth/callback`);
+      
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
@@ -109,10 +135,15 @@ const Auth = () => {
         }
       });
       
+      console.log('Google sign-in response:', { data, error });
+      
       if (error) throw error;
+      
       // No need for toast here as we're being redirected
+      console.log('Google sign-in initiated, redirect URL:', data.url);
     } catch (error: any) {
       console.error('Google auth error:', error);
+      setErrorMessage(error.message || 'Google authentication failed');
       toast.error(error.message || 'Google authentication failed');
       setLoading(false);
     }
@@ -130,6 +161,17 @@ const Auth = () => {
               Enter your credentials to {isLogin ? 'sign in to' : 'create'} your account
             </CardDescription>
           </CardHeader>
+          
+          {errorMessage && (
+            <div className="px-6">
+              <Alert variant="destructive">
+                <AlertDescription>
+                  {errorMessage}
+                </AlertDescription>
+              </Alert>
+            </div>
+          )}
+          
           <form onSubmit={handleAuth}>
             <CardContent className="space-y-4">
               <div className="space-y-2">

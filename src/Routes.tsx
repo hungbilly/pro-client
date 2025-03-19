@@ -18,12 +18,14 @@ import JobCreate from './pages/JobCreate';
 import JobEdit from './pages/JobEdit';
 import AppLayout from './components/AppLayout';
 import Payments from './pages/Payments';
+import AuthCallback from './pages/AuthCallback';
 
 const Routes = () => {
   return (
     <ReactRoutes>
-      {/* Auth route outside of the layout */}
+      {/* Auth routes outside of the layout */}
       <Route path="/auth" element={<Auth />} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
       <Route path="/invoice/:viewLink" element={<InvoiceView />} />
       
       {/* Protected routes with layout */}

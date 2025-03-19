@@ -105,115 +105,115 @@ const TopNavbar = () => {
   };
 
   return (
-    <div className="bg-slate-900 w-full">
-      <div className="max-w-screen-2xl mx-auto px-4 py-3">
-        {/* Top section: Logo and main navigation */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            {isMobile && (
-              <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
-                <DrawerTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="mr-2 text-white hover:bg-slate-800"
-                  >
-                    <Menu className="h-5 w-5" />
-                  </Button>
-                </DrawerTrigger>
-                <DrawerContent className="h-[80vh] bg-slate-900 border-t border-slate-800">
-                  <div className="px-4 py-6 flex flex-col h-full">
-                    <div className="text-xl font-bold text-white mb-4">Wedding Studio Manager</div>
-                    <div className="space-y-1 flex-1">
-                      {renderMenuItems()}
-                    </div>
-                    <div className="mt-auto pt-4 border-t border-slate-800">
-                      <div className="flex flex-col items-center justify-center space-y-4">
-                        <div className="flex items-center justify-center w-full">
-                          <Building className="w-4 h-4 text-slate-400 mr-2" />
-                          <span className="text-sm text-slate-400 mr-2">Current Company:</span>
-                          <CompanySelector className="w-[250px]" />
+    <div className="w-full">
+      {/* Main navigation - dark background */}
+      <div className="bg-slate-900 w-full">
+        <div className="max-w-screen-2xl mx-auto px-4 py-3">
+          {/* Top section: Logo and main navigation */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              {isMobile && (
+                <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
+                  <DrawerTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="mr-2 text-white hover:bg-slate-800"
+                    >
+                      <Menu className="h-5 w-5" />
+                    </Button>
+                  </DrawerTrigger>
+                  <DrawerContent className="h-[80vh] bg-slate-900 border-t border-slate-800">
+                    <div className="px-4 py-6 flex flex-col h-full">
+                      <div className="text-xl font-bold text-white mb-4">Wedding Studio Manager</div>
+                      <div className="space-y-1 flex-1">
+                        {renderMenuItems()}
+                      </div>
+                      <div className="mt-auto pt-4 border-t border-slate-800">
+                        <div className="flex flex-col items-center justify-center space-y-4">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-white hover:bg-slate-800 flex flex-col items-center w-full"
+                            onClick={handleLogout}
+                          >
+                            <div className="flex items-center justify-center w-full">
+                              <LogOut className="w-4 h-4 mr-2" />
+                              <span>Logout</span>
+                            </div>
+                            {user && (
+                              <span className="text-xs text-slate-300 mt-1">{user.email}</span>
+                            )}
+                          </Button>
                         </div>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="text-white hover:bg-slate-800 flex flex-col items-center w-full"
-                          onClick={handleLogout}
-                        >
-                          <div className="flex items-center justify-center w-full">
-                            <LogOut className="w-4 h-4 mr-2" />
-                            <span>Logout</span>
-                          </div>
-                          {user && (
-                            <span className="text-xs text-slate-300 mt-1">{user.email}</span>
-                          )}
-                        </Button>
                       </div>
                     </div>
-                  </div>
-                </DrawerContent>
-              </Drawer>
-            )}
-            <Link to="/" className="flex items-center text-xl font-bold text-white mr-8">
-              <span>Wedding Studio Manager</span>
-            </Link>
-            
-            <nav className="hidden md:flex space-x-1">
-              {menuItems.map((item) => (
-                <Button
-                  key={item.path}
-                  variant="ghost"
-                  size="sm"
-                  asChild={!item.disabled}
-                  disabled={item.disabled}
-                  className={cn(
-                    "flex items-center gap-2 px-4 py-2 text-sm rounded-md transition-colors",
-                    isActive(item.path)
-                      ? "bg-slate-800 text-white"
-                      : "text-slate-300 hover:text-white hover:bg-slate-800",
-                    item.disabled && "opacity-50 cursor-not-allowed"
-                  )}
-                >
-                  {!item.disabled ? (
-                    <Link to={item.path} className="flex items-center gap-2">
-                      {item.icon}
-                      <span>{item.label}</span>
-                    </Link>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      {item.icon}
-                      <span>{item.label}</span>
-                    </div>
-                  )}
-                </Button>
-              ))}
-            </nav>
-          </div>
-          
-          <div className="flex items-center">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="text-white hover:bg-slate-800 flex flex-col items-end"
-              onClick={handleLogout}
-            >
-              <div className="flex items-center">
-                <LogOut className="w-4 h-4 mr-2" />
-                <span className="hidden md:inline-block">Logout</span>
-              </div>
-              {user && (
-                <span className="text-xs text-slate-300 mt-1">{user.email}</span>
+                  </DrawerContent>
+                </Drawer>
               )}
-            </Button>
+              <Link to="/" className="flex items-center text-xl font-bold text-white mr-8">
+                <span>Wedding Studio Manager</span>
+              </Link>
+              
+              <nav className="hidden md:flex space-x-1">
+                {menuItems.map((item) => (
+                  <Button
+                    key={item.path}
+                    variant="ghost"
+                    size="sm"
+                    asChild={!item.disabled}
+                    disabled={item.disabled}
+                    className={cn(
+                      "flex items-center gap-2 px-4 py-2 text-sm rounded-md transition-colors",
+                      isActive(item.path)
+                        ? "bg-slate-800 text-white"
+                        : "text-slate-300 hover:text-white hover:bg-slate-800",
+                      item.disabled && "opacity-50 cursor-not-allowed"
+                    )}
+                  >
+                    {!item.disabled ? (
+                      <Link to={item.path} className="flex items-center gap-2">
+                        {item.icon}
+                        <span>{item.label}</span>
+                      </Link>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        {item.icon}
+                        <span>{item.label}</span>
+                      </div>
+                    )}
+                  </Button>
+                ))}
+              </nav>
+            </div>
+            
+            <div className="flex items-center">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-white hover:bg-slate-800 flex flex-col items-end"
+                onClick={handleLogout}
+              >
+                <div className="flex items-center">
+                  <LogOut className="w-4 h-4 mr-2" />
+                  <span className="hidden md:inline-block">Logout</span>
+                </div>
+                {user && (
+                  <span className="text-xs text-slate-300 mt-1">{user.email}</span>
+                )}
+              </Button>
+            </div>
           </div>
         </div>
-        
-        {/* Bottom section: Company selector - only show on desktop */}
-        <div className="mt-3 pt-2 border-t border-slate-800 hidden md:block">
-          <div className="flex items-center justify-center">
-            <Building className="w-4 h-4 text-slate-400 mr-2" />
-            <span className="text-sm text-slate-400 mr-2">Current Company:</span>
-            <CompanySelector className="w-[250px]" />
+      </div>
+      
+      {/* Company selector - different background color */}
+      <div className="bg-slate-800 w-full py-2">
+        <div className="max-w-screen-2xl mx-auto px-4">
+          <div className="flex items-center">
+            <div className="w-full md:w-auto">
+              <CompanySelector className="w-full md:w-[300px]" showLabel={false} />
+            </div>
           </div>
         </div>
       </div>

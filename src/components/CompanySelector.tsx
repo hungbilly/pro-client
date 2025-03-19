@@ -11,7 +11,11 @@ interface CompanySelectorProps {
   showLabel?: boolean;
 }
 
-const CompanySelector: React.FC<CompanySelectorProps> = ({ onCompanySelect, className, showLabel = false }) => {
+const CompanySelector: React.FC<CompanySelectorProps> = ({ 
+  onCompanySelect, 
+  className, 
+  showLabel = true 
+}) => {
   const { companies, selectedCompany, setSelectedCompany, loading } = useCompanyContext();
 
   useEffect(() => {
@@ -44,11 +48,19 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({ onCompanySelect, clas
 
   return (
     <div className={className}>
-      <div className="flex items-center gap-1 mb-1 text-sm font-medium text-white">
-        <Building className="h-4 w-4" />
-        <span>Current Company</span>
-      </div>
-      <div>
+      {showLabel && (
+        <div className="flex items-center gap-1 mb-1 text-sm font-medium text-white">
+          <Building className="h-4 w-4" />
+          <span>Current Company</span>
+        </div>
+      )}
+      <div className="flex items-center">
+        {!showLabel && (
+          <Building className="h-4 w-4 text-slate-400 mr-2" />
+        )}
+        <span className={`text-slate-300 mr-2 ${!showLabel ? '' : 'hidden'}`}>
+          Current Company:
+        </span>
         <Select 
           value={selectedCompany?.id || ''}
           onValueChange={handleCompanyChange}

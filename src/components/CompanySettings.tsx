@@ -35,15 +35,15 @@ const CompanySettings = () => {
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Form state
+  // Form state with default values
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [website, setWebsite] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
-  const [country, setCountry] = useState<string | undefined>(undefined);
-  const [currency, setCurrency] = useState<string | undefined>(undefined);
+  const [country, setCountry] = useState('hk'); // Default to 'hk'
+  const [currency, setCurrency] = useState('hkd'); // Default to 'hkd'
   const [isDefault, setIsDefault] = useState(false);
 
   useEffect(() => {
@@ -74,8 +74,8 @@ const CompanySettings = () => {
     setEmail(company.email || '');
     setWebsite(company.website || '');
     setLogoUrl(company.logo_url || '');
-    setCountry(company.country);
-    setCurrency(company.currency);
+    setCountry(company.country || 'hk'); // Fallback to 'hk'
+    setCurrency(company.currency || 'hkd'); // Fallback to 'hkd'
     setIsDefault(company.is_default);
   };
 
@@ -86,8 +86,8 @@ const CompanySettings = () => {
     setEmail('');
     setWebsite('');
     setLogoUrl('');
-    setCountry(undefined);
-    setCurrency(undefined);
+    setCountry('hk'); // Reset to 'hk'
+    setCurrency('hkd'); // Reset to 'hkd'
     setIsDefault(companies.length === 0); // Make default if it's the first company
   };
 

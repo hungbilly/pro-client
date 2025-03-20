@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -91,7 +92,7 @@ export function CountryDropdown({ value, onChange, disabled = false }: CountryDr
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-full p-0" align="start">
-        <Command>
+        <Command value={safeValue} onValueChange={onChange}>
           <CommandInput placeholder="Search country..." />
           <CommandEmpty>No country found.</CommandEmpty>
           <CommandGroup className="max-h-64 overflow-y-auto">

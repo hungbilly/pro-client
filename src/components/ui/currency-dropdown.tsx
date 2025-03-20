@@ -85,7 +85,7 @@ export function CurrencyDropdown({ value, onChange, disabled = false }: Currency
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-full p-0" align="start">
-        <Command>
+        <Command value={safeValue} onValueChange={onChange}>
           <CommandInput placeholder="Search currency..." />
           <CommandEmpty>No currency found.</CommandEmpty>
           <CommandGroup className="max-h-64 overflow-y-auto">

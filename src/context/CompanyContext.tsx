@@ -14,8 +14,6 @@ export interface Company {
   logo_url?: string;
   is_default: boolean;
   user_id: string;
-  country?: string;
-  currency?: string;
 }
 
 interface CompanyContextType {

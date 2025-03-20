@@ -12,8 +12,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useCompany } from './CompanySelector';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CountryDropdown } from '@/components/ui/country-dropdown';
-import { CurrencyDropdown } from '@/components/ui/currency-dropdown';
 
 interface Company {
   id: string;
@@ -24,8 +22,6 @@ interface Company {
   website?: string;
   logo_url?: string;
   is_default: boolean;
-  country?: string;
-  currency?: string;
 }
 
 const CompanySettings = () => {
@@ -43,8 +39,6 @@ const CompanySettings = () => {
   const [website, setWebsite] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
   const [isDefault, setIsDefault] = useState(false);
-  const [country, setCountry] = useState('');
-  const [currency, setCurrency] = useState('USD');
 
   useEffect(() => {
     console.log("CompanySettings: Companies from context:", companies);
@@ -75,8 +69,6 @@ const CompanySettings = () => {
     setWebsite(company.website || '');
     setLogoUrl(company.logo_url || '');
     setIsDefault(company.is_default);
-    setCountry(company.country || '');
-    setCurrency(company.currency || 'USD');
   };
 
   const resetForm = () => {
@@ -87,8 +79,6 @@ const CompanySettings = () => {
     setWebsite('');
     setLogoUrl('');
     setIsDefault(companies.length === 0); // Make default if it's the first company
-    setCountry('');
-    setCurrency('USD');
   };
 
   const handleCompanySelect = (companyId: string) => {
@@ -132,9 +122,7 @@ const CompanySettings = () => {
             email,
             website,
             logo_url: logoUrl,
-            is_default: isDefault,
-            country,
-            currency
+            is_default: isDefault
           })
           .select()
           .single();
@@ -162,8 +150,6 @@ const CompanySettings = () => {
             website,
             logo_url: logoUrl,
             is_default: isDefault,
-            country,
-            currency,
             updated_at: new Date().toISOString()
           })
           .eq('id', selectedCompanyId);
@@ -306,28 +292,6 @@ const CompanySettings = () => {
             onChange={(e) => setAddress(e.target.value)}
             rows={3}
           />
-        </div>
-        
-        <div>
-          <Label htmlFor="country">Country</Label>
-          <div className="mt-1">
-            <CountryDropdown 
-              value={country} 
-              onChange={setCountry} 
-              placeholder="Select country"
-            />
-          </div>
-        </div>
-
-        <div>
-          <Label htmlFor="currency">Currency</Label>
-          <div className="mt-1">
-            <CurrencyDropdown
-              value={currency}
-              onChange={setCurrency}
-              placeholder="Select currency"
-            />
-          </div>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

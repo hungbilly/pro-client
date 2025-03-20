@@ -22,8 +22,6 @@ export interface Company {
   user_id: string;
   created_at: string;
   updated_at: string;
-  country?: string;
-  currency?: string;
 }
 
 export interface Job {

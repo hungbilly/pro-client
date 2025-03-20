@@ -53,7 +53,9 @@ export type Database = {
       companies: {
         Row: {
           address: string | null
+          country: string | null
           created_at: string | null
+          currency: string | null
           email: string | null
           id: string
           is_default: boolean | null
@@ -66,7 +68,9 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          country?: string | null
           created_at?: string | null
+          currency?: string | null
           email?: string | null
           id?: string
           is_default?: boolean | null
@@ -79,7 +83,9 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          country?: string | null
           created_at?: string | null
+          currency?: string | null
           email?: string | null
           id?: string
           is_default?: boolean | null

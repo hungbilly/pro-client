@@ -12,7 +12,7 @@ interface Currency {
   symbol: string
 }
 
-// List of common currencies
+// Common currencies list
 const currencies: Currency[] = [
   { value: "USD", label: "US Dollar", symbol: "$" },
   { value: "EUR", label: "Euro", symbol: "€" },
@@ -22,31 +22,30 @@ const currencies: Currency[] = [
   { value: "CAD", label: "Canadian Dollar", symbol: "C$" },
   { value: "CHF", label: "Swiss Franc", symbol: "CHF" },
   { value: "CNY", label: "Chinese Yuan", symbol: "¥" },
-  { value: "HKD", label: "Hong Kong Dollar", symbol: "HK$" },
-  { value: "NZD", label: "New Zealand Dollar", symbol: "NZ$" },
   { value: "SEK", label: "Swedish Krona", symbol: "kr" },
-  { value: "SGD", label: "Singapore Dollar", symbol: "S$" },
-  { value: "NOK", label: "Norwegian Krone", symbol: "kr" },
+  { value: "NZD", label: "New Zealand Dollar", symbol: "NZ$" },
   { value: "MXN", label: "Mexican Peso", symbol: "$" },
+  { value: "SGD", label: "Singapore Dollar", symbol: "S$" },
+  { value: "HKD", label: "Hong Kong Dollar", symbol: "HK$" },
+  { value: "NOK", label: "Norwegian Krone", symbol: "kr" },
+  { value: "KRW", label: "South Korean Won", symbol: "₩" },
+  { value: "TRY", label: "Turkish Lira", symbol: "₺" },
+  { value: "RUB", label: "Russian Ruble", symbol: "₽" },
   { value: "INR", label: "Indian Rupee", symbol: "₹" },
   { value: "BRL", label: "Brazilian Real", symbol: "R$" },
-  { value: "RUB", label: "Russian Ruble", symbol: "₽" },
   { value: "ZAR", label: "South African Rand", symbol: "R" },
-  { value: "TRY", label: "Turkish Lira", symbol: "₺" },
-  { value: "KRW", label: "South Korean Won", symbol: "₩" },
+  { value: "AED", label: "UAE Dirham", symbol: "د.إ" },
+  { value: "DKK", label: "Danish Krone", symbol: "kr" },
   { value: "PLN", label: "Polish Złoty", symbol: "zł" },
   { value: "THB", label: "Thai Baht", symbol: "฿" },
   { value: "IDR", label: "Indonesian Rupiah", symbol: "Rp" },
-  { value: "HUF", label: "Hungarian Forint", symbol: "Ft" },
   { value: "CZK", label: "Czech Koruna", symbol: "Kč" },
   { value: "ILS", label: "Israeli New Shekel", symbol: "₪" },
   { value: "CLP", label: "Chilean Peso", symbol: "$" },
   { value: "PHP", label: "Philippine Peso", symbol: "₱" },
-  { value: "AED", label: "United Arab Emirates Dirham", symbol: "د.إ" },
-  { value: "COP", label: "Colombian Peso", symbol: "$" },
-  { value: "SAR", label: "Saudi Riyal", symbol: "ر.س" },
+  { value: "ARS", label: "Argentine Peso", symbol: "$" },
   { value: "MYR", label: "Malaysian Ringgit", symbol: "RM" },
-  { value: "RON", label: "Romanian Leu", symbol: "lei" }
+  { value: "TWD", label: "New Taiwan Dollar", symbol: "NT$" }
 ].sort((a, b) => a.label.localeCompare(b.label));
 
 export interface CurrencyDropdownProps {
@@ -63,11 +62,6 @@ export function CurrencyDropdown({
   disabled = false
 }: CurrencyDropdownProps) {
   const [open, setOpen] = React.useState(false)
-  
-  const selectedCurrency = currencies.find((currency) => currency.value === value);
-  const displayValue = selectedCurrency ? 
-    `${selectedCurrency.label} (${selectedCurrency.symbol})` : 
-    placeholder;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -79,7 +73,9 @@ export function CurrencyDropdown({
           disabled={disabled}
           className="w-full justify-between"
         >
-          {displayValue}
+          {value ? 
+            `${currencies.find((currency) => currency.value === value)?.label || value} (${currencies.find((currency) => currency.value === value)?.symbol || ''})` 
+            : placeholder}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>

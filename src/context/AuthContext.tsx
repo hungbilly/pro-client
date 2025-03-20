@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
@@ -109,12 +108,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         // For new users, create default company and settings
         if (session?.user && !session.user.app_metadata.provider) {
-          // Check if this is the first login (we'll assume this for new signups)
-          const { data: authEvents } = await supabase.auth.getAuthEvents();
+          // Check if this is the first login
+          const isFirstLogin = new Date().getTime() - new Date(session.user.created_at).getTime() < 60000; // Within 1 minute
           
-          if (authEvents?.events?.some(event => 
-              event.type === 'SIGNED_IN' && 
-              event.created_at === session.user.created_at)) {
+          if (isFirstLogin) {
             console.log('Appears to be first login, initializing user data');
             await createDefaultCompany(session.user.id, session.user.user_metadata);
           }

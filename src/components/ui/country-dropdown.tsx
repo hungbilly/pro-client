@@ -75,6 +75,9 @@ export function CountryDropdown({
     return country ? country.label : value;
   }
 
+  // Safely handle the value
+  const safeValue = value || "";
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -106,7 +109,7 @@ export function CountryDropdown({
                 <Check
                   className={cn(
                     "mr-2 h-4 w-4",
-                    value === country.value ? "opacity-100" : "opacity-0"
+                    safeValue === country.value ? "opacity-100" : "opacity-0"
                   )}
                 />
                 {country.label}

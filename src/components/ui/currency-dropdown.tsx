@@ -71,6 +71,9 @@ export function CurrencyDropdown({
     return `${currency.label} (${currency.symbol})`;
   }
 
+  // Safely handle the value
+  const safeValue = value || "";
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -102,7 +105,7 @@ export function CurrencyDropdown({
                 <Check
                   className={cn(
                     "mr-2 h-4 w-4",
-                    value === currency.value ? "opacity-100" : "opacity-0"
+                    safeValue === currency.value ? "opacity-100" : "opacity-0"
                   )}
                 />
                 {currency.label} ({currency.symbol})

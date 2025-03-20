@@ -1,5 +1,6 @@
 
 import React, { useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCompanyContext } from '@/context/CompanyContext';
 import { cn } from '@/lib/utils';
@@ -17,6 +18,8 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({
   showLabel = true 
 }) => {
   const { companies, selectedCompany, setSelectedCompany, loading } = useCompanyContext();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     console.log("CompanySelector render: selectedCompany =", selectedCompany?.name);
@@ -30,6 +33,12 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({
       setSelectedCompany(company);
       if (onCompanySelect) {
         onCompanySelect({id: company.id, name: company.name});
+      }
+      
+      // Redirect to dashboard unless we're already there
+      const currentPath = location.pathname;
+      if (currentPath !== '/') {
+        navigate('/');
       }
     }
   };

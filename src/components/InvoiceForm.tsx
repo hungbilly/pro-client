@@ -20,11 +20,11 @@ import PackageSelector from './PackageSelector';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import RichTextEditor from './RichTextEditor';
 
-interface InvoiceFormProps {
-  invoice?: Invoice;
-  clientId?: string;
-  jobId?: string;
-  invoiceId?: string;
+interface ContractTemplate {
+  id: string;
+  name: string;
+  content?: string;
+  description?: string;
 }
 
 interface Template {
@@ -33,7 +33,21 @@ interface Template {
   content: string;
 }
 
-const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientId: propClientId, jobId: propJobId, invoiceId: propInvoiceId }) => {
+interface InvoiceFormProps {
+  invoice?: Invoice;
+  clientId?: string;
+  jobId?: string;
+  invoiceId?: string;
+  contractTemplates?: ContractTemplate[];
+}
+
+const InvoiceForm: React.FC<InvoiceFormProps> = ({ 
+  invoice: propInvoice, 
+  clientId: propClientId, 
+  jobId: propJobId, 
+  invoiceId: propInvoiceId,
+  contractTemplates = []
+}) => {
   const navigate = useNavigate();
   const { selectedCompanyId } = useCompany();
   const params = useParams();
@@ -70,6 +84,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
 
   const [templates, setTemplates] = useState<Template[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [selectedContractTemplateId, setSelectedContractTemplateId] = useState<string | null>(null);
   const { user } = useAuth();
 
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
@@ -344,6 +359,15 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
       }
       
       toast.success(`Template "${template.name}" applied`);
+    }
+  };
+
+  const handleContractTemplateSelect = (templateId: string) => {
+    const template = contractTemplates.find(t => t.id === templateId);
+    if (template && template.content) {
+      setSelectedContractTemplateId(templateId);
+      setContractTerms(template.content);
+      toast.success(`Contract template "${template.name}" applied`);
     }
   };
 
@@ -736,6 +760,28 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
             </div>
           )}
           
+          {contractTemplates.length > 0 && (
+            <div>
+              <Label htmlFor="contractTemplate">Contract Template</Label>
+              <Select 
+                value={selectedContractTemplateId || ''} 
+                onValueChange={handleContractTemplateSelect}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a contract template" />
+                </SelectTrigger>
+                <SelectContent>
+                  {contractTemplates.map(template => (
+                    <SelectItem key={template.id} value={template.id}>{template.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-muted-foreground mt-1">
+                Select a template to quickly fill in contract terms
+              </p>
+            </div>
+          )}
+          
           <div>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-medium">Line Items</h3>
@@ -893,6 +939,24 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <Label htmlFor="notes">Invoice Notes</Label>
+              {templates.length > 0 && (
+                <div className="mb-2">
+                  <Label htmlFor="template">Invoice Template</Label>
+                  <Select 
+                    value={selectedTemplateId || ''} 
+                    onValueChange={handleTemplateSelect}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select a template" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {templates.map(template => (
+                        <SelectItem key={template.id} value={template.id}>{template.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <RichTextEditor
                 value={notes}
                 onChange={(value) => setNotes(value)}
@@ -901,6 +965,27 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice: propInvoice, clientI
             </div>
             
             <div>
+              {contractTemplates.length > 0 && (
+                <div className="mb-2">
+                  <Label htmlFor="contractTemplate">Contract Template</Label>
+                  <Select 
+                    value={selectedContractTemplateId || ''} 
+                    onValueChange={handleContractTemplateSelect}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select a contract template" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {contractTemplates.map(template => (
+                        <SelectItem key={template.id} value={template.id}>{template.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Select a template to quickly fill in contract terms
+                  </p>
+                </div>
+              )}
               <Label htmlFor="contractTerms">Contract Terms</Label>
               <RichTextEditor
                 value={contractTerms}

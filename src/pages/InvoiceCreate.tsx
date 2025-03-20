@@ -8,12 +8,19 @@ import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { supabase } from '@/integrations/supabase/client';
 
+interface ContractTemplate {
+  id: string;
+  name: string;
+  content?: string;
+  description?: string;
+}
+
 const InvoiceCreate = () => {
   const { clientId, jobId, invoiceId } = useParams();
   const navigate = useNavigate();
   const [invoice, setInvoice] = useState<Invoice | undefined>(undefined);
   const [loading, setLoading] = useState(!!invoiceId);
-  const [contractTemplates, setContractTemplates] = useState([]);
+  const [contractTemplates, setContractTemplates] = useState<ContractTemplate[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(true);
   
   useEffect(() => {
@@ -51,7 +58,7 @@ const InvoiceCreate = () => {
         setLoadingTemplates(true);
         const { data, error } = await supabase
           .from('contract_templates')
-          .select('id, name')
+          .select('id, name, content')
           .order('name', { ascending: true });
 
         if (error) throw error;

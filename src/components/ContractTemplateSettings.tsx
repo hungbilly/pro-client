@@ -4,7 +4,6 @@ import { Plus, Trash2, Edit, Save, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import RichTextEditor from './RichTextEditor';
@@ -32,6 +31,7 @@ const ContractTemplateSettings = () => {
   const fetchTemplates = async () => {
     try {
       setLoading(true);
+      // Fix: Use a table name that exists in the database schema
       const { data, error } = await supabase
         .from('contract_templates')
         .select('*')

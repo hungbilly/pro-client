@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -22,14 +21,19 @@ type CountryType = {
 };
 
 const countries: CountryType[] = [
-  { value: 'us', label: 'United States' },
-  { value: 'ca', label: 'Canada' },
-  { value: 'uk', label: 'United Kingdom' },
-  { value: 'au', label: 'Australia' },
-  { value: 'de', label: 'Germany' },
-  { value: 'fr', label: 'France' },
-  { value: 'jp', label: 'Japan' },
+  { value: 'hk', label: 'Hong Kong' },
   { value: 'cn', label: 'China' },
+  { value: 'mo', label: 'Macau' },
+  { value: 'tw', label: 'Taiwan' },
+  { value: 'sg', label: 'Singapore' },
+  { value: 'my', label: 'Malaysia' },
+  { value: 'us', label: 'United States' },
+  { value: 'uk', label: 'United Kingdom' },
+  { value: 'fr', label: 'France' },
+  { value: 'de', label: 'Germany' },
+  { value: 'au', label: 'Australia' },
+  { value: 'jp', label: 'Japan' },
+  { value: 'ca', label: 'Canada' },
   { value: 'in', label: 'India' },
   { value: 'br', label: 'Brazil' },
   { value: 'mx', label: 'Mexico' },
@@ -38,8 +42,6 @@ const countries: CountryType[] = [
   { value: 'kr', label: 'South Korea' },
   { value: 'ru', label: 'Russia' },
   { value: 'za', label: 'South Africa' },
-  { value: 'sg', label: 'Singapore' },
-  { value: 'se', label: 'Sweden' },
   { value: 'ch', label: 'Switzerland' },
   { value: 'nl', label: 'Netherlands' },
   { value: 'be', label: 'Belgium' },
@@ -50,7 +52,6 @@ const countries: CountryType[] = [
   { value: 'fi', label: 'Finland' },
   { value: 'at', label: 'Austria' },
   { value: 'pt', label: 'Portugal' },
-  { value: 'hk', label: 'Hong Kong' },
   { value: 'ae', label: 'United Arab Emirates' },
 ];
 
@@ -62,9 +63,8 @@ interface CountryDropdownProps {
 
 export function CountryDropdown({ value, onChange, disabled = false }: CountryDropdownProps) {
   const [open, setOpen] = useState(false);
-  const safeValue = value || '';
+  const safeValue = value || 'hk';
 
-  // Find the selected country object
   const selectedCountry = countries.find((country) => country.value === safeValue);
   
   return (
@@ -77,7 +77,7 @@ export function CountryDropdown({ value, onChange, disabled = false }: CountryDr
           className="w-full justify-between"
           disabled={disabled}
         >
-          {selectedCountry ? selectedCountry.label : "Select country..."}
+          {selectedCountry ? selectedCountry.label : "Hong Kong"}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>

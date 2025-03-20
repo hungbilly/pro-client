@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Package } from '@/types';
@@ -9,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { toast } from 'sonner';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { useCompany } from './CompanySelector';
+import { useCompanyContext } from '@/context/CompanyContext';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import RichTextEditor from './RichTextEditor';
@@ -27,17 +28,17 @@ const PackageSettings = () => {
   });
   const [currentPackageId, setCurrentPackageId] = useState<string | null>(null);
   const { user } = useAuth();
-  const { selectedCompanyId } = useCompany();
+  const { selectedCompany } = useCompanyContext();
 
   const fetchPackages = async () => {
-    if (!user) return;
+    if (!user || !selectedCompany) return;
     
     setLoading(true);
     try {
       const { data, error } = await (supabase
         .from('packages') as any)
         .select('*')
-        .eq('user_id', user.id)
+        .eq('company_id', selectedCompany.id)
         .order('name', { ascending: true });
       
       if (error) throw error;
@@ -53,7 +54,7 @@ const PackageSettings = () => {
   
   useEffect(() => {
     fetchPackages();
-  }, [user]);
+  }, [user, selectedCompany]);
   
   const resetForm = () => {
     setFormData({
@@ -61,7 +62,7 @@ const PackageSettings = () => {
       description: '',
       price: 0,
       tax_rate: 0,
-      company_id: selectedCompanyId || undefined,
+      company_id: selectedCompany?.id || undefined,
     });
     setCurrentPackageId(null);
   };
@@ -109,6 +110,11 @@ const PackageSettings = () => {
       return;
     }
     
+    if (!selectedCompany) {
+      toast.error('Please select a company first');
+      return;
+    }
+    
     if (!formData.name.trim()) {
       toast.error('Package name is required');
       return;
@@ -123,7 +129,7 @@ const PackageSettings = () => {
             description: formData.description,
             price: formData.price,
             tax_rate: formData.tax_rate,
-            company_id: formData.company_id || null,
+            company_id: selectedCompany.id,
             updated_at: new Date().toISOString(),
           })
           .eq('id', currentPackageId);
@@ -139,7 +145,7 @@ const PackageSettings = () => {
             description: formData.description,
             price: formData.price,
             tax_rate: formData.tax_rate,
-            company_id: formData.company_id || null,
+            company_id: selectedCompany.id,
             user_id: user.id,
           });
         

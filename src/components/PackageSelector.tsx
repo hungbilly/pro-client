@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Package, InvoiceItem } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -8,6 +7,7 @@ import { Check, ChevronsUpDown, Package as PackageIcon, FileText } from 'lucide-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
+import { useCompanyContext } from '@/context/CompanyContext';
 
 interface PackageSelectorProps {
   onPackageSelect: (items: InvoiceItem[]) => void;
@@ -24,17 +24,18 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
   const [packages, setPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
+  const { selectedCompany } = useCompanyContext();
 
   useEffect(() => {
     const fetchPackages = async () => {
-      if (!user) return;
+      if (!user || !selectedCompany) return;
       
       setLoading(true);
       try {
         const { data, error } = await supabase
           .from('packages')
           .select('*')
-          .eq('user_id', user.id);
+          .eq('company_id', selectedCompany.id);
         
         if (error) throw error;
         
@@ -58,7 +59,7 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
     };
 
     fetchPackages();
-  }, [user]);
+  }, [user, selectedCompany]);
 
   const handlePackageSelection = (packageName: string) => {
     // Safety check to ensure packages is defined and is an array

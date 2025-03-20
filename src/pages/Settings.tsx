@@ -5,6 +5,7 @@ import PageTransition from '@/components/ui-custom/PageTransition';
 import CompanySettings from '@/components/CompanySettings';
 import InvoiceTemplateSettings from '@/components/InvoiceTemplateSettings';
 import PackageSettings from '@/components/PackageSettings';
+import ContractTemplateSettings from '@/components/ContractTemplateSettings';
 import CompanyProvider from '@/context/CompanyContext';
 
 const Settings = () => {
@@ -20,7 +21,8 @@ const Settings = () => {
             <TabsList>
               <TabsTrigger value="company">Company</TabsTrigger>
               <TabsTrigger value="packages">Products & Packages</TabsTrigger>
-              <TabsTrigger value="templates">Templates</TabsTrigger>
+              <TabsTrigger value="templates">Invoice Templates</TabsTrigger>
+              <TabsTrigger value="contracts">Contract Templates</TabsTrigger>
               <TabsTrigger value="account">Account</TabsTrigger>
               <TabsTrigger value="notifications">Notifications</TabsTrigger>
               <TabsTrigger value="billing">Billing</TabsTrigger>
@@ -37,6 +39,12 @@ const Settings = () => {
             <TabsContent value="templates" className="space-y-4">
               <div className="rounded-lg border p-6">
                 <InvoiceTemplateSettings />
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="contracts" className="space-y-4">
+              <div className="rounded-lg border p-6">
+                <ContractTemplateSettings />
               </div>
             </TabsContent>
             

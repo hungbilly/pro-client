@@ -6,12 +6,15 @@ import { getInvoice } from '@/lib/storage';
 import { Invoice } from '@/types';
 import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
+import { supabase } from '@/integrations/supabase/client';
 
 const InvoiceCreate = () => {
   const { clientId, jobId, invoiceId } = useParams();
   const navigate = useNavigate();
   const [invoice, setInvoice] = useState<Invoice | undefined>(undefined);
   const [loading, setLoading] = useState(!!invoiceId);
+  const [contractTemplates, setContractTemplates] = useState([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(true);
   
   useEffect(() => {
     const fetchInvoice = async () => {
@@ -43,16 +46,37 @@ const InvoiceCreate = () => {
       }
     };
 
+    const fetchContractTemplates = async () => {
+      try {
+        setLoadingTemplates(true);
+        const { data, error } = await supabase
+          .from('contract_templates')
+          .select('id, name')
+          .order('name', { ascending: true });
+
+        if (error) throw error;
+        
+        setContractTemplates(data || []);
+      } catch (error) {
+        console.error('Error fetching contract templates:', error);
+        toast.error('Failed to load contract templates');
+      } finally {
+        setLoadingTemplates(false);
+      }
+    };
+
     if (invoiceId && loading) {
       fetchInvoice();
     }
+    
+    fetchContractTemplates();
   }, [invoiceId, clientId, jobId, navigate, loading]);
 
-  if (loading) {
+  if (loading || loadingTemplates) {
     return (
       <PageTransition>
         <div className="container py-8 flex justify-center items-center">
-          <div>Loading invoice data...</div>
+          <div>Loading data...</div>
         </div>
       </PageTransition>
     );
@@ -66,6 +90,7 @@ const InvoiceCreate = () => {
           clientId={clientId}
           jobId={jobId}
           invoiceId={invoiceId}
+          contractTemplates={contractTemplates}
         />
       </div>
     </PageTransition>

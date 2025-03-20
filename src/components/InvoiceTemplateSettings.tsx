@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Plus, Save, Trash2 } from 'lucide-react';
+import { useCompanyContext } from '@/context/CompanyContext';
 
 // Schema for template form
 const templateFormSchema = z.object({
@@ -24,7 +25,7 @@ type TemplateFormValues = z.infer<typeof templateFormSchema>;
 
 interface Template {
   id: string;
-  user_id: string;
+  company_id: string;
   name: string;
   description: string | null;
   content: string;
@@ -34,6 +35,7 @@ interface Template {
 
 const InvoiceTemplateSettings = () => {
   const { user } = useAuth();
+  const { selectedCompany } = useCompanyContext();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
@@ -49,20 +51,20 @@ const InvoiceTemplateSettings = () => {
   });
 
   useEffect(() => {
-    if (user) {
+    if (selectedCompany) {
       loadTemplates();
     }
-  }, [user]);
+  }, [selectedCompany]);
 
   const loadTemplates = async () => {
-    if (!user) return;
+    if (!selectedCompany) return;
     
     setIsLoading(true);
     try {
       const { data, error } = await supabase
         .from('invoice_templates')
         .select('*')
-        .eq('user_id', user.id);
+        .eq('company_id', selectedCompany.id);
 
       if (error) throw error;
       setTemplates(data || []);
@@ -120,12 +122,15 @@ const InvoiceTemplateSettings = () => {
   };
 
   const onSubmit = async (values: TemplateFormValues) => {
-    if (!user) return;
+    if (!selectedCompany) {
+      toast.error('Please select a company first');
+      return;
+    }
 
     setIsLoading(true);
     try {
       const templateData = {
-        user_id: user.id,
+        company_id: selectedCompany.id,
         name: values.name,
         description: values.description || null,
         content: values.content,

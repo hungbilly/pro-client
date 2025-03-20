@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import RichTextEditor from './RichTextEditor';
+import { useCompanyContext } from '@/context/CompanyContext';
 
 const ContractTemplateSettings = () => {
   const [templates, setTemplates] = useState([]);
@@ -23,18 +24,23 @@ const ContractTemplateSettings = () => {
     description: '',
     content: ''
   });
+  const { selectedCompany } = useCompanyContext();
 
   useEffect(() => {
-    fetchTemplates();
-  }, []);
+    if (selectedCompany) {
+      fetchTemplates();
+    }
+  }, [selectedCompany]);
 
   const fetchTemplates = async () => {
+    if (!selectedCompany) return;
+    
     try {
       setLoading(true);
-      // Fix: Use a table name that exists in the database schema
       const { data, error } = await supabase
         .from('contract_templates')
         .select('*')
+        .eq('company_id', selectedCompany.id)
         .order('name', { ascending: true });
 
       if (error) throw error;
@@ -55,13 +61,18 @@ const ContractTemplateSettings = () => {
         return;
       }
 
+      if (!selectedCompany) {
+        toast.error('Please select a company first');
+        return;
+      }
+
       const { data, error } = await supabase
         .from('contract_templates')
         .insert({
           name: newTemplate.name,
           description: newTemplate.description,
           content: newTemplate.content,
-          user_id: (await supabase.auth.getUser()).data.user.id
+          company_id: selectedCompany.id
         })
         .select();
 

@@ -62,6 +62,14 @@ export function CurrencyDropdown({
   disabled = false
 }: CurrencyDropdownProps) {
   const [open, setOpen] = React.useState(false)
+  
+  // Get the currency label and symbol for display
+  const getCurrencyDisplay = () => {
+    if (!value) return placeholder;
+    const currency = currencies.find((currency) => currency.value === value);
+    if (!currency) return value;
+    return `${currency.label} (${currency.symbol})`;
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -73,13 +81,11 @@ export function CurrencyDropdown({
           disabled={disabled}
           className="w-full justify-between"
         >
-          {value ? 
-            `${currencies.find((currency) => currency.value === value)?.label || value} (${currencies.find((currency) => currency.value === value)?.symbol || ''})` 
-            : placeholder}
+          {getCurrencyDisplay()}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0">
+      <PopoverContent className="w-full p-0" align="start">
         <Command>
           <CommandInput placeholder="Search currency..." />
           <CommandEmpty>No currency found.</CommandEmpty>

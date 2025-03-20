@@ -67,6 +67,13 @@ export function CountryDropdown({
   disabled = false
 }: CountryDropdownProps) {
   const [open, setOpen] = React.useState(false)
+  
+  // Get the country label for display
+  const getCountryLabel = () => {
+    if (!value) return placeholder;
+    const country = countries.find((country) => country.value === value);
+    return country ? country.label : value;
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -78,11 +85,11 @@ export function CountryDropdown({
           disabled={disabled}
           className="w-full justify-between"
         >
-          {value ? countries.find((country) => country.value === value)?.label : placeholder}
+          {getCountryLabel()}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0">
+      <PopoverContent className="w-full p-0" align="start">
         <Command>
           <CommandInput placeholder="Search country..." />
           <CommandEmpty>No country found.</CommandEmpty>

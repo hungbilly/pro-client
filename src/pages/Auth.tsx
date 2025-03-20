@@ -79,6 +79,16 @@ const Auth = () => {
     },
   });
   
+  // Reset form when switching between login and signup
+  useEffect(() => {
+    if (isLogin) {
+      loginForm.reset();
+    } else {
+      signupForm.reset();
+    }
+    setErrorMessage(null);
+  }, [isLogin]);
+  
   useEffect(() => {
     const checkForLogoutRedirect = async () => {
       if (window.location.search.includes('logout')) {
@@ -158,8 +168,11 @@ const Auth = () => {
   const handleSignup = async (values: z.infer<typeof signupSchema>) => {
     setLoading(true);
     setErrorMessage(null);
-
+    
     try {
+      // Manual validation to ensure we're using validated data
+      signupSchema.parse(values);
+      
       const { error, data } = await supabase.auth.signUp({
         email: values.email,
         password: values.password,
@@ -187,8 +200,16 @@ const Auth = () => {
       }
     } catch (error: any) {
       console.error('Signup error:', error);
-      setErrorMessage(error.message || 'Registration failed');
-      toast.error(error.message || 'Registration failed');
+      
+      if (error.errors) {
+        // Handle zod validation errors
+        const firstError = error.errors[0];
+        setErrorMessage(firstError.message || 'Please check your form input');
+        toast.error(firstError.message || 'Please check your form input');
+      } else {
+        setErrorMessage(error.message || 'Registration failed');
+        toast.error(error.message || 'Registration failed');
+      }
     } finally {
       setLoading(false);
     }
@@ -232,6 +253,16 @@ const Auth = () => {
       toast.error(error.message || 'Google authentication failed');
       setLoading(false);
     }
+  };
+
+  // Helper function to clear form errors
+  const clearFormErrors = () => {
+    if (isLogin) {
+      loginForm.clearErrors();
+    } else {
+      signupForm.clearErrors();
+    }
+    setErrorMessage(null);
   };
 
   return (
@@ -324,7 +355,7 @@ const Auth = () => {
                     className="w-full"
                     onClick={() => {
                       setIsLogin(false);
-                      setErrorMessage(null);
+                      clearFormErrors();
                     }}
                   >
                     Don't have an account? Sign up
@@ -453,7 +484,7 @@ const Auth = () => {
                     className="w-full"
                     onClick={() => {
                       setIsLogin(true);
-                      setErrorMessage(null);
+                      clearFormErrors();
                     }}
                   >
                     Already have an account? Sign in

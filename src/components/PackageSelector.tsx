@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Package, InvoiceItem } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -32,6 +33,7 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
       
       setLoading(true);
       try {
+        console.log('Fetching packages for company ID:', selectedCompany.id);
         const { data, error } = await supabase
           .from('packages')
           .select('*')
@@ -39,7 +41,7 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
         
         if (error) throw error;
         
-        console.log('Fetched packages:', data);
+        console.log('Fetched packages:', data?.length || 0);
         
         // Always ensure packages is an array
         if (Array.isArray(data)) {

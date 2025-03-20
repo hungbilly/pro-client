@@ -35,14 +35,16 @@ const PackageSettings = () => {
     
     setLoading(true);
     try {
-      const { data, error } = await (supabase
-        .from('packages') as any)
+      console.log('Fetching packages for company ID:', selectedCompany.id);
+      const { data, error } = await supabase
+        .from('packages')
         .select('*')
         .eq('company_id', selectedCompany.id)
         .order('name', { ascending: true });
       
       if (error) throw error;
       
+      console.log('Packages fetched:', data?.length || 0);
       setPackages(data as Package[] || []);
     } catch (error) {
       console.error('Error fetching packages:', error);
@@ -122,8 +124,8 @@ const PackageSettings = () => {
     
     try {
       if (currentPackageId) {
-        const { error } = await (supabase
-          .from('packages') as any)
+        const { error } = await supabase
+          .from('packages')
           .update({
             name: formData.name,
             description: formData.description,
@@ -138,8 +140,8 @@ const PackageSettings = () => {
         
         toast.success('Package updated successfully');
       } else {
-        const { error } = await (supabase
-          .from('packages') as any)
+        const { error } = await supabase
+          .from('packages')
           .insert({
             name: formData.name,
             description: formData.description,

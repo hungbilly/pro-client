@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO, differenceInDays } from 'date-fns';
@@ -213,6 +212,10 @@ const Payments = () => {
     setIsPaymentDialogOpen(false);
   };
 
+  const handleRowClick = (invoiceId: string) => {
+    navigate(`/invoice/${invoiceId}`);
+  };
+
   const formatDueDate = (dueDate: string, status: string) => {
     if (status !== 'unpaid') return format(parseISO(dueDate), 'dd MMM yyyy');
     
@@ -328,7 +331,16 @@ const Payments = () => {
                 </TableRow>
               ) : (
                 filteredPayments.map((payment) => (
-                  <TableRow key={payment.id} className="hover:bg-gray-50">
+                  <TableRow 
+                    key={payment.id} 
+                    className="hover:bg-gray-50 cursor-pointer"
+                    onClick={(e) => {
+                      // Only navigate if the click wasn't on the dropdown or its children
+                      if (!(e.target as HTMLElement).closest('.dropdown-actions')) {
+                        handleRowClick(payment.invoiceId);
+                      }
+                    }}
+                  >
                     <TableCell>{getStatusBadge(payment.status)}</TableCell>
                     <TableCell>{formatDueDate(payment.dueDate, payment.status)}</TableCell>
                     <TableCell>{payment.invoiceNumber}</TableCell>
@@ -338,33 +350,35 @@ const Payments = () => {
                       ${payment.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </TableCell>
                     <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {payment.status !== 'paid' && (
-                            <DropdownMenuItem onClick={() => handleStatusUpdate(payment, 'paid')}>
-                              Mark as Paid
+                      <div className="dropdown-actions">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {payment.status !== 'paid' && (
+                              <DropdownMenuItem onClick={() => handleStatusUpdate(payment, 'paid')}>
+                                Mark as Paid
+                              </DropdownMenuItem>
+                            )}
+                            {payment.status !== 'unpaid' && (
+                              <DropdownMenuItem onClick={() => handleStatusUpdate(payment, 'unpaid')}>
+                                Mark as Unpaid
+                              </DropdownMenuItem>
+                            )}
+                            {payment.status !== 'write-off' && (
+                              <DropdownMenuItem onClick={() => handleStatusUpdate(payment, 'write-off')}>
+                                Write Off
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem onClick={() => navigate(`/invoice/${payment.invoiceId}`)}>
+                              View Invoice
                             </DropdownMenuItem>
-                          )}
-                          {payment.status !== 'unpaid' && (
-                            <DropdownMenuItem onClick={() => handleStatusUpdate(payment, 'unpaid')}>
-                              Mark as Unpaid
-                            </DropdownMenuItem>
-                          )}
-                          {payment.status !== 'write-off' && (
-                            <DropdownMenuItem onClick={() => handleStatusUpdate(payment, 'write-off')}>
-                              Write Off
-                            </DropdownMenuItem>
-                          )}
-                          <DropdownMenuItem onClick={() => navigate(`/invoice/${payment.invoiceId}`)}>
-                            View Invoice
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))

@@ -12,6 +12,8 @@ export interface Company {
   email?: string;
   website?: string;
   logo_url?: string;
+  country?: string;
+  currency?: string;
   is_default: boolean;
   user_id: string;
 }

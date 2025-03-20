@@ -12,6 +12,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { useCompany } from './CompanySelector';
 import { Skeleton } from '@/components/ui/skeleton';
+import { CountryDropdown } from './ui/country-dropdown';
+import { CurrencyDropdown } from './ui/currency-dropdown';
 
 interface Company {
   id: string;
@@ -21,6 +23,8 @@ interface Company {
   email?: string;
   website?: string;
   logo_url?: string;
+  country?: string;
+  currency?: string;
   is_default: boolean;
 }
 
@@ -38,6 +42,8 @@ const CompanySettings = () => {
   const [email, setEmail] = useState('');
   const [website, setWebsite] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
+  const [country, setCountry] = useState<string | undefined>(undefined);
+  const [currency, setCurrency] = useState<string | undefined>(undefined);
   const [isDefault, setIsDefault] = useState(false);
 
   useEffect(() => {
@@ -68,6 +74,8 @@ const CompanySettings = () => {
     setEmail(company.email || '');
     setWebsite(company.website || '');
     setLogoUrl(company.logo_url || '');
+    setCountry(company.country);
+    setCurrency(company.currency);
     setIsDefault(company.is_default);
   };
 
@@ -78,6 +86,8 @@ const CompanySettings = () => {
     setEmail('');
     setWebsite('');
     setLogoUrl('');
+    setCountry(undefined);
+    setCurrency(undefined);
     setIsDefault(companies.length === 0); // Make default if it's the first company
   };
 
@@ -122,6 +132,8 @@ const CompanySettings = () => {
             email,
             website,
             logo_url: logoUrl,
+            country,
+            currency,
             is_default: isDefault
           })
           .select()
@@ -149,6 +161,8 @@ const CompanySettings = () => {
             email,
             website,
             logo_url: logoUrl,
+            country,
+            currency,
             is_default: isDefault,
             updated_at: new Date().toISOString()
           })
@@ -292,6 +306,25 @@ const CompanySettings = () => {
             onChange={(e) => setAddress(e.target.value)}
             rows={3}
           />
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="country">Country</Label>
+            <CountryDropdown
+              value={country}
+              onChange={setCountry}
+              disabled={isLoading}
+            />
+          </div>
+          <div>
+            <Label htmlFor="currency">Currency</Label>
+            <CurrencyDropdown
+              value={currency}
+              onChange={setCurrency}
+              disabled={isLoading}
+            />
+          </div>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

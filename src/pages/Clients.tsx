@@ -1,8 +1,8 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { getClients } from '@/lib/storage';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getClients, deleteClient } from '@/lib/storage';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -61,11 +61,26 @@ const ClientsTable = () => {
   const [clientToDelete, setClientToDelete] = useState<string | null>(null);
   const { selectedCompany } = useCompanyContext();
   const selectedCompanyId = selectedCompany?.id;
+  const queryClient = useQueryClient();
   
   const { data: clients = [], isLoading, error, refetch } = useQuery({
     queryKey: ['clients', selectedCompanyId],
     queryFn: () => getClients(selectedCompanyId),
     enabled: !!selectedCompanyId,
+  });
+
+  const deleteClientMutation = useMutation({
+    mutationFn: deleteClient,
+    onSuccess: () => {
+      toast.success("Client deleted successfully");
+      setClientToDelete(null);
+      // Invalidate the clients query to refetch the updated list
+      queryClient.invalidateQueries({ queryKey: ['clients', selectedCompanyId] });
+    },
+    onError: (error) => {
+      console.error("Error deleting client:", error);
+      toast.error("Failed to delete client");
+    }
   });
 
   const confirmDeleteClient = (e: React.MouseEvent, clientId: string) => {
@@ -75,16 +90,7 @@ const ClientsTable = () => {
 
   const handleDeleteClient = async () => {
     if (!clientToDelete) return;
-    
-    try {
-      // await deleteClient(clientToDelete); // Ensure this function exists and works
-      toast.success("Client deleted successfully");
-      setClientToDelete(null);
-      await refetch(); // Refresh the clients data
-    } catch (err) {
-      console.error("Error deleting client:", err);
-      toast.error("Failed to delete client");
-    }
+    deleteClientMutation.mutate(clientToDelete);
   };
 
   const cancelDeleteClient = () => {

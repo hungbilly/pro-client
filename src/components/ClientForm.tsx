@@ -5,11 +5,11 @@ import { Client } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { saveClient, updateClient } from '@/lib/storage';
 import CompanySelector, { useCompany } from './CompanySelector';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 interface ClientFormProps {
   existingClient?: Client;
@@ -19,12 +19,49 @@ interface ClientFormProps {
 const ClientForm: React.FC<ClientFormProps> = ({ existingClient, onSuccess }) => {
   const navigate = useNavigate();
   const { selectedCompanyId } = useCompany();
+  const queryClient = useQueryClient();
   
   const [name, setName] = useState(existingClient?.name || '');
   const [email, setEmail] = useState(existingClient?.email || '');
   const [phone, setPhone] = useState(existingClient?.phone || '');
   const [address, setAddress] = useState(existingClient?.address || '');
   const [notes, setNotes] = useState(existingClient?.notes || '');
+
+  const createClientMutation = useMutation({
+    mutationFn: saveClient,
+    onSuccess: () => {
+      toast.success('Client created successfully!');
+      // Invalidate the clients query to refetch the updated list
+      queryClient.invalidateQueries({ queryKey: ['clients', selectedCompanyId] });
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        navigate('/');
+      }
+    },
+    onError: (error) => {
+      console.error('Failed to save client:', error);
+      toast.error('Failed to save client');
+    }
+  });
+
+  const updateClientMutation = useMutation({
+    mutationFn: updateClient,
+    onSuccess: () => {
+      toast.success('Client updated successfully!');
+      // Invalidate the clients query to refetch the updated list
+      queryClient.invalidateQueries({ queryKey: ['clients', selectedCompanyId] });
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        navigate('/');
+      }
+    },
+    onError: (error) => {
+      console.error('Failed to update client:', error);
+      toast.error('Failed to update client');
+    }
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,8 +89,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ existingClient, onSuccess }) =>
           createdAt: existingClient.createdAt,
           companyId: selectedCompanyId
         };
-        await updateClient(updatedClient);
-        toast.success('Client updated successfully!');
+        updateClientMutation.mutate(updatedClient);
       } else {
         // Create new client
         const newClient = {
@@ -64,15 +100,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ existingClient, onSuccess }) =>
           notes,
           companyId: selectedCompanyId
         };
-        await saveClient(newClient);
-        toast.success('Client created successfully!');
-      }
-      
-      // Call onSuccess callback if provided, otherwise navigate to home
-      if (onSuccess) {
-        onSuccess();
-      } else {
-        navigate('/');
+        createClientMutation.mutate(newClient);
       }
     } catch (error) {
       console.error('Failed to save client:', error);
@@ -150,8 +178,13 @@ const ClientForm: React.FC<ClientFormProps> = ({ existingClient, onSuccess }) =>
           <Button variant="outline" type="button" onClick={onSuccess || (() => navigate('/'))}>
             Cancel
           </Button>
-          <Button type="submit">
-            {existingClient ? 'Update Client' : 'Create Client'}
+          <Button type="submit" disabled={createClientMutation.isPending || updateClientMutation.isPending}>
+            {(createClientMutation.isPending || updateClientMutation.isPending) 
+              ? 'Saving...' 
+              : existingClient 
+                ? 'Update Client' 
+                : 'Create Client'
+            }
           </Button>
         </div>
       </form>

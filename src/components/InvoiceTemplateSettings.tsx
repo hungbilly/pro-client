@@ -31,6 +31,7 @@ interface Template {
   content: string;
   created_at: string;
   updated_at: string;
+  user_id: string;
 }
 
 const InvoiceTemplateSettings = () => {
@@ -127,10 +128,16 @@ const InvoiceTemplateSettings = () => {
       return;
     }
 
+    if (!user) {
+      toast.error('You must be logged in');
+      return;
+    }
+
     setIsLoading(true);
     try {
       const templateData = {
         company_id: selectedCompany.id,
+        user_id: user.id,
         name: values.name,
         description: values.description || null,
         content: values.content,

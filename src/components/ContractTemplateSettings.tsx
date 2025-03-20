@@ -9,11 +9,21 @@ import { supabase } from '@/integrations/supabase/client';
 import RichTextEditor from './RichTextEditor';
 import { useCompanyContext } from '@/context/CompanyContext';
 
+interface Template {
+  id: string;
+  company_id: string;
+  name: string;
+  description: string | null;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
+
 const ContractTemplateSettings = () => {
-  const [templates, setTemplates] = useState([]);
+  const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
-  const [editingId, setEditingId] = useState(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [newTemplate, setNewTemplate] = useState({
     name: '',
     description: '',
@@ -72,7 +82,8 @@ const ContractTemplateSettings = () => {
           name: newTemplate.name,
           description: newTemplate.description,
           content: newTemplate.content,
-          company_id: selectedCompany.id
+          company_id: selectedCompany.id,
+          user_id: (await supabase.auth.getUser()).data.user?.id
         })
         .select();
 

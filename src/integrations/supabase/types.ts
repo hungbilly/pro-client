@@ -100,6 +100,7 @@ export type Database = {
       }
       contract_templates: {
         Row: {
+          company_id: string | null
           content: string
           created_at: string
           description: string | null
@@ -109,6 +110,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          company_id?: string | null
           content: string
           created_at?: string
           description?: string | null
@@ -118,6 +120,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          company_id?: string | null
           content?: string
           created_at?: string
           description?: string | null
@@ -126,7 +129,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "contract_templates_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       invoice_items: {
         Row: {
@@ -168,6 +179,7 @@ export type Database = {
       }
       invoice_templates: {
         Row: {
+          company_id: string | null
           content: string
           created_at: string
           description: string | null
@@ -177,6 +189,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          company_id?: string | null
           content: string
           created_at?: string
           description?: string | null
@@ -186,6 +199,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          company_id?: string | null
           content?: string
           created_at?: string
           description?: string | null
@@ -194,7 +208,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "invoice_templates_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       invoices: {
         Row: {

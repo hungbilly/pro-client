@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
@@ -14,6 +13,8 @@ export interface Company {
   logo_url?: string;
   is_default: boolean;
   user_id: string;
+  country?: string;
+  currency?: string;
 }
 
 interface CompanyContextType {

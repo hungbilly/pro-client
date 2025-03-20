@@ -1,4 +1,3 @@
-
 export interface Client {
   id: string;
   name: string;
@@ -22,6 +21,8 @@ export interface Company {
   user_id: string;
   created_at: string;
   updated_at: string;
+  country?: string;
+  currency?: string;
 }
 
 export interface Job {

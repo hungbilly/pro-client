@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -63,8 +63,17 @@ interface CountryDropdownProps {
 }
 
 export function CountryDropdown({ value, onChange, disabled = false }: CountryDropdownProps) {
+  console.log('CountryDropdown rendering with value:', value, typeof value);
   const [open, setOpen] = useState(false);
+  
+  // Ensure value is never undefined
   const safeValue = value || 'hk';
+
+  // On mount, log country dropdown init
+  useEffect(() => {
+    console.log('CountryDropdown mounted with safeValue:', safeValue);
+    return () => console.log('CountryDropdown unmounted');
+  }, []);
 
   const selectedCountry = countries.find((country) => country.value === safeValue);
   
@@ -92,6 +101,7 @@ export function CountryDropdown({ value, onChange, disabled = false }: CountryDr
                 key={country.value}
                 value={country.value}
                 onSelect={(currentValue) => {
+                  console.log('Country selected:', currentValue);
                   onChange(currentValue);
                   setOpen(false);
                 }}

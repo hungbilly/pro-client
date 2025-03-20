@@ -6,6 +6,7 @@ import CompanySettings from '@/components/CompanySettings';
 import InvoiceTemplateSettings from '@/components/InvoiceTemplateSettings';
 import PackageSettings from '@/components/PackageSettings';
 import CompanyProvider from '@/context/CompanyContext';
+import { DropdownDebugger } from '@/components/ui/DropdownDebugger';
 
 const Settings = () => {
   console.log("Settings page rendering");
@@ -21,6 +22,7 @@ const Settings = () => {
               <TabsTrigger value="company">Company</TabsTrigger>
               <TabsTrigger value="packages">Products & Packages</TabsTrigger>
               <TabsTrigger value="templates">Templates</TabsTrigger>
+              <TabsTrigger value="debug">Debug</TabsTrigger>
               <TabsTrigger value="account">Account</TabsTrigger>
               <TabsTrigger value="notifications">Notifications</TabsTrigger>
               <TabsTrigger value="billing">Billing</TabsTrigger>
@@ -38,6 +40,10 @@ const Settings = () => {
               <div className="rounded-lg border p-6">
                 <InvoiceTemplateSettings />
               </div>
+            </TabsContent>
+            
+            <TabsContent value="debug" className="space-y-4">
+              <DropdownDebugger />
             </TabsContent>
             
             <TabsContent value="account" className="space-y-4">

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -52,8 +52,17 @@ interface CurrencyDropdownProps {
 }
 
 export function CurrencyDropdown({ value, onChange, disabled = false }: CurrencyDropdownProps) {
+  console.log('CurrencyDropdown rendering with value:', value, typeof value);
   const [open, setOpen] = useState(false);
+  
+  // Ensure value is never undefined
   const safeValue = value || 'hkd';
+
+  // On mount, log currency dropdown init
+  useEffect(() => {
+    console.log('CurrencyDropdown mounted with safeValue:', safeValue);
+    return () => console.log('CurrencyDropdown unmounted');
+  }, []);
 
   const selectedCurrency = currencies.find((currency) => currency.value === safeValue);
   
@@ -85,6 +94,7 @@ export function CurrencyDropdown({ value, onChange, disabled = false }: Currency
                 key={currency.value}
                 value={currency.value}
                 onSelect={(currentValue) => {
+                  console.log('Currency selected:', currentValue);
                   onChange(currentValue);
                   setOpen(false);
                 }}

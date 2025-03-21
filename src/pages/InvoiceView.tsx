@@ -26,6 +26,7 @@ import RichTextEditor from '@/components/RichTextEditor';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { format as formatDate } from 'date-fns';
 
 const InvoiceView = () => {
   const { viewLink, id } = useParams<{ viewLink: string, id: string }>();
@@ -343,7 +344,11 @@ const InvoiceView = () => {
     
     setUpdatingPaymentId(paymentId);
     try {
-      const updatedSchedule = await updatePaymentScheduleStatus(paymentId, newStatus);
+      const updatedSchedule = await updatePaymentScheduleStatus(
+        paymentId, 
+        newStatus, 
+        newStatus === 'paid' ? formatDate(new Date(), 'yyyy-MM-dd') : undefined
+      );
       
       if (!updatedSchedule) {
         toast.error('Failed to update payment status');
@@ -620,6 +625,7 @@ const InvoiceView = () => {
                             <TableHead className="text-right">Percentage</TableHead>
                             <TableHead className="text-right">Amount</TableHead>
                             <TableHead>Status</TableHead>
+                            {invoice.paymentSchedules.some(schedule => schedule.status === 'paid') && <TableHead>Payment Date</TableHead>}
                             {!isClientView && <TableHead className="w-24"></TableHead>}
                           </TableRow>
                         </TableHeader>
@@ -641,6 +647,11 @@ const InvoiceView = () => {
                                   {schedule.status.toUpperCase()}
                                 </Badge>
                               </TableCell>
+                              {schedule.status === 'paid' && (
+                                <TableCell>
+                                  {schedule.paymentDate ? new Date(schedule.paymentDate).toLocaleDateString() : 'N/A'}
+                                </TableCell>
+                              )}
                               {!isClientView && (
                                 <TableCell>
                                   <DropdownMenu>

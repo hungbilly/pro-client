@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { getInvoiceByViewLink, getClient, updateInvoiceStatus, getInvoice, updateContractStatus } from '@/lib/storage';
@@ -34,7 +35,9 @@ const InvoiceView = () => {
   const [paymentScheduleLogs, setPaymentScheduleLogs] = useState<string[]>([]);
   const [showEmailDialog, setShowEmailDialog] = useState(false);
   const [showEmailForm, setShowEmailForm] = useState(false);
-
+  const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null);
+  
+  // Move all hook declarations above any conditional logic
   const isClientView = (location.search.includes('client=true') || !location.search) && !isAdmin;
 
   const generateDefaultEmailContent = () => {
@@ -357,39 +360,6 @@ const InvoiceView = () => {
     }).format(amount);
   };
 
-  if (loading) {
-    return (
-      <PageTransition>
-        <div className="flex justify-center items-center h-screen">
-          Loading invoice...
-        </div>
-      </PageTransition>
-    );
-  }
-
-  if (error) {
-    return (
-      <PageTransition>
-        <div className="flex justify-center items-center h-screen">
-          Error: {error}
-        </div>
-      </PageTransition>
-    );
-  }
-
-  if (!invoice || !client) {
-    return (
-      <PageTransition>
-        <div className="flex justify-center items-center h-screen">
-          Invoice or client not found.
-        </div>
-      </PageTransition>
-    );
-  }
-
-  // Add new state and function for payment status updating
-  const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null);
-  
   const handlePaymentStatusUpdate = async (paymentId: string, newStatus: 'paid' | 'unpaid' | 'write-off') => {
     if (!invoice || !paymentId) return;
     
@@ -427,6 +397,37 @@ const InvoiceView = () => {
       setUpdatingPaymentId(null);
     }
   };
+
+  // Only render the component after hooks are defined
+  if (loading) {
+    return (
+      <PageTransition>
+        <div className="flex justify-center items-center h-screen">
+          Loading invoice...
+        </div>
+      </PageTransition>
+    );
+  }
+
+  if (error) {
+    return (
+      <PageTransition>
+        <div className="flex justify-center items-center h-screen">
+          Error: {error}
+        </div>
+      </PageTransition>
+    );
+  }
+
+  if (!invoice || !client) {
+    return (
+      <PageTransition>
+        <div className="flex justify-center items-center h-screen">
+          Invoice or client not found.
+        </div>
+      </PageTransition>
+    );
+  }
 
   const statusColors = {
     draft: 'bg-muted text-muted-foreground',

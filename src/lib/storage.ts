@@ -576,8 +576,8 @@ export const updateJob = async (job: Job): Promise<Job> => {
       status: data.status as 'active' | 'completed' | 'cancelled',
       date: data.date || undefined,
       location: data.location || undefined,
-      startTime: data.startTime || undefined,
-      endTime: data.endTime || undefined,
+      startTime: data.start_time || undefined,
+      endTime: data.end_time || undefined,
       isFullDay: data.is_full_day || false,
       createdAt: data.created_at,
       updatedAt: data.updated_at
@@ -1285,4 +1285,3 @@ export const updateContractStatus = async (invoiceId: string, contractStatus: Co
     return undefined;
   }
 };
-

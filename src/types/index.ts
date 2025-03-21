@@ -1,3 +1,4 @@
+
 export interface Client {
   id: string;
   name: string;
@@ -55,7 +56,7 @@ export interface Package {
 
 export type InvoiceStatus = 'draft' | 'sent' | 'accepted' | 'paid';
 export type ContractStatus = 'pending' | 'accepted';
-export type PaymentStatus = 'paid' | 'unpaid';
+export type PaymentStatus = 'paid' | 'unpaid' | 'write-off';
 
 export interface PaymentSchedule {
   id: string;

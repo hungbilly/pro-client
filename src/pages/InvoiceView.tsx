@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { getInvoiceByViewLink, getClient, updateInvoiceStatus, getInvoice, updateContractStatus } from '@/lib/storage';
@@ -37,7 +36,6 @@ const InvoiceView = () => {
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null);
   
-  // Move all hook declarations above any conditional logic
   const isClientView = (location.search.includes('client=true') || !location.search) && !isAdmin;
 
   const generateDefaultEmailContent = () => {
@@ -96,47 +94,20 @@ const InvoiceView = () => {
           return;
         }
         
-        // Direct check of fetched invoice payment schedules
         if (fetchedInvoice.paymentSchedules) {
           console.log('PAYMENT SCHEDULES FOUND IN FETCHED INVOICE:', JSON.stringify(fetchedInvoice.paymentSchedules));
           setPaymentScheduleLogs(prev => [...prev, `Fetched invoice has ${fetchedInvoice.paymentSchedules?.length || 0} payment schedules`]);
         } else {
           console.log('NO PAYMENT SCHEDULES FOUND IN FETCHED INVOICE');
           setPaymentScheduleLogs(prev => [...prev, 'No payment schedules in fetched invoice']);
-        }
-        
-        // Direct check in database
-        if (fetchedInvoice.id) {
-          const { data: schedulesData, error: schedulesError } = await supabase
-            .from('payment_schedules')
-            .select('*')
-            .eq('invoice_id', fetchedInvoice.id);
           
-          if (schedulesError) {
-            console.error('Error directly fetching payment schedules:', schedulesError);
-            setPaymentScheduleLogs(prev => [...prev, `Error fetching schedules: ${schedulesError.message}`]);
-          } else {
-            console.log('DIRECT DB QUERY FOR PAYMENT SCHEDULES:', JSON.stringify(schedulesData));
-            setPaymentScheduleLogs(prev => [...prev, `Direct DB query found ${schedulesData.length} payment schedules`]);
-            
-            // If there's a mismatch, update the invoice's payment schedules
-            if (schedulesData && 
-                (!fetchedInvoice.paymentSchedules || 
-                 fetchedInvoice.paymentSchedules.length !== schedulesData.length)) {
-              console.log('MISMATCH DETECTED - Updating payment schedules from direct query');
-              setPaymentScheduleLogs(prev => [...prev, 'Mismatch detected - updating from direct query']);
-              
-              const mappedSchedules: PaymentSchedule[] = schedulesData.map(schedule => ({
-                id: schedule.id,
-                description: schedule.description || '',
-                dueDate: schedule.due_date,
-                percentage: schedule.percentage,
-                status: schedule.status === 'paid' ? 'paid' : 'unpaid'
-              }));
-              
-              fetchedInvoice.paymentSchedules = mappedSchedules;
-            }
-          }
+          fetchedInvoice.paymentSchedules = [{ 
+            id: Date.now().toString(), 
+            dueDate: fetchedInvoice.dueDate,
+            percentage: 100,
+            description: 'Full payment',
+            status: 'unpaid'
+          }];
         }
         
         setInvoice(fetchedInvoice);
@@ -377,7 +348,6 @@ const InvoiceView = () => {
         return;
       }
       
-      // Update local state to reflect the change
       if (invoice.paymentSchedules) {
         const updatedSchedules = invoice.paymentSchedules.map(schedule => 
           schedule.id === paymentId ? { ...schedule, status: newStatus } : schedule
@@ -398,7 +368,6 @@ const InvoiceView = () => {
     }
   };
 
-  // Only render the component after hooks are defined
   if (loading) {
     return (
       <PageTransition>
@@ -633,7 +602,6 @@ const InvoiceView = () => {
                 
                 <Separator className="my-6" />
                 
-                {/* Payment Schedule section moved below notes */}
                 <div className="mt-6">
                   <div className="flex items-center mb-3">
                     <CalendarDays className="h-5 w-5 mr-2" />

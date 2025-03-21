@@ -450,38 +450,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     return `${value}%`;
   };
 
-  const handlePaymentStatusUpdate = async (paymentId: string, newStatus: 'paid' | 'unpaid' | 'write-off') => {
-    if (!invoice || !paymentId) return;
-    
-    setUpdatingPaymentId(paymentId);
-    try {
-      const updatedSchedule = await updatePaymentScheduleStatus(paymentId, newStatus, null);
-      
-      if (!updatedSchedule) {
-        toast.error('Failed to update payment status');
-        return;
-      }
-      
-      if (invoice.paymentSchedules) {
-        const updatedSchedules = invoice.paymentSchedules.map(schedule => 
-          schedule.id === paymentId ? updatedSchedule : schedule
-        );
-        
-        setInvoice({
-          ...invoice,
-          paymentSchedules: updatedSchedules
-        });
-        
-        toast.success(`Payment marked as ${newStatus}`);
-      }
-    } catch (err) {
-      console.error('Failed to update payment status:', err);
-      toast.error('Error updating payment status');
-    } finally {
-      setUpdatingPaymentId(null);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -515,7 +483,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     try {
       if (isEditMode && invoice) {
         if (number !== invoice.number) {
-          const allInvoices = await getInvoicesByDate(null);
+          const allInvoices = await getInvoicesByDate();
           const duplicateExists = allInvoices.some(inv => inv.number === number && inv.id !== invoice.id);
           
           if (duplicateExists) {
@@ -551,7 +519,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
         
         navigate(`/invoice/${invoice.id}`);
       } else {
-        const allInvoices = await getInvoicesByDate(null);
+        const allInvoices = await getInvoicesByDate();
         const duplicateExists = allInvoices.some(inv => inv.number === number);
         
         if (duplicateExists) {
@@ -1141,4 +1109,3 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 };
 
 export default InvoiceForm;
-

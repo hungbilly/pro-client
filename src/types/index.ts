@@ -1,3 +1,4 @@
+
 export interface Client {
   id: string;
   name: string;
@@ -62,8 +63,7 @@ export interface PaymentSchedule {
   description?: string;
   dueDate: string;
   percentage: number;
-  status: PaymentStatus;
-  paymentDate?: string;
+  status: 'paid' | 'unpaid' | 'write-off';
 }
 
 export interface Invoice {
@@ -95,6 +95,7 @@ export interface InvoiceItem {
   tax?: string;
 }
 
+// Local storage keys
 export const STORAGE_KEYS = {
   CLIENTS: 'wedding-clients',
   INVOICES: 'wedding-invoices',

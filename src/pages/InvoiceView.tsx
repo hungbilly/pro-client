@@ -201,24 +201,23 @@ const InvoiceView = () => {
 
     try {
       const updatedInvoice = await updateInvoiceStatus(invoice.id, 'accepted');
-      if (!updatedInvoice) {
-        toast.error('Failed to update invoice status.');
-        return;
-      }
-      
-      setInvoice(updatedInvoice);
-      toast.success('Invoice accepted!');
-      
-      if (updatedInvoice.shootingDate && client) {
-        const calendarSuccess = await addToCompanyCalendar(updatedInvoice.id, client.id);
+      if (updatedInvoice) {
+        setInvoice(updatedInvoice);
+        toast.success('Invoice accepted!');
         
-        if (!calendarSuccess) {
-          toast.warning('Using backup method to create calendar event');
-          const manualSuccess = addToGoogleCalendar();
-          if (manualSuccess) {
-            toast.success('Please add this event to your company calendar');
+        if (updatedInvoice.shootingDate && client) {
+          const calendarSuccess = await addToCompanyCalendar(updatedInvoice.id, client.id);
+          
+          if (!calendarSuccess) {
+            toast.warning('Using backup method to create calendar event');
+            const manualSuccess = addToGoogleCalendar();
+            if (manualSuccess) {
+              toast.success('Please add this event to your company calendar');
+            }
           }
         }
+      } else {
+        toast.error('Failed to update invoice status.');
       }
     } catch (err) {
       toast.error('Failed to accept invoice.');
@@ -230,13 +229,12 @@ const InvoiceView = () => {
 
     try {
       const updatedInvoice = await updateContractStatus(invoice.id, 'accepted');
-      if (!updatedInvoice) {
+      if (updatedInvoice) {
+        setInvoice(updatedInvoice);
+        toast.success('Contract terms accepted!');
+      } else {
         toast.error('Failed to update contract status.');
-        return;
       }
-      
-      setInvoice(updatedInvoice);
-      toast.success('Contract terms accepted!');
     } catch (err) {
       toast.error('Failed to accept contract terms.');
     }

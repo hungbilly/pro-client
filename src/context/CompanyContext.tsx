@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
@@ -79,11 +78,24 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       
       if (data && data.length > 0) {
         setCompanies(data);
-        // Select default company or first one
-        const defaultCompany = data.find(c => c.is_default);
-        const company = defaultCompany ? defaultCompany : data[0];
-        console.log("CompanyProvider: Setting selected company to:", company.id);
-        setSelectedCompany(company);
+        
+        // Check if the current selectedCompany is still valid in the new data
+        const currentSelectedId = selectedCompany?.id;
+        const currentSelectionStillValid = currentSelectedId && 
+          data.some(company => company.id === currentSelectedId);
+        
+        if (currentSelectionStillValid) {
+          // Keep the current selection but update it with fresh data
+          const updatedSelection = data.find(c => c.id === currentSelectedId)!;
+          console.log("CompanyProvider: Keeping current selection:", updatedSelection.id);
+          setSelectedCompany(updatedSelection);
+        } else {
+          // Only select default if no valid selection exists
+          const defaultCompany = data.find(c => c.is_default);
+          const company = defaultCompany ? defaultCompany : data[0];
+          console.log("CompanyProvider: Setting selected company to:", company.id);
+          setSelectedCompany(company);
+        }
       } else {
         setCompanies([]);
         setSelectedCompany(null);

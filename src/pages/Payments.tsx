@@ -137,10 +137,15 @@ const Payments = () => {
           start: undefined,
           end: undefined
         };
-      default:
+      case 'custom':
         return {
           start: customStartDate,
           end: customEndDate
+        };
+      default:
+        return {
+          start: undefined,
+          end: undefined
         };
     }
   };
@@ -208,45 +213,28 @@ const Payments = () => {
     
     // Apply date range filter
     const { start, end } = getDateRange();
+    
+    // Create a date-filtered list for statistics calculation
+    let dateFiltered = [...payments];
     if (start && end) {
+      dateFiltered = dateFiltered.filter(payment => {
+        const dueDate = parseISO(payment.dueDate);
+        return dueDate >= start && dueDate <= end;
+      });
+      
+      // Apply the same date filter to the display list
       filtered = filtered.filter(payment => {
         const dueDate = parseISO(payment.dueDate);
         return dueDate >= start && dueDate <= end;
       });
     }
     
-    // Filter by status
-    if (statusFilter) {
-      filtered = filtered.filter(payment => 
-        statusFilter === 'all' ? true : payment.status === statusFilter
-      );
-    }
-    
-    // Filter by search query
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(payment => 
-        payment.clientName.toLowerCase().includes(query) ||
-        payment.invoiceNumber.toLowerCase().includes(query) ||
-        (payment.jobTitle && payment.jobTitle.toLowerCase().includes(query))
-      );
-    }
-    
-    // Calculate payment statistics
+    // Calculate payment statistics based on date-filtered payments
     const stats: PaymentStats = {
       paid: 0,
       unpaid: 0,
       writeOff: 0
     };
-    
-    // We calculate stats on the date-filtered payments only, but not on status or search filtered
-    const dateFiltered = [...payments];
-    if (start && end) {
-      dateFiltered.filter(payment => {
-        const dueDate = parseISO(payment.dueDate);
-        return dueDate >= start && dueDate <= end;
-      });
-    }
     
     dateFiltered.forEach(payment => {
       if (payment.status === 'paid') {
@@ -259,6 +247,22 @@ const Payments = () => {
     });
     
     setPaymentStats(stats);
+    
+    // Filter by status
+    if (statusFilter && statusFilter !== 'all') {
+      filtered = filtered.filter(payment => payment.status === statusFilter);
+    }
+    
+    // Filter by search query
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(payment => 
+        payment.clientName.toLowerCase().includes(query) ||
+        payment.invoiceNumber.toLowerCase().includes(query) ||
+        (payment.jobTitle && payment.jobTitle.toLowerCase().includes(query))
+      );
+    }
+    
     setFilteredPayments(filtered);
     
     // Calculate total due (only unpaid items)

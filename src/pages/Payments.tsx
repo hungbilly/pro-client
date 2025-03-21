@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { MoreHorizontal, Download, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompanyContext } from '@/context/CompanyContext';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,6 +30,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogClose,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -60,9 +63,20 @@ const Payments = () => {
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<PaymentScheduleWithDetails | null>(null);
   const [paymentDate, setPaymentDate] = useState<Date | undefined>(new Date());
+  const [isUpdating, setIsUpdating] = useState(false);
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
-    fetchPayments();
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (selectedCompany) {
+      fetchPayments();
+    }
   }, [selectedCompany]);
 
   useEffect(() => {
@@ -124,7 +138,11 @@ const Payments = () => {
       setTotalDue(due);
     } catch (error) {
       console.error('Error fetching payments:', error);
-      toast.error('Failed to load payments');
+      toast({
+        title: 'Error',
+        description: 'Failed to load payments',
+        variant: 'destructive'
+      });
     } finally {
       setIsLoading(false);
     }
@@ -153,7 +171,10 @@ const Payments = () => {
     setFilteredPayments(filtered);
   };
 
-  const handleStatusUpdate = async (payment: PaymentScheduleWithDetails, newStatus: 'paid' | 'unpaid' | 'write-off') => {
+  const handleStatusUpdate = async (payment: PaymentScheduleWithDetails, newStatus: 'paid' | 'unpaid' | 'write-off', event: React.MouseEvent) => {
+    // Stop event propagation to prevent row click
+    event.stopPropagation();
+    
     if (newStatus === 'paid') {
       setSelectedPayment(payment);
       setIsPaymentDialogOpen(true);
@@ -163,6 +184,9 @@ const Payments = () => {
   };
 
   const updatePaymentStatus = async (paymentId: string, status: string, paymentDate?: string) => {
+    if (!isMountedRef.current || isUpdating) return;
+
+    setIsUpdating(true);
     try {
       const updateData: any = { status };
       if (paymentDate) {
@@ -176,7 +200,11 @@ const Payments = () => {
 
       if (error) throw error;
       
-      toast.success(`Payment marked as ${status}`);
+      toast({
+        title: 'Success',
+        description: `Payment marked as ${status}`,
+        variant: 'default'
+      });
       
       // Update the local state
       const updatedPayments = payments.map(payment => {
@@ -200,20 +228,43 @@ const Payments = () => {
       setTotalDue(due);
     } catch (error) {
       console.error('Error updating payment status:', error);
-      toast.error('Failed to update payment status');
+      toast({
+        title: 'Error',
+        description: 'Failed to update payment status',
+        variant: 'destructive'
+      });
+    } finally {
+      if (isMountedRef.current) {
+        setIsUpdating(false);
+      }
     }
   };
 
+  const closePaymentDialog = () => {
+    if (isUpdating) return;
+    setIsPaymentDialogOpen(false);
+    // Small delay to reset other dialog state after closing animation
+    setTimeout(() => {
+      if (isMountedRef.current) {
+        setSelectedPayment(null);
+        setPaymentDate(new Date());
+      }
+    }, 100);
+  };
+
   const confirmPayment = async () => {
-    if (!selectedPayment) return;
+    if (!selectedPayment || !isMountedRef.current) return;
     
     const formattedDate = paymentDate ? formatDate(paymentDate, 'yyyy-MM-dd') : undefined;
     await updatePaymentStatus(selectedPayment.id, 'paid', formattedDate);
-    setIsPaymentDialogOpen(false);
+    closePaymentDialog();
   };
 
-  const handleRowClick = (invoiceId: string) => {
-    navigate(`/invoice/${invoiceId}`);
+  const handleRowClick = (invoiceId: string, event: React.MouseEvent) => {
+    // Check if the click was inside a dropdown menu
+    if (!(event.target as HTMLElement).closest('.dropdown-actions')) {
+      navigate(`/invoice/${invoiceId}`);
+    }
   };
 
   const formatDueDate = (dueDate: string, status: string) => {
@@ -250,7 +301,11 @@ const Payments = () => {
 
   const exportPayments = () => {
     // This would be implemented to export payments to CSV/Excel
-    toast.info('Export functionality will be implemented soon');
+    toast({
+      title: 'Info',
+      description: 'Export functionality will be implemented soon',
+      variant: 'default'
+    });
   };
 
   return (
@@ -334,12 +389,7 @@ const Payments = () => {
                   <TableRow 
                     key={payment.id} 
                     className="hover:bg-gray-50 cursor-pointer"
-                    onClick={(e) => {
-                      // Only navigate if the click wasn't on the dropdown or its children
-                      if (!(e.target as HTMLElement).closest('.dropdown-actions')) {
-                        handleRowClick(payment.invoiceId);
-                      }
-                    }}
+                    onClick={(e) => handleRowClick(payment.invoiceId, e)}
                   >
                     <TableCell>{getStatusBadge(payment.status)}</TableCell>
                     <TableCell>{formatDueDate(payment.dueDate, payment.status)}</TableCell>
@@ -350,7 +400,7 @@ const Payments = () => {
                       ${payment.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </TableCell>
                     <TableCell>
-                      <div className="dropdown-actions">
+                      <div className="dropdown-actions" onClick={(e) => e.stopPropagation()}>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon">
@@ -359,21 +409,24 @@ const Payments = () => {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             {payment.status !== 'paid' && (
-                              <DropdownMenuItem onClick={() => handleStatusUpdate(payment, 'paid')}>
+                              <DropdownMenuItem onClick={(e) => handleStatusUpdate(payment, 'paid', e)}>
                                 Mark as Paid
                               </DropdownMenuItem>
                             )}
                             {payment.status !== 'unpaid' && (
-                              <DropdownMenuItem onClick={() => handleStatusUpdate(payment, 'unpaid')}>
+                              <DropdownMenuItem onClick={(e) => handleStatusUpdate(payment, 'unpaid', e)}>
                                 Mark as Unpaid
                               </DropdownMenuItem>
                             )}
                             {payment.status !== 'write-off' && (
-                              <DropdownMenuItem onClick={() => handleStatusUpdate(payment, 'write-off')}>
+                              <DropdownMenuItem onClick={(e) => handleStatusUpdate(payment, 'write-off', e)}>
                                 Write Off
                               </DropdownMenuItem>
                             )}
-                            <DropdownMenuItem onClick={() => navigate(`/invoice/${payment.invoiceId}`)}>
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/invoice/${payment.invoiceId}`);
+                            }}>
                               View Invoice
                             </DropdownMenuItem>
                           </DropdownMenuContent>
@@ -389,10 +442,16 @@ const Payments = () => {
       </Card>
       
       {/* Payment Date Dialog */}
-      <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
+      <Dialog open={isPaymentDialogOpen} onOpenChange={(open) => {
+        if (!open) closePaymentDialog();
+        else setIsPaymentDialogOpen(true);
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Select Payment Date</DialogTitle>
+            <DialogDescription>
+              Choose the date when this payment was received.
+            </DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <Popover>
@@ -400,6 +459,7 @@ const Payments = () => {
                 <Button
                   variant="outline"
                   className="w-full justify-start text-left font-normal"
+                  disabled={isUpdating}
                 >
                   {paymentDate ? formatDate(paymentDate, "PPP") : "Select date"}
                 </Button>
@@ -408,18 +468,19 @@ const Payments = () => {
                 <Calendar
                   mode="single"
                   selected={paymentDate}
-                  onSelect={setPaymentDate}
+                  onSelect={(date) => setPaymentDate(date as Date)}
                   initialFocus
+                  className="pointer-events-auto"
                 />
               </PopoverContent>
             </Popover>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsPaymentDialogOpen(false)}>
+            <Button variant="outline" onClick={closePaymentDialog} disabled={isUpdating}>
               Cancel
             </Button>
-            <Button onClick={confirmPayment}>
-              Confirm Payment
+            <Button onClick={confirmPayment} disabled={isUpdating}>
+              {isUpdating ? 'Processing...' : 'Confirm Payment'}
             </Button>
           </DialogFooter>
         </DialogContent>

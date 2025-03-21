@@ -17,9 +17,18 @@ interface DatePickerProps {
   selected?: Date | DateRange | null
   onSelect?: ((date: Date | null) => void) | ((range: DateRange | null) => void)
   initialFocus?: boolean
+  disabled?: boolean
+  placeholder?: string
 }
 
-export function DatePicker({ mode = "single", selected, onSelect, initialFocus }: DatePickerProps) {
+export function DatePicker({ 
+  mode = "single", 
+  selected, 
+  onSelect, 
+  initialFocus,
+  disabled,
+  placeholder = "Select date" 
+}: DatePickerProps) {
   return (
     <div className="grid gap-2">
       {mode === "single" ? (
@@ -28,6 +37,8 @@ export function DatePicker({ mode = "single", selected, onSelect, initialFocus }
           selected={selected as Date | null}
           onSelect={onSelect as (date: Date | null) => void}
           initialFocus={initialFocus}
+          disabled={disabled}
+          className="pointer-events-auto"
         />
       ) : (
         <Calendar
@@ -35,6 +46,8 @@ export function DatePicker({ mode = "single", selected, onSelect, initialFocus }
           selected={selected as DateRange | null}
           onSelect={onSelect as (range: DateRange | null) => void}
           initialFocus={initialFocus}
+          disabled={disabled}
+          className="pointer-events-auto"
         />
       )}
     </div>

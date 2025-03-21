@@ -26,7 +26,11 @@ const Routes = () => {
       {/* Auth routes outside of the layout */}
       <Route path="/auth" element={<Auth />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
-      <Route path="/invoice/:viewLink" element={<InvoiceView />} />
+      
+      {/* Public invoice view wrapped in AppLayout to show menu bar */}
+      <Route element={<AppLayout />}>
+        <Route path="/invoice/:viewLink" element={<InvoiceView />} />
+      </Route>
       
       {/* Protected routes with layout */}
       <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>

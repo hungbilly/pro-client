@@ -75,6 +75,7 @@ const Payments = () => {
   const fetchPayments = async () => {
     setIsLoading(true);
     try {
+      console.log('Fetching payments data...');
       const { data: schedulesData, error: schedulesError } = await supabase
         .from('payment_schedules')
         .select(`
@@ -92,9 +93,12 @@ const Payments = () => {
         .order('due_date', { ascending: true });
 
       if (schedulesError) {
+        console.error('Error in fetchPayments query:', schedulesError);
         throw schedulesError;
       }
 
+      console.log('Fetched payment schedules data:', schedulesData);
+      
       const transformedData: PaymentScheduleWithDetails[] = schedulesData.map((schedule) => {
         const invoice = schedule.invoices;
         const amount = invoice.amount * (schedule.percentage / 100);
@@ -114,6 +118,7 @@ const Payments = () => {
         };
       });
 
+      console.log('Transformed payment data:', transformedData);
       setPayments(transformedData);
       
       const due = transformedData
@@ -122,14 +127,16 @@ const Payments = () => {
       
       setTotalDue(due);
     } catch (error) {
-      console.error('Error fetching payments:', error);
+      console.error('Error in fetchPayments:', error);
       toast.error('Failed to load payments');
     } finally {
       setIsLoading(false);
+      console.log('Finished loading payments');
     }
   };
 
   const filterPayments = () => {
+    console.log('Filtering payments with status:', statusFilter, 'and search:', searchQuery);
     let filtered = [...payments];
     
     if (statusFilter) {
@@ -147,38 +154,57 @@ const Payments = () => {
       );
     }
     
+    console.log('Filtered payments count:', filtered.length);
     setFilteredPayments(filtered);
   };
 
   const handleStatusUpdate = async (payment: PaymentScheduleWithDetails, newStatus: 'paid' | 'unpaid' | 'write-off') => {
+    console.log('handleStatusUpdate triggered for payment:', payment.id, 'to status:', newStatus);
+    
     if (newStatus === 'paid') {
+      console.log('Opening payment date dialog');
       setSelectedPayment(payment);
       setPaymentDate(new Date());
       setIsPaymentDialogOpen(true);
     } else {
+      console.log('Directly updating status to:', newStatus);
       await updatePaymentStatus(payment.id, newStatus);
     }
   };
 
   const updatePaymentStatus = async (paymentId: string, status: string, paymentDate?: string) => {
-    if (isUpdating) return; // Prevent multiple simultaneous updates
+    console.log('updatePaymentStatus function called with:', { paymentId, status, paymentDate });
+    
+    if (isUpdating) {
+      console.log('Update already in progress, ignoring this request');
+      return;
+    }
     
     setIsUpdating(true);
+    console.log('isUpdating set to true');
+    
     try {
       const updateData: any = { status };
       if (paymentDate) {
         updateData.payment_date = paymentDate;
       }
       
+      console.log('Sending update to supabase with data:', updateData);
+      
       const { error } = await supabase
         .from('payment_schedules')
         .update(updateData)
         .eq('id', paymentId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase update error:', error);
+        throw error;
+      }
       
+      console.log('Supabase update successful');
       toast.success(`Payment marked as ${status}`);
       
+      console.log('Updating local state with new status');
       const updatedPayments = payments.map(payment => {
         if (payment.id === paymentId) {
           return { 
@@ -197,25 +223,40 @@ const Payments = () => {
         .reduce((sum, payment) => sum + payment.amount, 0);
       
       setTotalDue(due);
+      console.log('Total due updated to:', due);
     } catch (error) {
-      console.error('Error updating payment status:', error);
+      console.error('Error in updatePaymentStatus:', error);
       toast.error('Failed to update payment status');
     } finally {
+      console.log('Setting isUpdating back to false');
       setIsUpdating(false);
     }
   };
 
   const confirmPayment = async () => {
-    if (!selectedPayment) return;
+    console.log('confirmPayment triggered with selectedPayment:', selectedPayment);
     
+    if (!selectedPayment) {
+      console.error('No payment selected, aborting confirmation');
+      return;
+    }
+    
+    console.log('Payment date selected:', paymentDate);
     const formattedDate = paymentDate ? format(paymentDate, 'yyyy-MM-dd') : undefined;
+    console.log('Formatted payment date:', formattedDate);
+    
+    console.log('Calling updatePaymentStatus with status: paid');
     await updatePaymentStatus(selectedPayment.id, 'paid', formattedDate);
+    
+    console.log('Closing payment dialog after successful update');
     closePaymentDialog();
   };
 
   const closePaymentDialog = () => {
+    console.log('closePaymentDialog triggered');
     setIsPaymentDialogOpen(false);
     setSelectedPayment(null);
+    console.log('Dialog closed, selectedPayment cleared');
   };
 
   const formatDueDate = (dueDate: string, status: string) => {
@@ -255,8 +296,12 @@ const Payments = () => {
   };
 
   const handleRowClick = (payment: PaymentScheduleWithDetails) => {
+    console.log('Row clicked for payment:', payment.id);
     navigate(`/invoice/${payment.invoiceId}`);
   };
+
+  console.log('Rendering Payments component with dialog open:', isPaymentDialogOpen);
+  console.log('isUpdating state:', isUpdating);
 
   return (
     <div className="container mx-auto px-4 py-6">
@@ -362,6 +407,7 @@ const Payments = () => {
                               size="icon"
                               onClick={(e) => {
                                 e.preventDefault();
+                                console.log('Dropdown trigger clicked, preventing default');
                               }}
                             >
                               <MoreHorizontal className="h-4 w-4" />
@@ -371,6 +417,7 @@ const Payments = () => {
                             {payment.status !== 'paid' && (
                               <DropdownMenuItem onClick={(e) => {
                                 e.stopPropagation();
+                                console.log('Mark as Paid menu item clicked');
                                 handleStatusUpdate(payment, 'paid');
                               }}>
                                 Mark as Paid
@@ -379,6 +426,7 @@ const Payments = () => {
                             {payment.status !== 'unpaid' && (
                               <DropdownMenuItem onClick={(e) => {
                                 e.stopPropagation();
+                                console.log('Mark as Unpaid menu item clicked');
                                 handleStatusUpdate(payment, 'unpaid');
                               }}>
                                 Mark as Unpaid
@@ -387,6 +435,7 @@ const Payments = () => {
                             {payment.status !== 'write-off' && (
                               <DropdownMenuItem onClick={(e) => {
                                 e.stopPropagation();
+                                console.log('Write Off menu item clicked');
                                 handleStatusUpdate(payment, 'write-off');
                               }}>
                                 Write Off
@@ -404,9 +453,16 @@ const Payments = () => {
         </CardContent>
       </Card>
       
-      <Dialog open={isPaymentDialogOpen} onOpenChange={(open) => {
-        if (!open) closePaymentDialog();
-      }}>
+      <Dialog 
+        open={isPaymentDialogOpen} 
+        onOpenChange={(open) => {
+          console.log('Dialog onOpenChange triggered with open:', open);
+          if (!open) {
+            console.log('Dialog was closed by user, calling closePaymentDialog');
+            closePaymentDialog();
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Select Payment Date</DialogTitle>
@@ -417,15 +473,31 @@ const Payments = () => {
           <div className="py-4">
             <DatePicker 
               selected={paymentDate} 
-              onSelect={(date) => setPaymentDate(date as Date)}
+              onSelect={(date) => {
+                console.log('DatePicker date selected:', date);
+                setPaymentDate(date as Date);
+              }}
               placeholder="Select payment date"
             />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={closePaymentDialog} disabled={isUpdating}>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                console.log('Cancel button clicked');
+                closePaymentDialog();
+              }} 
+              disabled={isUpdating}
+            >
               Cancel
             </Button>
-            <Button onClick={confirmPayment} disabled={isUpdating}>
+            <Button 
+              onClick={() => {
+                console.log('Confirm Payment button clicked');
+                confirmPayment();
+              }} 
+              disabled={isUpdating}
+            >
               {isUpdating ? 'Processing...' : 'Confirm Payment'}
             </Button>
           </DialogFooter>
@@ -436,4 +508,3 @@ const Payments = () => {
 };
 
 export default Payments;
-

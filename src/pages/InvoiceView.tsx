@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
-import { getInvoiceByViewLink, getClient, updateInvoiceStatus, getInvoice, updateContractStatus } from '@/lib/storage';
+import { 
+  getInvoiceByViewLink, 
+  getClient, 
+  updateInvoiceStatus, 
+  getInvoice, 
+  updateContractStatus,
+  updatePaymentScheduleStatus
+} from '@/lib/storage';
 import { Invoice, Client, PaymentSchedule } from '@/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -336,21 +343,16 @@ const InvoiceView = () => {
     
     setUpdatingPaymentId(paymentId);
     try {
-      const { data, error } = await supabase
-        .from('payment_schedules')
-        .update({ status: newStatus })
-        .eq('id', paymentId)
-        .select();
-        
-      if (error) {
-        console.error('Error updating payment status:', error);
+      const updatedSchedule = await updatePaymentScheduleStatus(paymentId, newStatus);
+      
+      if (!updatedSchedule) {
         toast.error('Failed to update payment status');
         return;
       }
       
       if (invoice.paymentSchedules) {
         const updatedSchedules = invoice.paymentSchedules.map(schedule => 
-          schedule.id === paymentId ? { ...schedule, status: newStatus } : schedule
+          schedule.id === paymentId ? updatedSchedule : schedule
         );
         
         setInvoice({

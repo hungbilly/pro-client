@@ -1285,3 +1285,38 @@ export const updateContractStatus = async (invoiceId: string, contractStatus: Co
     return undefined;
   }
 };
+
+/**
+ * Updates the status of a payment schedule
+ */
+export const updatePaymentScheduleStatus = async (scheduleId: string, status: PaymentStatus): Promise<PaymentSchedule | undefined> => {
+  try {
+    console.log(`Attempting to update payment schedule ${scheduleId} to status: ${status}`);
+    
+    const { data, error } = await supabase
+      .from('payment_schedules')
+      .update({ status })
+      .eq('id', scheduleId)
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('Error updating payment schedule status:', error);
+      throw new Error(error.message || 'Failed to update payment schedule status');
+    }
+    
+    console.log(`Successfully updated payment schedule ${scheduleId} to status: ${status}`);
+    console.log('Updated payment schedule data:', data);
+    
+    return {
+      id: data.id,
+      description: data.description || '',
+      dueDate: data.due_date,
+      percentage: data.percentage,
+      status: parseEnum(data.status, ['paid', 'unpaid', 'write-off'], 'unpaid') as PaymentStatus
+    };
+  } catch (error) {
+    console.error('Error in updatePaymentScheduleStatus:', error);
+    throw error;
+  }
+};

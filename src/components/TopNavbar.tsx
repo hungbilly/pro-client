@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Home, 
@@ -10,7 +9,8 @@ import {
   LogOut,
   Building,
   Menu,
-  User
+  User,
+  UserCog
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -19,13 +19,13 @@ import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import CompanySelector from './CompanySelector';
 import { useIsMobile } from '@/hooks/use-mobile';
+import UserProfileModal from './ui-custom/UserProfileModal';
 import {
   Drawer,
   DrawerContent,
   DrawerTrigger,
 } from "@/components/ui/drawer";
 
-// Define the proper type for menu items
 interface MenuItem {
   path: string;
   label: string;
@@ -39,7 +39,8 @@ const TopNavbar = () => {
   const { selectedCompany } = useCompany();
   const { signOut, user } = useAuth();
   const isMobile = useIsMobile();
-  const [isDrawerOpen, setIsDrawerOpen] = React.useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   
   const isActive = (path: string) => {
     if (path === '/') {
@@ -55,7 +56,6 @@ const TopNavbar = () => {
       console.log('TopNavbar: Logout successful');
       toast.success('Logged out successfully');
       
-      // Force a hard reload to the auth page to clear all state
       window.localStorage.clear();
       window.sessionStorage.clear();
       setTimeout(() => {
@@ -65,7 +65,6 @@ const TopNavbar = () => {
       console.error('Logout error:', error);
       toast.error('Failed to log out');
       
-      // Even if logout fails, redirect to auth page as a fallback
       setTimeout(() => {
         window.location.replace('/auth');
       }, 500);
@@ -80,7 +79,6 @@ const TopNavbar = () => {
     { path: '/settings', label: 'Settings', icon: <Settings className="w-5 h-5" /> },
   ];
 
-  // Modified function to close drawer when a menu item is clicked
   const renderMenuItems = () => {
     return menuItems.map((item) => (
       <Button
@@ -118,10 +116,8 @@ const TopNavbar = () => {
 
   return (
     <div className="w-full">
-      {/* Main navigation - dark background */}
       <div className="bg-slate-900 w-full">
         <div className="max-w-screen-2xl mx-auto px-4 py-3">
-          {/* Top section: Logo and main navigation */}
           <div className="flex items-center justify-between w-full">
             <div className="flex items-center">
               {isMobile && (
@@ -143,6 +139,21 @@ const TopNavbar = () => {
                       </div>
                       <div className="mt-auto pt-4 border-t border-slate-800">
                         <div className="flex flex-col items-center justify-center space-y-4">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-white hover:bg-slate-800 flex flex-col items-center w-full"
+                            onClick={() => {
+                              setIsDrawerOpen(false);
+                              setIsProfileModalOpen(true);
+                            }}
+                          >
+                            <div className="flex items-center justify-center w-full">
+                              <UserCog className="w-4 h-4 mr-2" />
+                              <span>Edit Profile</span>
+                            </div>
+                          </Button>
+                          
                           <Button 
                             variant="ghost" 
                             size="sm" 
@@ -205,7 +216,6 @@ const TopNavbar = () => {
         </div>
       </div>
       
-      {/* Company selector - different background color */}
       <div className="bg-slate-800 w-full py-2">
         <div className="max-w-screen-2xl mx-auto px-4">
           <div className="flex items-center justify-between">
@@ -215,12 +225,17 @@ const TopNavbar = () => {
             
             <div className="hidden md:flex items-center gap-4">
               {user && (
-                <div className="flex items-center overflow-hidden max-w-[200px]">
-                  <User className="h-4 w-4 text-slate-400 mr-1 flex-shrink-0" />
-                  <span className="text-xs text-slate-300 truncate">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-slate-300 hover:bg-slate-700 flex items-center gap-1 overflow-hidden"
+                  onClick={() => setIsProfileModalOpen(true)}
+                >
+                  <User className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                  <span className="text-xs truncate">
                     {user.email}
                   </span>
-                </div>
+                </Button>
               )}
               
               <Button 
@@ -236,6 +251,13 @@ const TopNavbar = () => {
           </div>
         </div>
       </div>
+      
+      {isProfileModalOpen && (
+        <UserProfileModal 
+          isOpen={isProfileModalOpen} 
+          onClose={() => setIsProfileModalOpen(false)} 
+        />
+      )}
     </div>
   );
 };

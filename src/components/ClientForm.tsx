@@ -71,8 +71,8 @@ const ClientForm: React.FC<ClientFormProps> = ({ existingClient, onSuccess }) =>
       return;
     }
 
-    if (!name || !email || !phone || !address) {
-      toast.error('Please fill in all required fields');
+    if (!name) {
+      toast.error('Please provide a client name');
       return;
     }
 
@@ -118,7 +118,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ existingClient, onSuccess }) =>
           </div>
           
           <div>
-            <Label htmlFor="name">Name</Label>
+            <Label htmlFor="name">Name *</Label>
             <Input
               id="name"
               placeholder="Client name"
@@ -136,7 +136,6 @@ const ClientForm: React.FC<ClientFormProps> = ({ existingClient, onSuccess }) =>
               placeholder="client@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              required
             />
           </div>
           
@@ -147,7 +146,6 @@ const ClientForm: React.FC<ClientFormProps> = ({ existingClient, onSuccess }) =>
               placeholder="Phone number"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              required
             />
           </div>
           
@@ -158,7 +156,6 @@ const ClientForm: React.FC<ClientFormProps> = ({ existingClient, onSuccess }) =>
               placeholder="Client address"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              required
             />
           </div>
           

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -76,7 +77,13 @@ const Auth = () => {
           password,
         });
 
-        if (error) throw error;
+        if (error) {
+          // Improve error message for authentication failures
+          if (error.message.includes('Invalid login credentials')) {
+            throw new Error('Invalid username/password combination');
+          }
+          throw error;
+        }
         
         console.log('Sign in successful:', data);
         toast.success('Successfully signed in!');

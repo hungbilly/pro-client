@@ -1,5 +1,5 @@
+
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { MoreHorizontal, Download, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -30,9 +30,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { format as formatDate } from 'date-fns';
+import { DatePicker } from '@/components/ui/date-picker';
 
 type PaymentScheduleWithDetails = {
   id: string;
@@ -49,7 +47,6 @@ type PaymentScheduleWithDetails = {
 };
 
 const Payments = () => {
-  const navigate = useNavigate();
   const { selectedCompany } = useCompanyContext();
   const [payments, setPayments] = useState<PaymentScheduleWithDetails[]>([]);
   const [filteredPayments, setFilteredPayments] = useState<PaymentScheduleWithDetails[]>([]);
@@ -207,13 +204,9 @@ const Payments = () => {
   const confirmPayment = async () => {
     if (!selectedPayment) return;
     
-    const formattedDate = paymentDate ? formatDate(paymentDate, 'yyyy-MM-dd') : undefined;
+    const formattedDate = paymentDate ? format(paymentDate, 'yyyy-MM-dd') : undefined;
     await updatePaymentStatus(selectedPayment.id, 'paid', formattedDate);
     setIsPaymentDialogOpen(false);
-  };
-
-  const handleRowClick = (invoiceId: string) => {
-    navigate(`/invoice/${invoiceId}`);
   };
 
   const formatDueDate = (dueDate: string, status: string) => {
@@ -334,12 +327,6 @@ const Payments = () => {
                   <TableRow 
                     key={payment.id} 
                     className="hover:bg-gray-50 cursor-pointer"
-                    onClick={(e) => {
-                      // Only navigate if the click wasn't on the dropdown or its children
-                      if (!(e.target as HTMLElement).closest('.dropdown-actions')) {
-                        handleRowClick(payment.invoiceId);
-                      }
-                    }}
                   >
                     <TableCell>{getStatusBadge(payment.status)}</TableCell>
                     <TableCell>{formatDueDate(payment.dueDate, payment.status)}</TableCell>
@@ -359,23 +346,29 @@ const Payments = () => {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             {payment.status !== 'paid' && (
-                              <DropdownMenuItem onClick={() => handleStatusUpdate(payment, 'paid')}>
+                              <DropdownMenuItem onClick={(e) => {
+                                e.stopPropagation();
+                                handleStatusUpdate(payment, 'paid');
+                              }}>
                                 Mark as Paid
                               </DropdownMenuItem>
                             )}
                             {payment.status !== 'unpaid' && (
-                              <DropdownMenuItem onClick={() => handleStatusUpdate(payment, 'unpaid')}>
+                              <DropdownMenuItem onClick={(e) => {
+                                e.stopPropagation();
+                                handleStatusUpdate(payment, 'unpaid');
+                              }}>
                                 Mark as Unpaid
                               </DropdownMenuItem>
                             )}
                             {payment.status !== 'write-off' && (
-                              <DropdownMenuItem onClick={() => handleStatusUpdate(payment, 'write-off')}>
+                              <DropdownMenuItem onClick={(e) => {
+                                e.stopPropagation();
+                                handleStatusUpdate(payment, 'write-off');
+                              }}>
                                 Write Off
                               </DropdownMenuItem>
                             )}
-                            <DropdownMenuItem onClick={() => navigate(`/invoice/${payment.invoiceId}`)}>
-                              View Invoice
-                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
@@ -395,24 +388,11 @@ const Payments = () => {
             <DialogTitle>Select Payment Date</DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start text-left font-normal"
-                >
-                  {paymentDate ? formatDate(paymentDate, "PPP") : "Select date"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={paymentDate}
-                  onSelect={setPaymentDate}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
+            <DatePicker 
+              selected={paymentDate} 
+              onSelect={setPaymentDate as (date: Date | null) => void}
+              placeholder="Select payment date"
+            />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsPaymentDialogOpen(false)}>

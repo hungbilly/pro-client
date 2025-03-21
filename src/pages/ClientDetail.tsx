@@ -109,7 +109,7 @@ const ClientDetail = () => {
               Back to Clients
             </Button>
             <Button size="sm" asChild>
-              <Link to={`/client/edit/${client.id}`}>
+              <Link to={`/client/${client.id}/edit`}>
                 <UserCog className="h-4 w-4 mr-2" />
                 Edit Client
               </Link>

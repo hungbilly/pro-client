@@ -33,9 +33,16 @@ const NotFound = () => {
   // Check if this is a route with "create" in it that we can fix
   const isCreateRouteWithIssue = location.pathname.includes('/create');
   
+  // Check if this is a client edit route with wrong format
+  const isClientEditRouteWithIssue = location.pathname.includes('/client/edit/');
+  
   // Extract the client ID if present
   const clientIdMatch = location.pathname.match(/\/client\/([^\/]+)/);
   const clientId = clientIdMatch ? clientIdMatch[1] : null;
+  
+  // Extract client ID from edit route if in the wrong format
+  const editClientIdMatch = location.pathname.match(/\/client\/edit\/([^\/]+)/);
+  const editClientId = editClientIdMatch ? editClientIdMatch[1] : null;
   
   // Extract the job ID if present
   const jobIdMatch = location.pathname.match(/\/job\/([^\/]+)/);
@@ -43,6 +50,10 @@ const NotFound = () => {
 
   // Determine correct route for common mistakes
   const getCorrectRoute = () => {
+    if (isClientEditRouteWithIssue && editClientId) {
+      return `/client/${editClientId}/edit`;
+    }
+    
     if (isCreateRouteWithIssue) {
       // Replace /create with /new which is our standard format
       if (location.pathname.includes('/job/create') && clientId) {
@@ -74,11 +85,15 @@ const NotFound = () => {
             ? "The invoice you're looking for could not be found. It may have been deleted or the link is incorrect."
             : isJobRoute
             ? "The job you're looking for could not be found. It may have been deleted or the link is incorrect."
+            : isClientEditRouteWithIssue
+            ? "It looks like you're trying to edit a client, but the URL format is incorrect."
             : `The page you're looking for at ${location.pathname} could not be found.`
           }
           {correctRoute && (
             <span className="block mt-2 text-blue-500">
-              Did you mean to go to the new page instead of create?
+              {isClientEditRouteWithIssue 
+                ? "The correct URL format is /client/[id]/edit"
+                : "Did you mean to go to the new page instead of create?"}
             </span>
           )}
         </p>
@@ -113,7 +128,7 @@ const NotFound = () => {
             </Button>
           )}
           
-          {isClientRoute && clientId && (
+          {isClientRoute && clientId && !isClientEditRouteWithIssue && (
             <Button onClick={() => navigate(`/client/${clientId}`)} variant="outline" className="px-6 w-full">
               <FileText className="mr-2 h-4 w-4" />
               View Client Details

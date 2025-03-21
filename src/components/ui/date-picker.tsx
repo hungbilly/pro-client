@@ -19,6 +19,7 @@ interface DatePickerProps {
   initialFocus?: boolean
   className?: string
   placeholder?: string
+  disabled?: boolean
 }
 
 export function DatePicker({ 
@@ -27,7 +28,8 @@ export function DatePicker({
   onSelect, 
   initialFocus,
   className,
-  placeholder = "Pick a date"
+  placeholder = "Pick a date",
+  disabled = false
 }: DatePickerProps) {
   return (
     <div className={cn("grid gap-2", className)}>
@@ -40,6 +42,7 @@ export function DatePicker({
                 "w-full justify-start text-left font-normal",
                 !selected && "text-muted-foreground"
               )}
+              disabled={disabled}
             >
               <CalendarIcon className="mr-2 h-4 w-4" />
               {selected ? (
@@ -55,6 +58,7 @@ export function DatePicker({
               selected={selected as Date | null}
               onSelect={onSelect as (date: Date | null) => void}
               initialFocus={initialFocus}
+              className="pointer-events-auto"
             />
           </PopoverContent>
         </Popover>
@@ -64,6 +68,7 @@ export function DatePicker({
           selected={selected as DateRange | null}
           onSelect={onSelect as (range: DateRange | null) => void}
           initialFocus={initialFocus}
+          className="pointer-events-auto"
         />
       )}
     </div>

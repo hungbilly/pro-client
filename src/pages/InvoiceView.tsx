@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
@@ -28,6 +29,22 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { DatePicker } from '@/components/ui/date-picker';
 
+// Define color objects and variables that were missing
+const statusColors = {
+  draft: 'bg-gray-200 text-gray-800',
+  sent: 'bg-blue-100 text-blue-800',
+  accepted: 'bg-green-100 text-green-800',
+  paid: 'bg-emerald-100 text-emerald-800'
+};
+
+const paymentStatusColors = {
+  paid: 'bg-green-100 text-green-800',
+  unpaid: 'bg-yellow-100 text-yellow-800',
+  'write-off': 'bg-red-100 text-red-800'
+};
+
+const contractStatusColor = 'text-green-600 dark:text-green-400';
+
 const InvoiceView = () => {
   const { viewLink, id } = useParams<{ viewLink: string, id: string }>();
   const [invoice, setInvoice] = useState<Invoice | undefined>(undefined);
@@ -49,6 +66,10 @@ const InvoiceView = () => {
   const [pendingStatus, setPendingStatus] = useState<PaymentStatus | null>(null);
   
   const isClientView = (location.search.includes('client=true') || !location.search) && !isAdmin;
+
+  // Add these variables that were missing
+  const canClientAcceptInvoice = isClientView && invoice?.status === 'sent';
+  const canClientAcceptContract = isClientView && !invoice?.contractStatus || invoice?.contractStatus === 'pending';
 
   const generateDefaultEmailContent = () => {
     if (!client || !invoice) return "Dear Client,\r\n\r\nPlease find your invoice at the link below:\r\n[Invoice Link]\r\n\r\nThank you for your business.";
@@ -126,13 +147,13 @@ const InvoiceView = () => {
 
         if (fetchedInvoice.clientId) {
           const fetchedClient = await getClient(fetchedInvoice.clientId);
-          if (!fetchedClient) {
+          if (fetchedClient) {
+            setClient(fetchedClient);
+          } else {
             setError('Client information not found.');
             setLoading(false);
             return;
           }
-          
-          setClient(fetchedClient);
         }
         
         setLoading(false);

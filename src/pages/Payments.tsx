@@ -1,11 +1,11 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { format, parseISO, differenceInDays } from 'date-fns';
+import { format, parseISO, differenceInDays, startOfMonth, endOfMonth, startOfYear, endOfYear, subMonths } from 'date-fns';
 import { MoreHorizontal, Download, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompanyContext } from '@/context/CompanyContext';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,7 +33,14 @@ import {
   DialogClose,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Calendar } from '@/components/ui/calendar';
+import { DatePicker } from '@/components/ui/date-picker';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format as formatDate } from 'date-fns';
 
@@ -51,6 +58,14 @@ type PaymentScheduleWithDetails = {
   paymentDate?: string;
 };
 
+type PeriodOption = 'all' | 'this-month' | 'last-month' | 'this-year';
+
+type PaymentStats = {
+  paid: number;
+  unpaid: number;
+  writeOff: number;
+}
+
 const Payments = () => {
   const navigate = useNavigate();
   const { selectedCompany } = useCompanyContext();
@@ -65,6 +80,17 @@ const Payments = () => {
   const [paymentDate, setPaymentDate] = useState<Date | undefined>(new Date());
   const [isUpdating, setIsUpdating] = useState(false);
   const isMountedRef = useRef(true);
+  
+  // New state for period filtering and payment statistics
+  const [periodFilter, setPeriodFilter] = useState<PeriodOption>('all');
+  const [customStartDate, setCustomStartDate] = useState<Date | undefined>(undefined);
+  const [customEndDate, setCustomEndDate] = useState<Date | undefined>(undefined);
+  const [paymentStats, setPaymentStats] = useState<PaymentStats>({
+    paid: 0,
+    unpaid: 0,
+    writeOff: 0
+  });
+  const [showCustomDateRange, setShowCustomDateRange] = useState(false);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -83,7 +109,41 @@ const Payments = () => {
     if (payments.length > 0) {
       filterPayments();
     }
-  }, [payments, statusFilter, searchQuery]);
+  }, [payments, statusFilter, searchQuery, periodFilter, customStartDate, customEndDate]);
+
+  // Calculate date range based on period filter
+  const getDateRange = () => {
+    const today = new Date();
+    
+    switch (periodFilter) {
+      case 'this-month':
+        return {
+          start: startOfMonth(today),
+          end: endOfMonth(today)
+        };
+      case 'last-month':
+        const lastMonth = subMonths(today, 1);
+        return {
+          start: startOfMonth(lastMonth),
+          end: endOfMonth(lastMonth)
+        };
+      case 'this-year':
+        return {
+          start: startOfYear(today),
+          end: endOfYear(today)
+        };
+      case 'all':
+        return {
+          start: undefined,
+          end: undefined
+        };
+      default:
+        return {
+          start: customStartDate,
+          end: customEndDate
+        };
+    }
+  };
 
   const fetchPayments = async () => {
     setIsLoading(true);
@@ -130,12 +190,7 @@ const Payments = () => {
 
       setPayments(transformedData);
       
-      // Calculate total due amount (only unpaid items)
-      const due = transformedData
-        .filter(payment => payment.status === 'unpaid')
-        .reduce((sum, payment) => sum + payment.amount, 0);
-      
-      setTotalDue(due);
+      // Initial calculation of stats will happen in filterPayments
     } catch (error) {
       console.error('Error fetching payments:', error);
       toast({
@@ -150,6 +205,15 @@ const Payments = () => {
 
   const filterPayments = () => {
     let filtered = [...payments];
+    
+    // Apply date range filter
+    const { start, end } = getDateRange();
+    if (start && end) {
+      filtered = filtered.filter(payment => {
+        const dueDate = parseISO(payment.dueDate);
+        return dueDate >= start && dueDate <= end;
+      });
+    }
     
     // Filter by status
     if (statusFilter) {
@@ -168,7 +232,41 @@ const Payments = () => {
       );
     }
     
+    // Calculate payment statistics
+    const stats: PaymentStats = {
+      paid: 0,
+      unpaid: 0,
+      writeOff: 0
+    };
+    
+    // We calculate stats on the date-filtered payments only, but not on status or search filtered
+    const dateFiltered = [...payments];
+    if (start && end) {
+      dateFiltered.filter(payment => {
+        const dueDate = parseISO(payment.dueDate);
+        return dueDate >= start && dueDate <= end;
+      });
+    }
+    
+    dateFiltered.forEach(payment => {
+      if (payment.status === 'paid') {
+        stats.paid += payment.amount;
+      } else if (payment.status === 'unpaid') {
+        stats.unpaid += payment.amount;
+      } else if (payment.status === 'write-off') {
+        stats.writeOff += payment.amount;
+      }
+    });
+    
+    setPaymentStats(stats);
     setFilteredPayments(filtered);
+    
+    // Calculate total due (only unpaid items)
+    const due = dateFiltered
+      .filter(payment => payment.status === 'unpaid')
+      .reduce((sum, payment) => sum + payment.amount, 0);
+    
+    setTotalDue(due);
   };
 
   const handleStatusUpdate = async (payment: PaymentScheduleWithDetails, newStatus: 'paid' | 'unpaid' | 'write-off', event: React.MouseEvent) => {
@@ -220,12 +318,7 @@ const Payments = () => {
       
       setPayments(updatedPayments);
       
-      // Recalculate total due
-      const due = updatedPayments
-        .filter(payment => payment.status === 'unpaid')
-        .reduce((sum, payment) => sum + payment.amount, 0);
-      
-      setTotalDue(due);
+      // Recalculate stats will happen automatically through useEffect and filterPayments
     } catch (error) {
       console.error('Error updating payment status:', error);
       toast({
@@ -308,6 +401,15 @@ const Payments = () => {
     });
   };
 
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2, 
+      maximumFractionDigits: 2
+    }).format(amount);
+  };
+
   return (
     <div className="container mx-auto px-4 py-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
@@ -315,46 +417,110 @@ const Payments = () => {
           <h1 className="text-3xl font-bold">Payments Overview</h1>
           <p className="text-gray-500">Dashboard &gt; Payments Overview</p>
         </div>
-        <div className="flex flex-col items-end mt-4 md:mt-0">
-          <span className="text-2xl font-bold text-emerald-500">${totalDue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-          <span className="text-gray-500">Total Due</span>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4 md:mt-0 w-full md:w-auto">
+          <div className="rounded-lg p-3 bg-green-50 border border-green-100">
+            <span className="text-xl font-bold text-green-600">{formatCurrency(paymentStats.paid)}</span>
+            <p className="text-sm text-gray-500">Paid</p>
+          </div>
+          <div className="rounded-lg p-3 bg-amber-50 border border-amber-100">
+            <span className="text-xl font-bold text-amber-600">{formatCurrency(paymentStats.unpaid)}</span>
+            <p className="text-sm text-gray-500">Unpaid</p>
+          </div>
+          <div className="rounded-lg p-3 bg-gray-50 border border-gray-100">
+            <span className="text-xl font-bold text-gray-600">{formatCurrency(paymentStats.writeOff)}</span>
+            <p className="text-sm text-gray-500">Write-off</p>
+          </div>
         </div>
       </div>
       
-      <div className="flex flex-col md:flex-row justify-between mb-6">
-        <div className="w-full md:w-1/3 mb-4 md:mb-0">
-          <select 
-            className="w-full p-2 border rounded-md" 
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="unpaid">Unpaid</option>
-            <option value="paid">Paid</option>
-            <option value="write-off">Write-off</option>
-            <option value="all">All Payments</option>
-          </select>
+      <div className="flex flex-col md:flex-row flex-wrap gap-4 mb-6">
+        <div className="w-full md:w-auto">
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full md:w-[180px]">
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="unpaid">Unpaid</SelectItem>
+              <SelectItem value="paid">Paid</SelectItem>
+              <SelectItem value="write-off">Write-off</SelectItem>
+              <SelectItem value="all">All Payments</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         
-        <div className="flex justify-between w-full md:w-2/3 gap-4">
-          <div className="relative w-full">
-            <Input
-              placeholder="Search by client, invoice, or job..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pr-10"
-            />
-            <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-          </div>
-          
-          <Button 
-            variant="outline" 
-            onClick={exportPayments}
-            className="whitespace-nowrap"
-          >
-            <Download className="mr-2 h-4 w-4" />
-            Export Payments
-          </Button>
+        <div className="w-full md:w-auto">
+          <Select value={periodFilter} onValueChange={(value: PeriodOption) => {
+            setPeriodFilter(value);
+            setShowCustomDateRange(value === 'custom');
+          }}>
+            <SelectTrigger className="w-full md:w-[180px]">
+              <SelectValue placeholder="Time period" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All time</SelectItem>
+              <SelectItem value="this-month">This month</SelectItem>
+              <SelectItem value="last-month">Last month</SelectItem>
+              <SelectItem value="this-year">This year</SelectItem>
+              <SelectItem value="custom">Custom range</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
+        
+        {showCustomDateRange && (
+          <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline">
+                  {customStartDate ? formatDate(customStartDate, "dd/MM/yyyy") : "Start date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <DatePicker
+                  mode="single"
+                  selected={customStartDate}
+                  onSelect={(date) => setCustomStartDate(date)}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+            
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline">
+                  {customEndDate ? formatDate(customEndDate, "dd/MM/yyyy") : "End date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <DatePicker
+                  mode="single"
+                  selected={customEndDate}
+                  onSelect={(date) => setCustomEndDate(date)}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+        )}
+        
+        <div className="relative w-full md:w-auto md:flex-1">
+          <Input
+            placeholder="Search by client, invoice, or job..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pr-10"
+          />
+          <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+        </div>
+        
+        <Button 
+          variant="outline" 
+          onClick={exportPayments}
+          className="whitespace-nowrap"
+        >
+          <Download className="mr-2 h-4 w-4" />
+          Export Payments
+        </Button>
       </div>
       
       <Card>
@@ -368,19 +534,18 @@ const Payments = () => {
                 <TableHead>Client</TableHead>
                 <TableHead>Job</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
-                <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-10">
+                  <TableCell colSpan={6} className="text-center py-10">
                     Loading payments...
                   </TableCell>
                 </TableRow>
               ) : filteredPayments.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-10">
+                  <TableCell colSpan={6} className="text-center py-10">
                     No payments found
                   </TableCell>
                 </TableRow>
@@ -391,47 +556,39 @@ const Payments = () => {
                     className="hover:bg-gray-50 cursor-pointer"
                     onClick={(e) => handleRowClick(payment.invoiceId, e)}
                   >
-                    <TableCell>{getStatusBadge(payment.status)}</TableCell>
+                    <TableCell 
+                      className="dropdown-actions"
+                      onClick={(e) => e.stopPropagation()} // Prevent row click when clicking status
+                    >
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          {getStatusBadge(payment.status)}
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start">
+                          {payment.status !== 'paid' && (
+                            <DropdownMenuItem onClick={(e) => handleStatusUpdate(payment, 'paid', e)}>
+                              Mark as Paid
+                            </DropdownMenuItem>
+                          )}
+                          {payment.status !== 'unpaid' && (
+                            <DropdownMenuItem onClick={(e) => handleStatusUpdate(payment, 'unpaid', e)}>
+                              Mark as Unpaid
+                            </DropdownMenuItem>
+                          )}
+                          {payment.status !== 'write-off' && (
+                            <DropdownMenuItem onClick={(e) => handleStatusUpdate(payment, 'write-off', e)}>
+                              Write Off
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
                     <TableCell>{formatDueDate(payment.dueDate, payment.status)}</TableCell>
                     <TableCell>{payment.invoiceNumber}</TableCell>
                     <TableCell>{payment.clientName}</TableCell>
                     <TableCell className="max-w-[200px] truncate">{payment.jobTitle || 'N/A'}</TableCell>
                     <TableCell className="text-right font-medium">
                       ${payment.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </TableCell>
-                    <TableCell>
-                      <div className="dropdown-actions" onClick={(e) => e.stopPropagation()}>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            {payment.status !== 'paid' && (
-                              <DropdownMenuItem onClick={(e) => handleStatusUpdate(payment, 'paid', e)}>
-                                Mark as Paid
-                              </DropdownMenuItem>
-                            )}
-                            {payment.status !== 'unpaid' && (
-                              <DropdownMenuItem onClick={(e) => handleStatusUpdate(payment, 'unpaid', e)}>
-                                Mark as Unpaid
-                              </DropdownMenuItem>
-                            )}
-                            {payment.status !== 'write-off' && (
-                              <DropdownMenuItem onClick={(e) => handleStatusUpdate(payment, 'write-off', e)}>
-                                Write Off
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuItem onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`/invoice/${payment.invoiceId}`);
-                            }}>
-                              View Invoice
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -465,12 +622,11 @@ const Payments = () => {
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
-                <Calendar
+                <DatePicker
                   mode="single"
                   selected={paymentDate}
                   onSelect={(date) => setPaymentDate(date as Date)}
                   initialFocus
-                  className="pointer-events-auto"
                 />
               </PopoverContent>
             </Popover>

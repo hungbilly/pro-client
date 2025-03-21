@@ -418,7 +418,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     setPaymentSchedules(filteredSchedules);
   };
   
-  const handleScheduleChange = (id: string, field: 'percentage' | 'description' | 'dueDate', value: any) => {
+  const handleScheduleChange = (id: string, field: 'percentage' | 'description' | 'dueDate' | 'status', value: any) => {
     setPaymentSchedules(schedules => {
       const updatedSchedules = schedules.map(schedule => {
         if (schedule.id === id) {

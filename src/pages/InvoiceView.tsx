@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import RichTextEditor from '@/components/RichTextEditor';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 const InvoiceView = () => {
   const { viewLink, id } = useParams<{ viewLink: string, id: string }>();
@@ -386,6 +387,47 @@ const InvoiceView = () => {
     );
   }
 
+  // Add new state and function for payment status updating
+  const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null);
+  
+  const handlePaymentStatusUpdate = async (paymentId: string, newStatus: 'paid' | 'unpaid' | 'write-off') => {
+    if (!invoice || !paymentId) return;
+    
+    setUpdatingPaymentId(paymentId);
+    try {
+      const { data, error } = await supabase
+        .from('payment_schedules')
+        .update({ status: newStatus })
+        .eq('id', paymentId)
+        .select();
+        
+      if (error) {
+        console.error('Error updating payment status:', error);
+        toast.error('Failed to update payment status');
+        return;
+      }
+      
+      // Update local state to reflect the change
+      if (invoice.paymentSchedules) {
+        const updatedSchedules = invoice.paymentSchedules.map(schedule => 
+          schedule.id === paymentId ? { ...schedule, status: newStatus } : schedule
+        );
+        
+        setInvoice({
+          ...invoice,
+          paymentSchedules: updatedSchedules
+        });
+        
+        toast.success(`Payment marked as ${newStatus}`);
+      }
+    } catch (err) {
+      console.error('Failed to update payment status:', err);
+      toast.error('Error updating payment status');
+    } finally {
+      setUpdatingPaymentId(null);
+    }
+  };
+
   const statusColors = {
     draft: 'bg-muted text-muted-foreground',
     sent: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
@@ -399,7 +441,8 @@ const InvoiceView = () => {
 
   const paymentStatusColors = {
     paid: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-    unpaid: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+    unpaid: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+    'write-off': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
   };
 
   const canClientAcceptInvoice = ['draft', 'sent'].includes(invoice.status);
@@ -580,6 +623,16 @@ const InvoiceView = () => {
                   </div>
                 </div>
                 
+                <div>
+                  <h4 className="text-lg font-semibold mb-2">Notes</h4>
+                  <div className="border rounded-md p-4">
+                    <div dangerouslySetInnerHTML={{ __html: invoice.notes || 'No notes provided.' }} />
+                  </div>
+                </div>
+                
+                <Separator className="my-6" />
+                
+                {/* Payment Schedule section moved below notes */}
                 <div className="mt-6">
                   <div className="flex items-center mb-3">
                     <CalendarDays className="h-5 w-5 mr-2" />
@@ -596,6 +649,7 @@ const InvoiceView = () => {
                             <TableHead className="text-right">Percentage</TableHead>
                             <TableHead className="text-right">Amount</TableHead>
                             <TableHead>Status</TableHead>
+                            {!isClientView && <TableHead className="w-24"></TableHead>}
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -612,10 +666,44 @@ const InvoiceView = () => {
                                 {formatCurrency((invoice.amount * schedule.percentage) / 100)}
                               </TableCell>
                               <TableCell>
-                                <Badge className={paymentStatusColors[schedule.status]}>
+                                <Badge className={paymentStatusColors[schedule.status] || paymentStatusColors.unpaid}>
                                   {schedule.status.toUpperCase()}
                                 </Badge>
                               </TableCell>
+                              {!isClientView && (
+                                <TableCell>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm"
+                                        disabled={updatingPaymentId === schedule.id}
+                                      >
+                                        {updatingPaymentId === schedule.id ? 'Updating...' : 'Set Status'}
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem 
+                                        onClick={() => handlePaymentStatusUpdate(schedule.id, 'paid')}
+                                        className="text-green-600"
+                                      >
+                                        Mark as Paid
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem 
+                                        onClick={() => handlePaymentStatusUpdate(schedule.id, 'unpaid')}
+                                      >
+                                        Mark as Unpaid
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem 
+                                        onClick={() => handlePaymentStatusUpdate(schedule.id, 'write-off')}
+                                        className="text-red-600"
+                                      >
+                                        Write Off
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </TableCell>
+                              )}
                             </TableRow>
                           ))}
                         </TableBody>
@@ -626,15 +714,6 @@ const InvoiceView = () => {
                       Full payment of {formatCurrency(invoice.amount)} due on {new Date(invoice.dueDate).toLocaleDateString()}
                     </div>
                   )}
-                </div>
-
-                <Separator className="my-6" />
-                
-                <div>
-                  <h4 className="text-lg font-semibold mb-2">Notes</h4>
-                  <div className="border rounded-md p-4">
-                    <div dangerouslySetInnerHTML={{ __html: invoice.notes || 'No notes provided.' }} />
-                  </div>
                 </div>
               </TabsContent>
               
@@ -716,7 +795,7 @@ const InvoiceView = () => {
                           <h5 className="font-semibold">Email Logs:</h5>
                           {emailLogs.map((log, index) => (
                             <div key={index} className={`my-1 ${log.success ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                              <span className="text-xs opacity-70">{log.timestamp.toLocaleTimeString()}: </span>
+                              <span className="text-xs opacity-70">{log.timestamp.toLocaleTimeString()}: </span> 
                               {log.message}
                             </div>
                           ))}

@@ -761,8 +761,7 @@ export const getInvoice = async (id: string): Promise<Invoice | undefined> => {
       description: schedule.description || '',
       dueDate: schedule.due_date,
       percentage: schedule.percentage,
-      status: parseEnum(schedule.status, ['paid', 'unpaid', 'write-off'], 'unpaid') as PaymentStatus,
-      paymentDate: schedule.payment_date
+      status: parseEnum(schedule.status, ['paid', 'unpaid', 'write-off'], 'unpaid') as PaymentStatus
     }));
     
     console.log('Payment schedules fetched:', paymentSchedules);
@@ -880,8 +879,7 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
       description: schedule.description || '',
       dueDate: schedule.due_date,
       percentage: schedule.percentage,
-      status: parseEnum(schedule.status, ['paid', 'unpaid', 'write-off'], 'unpaid') as PaymentStatus,
-      paymentDate: schedule.payment_date
+      status: parseEnum(schedule.status, ['paid', 'unpaid', 'write-off'], 'unpaid') as PaymentStatus
     }));
     
     // Properly cast the status string to the InvoiceStatus type
@@ -902,6 +900,7 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
       amount: matchingInvoice.amount,
       date: matchingInvoice.date,
       dueDate: matchingInvoice.due_date,
+      shootingDate: matchingInvoice.shooting_date,
       status,
       contractStatus,
       items: invoiceItems,
@@ -1054,8 +1053,7 @@ export const saveInvoice = async (invoice: Omit<Invoice, 'id' | 'viewLink'>): Pr
             description: schedule.description,
             due_date: schedule.dueDate,
             percentage: schedule.percentage,
-            status: schedule.status,
-            payment_date: schedule.paymentDate
+            status: schedule.status
           }))
         );
       
@@ -1170,8 +1168,7 @@ export const updateInvoice = async (invoice: Invoice): Promise<Invoice> => {
             description: schedule.description,
             due_date: schedule.dueDate,
             percentage: schedule.percentage,
-            status: schedule.status,
-            payment_date: schedule.paymentDate
+            status: schedule.status
           }))
         );
       
@@ -1292,18 +1289,13 @@ export const updateContractStatus = async (invoiceId: string, contractStatus: Co
 /**
  * Updates the status of a payment schedule
  */
-export const updatePaymentScheduleStatus = async (scheduleId: string, status: PaymentStatus, paymentDate?: string): Promise<PaymentSchedule | undefined> => {
+export const updatePaymentScheduleStatus = async (scheduleId: string, status: PaymentStatus): Promise<PaymentSchedule | undefined> => {
   try {
     console.log(`Attempting to update payment schedule ${scheduleId} to status: ${status}`);
     
-    const updateData: any = { status };
-    if (paymentDate) {
-      updateData.payment_date = paymentDate;
-    }
-    
     const { data, error } = await supabase
       .from('payment_schedules')
-      .update(updateData)
+      .update({ status })
       .eq('id', scheduleId)
       .select()
       .single();
@@ -1321,12 +1313,10 @@ export const updatePaymentScheduleStatus = async (scheduleId: string, status: Pa
       description: data.description || '',
       dueDate: data.due_date,
       percentage: data.percentage,
-      status: parseEnum(data.status, ['paid', 'unpaid', 'write-off'], 'unpaid') as PaymentStatus,
-      paymentDate: data.payment_date
+      status: parseEnum(data.status, ['paid', 'unpaid', 'write-off'], 'unpaid') as PaymentStatus
     };
   } catch (error) {
     console.error('Error in updatePaymentScheduleStatus:', error);
     throw error;
   }
 };
-

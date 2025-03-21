@@ -28,7 +28,6 @@ export function DatePicker({ mode = "single", selected, onSelect, initialFocus }
           selected={selected as Date | null}
           onSelect={onSelect as (date: Date | null) => void}
           initialFocus={initialFocus}
-          className="p-3 pointer-events-auto"
         />
       ) : (
         <Calendar
@@ -36,7 +35,6 @@ export function DatePicker({ mode = "single", selected, onSelect, initialFocus }
           selected={selected as DateRange | null}
           onSelect={onSelect as (range: DateRange | null) => void}
           initialFocus={initialFocus}
-          className="p-3 pointer-events-auto"
         />
       )}
     </div>

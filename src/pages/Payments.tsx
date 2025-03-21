@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO, differenceInDays } from 'date-fns';
-import { MoreHorizontal, Download, Search, Calendar } from 'lucide-react';
+import { MoreHorizontal, Download, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompanyContext } from '@/context/CompanyContext';
 import { toast } from 'sonner';
@@ -30,7 +30,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format as formatDate } from 'date-fns';
 
@@ -94,6 +94,7 @@ const Payments = () => {
         throw schedulesError;
       }
 
+      // Transform data into the format we need
       const transformedData: PaymentScheduleWithDetails[] = schedulesData.map((schedule) => {
         const invoice = schedule.invoices;
         const amount = invoice.amount * (schedule.percentage / 100);
@@ -115,6 +116,7 @@ const Payments = () => {
 
       setPayments(transformedData);
       
+      // Calculate total due amount (only unpaid items)
       const due = transformedData
         .filter(payment => payment.status === 'unpaid')
         .reduce((sum, payment) => sum + payment.amount, 0);
@@ -131,12 +133,14 @@ const Payments = () => {
   const filterPayments = () => {
     let filtered = [...payments];
     
+    // Filter by status
     if (statusFilter) {
       filtered = filtered.filter(payment => 
         statusFilter === 'all' ? true : payment.status === statusFilter
       );
     }
     
+    // Filter by search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(payment => 
@@ -174,6 +178,7 @@ const Payments = () => {
       
       toast.success(`Payment marked as ${status}`);
       
+      // Update the local state
       const updatedPayments = payments.map(payment => {
         if (payment.id === paymentId) {
           return { 
@@ -187,6 +192,7 @@ const Payments = () => {
       
       setPayments(updatedPayments);
       
+      // Recalculate total due
       const due = updatedPayments
         .filter(payment => payment.status === 'unpaid')
         .reduce((sum, payment) => sum + payment.amount, 0);
@@ -243,6 +249,7 @@ const Payments = () => {
   };
 
   const exportPayments = () => {
+    // This would be implemented to export payments to CSV/Excel
     toast.info('Export functionality will be implemented soon');
   };
 
@@ -328,6 +335,7 @@ const Payments = () => {
                     key={payment.id} 
                     className="hover:bg-gray-50 cursor-pointer"
                     onClick={(e) => {
+                      // Only navigate if the click wasn't on the dropdown or its children
                       if (!(e.target as HTMLElement).closest('.dropdown-actions')) {
                         handleRowClick(payment.invoiceId);
                       }
@@ -380,6 +388,7 @@ const Payments = () => {
         </CardContent>
       </Card>
       
+      {/* Payment Date Dialog */}
       <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -393,16 +402,14 @@ const Payments = () => {
                   className="w-full justify-start text-left font-normal"
                 >
                   {paymentDate ? formatDate(paymentDate, "PPP") : "Select date"}
-                  <Calendar className="ml-auto h-4 w-4 opacity-50" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
-                <CalendarComponent
+                <Calendar
                   mode="single"
                   selected={paymentDate}
                   onSelect={setPaymentDate}
                   initialFocus
-                  className="p-3 pointer-events-auto"
                 />
               </PopoverContent>
             </Popover>

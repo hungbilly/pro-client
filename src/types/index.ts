@@ -1,3 +1,4 @@
+
 export interface Client {
   id: string;
   name: string;
@@ -63,7 +64,6 @@ export interface PaymentSchedule {
   dueDate: string;
   percentage: number;
   status: 'paid' | 'unpaid' | 'write-off';
-  paymentDate?: string;
 }
 
 export interface Invoice {

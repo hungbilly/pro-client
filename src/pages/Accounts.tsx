@@ -45,7 +45,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { format as formatDate } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-// Income tab - PaymentSchedule type
+// Income tab - PaymentScheduleWithDetails type
 type PaymentScheduleWithDetails = {
   id: string;
   description: string;
@@ -58,6 +58,7 @@ type PaymentScheduleWithDetails = {
   clientName: string;
   jobTitle?: string;
   paymentDate?: string;
+  companyId?: string;
 };
 
 // Expense tab - Expense type
@@ -81,7 +82,7 @@ type AccountStats = {
 
 const Accounts = () => {
   const navigate = useNavigate();
-  const { selectedCompany } = useCompanyContext();
+  const { selectedCompany, selectedCompanyId } = useCompanyContext();
   const [activeTab, setActiveTab] = useState("income");
   
   // Income state
@@ -187,6 +188,29 @@ const Accounts = () => {
   const fetchPayments = async () => {
     setIsLoading(true);
     try {
+      console.log("Fetching payments for company ID:", selectedCompanyId);
+      
+      // Get the invoices that belong to the current company
+      const { data: invoicesData, error: invoicesError } = await supabase
+        .from('invoices')
+        .select('id')
+        .eq('company_id', selectedCompanyId);
+        
+      if (invoicesError) {
+        throw invoicesError;
+      }
+      
+      if (!invoicesData || invoicesData.length === 0) {
+        console.log("No invoices found for this company");
+        setPayments([]);
+        setIsLoading(false);
+        return;
+      }
+      
+      const invoiceIds = invoicesData.map(invoice => invoice.id);
+      console.log("Found invoice IDs:", invoiceIds);
+      
+      // Get payment schedules only for invoices that belong to the current company
       const { data: schedulesData, error: schedulesError } = await supabase
         .from('payment_schedules')
         .select(`
@@ -197,15 +221,19 @@ const Accounts = () => {
             amount,
             client_id,
             job_id,
+            company_id,
             clients:client_id (name),
             jobs:job_id (title)
           )
         `)
+        .in('invoice_id', invoiceIds)
         .order('due_date', { ascending: true });
 
       if (schedulesError) {
         throw schedulesError;
       }
+
+      console.log("Fetched payment schedules:", schedulesData?.length || 0);
 
       const transformedData: PaymentScheduleWithDetails[] = schedulesData.map((schedule) => {
         const invoice = schedule.invoices;
@@ -223,6 +251,7 @@ const Accounts = () => {
           clientName: invoice.clients?.name || 'Unknown Client',
           jobTitle: invoice.jobs?.title,
           paymentDate: schedule.payment_date,
+          companyId: invoice.company_id,
         };
       });
 

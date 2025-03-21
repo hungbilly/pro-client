@@ -45,7 +45,7 @@ const PackageSettings = () => {
       if (error) throw error;
       
       console.log('Packages fetched:', data?.length || 0);
-      setPackages(data as Package[] || []);
+      setPackages(data || []);
     } catch (error) {
       console.error('Error fetching packages:', error);
       toast.error('Failed to load packages');
@@ -55,7 +55,13 @@ const PackageSettings = () => {
   };
   
   useEffect(() => {
-    fetchPackages();
+    if (selectedCompany) {
+      console.log('Company changed, fetching packages for:', selectedCompany.id);
+      fetchPackages();
+    } else {
+      console.log('No company selected, clearing packages');
+      setPackages([]);
+    }
   }, [user, selectedCompany]);
   
   const resetForm = () => {
@@ -134,7 +140,9 @@ const PackageSettings = () => {
             company_id: selectedCompany.id,
             updated_at: new Date().toISOString(),
           })
-          .eq('id', currentPackageId);
+          .eq('id', currentPackageId)
+          // Only allow updating packages that belong to the current company
+          .eq('company_id', selectedCompany.id);
         
         if (error) throw error;
         
@@ -168,10 +176,12 @@ const PackageSettings = () => {
     if (!confirm('Are you sure you want to delete this package?')) return;
     
     try {
-      const { error } = await (supabase
-        .from('packages') as any)
+      const { error } = await supabase
+        .from('packages')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        // Only allow deleting packages that belong to the current company
+        .eq('company_id', selectedCompany?.id);
       
       if (error) throw error;
       

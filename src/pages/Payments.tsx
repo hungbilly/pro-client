@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO, differenceInDays, startOfMonth, endOfMonth, startOfYear, endOfYear, subMonths } from 'date-fns';
@@ -325,17 +326,22 @@ const Payments = () => {
       
       setPayments(updatedPayments);
       
-      setPaymentStats((prevStats) => {
-        const newStats = { ...prevStats };
-        if (status === 'paid') {
-          newStats.paid += payment.amount;
-        } else if (status === 'unpaid') {
-          newStats.unpaid += payment.amount;
-        } else if (status === 'write-off') {
-          newStats.writeOff += payment.amount;
-        }
-        return newStats;
-      });
+      // Fix: Use the found payment instead of undefined 'payment' variable
+      const updatedPayment = updatedPayments.find(p => p.id === paymentId);
+      
+      if (updatedPayment) {
+        setPaymentStats((prevStats) => {
+          const newStats = { ...prevStats };
+          if (status === 'paid') {
+            newStats.paid += updatedPayment.amount;
+          } else if (status === 'unpaid') {
+            newStats.unpaid += updatedPayment.amount;
+          } else if (status === 'write-off') {
+            newStats.writeOff += updatedPayment.amount;
+          }
+          return newStats;
+        });
+      }
     } catch (error) {
       console.error('Error updating payment status:', error);
       toast({

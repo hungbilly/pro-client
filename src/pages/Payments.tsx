@@ -29,6 +29,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { DatePicker } from '@/components/ui/date-picker';
 
@@ -394,6 +395,9 @@ const Payments = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Select Payment Date</DialogTitle>
+            <DialogDescription>
+              Choose the date when this payment was received.
+            </DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <DatePicker 

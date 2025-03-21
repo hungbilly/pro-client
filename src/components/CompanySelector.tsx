@@ -31,6 +31,8 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({
     const company = companies.find(c => c.id === value);
     if (company) {
       setSelectedCompany(company);
+      console.log("CompanySelector: Selected company updated to:", company.name);
+      
       if (onCompanySelect) {
         onCompanySelect({id: company.id, name: company.name});
       }

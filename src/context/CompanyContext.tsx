@@ -28,17 +28,31 @@ interface CompanyContextType {
   error: Error | null;
 }
 
+const STORAGE_KEY = 'selectedCompanyId';
+
 const CompanyContext = createContext<CompanyContextType | undefined>(undefined);
 
 const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
   const [companies, setCompanies] = useState<Company[]>([]);
-  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+  const [selectedCompany, setSelectedCompanyState] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   // Computed property based on selectedCompany
   const selectedCompanyId = selectedCompany?.id || null;
+
+  // Wrapper function that also persists to localStorage
+  const setSelectedCompany = (company: Company | null) => {
+    setSelectedCompanyState(company);
+    if (company) {
+      console.log("CompanyProvider: Saving company ID to localStorage:", company.id);
+      localStorage.setItem(STORAGE_KEY, company.id);
+    } else {
+      console.log("CompanyProvider: Removing company ID from localStorage");
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  };
 
   // Function to set selectedCompany by ID
   const setSelectedCompanyId = (id: string | null) => {
@@ -79,8 +93,12 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       if (data && data.length > 0) {
         setCompanies(data);
         
-        // Check if the current selectedCompany is still valid in the new data
-        const currentSelectedId = selectedCompany?.id;
+        // Get the saved company ID from localStorage
+        const savedCompanyId = localStorage.getItem(STORAGE_KEY);
+        console.log("CompanyProvider: Saved company ID from localStorage:", savedCompanyId);
+        
+        // Check if the current selectedCompany or localStorage ID is still valid in the new data
+        const currentSelectedId = selectedCompany?.id || savedCompanyId;
         const currentSelectionStillValid = currentSelectedId && 
           data.some(company => company.id === currentSelectedId);
         

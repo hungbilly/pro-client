@@ -5,7 +5,7 @@ import {
   Users, 
   Briefcase, 
   Settings,
-  Wallet,
+  CreditCard,
   LogOut,
   Building,
   Menu,
@@ -75,7 +75,7 @@ const TopNavbar = () => {
     { path: '/', label: 'Dashboard', icon: <Home className="w-5 h-5" /> },
     { path: '/clients', label: 'Clients', icon: <Users className="w-5 h-5" /> },
     { path: '/jobs', label: 'Jobs', icon: <Briefcase className="w-5 h-5" /> },
-    { path: '/payments', label: 'Payments', icon: <Wallet className="w-5 h-5" /> },
+    { path: '/account', label: 'Account', icon: <CreditCard className="w-5 h-5" /> },
     { path: '/settings', label: 'Settings', icon: <Settings className="w-5 h-5" /> },
   ];
 

@@ -17,7 +17,7 @@ import JobDetail from './pages/JobDetail';
 import JobCreate from './pages/JobCreate';
 import JobEdit from './pages/JobEdit';
 import AppLayout from './components/AppLayout';
-import Payments from './pages/Payments';
+import Accounts from './pages/Accounts';
 import AuthCallback from './pages/AuthCallback';
 
 const Routes = () => {
@@ -61,8 +61,8 @@ const Routes = () => {
         <Route path="/job/:jobId/invoice/:invoiceId/edit" element={<InvoiceCreate />} />
         <Route path="/invoice/:id" element={<InvoiceView />} />
         
-        {/* Payments route */}
-        <Route path="/payments" element={<Payments />} />
+        {/* Account routes */}
+        <Route path="/account" element={<Accounts />} />
         
         <Route path="/settings" element={<Settings />} />
       </Route>

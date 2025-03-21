@@ -13,7 +13,7 @@ import {
   MenubarShortcut
 } from './ui/menubar';
 import { useNavigate } from 'react-router-dom';
-import { FileText, Users, Briefcase, Wallet, Home } from 'lucide-react';
+import { FileText, Users, Briefcase, CreditCard, Home } from 'lucide-react';
 
 const AppLayout = () => {
   const navigate = useNavigate();
@@ -84,12 +84,12 @@ const AppLayout = () => {
             
             <MenubarMenu>
               <MenubarTrigger className="font-semibold">
-                <Wallet className="h-4 w-4 mr-2" />
-                Payments
+                <CreditCard className="h-4 w-4 mr-2" />
+                Account
               </MenubarTrigger>
               <MenubarContent>
-                <MenubarItem onClick={() => navigate('/payments')}>
-                  View Payments
+                <MenubarItem onClick={() => navigate('/account')}>
+                  View Account
                 </MenubarItem>
               </MenubarContent>
             </MenubarMenu>

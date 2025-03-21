@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO, differenceInDays, startOfMonth, endOfMonth, startOfYear, endOfYear, subMonths } from 'date-fns';
@@ -58,7 +57,8 @@ type PaymentScheduleWithDetails = {
   paymentDate?: string;
 };
 
-type PeriodOption = 'all' | 'this-month' | 'last-month' | 'this-year';
+// Update the PeriodOption type to include 'custom'
+type PeriodOption = 'all' | 'this-month' | 'last-month' | 'this-year' | 'custom';
 
 type PaymentStats = {
   paid: number;

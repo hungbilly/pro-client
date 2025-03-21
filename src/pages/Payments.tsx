@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { MoreHorizontal, Download, Search } from 'lucide-react';
@@ -59,6 +60,7 @@ const Payments = () => {
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<PaymentScheduleWithDetails | null>(null);
   const [paymentDate, setPaymentDate] = useState<Date | undefined>(new Date());
+  const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
     fetchPayments();
@@ -151,6 +153,7 @@ const Payments = () => {
   const handleStatusUpdate = async (payment: PaymentScheduleWithDetails, newStatus: 'paid' | 'unpaid' | 'write-off') => {
     if (newStatus === 'paid') {
       setSelectedPayment(payment);
+      setPaymentDate(new Date());
       setIsPaymentDialogOpen(true);
     } else {
       await updatePaymentStatus(payment.id, newStatus);
@@ -158,6 +161,9 @@ const Payments = () => {
   };
 
   const updatePaymentStatus = async (paymentId: string, status: string, paymentDate?: string) => {
+    if (isUpdating) return; // Prevent multiple simultaneous updates
+    
+    setIsUpdating(true);
     try {
       const updateData: any = { status };
       if (paymentDate) {
@@ -194,6 +200,8 @@ const Payments = () => {
     } catch (error) {
       console.error('Error updating payment status:', error);
       toast.error('Failed to update payment status');
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -202,7 +210,12 @@ const Payments = () => {
     
     const formattedDate = paymentDate ? format(paymentDate, 'yyyy-MM-dd') : undefined;
     await updatePaymentStatus(selectedPayment.id, 'paid', formattedDate);
+    closePaymentDialog();
+  };
+
+  const closePaymentDialog = () => {
     setIsPaymentDialogOpen(false);
+    setSelectedPayment(null);
   };
 
   const formatDueDate = (dueDate: string, status: string) => {
@@ -391,7 +404,9 @@ const Payments = () => {
         </CardContent>
       </Card>
       
-      <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
+      <Dialog open={isPaymentDialogOpen} onOpenChange={(open) => {
+        if (!open) closePaymentDialog();
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Select Payment Date</DialogTitle>
@@ -402,16 +417,16 @@ const Payments = () => {
           <div className="py-4">
             <DatePicker 
               selected={paymentDate} 
-              onSelect={setPaymentDate as (date: Date | null) => void}
+              onSelect={(date) => setPaymentDate(date as Date)}
               placeholder="Select payment date"
             />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsPaymentDialogOpen(false)}>
+            <Button variant="outline" onClick={closePaymentDialog} disabled={isUpdating}>
               Cancel
             </Button>
-            <Button onClick={confirmPayment}>
-              Confirm Payment
+            <Button onClick={confirmPayment} disabled={isUpdating}>
+              {isUpdating ? 'Processing...' : 'Confirm Payment'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -421,3 +436,4 @@ const Payments = () => {
 };
 
 export default Payments;
+

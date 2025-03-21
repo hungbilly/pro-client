@@ -2,7 +2,7 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getJobs, getClients } from '@/lib/storage';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, PlusCircle, Eye, FileEdit, Clock, MapPin, User, Briefcase, MoreHorizontal } from 'lucide-react';
@@ -67,6 +67,7 @@ const formatTimeDisplay = (job: Job) => {
 const JobsTable = () => {
   const { selectedCompany } = useCompanyContext();
   const selectedCompanyId = selectedCompany?.id;
+  const navigate = useNavigate();
   
   const { data: jobs = [], isLoading, error } = useQuery({
     queryKey: ['jobs', selectedCompanyId],
@@ -101,6 +102,10 @@ const JobsTable = () => {
     }
   };
 
+  const handleRowClick = (jobId: string) => {
+    navigate(`/job/${jobId}`);
+  };
+
   return (
     <Card className="backdrop-blur-sm bg-white/80 border-transparent shadow-soft">
       <CardHeader>
@@ -132,7 +137,16 @@ const JobsTable = () => {
                 {jobs.map((job) => {
                   const jobClient = clients.find((c) => c.id === job.clientId) || null;
                   return (
-                    <TableRow key={job.id}>
+                    <TableRow 
+                      key={job.id} 
+                      className="cursor-pointer"
+                      onClick={(e) => {
+                        // Prevent row click if dropdown is being interacted with
+                        if (!(e.target as HTMLElement).closest('.dropdown-actions')) {
+                          handleRowClick(job.id);
+                        }
+                      }}
+                    >
                       <TableCell className="font-medium">{job.title}</TableCell>
                       <TableCell>{jobClient?.name}</TableCell>
                       <TableCell className="hidden md:table-cell">
@@ -152,27 +166,29 @@ const JobsTable = () => {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem asChild>
-                              <Link to={`/job/${job.id}`}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                <span>View</span>
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                              <Link to={`/job/edit/${job.id}`}>
-                                <FileEdit className="mr-2 h-4 w-4" />
-                                <span>Edit</span>
-                              </Link>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <div className="dropdown-actions" onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem asChild>
+                                <Link to={`/job/${job.id}`}>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  <span>View</span>
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild>
+                                <Link to={`/job/edit/${job.id}`}>
+                                  <FileEdit className="mr-2 h-4 w-4" />
+                                  <span>Edit</span>
+                                </Link>
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );

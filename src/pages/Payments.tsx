@@ -1,10 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { MoreHorizontal, Download, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompanyContext } from '@/context/CompanyContext';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -48,6 +48,7 @@ type PaymentScheduleWithDetails = {
 
 const Payments = () => {
   const { selectedCompany } = useCompanyContext();
+  const navigate = useNavigate();
   const [payments, setPayments] = useState<PaymentScheduleWithDetails[]>([]);
   const [filteredPayments, setFilteredPayments] = useState<PaymentScheduleWithDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -91,7 +92,6 @@ const Payments = () => {
         throw schedulesError;
       }
 
-      // Transform data into the format we need
       const transformedData: PaymentScheduleWithDetails[] = schedulesData.map((schedule) => {
         const invoice = schedule.invoices;
         const amount = invoice.amount * (schedule.percentage / 100);
@@ -113,7 +113,6 @@ const Payments = () => {
 
       setPayments(transformedData);
       
-      // Calculate total due amount (only unpaid items)
       const due = transformedData
         .filter(payment => payment.status === 'unpaid')
         .reduce((sum, payment) => sum + payment.amount, 0);
@@ -130,14 +129,12 @@ const Payments = () => {
   const filterPayments = () => {
     let filtered = [...payments];
     
-    // Filter by status
     if (statusFilter) {
       filtered = filtered.filter(payment => 
         statusFilter === 'all' ? true : payment.status === statusFilter
       );
     }
     
-    // Filter by search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(payment => 
@@ -175,7 +172,6 @@ const Payments = () => {
       
       toast.success(`Payment marked as ${status}`);
       
-      // Update the local state
       const updatedPayments = payments.map(payment => {
         if (payment.id === paymentId) {
           return { 
@@ -189,7 +185,6 @@ const Payments = () => {
       
       setPayments(updatedPayments);
       
-      // Recalculate total due
       const due = updatedPayments
         .filter(payment => payment.status === 'unpaid')
         .reduce((sum, payment) => sum + payment.amount, 0);
@@ -242,8 +237,11 @@ const Payments = () => {
   };
 
   const exportPayments = () => {
-    // This would be implemented to export payments to CSV/Excel
     toast.info('Export functionality will be implemented soon');
+  };
+
+  const handleRowClick = (payment: PaymentScheduleWithDetails) => {
+    navigate(`/invoice/${payment.invoiceId}`);
   };
 
   return (
@@ -327,6 +325,11 @@ const Payments = () => {
                   <TableRow 
                     key={payment.id} 
                     className="hover:bg-gray-50 cursor-pointer"
+                    onClick={(e) => {
+                      if (!e.defaultPrevented) {
+                        handleRowClick(payment);
+                      }
+                    }}
                   >
                     <TableCell>{getStatusBadge(payment.status)}</TableCell>
                     <TableCell>{formatDueDate(payment.dueDate, payment.status)}</TableCell>
@@ -340,7 +343,13 @@ const Payments = () => {
                       <div className="dropdown-actions">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              onClick={(e) => {
+                                e.preventDefault();
+                              }}
+                            >
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
@@ -381,7 +390,6 @@ const Payments = () => {
         </CardContent>
       </Card>
       
-      {/* Payment Date Dialog */}
       <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
         <DialogContent>
           <DialogHeader>

@@ -578,7 +578,7 @@ export const updateJob = async (job: Job): Promise<Job> => {
       location: data.location || undefined,
       startTime: data.startTime || undefined,
       endTime: data.endTime || undefined,
-      isFullDay: data.isFullDay || false,
+      isFullDay: data.is_full_day || false,
       createdAt: data.created_at,
       updatedAt: data.updated_at
     };
@@ -1241,3 +1241,48 @@ export const deleteInvoice = async (id: string): Promise<void> => {
     throw error;
   }
 };
+
+export const updateInvoiceStatus = async (invoiceId: string, status: InvoiceStatus): Promise<Invoice | undefined> => {
+  try {
+    const { data, error } = await supabase
+      .from('invoices')
+      .update({ status })
+      .eq('id', invoiceId)
+      .select()
+      .single();
+    
+    if (error || !data) {
+      console.error('Error updating invoice status:', error);
+      return undefined;
+    }
+    
+    // Fetch the full invoice with items and payment schedules
+    return await getInvoice(invoiceId);
+  } catch (error) {
+    console.error('Error updating invoice status:', error);
+    return undefined;
+  }
+};
+
+export const updateContractStatus = async (invoiceId: string, contractStatus: ContractStatus): Promise<Invoice | undefined> => {
+  try {
+    const { data, error } = await supabase
+      .from('invoices')
+      .update({ contract_status: contractStatus })
+      .eq('id', invoiceId)
+      .select()
+      .single();
+    
+    if (error || !data) {
+      console.error('Error updating contract status:', error);
+      return undefined;
+    }
+    
+    // Fetch the full invoice with items and payment schedules
+    return await getInvoice(invoiceId);
+  } catch (error) {
+    console.error('Error updating contract status:', error);
+    return undefined;
+  }
+};
+

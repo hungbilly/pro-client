@@ -17,58 +17,24 @@ interface DatePickerProps {
   selected?: Date | DateRange | null
   onSelect?: ((date: Date | null) => void) | ((range: DateRange | null) => void)
   initialFocus?: boolean
-  className?: string
-  placeholder?: string
-  disabled?: boolean
 }
 
-export function DatePicker({ 
-  mode = "single", 
-  selected, 
-  onSelect, 
-  initialFocus,
-  className,
-  placeholder = "Pick a date",
-  disabled = false
-}: DatePickerProps) {
+export function DatePicker({ mode = "single", selected, onSelect, initialFocus }: DatePickerProps) {
   return (
-    <div className={cn("grid gap-2", className)}>
+    <div className="grid gap-2">
       {mode === "single" ? (
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className={cn(
-                "w-full justify-start text-left font-normal",
-                !selected && "text-muted-foreground"
-              )}
-              disabled={disabled}
-            >
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {selected ? (
-                format(selected as Date, "PPP")
-              ) : (
-                <span>{placeholder}</span>
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="single"
-              selected={selected as Date | null}
-              onSelect={onSelect as (date: Date | null) => void}
-              initialFocus={initialFocus}
-              className="pointer-events-auto"
-            />
-          </PopoverContent>
-        </Popover>
+        <Calendar
+          mode="single"
+          selected={selected as Date | null}
+          onSelect={onSelect as (date: Date | null) => void}
+          initialFocus={initialFocus}
+        />
       ) : (
         <Calendar
           mode="range"
           selected={selected as DateRange | null}
           onSelect={onSelect as (range: DateRange | null) => void}
           initialFocus={initialFocus}
-          className="pointer-events-auto"
         />
       )}
     </div>

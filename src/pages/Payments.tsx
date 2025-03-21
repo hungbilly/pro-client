@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { MoreHorizontal, Download, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompanyContext } from '@/context/CompanyContext';
-import { toast } from '@/components/ui/use-toast';
-import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,10 +29,10 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-  DialogDescription,
-  DialogClose,
 } from '@/components/ui/dialog';
-import { DatePicker } from '@/components/ui/date-picker';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { format as formatDate } from 'date-fns';
 
 type PaymentScheduleWithDetails = {
   id: string;
@@ -49,8 +49,8 @@ type PaymentScheduleWithDetails = {
 };
 
 const Payments = () => {
-  const { selectedCompany } = useCompanyContext();
   const navigate = useNavigate();
+  const { selectedCompany } = useCompanyContext();
   const [payments, setPayments] = useState<PaymentScheduleWithDetails[]>([]);
   const [filteredPayments, setFilteredPayments] = useState<PaymentScheduleWithDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -60,45 +60,20 @@ const Payments = () => {
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<PaymentScheduleWithDetails | null>(null);
   const [paymentDate, setPaymentDate] = useState<Date | undefined>(new Date());
-  const [isUpdating, setIsUpdating] = useState(false);
-  
-  const isMountedRef = useRef(true);
-  const renderCountRef = useRef(0);
-  console.log(`[Payments] Render #${++renderCountRef.current}, dialog open: ${isPaymentDialogOpen}, isUpdating: ${isUpdating}`);
 
   useEffect(() => {
-    console.log('[Payments] Component mounted');
-    isMountedRef.current = true;
-    
-    return () => {
-      console.log('[Payments] Component unmounted');
-      isMountedRef.current = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (isMountedRef.current) {
-      console.log('[Payments] Fetching payments due to company change or mount');
-      fetchPayments();
-    }
+    fetchPayments();
   }, [selectedCompany]);
 
   useEffect(() => {
-    if (payments.length > 0 && isMountedRef.current) {
-      console.log('[Payments] Filtering payments due to data, filter or search change');
+    if (payments.length > 0) {
       filterPayments();
     }
   }, [payments, statusFilter, searchQuery]);
 
   const fetchPayments = async () => {
-    if (!isMountedRef.current) {
-      console.log('[Payments] Skipping fetchPayments as component is unmounted');
-      return;
-    }
-    
     setIsLoading(true);
     try {
-      console.log('[Payments] Fetching payments data...');
       const { data: schedulesData, error: schedulesError } = await supabase
         .from('payment_schedules')
         .select(`
@@ -116,17 +91,10 @@ const Payments = () => {
         .order('due_date', { ascending: true });
 
       if (schedulesError) {
-        console.error('[Payments] Error in fetchPayments query:', schedulesError);
         throw schedulesError;
       }
 
-      if (!isMountedRef.current) {
-        console.log('[Payments] Component unmounted during fetch, aborting data processing');
-        return;
-      }
-
-      console.log('[Payments] Successfully fetched payment schedules', schedulesData?.length || 0);
-      
+      // Transform data into the format we need
       const transformedData: PaymentScheduleWithDetails[] = schedulesData.map((schedule) => {
         const invoice = schedule.invoices;
         const amount = invoice.amount * (schedule.percentage / 100);
@@ -146,50 +114,33 @@ const Payments = () => {
         };
       });
 
-      if (!isMountedRef.current) {
-        console.log('[Payments] Component unmounted during transform, aborting state update');
-        return;
-      }
-
-      console.log('[Payments] Data transformation completed', transformedData.length);
+      setPayments(transformedData);
       
+      // Calculate total due amount (only unpaid items)
       const due = transformedData
         .filter(payment => payment.status === 'unpaid')
         .reduce((sum, payment) => sum + payment.amount, 0);
       
-      setPayments(transformedData);
       setTotalDue(due);
-      setIsLoading(false);
-      
-      console.log('[Payments] State updates completed with total due:', due);
     } catch (error) {
-      console.error('[Payments] Error in fetchPayments:', error);
-      if (isMountedRef.current) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to load payments",
-        });
-        setIsLoading(false);
-      }
+      console.error('Error fetching payments:', error);
+      toast.error('Failed to load payments');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const filterPayments = useCallback(() => {
-    if (!isMountedRef.current) {
-      console.log('[Payments] Skipping filterPayments as component is unmounted');
-      return;
-    }
-    
-    console.log('[Payments] Filtering payments with status:', statusFilter, 'and search:', searchQuery);
+  const filterPayments = () => {
     let filtered = [...payments];
     
+    // Filter by status
     if (statusFilter) {
       filtered = filtered.filter(payment => 
         statusFilter === 'all' ? true : payment.status === statusFilter
       );
     }
     
+    // Filter by search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(payment => 
@@ -199,174 +150,70 @@ const Payments = () => {
       );
     }
     
-    console.log('[Payments] Filtered payments count:', filtered.length);
     setFilteredPayments(filtered);
-  }, [payments, statusFilter, searchQuery]);
+  };
 
-  const handleStatusUpdate = (payment: PaymentScheduleWithDetails, newStatus: 'paid' | 'unpaid' | 'write-off') => {
-    if (!isMountedRef.current) {
-      console.log('[Payments] Skipping handleStatusUpdate as component is unmounted');
-      return;
-    }
-    
-    console.log('[Payments] handleStatusUpdate triggered for payment:', payment.id, 'to status:', newStatus);
-    
+  const handleStatusUpdate = async (payment: PaymentScheduleWithDetails, newStatus: 'paid' | 'unpaid' | 'write-off') => {
     if (newStatus === 'paid') {
-      console.log('[Payments] Opening payment date dialog');
       setSelectedPayment(payment);
-      setPaymentDate(new Date());
       setIsPaymentDialogOpen(true);
     } else {
-      console.log('[Payments] Directly updating status to:', newStatus);
-      updatePaymentStatus(payment.id, newStatus);
+      await updatePaymentStatus(payment.id, newStatus);
     }
   };
 
   const updatePaymentStatus = async (paymentId: string, status: string, paymentDate?: string) => {
-    if (!isMountedRef.current) {
-      console.log('[Payments] Skipping updatePaymentStatus as component is unmounted');
-      return;
-    }
-    
-    if (isUpdating) {
-      console.log('[Payments] Update already in progress, ignoring this request');
-      return;
-    }
-    
-    console.log('[Payments] Starting payment update for ID:', paymentId, 'status:', status);
-    setIsUpdating(true);
-    
     try {
       const updateData: any = { status };
       if (paymentDate) {
         updateData.payment_date = paymentDate;
       }
       
-      console.log('[Payments] Sending update to supabase with data:', updateData);
-      
       const { error } = await supabase
         .from('payment_schedules')
         .update(updateData)
         .eq('id', paymentId);
 
-      if (error) {
-        console.error('[Payments] Supabase update error:', error);
-        throw error;
-      }
+      if (error) throw error;
       
-      console.log('[Payments] Supabase update successful');
+      toast.success(`Payment marked as ${status}`);
       
-      if (!isMountedRef.current) {
-        console.log('[Payments] Component unmounted during update, skipping state changes');
-        return;
-      }
-      
-      toast({
-        title: "Success",
-        description: `Payment marked as ${status}`,
-      });
-      
-      setPayments(prevPayments => {
-        const updatedPayments = prevPayments.map(payment => {
-          if (payment.id === paymentId) {
-            return { 
-              ...payment, 
-              status: status as 'paid' | 'unpaid' | 'write-off',
-              paymentDate: paymentDate
-            };
-          }
-          return payment;
-        });
-        
-        const newTotalDue = updatedPayments
-          .filter(payment => payment.status === 'unpaid')
-          .reduce((sum, payment) => sum + payment.amount, 0);
-          
-        setTimeout(() => {
-          if (isMountedRef.current) {
-            setTotalDue(newTotalDue);
-          }
-        }, 0);
-        
-        return updatedPayments;
-      });
-      
-      console.log('[Payments] Local state updated successfully');
-    } catch (error) {
-      console.error('[Payments] Error in updatePaymentStatus:', error);
-      if (isMountedRef.current) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to update payment status",
-        });
-      }
-    } finally {
-      console.log('[Payments] Cleanup: Setting isUpdating back to false');
-      setTimeout(() => {
-        if (isMountedRef.current) {
-          setIsUpdating(false);
+      // Update the local state
+      const updatedPayments = payments.map(payment => {
+        if (payment.id === paymentId) {
+          return { 
+            ...payment, 
+            status: status as 'paid' | 'unpaid' | 'write-off',
+            paymentDate: paymentDate
+          };
         }
-      }, 300);
+        return payment;
+      });
+      
+      setPayments(updatedPayments);
+      
+      // Recalculate total due
+      const due = updatedPayments
+        .filter(payment => payment.status === 'unpaid')
+        .reduce((sum, payment) => sum + payment.amount, 0);
+      
+      setTotalDue(due);
+    } catch (error) {
+      console.error('Error updating payment status:', error);
+      toast.error('Failed to update payment status');
     }
   };
 
   const confirmPayment = async () => {
-    console.log('[Payments] confirmPayment triggered with selectedPayment:', selectedPayment?.id);
+    if (!selectedPayment) return;
     
-    if (!selectedPayment) {
-      console.error('[Payments] No payment selected, aborting confirmation');
-      return;
-    }
-    
-    const formattedDate = paymentDate ? format(paymentDate, 'yyyy-MM-dd') : undefined;
-    console.log('[Payments] Formatted payment date:', formattedDate);
-    
+    const formattedDate = paymentDate ? formatDate(paymentDate, 'yyyy-MM-dd') : undefined;
     await updatePaymentStatus(selectedPayment.id, 'paid', formattedDate);
-    
-    setTimeout(() => {
-      if (isMountedRef.current) {
-        console.log('[Payments] Closing payment dialog after update');
-        closePaymentDialog();
-      }
-    }, 300);
-  };
-
-  const closePaymentDialog = () => {
-    console.log('[Payments] closePaymentDialog called');
-    
-    if (isUpdating) {
-      console.log('[Payments] Update in progress, delaying dialog close');
-      return;
-    }
-    
     setIsPaymentDialogOpen(false);
-    
-    setTimeout(() => {
-      if (isMountedRef.current) {
-        setSelectedPayment(null);
-        console.log('[Payments] Dialog closed, selectedPayment cleared');
-      }
-    }, 300);
   };
 
-  const handleCloseDialog = () => {
-    console.log('[Payments] Dialog close button clicked');
-    if (!isUpdating) {
-      closePaymentDialog();
-    }
-  };
-
-  const handleOpenChange = (open: boolean) => {
-    console.log('[Payments] Dialog onOpenChange triggered with open:', open);
-    
-    if (!open && !isUpdating) {
-      console.log('[Payments] Dialog was closed by user, calling closePaymentDialog');
-      closePaymentDialog();
-    } else if (!open && isUpdating) {
-      console.log('[Payments] Preventing dialog close during update');
-      setIsPaymentDialogOpen(true);
-    }
+  const handleRowClick = (invoiceId: string) => {
+    navigate(`/invoice/${invoiceId}`);
   };
 
   const formatDueDate = (dueDate: string, status: string) => {
@@ -402,37 +249,9 @@ const Payments = () => {
   };
 
   const exportPayments = () => {
-    toast({
-      title: "Info",
-      description: "Export functionality will be implemented soon",
-    });
+    // This would be implemented to export payments to CSV/Excel
+    toast.info('Export functionality will be implemented soon');
   };
-
-  const handleRowClick = (payment: PaymentScheduleWithDetails) => {
-    console.log('[Payments] Row clicked for payment:', payment.id);
-    navigate(`/invoice/${payment.invoiceId}`);
-  };
-
-  const PaymentActionButtons = () => (
-    <DialogFooter>
-      <Button 
-        variant="outline" 
-        onClick={handleCloseDialog} 
-        disabled={isUpdating}
-        className="mr-2"
-      >
-        Cancel
-      </Button>
-      <Button 
-        onClick={confirmPayment} 
-        disabled={isUpdating}
-      >
-        {isUpdating ? 'Processing...' : 'Confirm Payment'}
-      </Button>
-    </DialogFooter>
-  );
-
-  console.log('[Payments] Rendering component with dialog state:', isPaymentDialogOpen, 'isUpdating:', isUpdating);
 
   return (
     <div className="container mx-auto px-4 py-6">
@@ -516,8 +335,9 @@ const Payments = () => {
                     key={payment.id} 
                     className="hover:bg-gray-50 cursor-pointer"
                     onClick={(e) => {
-                      if (!e.defaultPrevented) {
-                        handleRowClick(payment);
+                      // Only navigate if the click wasn't on the dropdown or its children
+                      if (!(e.target as HTMLElement).closest('.dropdown-actions')) {
+                        handleRowClick(payment.invoiceId);
                       }
                     }}
                   >
@@ -533,46 +353,29 @@ const Payments = () => {
                       <div className="dropdown-actions">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button 
-                              variant="ghost" 
-                              size="icon"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                console.log('[Payments] Dropdown trigger clicked, preventing default');
-                              }}
-                            >
+                            <Button variant="ghost" size="icon">
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             {payment.status !== 'paid' && (
-                              <DropdownMenuItem onClick={(e) => {
-                                e.stopPropagation();
-                                console.log('[Payments] Mark as Paid menu item clicked');
-                                handleStatusUpdate(payment, 'paid');
-                              }}>
+                              <DropdownMenuItem onClick={() => handleStatusUpdate(payment, 'paid')}>
                                 Mark as Paid
                               </DropdownMenuItem>
                             )}
                             {payment.status !== 'unpaid' && (
-                              <DropdownMenuItem onClick={(e) => {
-                                e.stopPropagation();
-                                console.log('[Payments] Mark as Unpaid menu item clicked');
-                                handleStatusUpdate(payment, 'unpaid');
-                              }}>
+                              <DropdownMenuItem onClick={() => handleStatusUpdate(payment, 'unpaid')}>
                                 Mark as Unpaid
                               </DropdownMenuItem>
                             )}
                             {payment.status !== 'write-off' && (
-                              <DropdownMenuItem onClick={(e) => {
-                                e.stopPropagation();
-                                console.log('[Payments] Write Off menu item clicked');
-                                handleStatusUpdate(payment, 'write-off');
-                              }}>
+                              <DropdownMenuItem onClick={() => handleStatusUpdate(payment, 'write-off')}>
                                 Write Off
                               </DropdownMenuItem>
                             )}
+                            <DropdownMenuItem onClick={() => navigate(`/invoice/${payment.invoiceId}`)}>
+                              View Invoice
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
@@ -585,31 +388,40 @@ const Payments = () => {
         </CardContent>
       </Card>
       
-      <Dialog 
-        open={isPaymentDialogOpen} 
-        onOpenChange={handleOpenChange}
-      >
+      {/* Payment Date Dialog */}
+      <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Select Payment Date</DialogTitle>
-            <DialogDescription>
-              Choose the date when this payment was received.
-            </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <DatePicker 
-              selected={paymentDate} 
-              onSelect={(date) => {
-                console.log('[Payments] DatePicker date selected:', date);
-                if (date) {
-                  setPaymentDate(date as Date);
-                }
-              }}
-              placeholder="Select payment date"
-              disabled={isUpdating}
-            />
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start text-left font-normal"
+                >
+                  {paymentDate ? formatDate(paymentDate, "PPP") : "Select date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={paymentDate}
+                  onSelect={setPaymentDate}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
           </div>
-          <PaymentActionButtons />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsPaymentDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={confirmPayment}>
+              Confirm Payment
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

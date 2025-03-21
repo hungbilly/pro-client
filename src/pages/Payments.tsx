@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO, differenceInDays } from 'date-fns';
-import { MoreHorizontal, Download, Search } from 'lucide-react';
+import { MoreHorizontal, Download, Search, Calendar } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompanyContext } from '@/context/CompanyContext';
 import { toast } from 'sonner';
@@ -30,7 +31,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Calendar } from '@/components/ui/calendar';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format as formatDate } from 'date-fns';
 
@@ -402,14 +403,16 @@ const Payments = () => {
                   className="w-full justify-start text-left font-normal"
                 >
                   {paymentDate ? formatDate(paymentDate, "PPP") : "Select date"}
+                  <Calendar className="ml-auto h-4 w-4 opacity-50" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
-                <Calendar
+                <CalendarComponent
                   mode="single"
                   selected={paymentDate}
                   onSelect={setPaymentDate}
                   initialFocus
+                  className="p-3 pointer-events-auto"
                 />
               </PopoverContent>
             </Popover>

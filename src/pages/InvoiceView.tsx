@@ -8,12 +8,12 @@ import {
   updateContractStatus,
   updatePaymentScheduleStatus
 } from '@/lib/storage';
-import { Invoice, Client, PaymentSchedule, PaymentStatus } from '@/types';
+import { Invoice, Client, PaymentSchedule } from '@/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Check, Calendar as CalendarIcon, FileText, DollarSign, Send, Camera, MailCheck, FileCheck, Edit, CalendarDays, Package } from 'lucide-react';
+import { ArrowLeft, Check, Calendar, FileText, DollarSign, Send, Camera, MailCheck, FileCheck, Edit, CalendarDays, Package } from 'lucide-react';
 import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { useAuth } from '@/context/AuthContext';
@@ -26,22 +26,6 @@ import RichTextEditor from '@/components/RichTextEditor';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { DatePicker } from '@/components/ui/date-picker';
-
-const statusColors = {
-  draft: 'bg-gray-200 text-gray-800',
-  sent: 'bg-blue-100 text-blue-800',
-  accepted: 'bg-green-100 text-green-800',
-  paid: 'bg-emerald-100 text-emerald-800'
-};
-
-const paymentStatusColors = {
-  paid: 'bg-green-100 text-green-800',
-  unpaid: 'bg-yellow-100 text-yellow-800',
-  'write-off': 'bg-red-100 text-red-800'
-};
-
-const contractStatusColor = 'text-green-600 dark:text-green-400';
 
 const InvoiceView = () => {
   const { viewLink, id } = useParams<{ viewLink: string, id: string }>();
@@ -58,15 +42,8 @@ const InvoiceView = () => {
   const [showEmailDialog, setShowEmailDialog] = useState(false);
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null);
-  const [showPaymentDateDialog, setShowPaymentDateDialog] = useState(false);
-  const [paymentDate, setPaymentDate] = useState<Date | undefined>(new Date());
-  const [pendingPaymentId, setPendingPaymentId] = useState<string | null>(null);
-  const [pendingStatus, setPendingStatus] = useState<PaymentStatus | null>(null);
   
   const isClientView = (location.search.includes('client=true') || !location.search) && !isAdmin;
-
-  const canClientAcceptInvoice = isClientView && invoice?.status === 'sent';
-  const canClientAcceptContract = isClientView && (!invoice?.contractStatus || invoice?.contractStatus === 'pending');
 
   const generateDefaultEmailContent = () => {
     if (!client || !invoice) return "Dear Client,\r\n\r\nPlease find your invoice at the link below:\r\n[Invoice Link]\r\n\r\nThank you for your business.";
@@ -144,13 +121,13 @@ const InvoiceView = () => {
 
         if (fetchedInvoice.clientId) {
           const fetchedClient = await getClient(fetchedInvoice.clientId);
-          if (fetchedClient) {
-            setClient(fetchedClient);
-          } else {
+          if (!fetchedClient) {
             setError('Client information not found.');
             setLoading(false);
             return;
           }
+          
+          setClient(fetchedClient);
         }
         
         setLoading(false);
@@ -204,7 +181,7 @@ const InvoiceView = () => {
         return false;
       }
       
-      if (data?.success) {
+      if (data.success) {
         toast.success('Event added to company calendar');
         return true;
       } else {
@@ -361,60 +338,12 @@ const InvoiceView = () => {
     }).format(amount);
   };
 
-  const handlePaymentStatusUpdate = async (paymentId: string, newStatus: PaymentStatus) => {
+  const handlePaymentStatusUpdate = async (paymentId: string, newStatus: 'paid' | 'unpaid' | 'write-off') => {
     if (!invoice || !paymentId) return;
     
-    if (newStatus === 'paid') {
-      setPendingPaymentId(paymentId);
-      setPendingStatus('paid');
-      setPaymentDate(new Date());
-      setShowPaymentDateDialog(true);
-    } else {
-      setUpdatingPaymentId(paymentId);
-      try {
-        const updatedSchedule = await updatePaymentScheduleStatus(paymentId, newStatus);
-        
-        if (!updatedSchedule) {
-          toast.error('Failed to update payment status');
-          return;
-        }
-        
-        if (invoice.paymentSchedules) {
-          const updatedSchedules = invoice.paymentSchedules.map(schedule => 
-            schedule.id === paymentId ? updatedSchedule : schedule
-          );
-          
-          setInvoice({
-            ...invoice,
-            paymentSchedules: updatedSchedules
-          });
-          
-          toast.success(`Payment marked as ${newStatus}`);
-        }
-      } catch (err) {
-        console.error('Failed to update payment status:', err);
-        toast.error('Error updating payment status');
-      } finally {
-        setUpdatingPaymentId(null);
-      }
-    }
-  };
-
-  const confirmPaymentWithDate = async () => {
-    if (!pendingPaymentId || !pendingStatus || !paymentDate || !invoice) {
-      toast.error('Missing payment information');
-      return;
-    }
-    
-    setUpdatingPaymentId(pendingPaymentId);
+    setUpdatingPaymentId(paymentId);
     try {
-      const formattedDate = format(paymentDate, 'yyyy-MM-dd');
-      
-      const updatedSchedule = await updatePaymentScheduleStatus(
-        pendingPaymentId, 
-        pendingStatus,
-        formattedDate
-      );
+      const updatedSchedule = await updatePaymentScheduleStatus(paymentId, newStatus);
       
       if (!updatedSchedule) {
         toast.error('Failed to update payment status');
@@ -423,7 +352,7 @@ const InvoiceView = () => {
       
       if (invoice.paymentSchedules) {
         const updatedSchedules = invoice.paymentSchedules.map(schedule => 
-          schedule.id === pendingPaymentId ? updatedSchedule : schedule
+          schedule.id === paymentId ? updatedSchedule : schedule
         );
         
         setInvoice({
@@ -431,24 +360,70 @@ const InvoiceView = () => {
           paymentSchedules: updatedSchedules
         });
         
-        toast.success(`Payment marked as ${pendingStatus} on ${format(paymentDate, 'MMM d, yyyy')}`);
+        toast.success(`Payment marked as ${newStatus}`);
       }
     } catch (err) {
-      console.error('Failed to update payment status with date:', err);
+      console.error('Failed to update payment status:', err);
       toast.error('Error updating payment status');
     } finally {
       setUpdatingPaymentId(null);
-      setPendingPaymentId(null);
-      setPendingStatus(null);
-      setShowPaymentDateDialog(false);
     }
   };
 
-  const cancelPaymentUpdate = () => {
-    setPendingPaymentId(null);
-    setPendingStatus(null);
-    setShowPaymentDateDialog(false);
+  if (loading) {
+    return (
+      <PageTransition>
+        <div className="flex justify-center items-center h-screen">
+          Loading invoice...
+        </div>
+      </PageTransition>
+    );
+  }
+
+  if (error) {
+    return (
+      <PageTransition>
+        <div className="flex justify-center items-center h-screen">
+          Error: {error}
+        </div>
+      </PageTransition>
+    );
+  }
+
+  if (!invoice || !client) {
+    return (
+      <PageTransition>
+        <div className="flex justify-center items-center h-screen">
+          Invoice or client not found.
+        </div>
+      </PageTransition>
+    );
+  }
+
+  const statusColors = {
+    draft: 'bg-muted text-muted-foreground',
+    sent: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+    accepted: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+    paid: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
   };
+
+  const contractStatusColor = invoice.contractStatus === 'accepted' 
+    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+    : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+
+  const paymentStatusColors = {
+    paid: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+    unpaid: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+    'write-off': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+  };
+
+  const canClientAcceptInvoice = ['draft', 'sent'].includes(invoice.status);
+  const canClientAcceptContract = invoice.contractStatus !== 'accepted';
+
+  console.log('RENDERING INVOICE VIEW WITH PAYMENT SCHEDULES:', 
+              invoice.paymentSchedules ? JSON.stringify(invoice.paymentSchedules) : 'undefined');
+  console.log('Payment schedules type:', Array.isArray(invoice.paymentSchedules) ? 'array' : typeof invoice.paymentSchedules);
+  console.log('Payment schedules length:', Array.isArray(invoice.paymentSchedules) ? invoice.paymentSchedules.length : 0);
 
   return (
     <PageTransition>
@@ -822,41 +797,6 @@ const InvoiceView = () => {
           </CardFooter>
         </Card>
       </div>
-      
-      <Dialog open={showPaymentDateDialog} onOpenChange={setShowPaymentDateDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Set Payment Date</DialogTitle>
-            <DialogDescription>
-              Please select the date when the payment was received
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <DatePicker
-              mode="single"
-              selected={paymentDate}
-              onSelect={(date) => setPaymentDate(date || undefined)}
-              triggerContent={
-                <Button
-                  variant="outline"
-                  className="w-full justify-start text-left font-normal"
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {paymentDate ? format(paymentDate, "PPP") : "Select date"}
-                </Button>
-              }
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={cancelPaymentUpdate}>
-              Cancel
-            </Button>
-            <Button onClick={confirmPaymentWithDate}>
-              Confirm Payment
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </PageTransition>
   );
 };

@@ -17,6 +17,7 @@ import { ArrowLeft, Check, Calendar, FileText, DollarSign, Send, Camera, MailChe
 import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { useAuth } from '@/context/AuthContext';
+import { useCompanyContext } from '@/context/CompanyContext';
 import { format } from 'date-fns';
 import { supabase } from "@/integrations/supabase/client";
 import { Label } from '@/components/ui/label';
@@ -37,6 +38,7 @@ const InvoiceView = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { isAdmin } = useAuth();
+  const { selectedCompanyId } = useCompanyContext();
   const [emailLogs, setEmailLogs] = useState<Array<{timestamp: Date, message: string, success: boolean}>>([]);
   const [paymentScheduleLogs, setPaymentScheduleLogs] = useState<string[]>([]);
   const [showEmailDialog, setShowEmailDialog] = useState(false);
@@ -100,6 +102,13 @@ const InvoiceView = () => {
           setLoading(false);
           return;
         }
+
+        // Check if the invoice belongs to the selected company
+        if (selectedCompanyId && fetchedInvoice.companyId !== selectedCompanyId && !isClientView) {
+          toast.error("This invoice belongs to a different company");
+          navigate('/');
+          return;
+        }
         
         if (fetchedInvoice.paymentSchedules) {
           console.log('PAYMENT SCHEDULES FOUND IN FETCHED INVOICE:', JSON.stringify(fetchedInvoice.paymentSchedules));
@@ -139,7 +148,7 @@ const InvoiceView = () => {
     };
 
     fetchInvoice();
-  }, [viewLink, id, location.pathname]);
+  }, [viewLink, id, location.pathname, selectedCompanyId, navigate, isClientView]);
 
   useEffect(() => {
     if (client && invoice) {
@@ -802,3 +811,4 @@ const InvoiceView = () => {
 };
 
 export default InvoiceView;
+

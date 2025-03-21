@@ -57,7 +57,6 @@ type PaymentScheduleWithDetails = {
   paymentDate?: string;
 };
 
-// Update the PeriodOption type to include 'custom'
 type PeriodOption = 'all' | 'this-month' | 'last-month' | 'this-year' | 'custom';
 
 type PaymentStats = {
@@ -74,14 +73,13 @@ const Payments = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [totalDue, setTotalDue] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('unpaid');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<PaymentScheduleWithDetails | null>(null);
   const [paymentDate, setPaymentDate] = useState<Date | undefined>(new Date());
   const [isUpdating, setIsUpdating] = useState(false);
   const isMountedRef = useRef(true);
   
-  // New state for period filtering and payment statistics
   const [periodFilter, setPeriodFilter] = useState<PeriodOption>('all');
   const [customStartDate, setCustomStartDate] = useState<Date | undefined>(undefined);
   const [customEndDate, setCustomEndDate] = useState<Date | undefined>(undefined);
@@ -111,7 +109,6 @@ const Payments = () => {
     }
   }, [payments, statusFilter, searchQuery, periodFilter, customStartDate, customEndDate]);
 
-  // Calculate date range based on period filter
   const getDateRange = () => {
     const today = new Date();
     
@@ -173,7 +170,6 @@ const Payments = () => {
         throw schedulesError;
       }
 
-      // Transform data into the format we need
       const transformedData: PaymentScheduleWithDetails[] = schedulesData.map((schedule) => {
         const invoice = schedule.invoices;
         const amount = invoice.amount * (schedule.percentage / 100);
@@ -195,7 +191,23 @@ const Payments = () => {
 
       setPayments(transformedData);
       
-      // Initial calculation of stats will happen in filterPayments
+      const stats: PaymentStats = {
+        paid: 0,
+        unpaid: 0,
+        writeOff: 0
+      };
+      
+      transformedData.forEach(payment => {
+        if (payment.status === 'paid') {
+          stats.paid += payment.amount;
+        } else if (payment.status === 'unpaid') {
+          stats.unpaid += payment.amount;
+        } else if (payment.status === 'write-off') {
+          stats.writeOff += payment.amount;
+        }
+      });
+      
+      setPaymentStats(stats);
     } catch (error) {
       console.error('Error fetching payments:', error);
       toast({
@@ -211,10 +223,8 @@ const Payments = () => {
   const filterPayments = () => {
     let filtered = [...payments];
     
-    // Apply date range filter
     const { start, end } = getDateRange();
     
-    // Create a date-filtered list for statistics calculation
     let dateFiltered = [...payments];
     if (start && end) {
       dateFiltered = dateFiltered.filter(payment => {
@@ -222,14 +232,12 @@ const Payments = () => {
         return dueDate >= start && dueDate <= end;
       });
       
-      // Apply the same date filter to the display list
       filtered = filtered.filter(payment => {
         const dueDate = parseISO(payment.dueDate);
         return dueDate >= start && dueDate <= end;
       });
     }
     
-    // Calculate payment statistics based on date-filtered payments
     const stats: PaymentStats = {
       paid: 0,
       unpaid: 0,
@@ -248,12 +256,10 @@ const Payments = () => {
     
     setPaymentStats(stats);
     
-    // Filter by status
     if (statusFilter && statusFilter !== 'all') {
       filtered = filtered.filter(payment => payment.status === statusFilter);
     }
     
-    // Filter by search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(payment => 
@@ -265,7 +271,6 @@ const Payments = () => {
     
     setFilteredPayments(filtered);
     
-    // Calculate total due (only unpaid items)
     const due = dateFiltered
       .filter(payment => payment.status === 'unpaid')
       .reduce((sum, payment) => sum + payment.amount, 0);
@@ -274,7 +279,6 @@ const Payments = () => {
   };
 
   const handleStatusUpdate = async (payment: PaymentScheduleWithDetails, newStatus: 'paid' | 'unpaid' | 'write-off', event: React.MouseEvent) => {
-    // Stop event propagation to prevent row click
     event.stopPropagation();
     
     if (newStatus === 'paid') {
@@ -308,7 +312,6 @@ const Payments = () => {
         variant: 'default'
       });
       
-      // Update the local state
       const updatedPayments = payments.map(payment => {
         if (payment.id === paymentId) {
           return { 
@@ -322,7 +325,17 @@ const Payments = () => {
       
       setPayments(updatedPayments);
       
-      // Recalculate stats will happen automatically through useEffect and filterPayments
+      setPaymentStats((prevStats) => {
+        const newStats = { ...prevStats };
+        if (status === 'paid') {
+          newStats.paid += payment.amount;
+        } else if (status === 'unpaid') {
+          newStats.unpaid += payment.amount;
+        } else if (status === 'write-off') {
+          newStats.writeOff += payment.amount;
+        }
+        return newStats;
+      });
     } catch (error) {
       console.error('Error updating payment status:', error);
       toast({
@@ -340,7 +353,6 @@ const Payments = () => {
   const closePaymentDialog = () => {
     if (isUpdating) return;
     setIsPaymentDialogOpen(false);
-    // Small delay to reset other dialog state after closing animation
     setTimeout(() => {
       if (isMountedRef.current) {
         setSelectedPayment(null);
@@ -358,7 +370,6 @@ const Payments = () => {
   };
 
   const handleRowClick = (invoiceId: string, event: React.MouseEvent) => {
-    // Check if the click was inside a dropdown menu
     if (!(event.target as HTMLElement).closest('.dropdown-actions')) {
       navigate(`/invoice/${invoiceId}`);
     }
@@ -397,7 +408,6 @@ const Payments = () => {
   };
 
   const exportPayments = () => {
-    // This would be implemented to export payments to CSV/Excel
     toast({
       title: 'Info',
       description: 'Export functionality will be implemented soon',
@@ -562,7 +572,7 @@ const Payments = () => {
                   >
                     <TableCell 
                       className="dropdown-actions"
-                      onClick={(e) => e.stopPropagation()} // Prevent row click when clicking status
+                      onClick={(e) => e.stopPropagation()}
                     >
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -602,7 +612,6 @@ const Payments = () => {
         </CardContent>
       </Card>
       
-      {/* Payment Date Dialog */}
       <Dialog open={isPaymentDialogOpen} onOpenChange={(open) => {
         if (!open) closePaymentDialog();
         else setIsPaymentDialogOpen(true);

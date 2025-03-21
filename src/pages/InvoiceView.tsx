@@ -28,7 +28,6 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { DatePicker } from '@/components/ui/date-picker';
 
-// Define color objects and variables that were missing
 const statusColors = {
   draft: 'bg-gray-200 text-gray-800',
   sent: 'bg-blue-100 text-blue-800',
@@ -66,9 +65,8 @@ const InvoiceView = () => {
   
   const isClientView = (location.search.includes('client=true') || !location.search) && !isAdmin;
 
-  // Add these variables that were missing
   const canClientAcceptInvoice = isClientView && invoice?.status === 'sent';
-  const canClientAcceptContract = isClientView && !invoice?.contractStatus || invoice?.contractStatus === 'pending';
+  const canClientAcceptContract = isClientView && (!invoice?.contractStatus || invoice?.contractStatus === 'pending');
 
   const generateDefaultEmailContent = () => {
     if (!client || !invoice) return "Dear Client,\r\n\r\nPlease find your invoice at the link below:\r\n[Invoice Link]\r\n\r\nThank you for your business.";
@@ -206,7 +204,7 @@ const InvoiceView = () => {
         return false;
       }
       
-      if (data.success) {
+      if (data?.success) {
         toast.success('Event added to company calendar');
         return true;
       } else {
@@ -403,7 +401,7 @@ const InvoiceView = () => {
   };
 
   const confirmPaymentWithDate = async () => {
-    if (!pendingPaymentId || !pendingStatus || !paymentDate) {
+    if (!pendingPaymentId || !pendingStatus || !paymentDate || !invoice) {
       toast.error('Missing payment information');
       return;
     }
@@ -411,9 +409,10 @@ const InvoiceView = () => {
     setUpdatingPaymentId(pendingPaymentId);
     try {
       const formattedDate = format(paymentDate, 'yyyy-MM-dd');
+      
       const updatedSchedule = await updatePaymentScheduleStatus(
         pendingPaymentId, 
-        pendingStatus, 
+        pendingStatus,
         formattedDate
       );
       
@@ -422,7 +421,7 @@ const InvoiceView = () => {
         return;
       }
       
-      if (invoice && invoice.paymentSchedules) {
+      if (invoice.paymentSchedules) {
         const updatedSchedules = invoice.paymentSchedules.map(schedule => 
           schedule.id === pendingPaymentId ? updatedSchedule : schedule
         );
@@ -824,7 +823,6 @@ const InvoiceView = () => {
         </Card>
       </div>
       
-      {/* Payment Date Dialog */}
       <Dialog open={showPaymentDateDialog} onOpenChange={setShowPaymentDateDialog}>
         <DialogContent>
           <DialogHeader>

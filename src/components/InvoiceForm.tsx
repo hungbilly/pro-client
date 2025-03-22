@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Client, Invoice, InvoiceItem, Job, PaymentSchedule } from '@/types';
@@ -452,41 +453,55 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Invoice form submission started');
 
     if (!client) {
+      console.error('Form validation failed: Client is required');
       toast.error('Client is required.');
       return;
     }
 
     if (!date || !dueDate) {
+      console.error('Form validation failed: Date and Due Date are required');
       toast.error('Date and Due Date are required.');
       return;
     }
 
     if (!selectedCompanyId) {
+      console.error('Form validation failed: Company not selected');
       toast.error('Please select a company first.');
       return;
     }
 
     if (!number.trim()) {
+      console.error('Form validation failed: Invoice number is required');
       toast.error('Invoice number is required.');
       return;
     }
     
+    console.log('Validating payment schedules:', paymentSchedules);
     if (!validateSchedulePercentages(paymentSchedules)) {
+      console.error('Form validation failed: Payment schedules must add up to exactly 100%');
       toast.error('Payment schedules must add up to exactly 100%.');
       return;
     }
 
     const amount = calculateTotalAmount();
+    console.log('Calculated total amount:', amount);
 
     try {
+      console.log('Starting invoice save/update process. isEditMode:', isEditMode);
+      
       if (isEditMode && invoice) {
+        console.log('Updating existing invoice:', invoice.id);
+        
         if (number !== invoice.number) {
+          console.log('Invoice number changed, checking for duplicates');
           const allInvoices = await getInvoicesByDate();
           const duplicateExists = allInvoices.some(inv => inv.number === number && inv.id !== invoice.id);
           
           if (duplicateExists) {
+            console.error('Duplicate invoice number detected:', number);
             toast.error(`Invoice number ${number} already exists. Please use a different number.`);
             return;
           }
@@ -514,15 +529,20 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
           updatedInvoice.shootingDate = format(jobDate, 'yyyy-MM-dd');
         }
 
-        await updateInvoice(updatedInvoice);
+        console.log('Calling updateInvoice with data:', JSON.stringify(updatedInvoice));
+        const result = await updateInvoice(updatedInvoice);
+        console.log('Invoice updated successfully:', result);
         toast.success('Invoice updated successfully!');
         
         navigate(`/invoice/${invoice.id}`);
       } else {
+        console.log('Creating new invoice');
+        console.log('Checking for duplicate invoice numbers');
         const allInvoices = await getInvoicesByDate();
         const duplicateExists = allInvoices.some(inv => inv.number === number);
         
         if (duplicateExists) {
+          console.error('Duplicate invoice number detected:', number);
           toast.error(`Invoice number ${number} already exists. Please use a different number.`);
           return;
         }
@@ -547,16 +567,22 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
           invoiceData.shootingDate = format(jobDate, 'yyyy-MM-dd');
         }
 
+        console.log('Calling saveInvoice with data:', JSON.stringify(invoiceData));
         const newInvoice = await saveInvoice(invoiceData);
+        console.log('New invoice created successfully:', newInvoice);
         toast.success('Invoice saved successfully!');
         
         if (newInvoice && newInvoice.id) {
+          console.log('Navigating to new invoice page:', newInvoice.id);
           navigate(`/invoice/${newInvoice.id}`);
         } else if (job?.id) {
+          console.log('Navigating to job page:', job.id);
           navigate(`/job/${job.id}`);
         } else if (client) {
+          console.log('Navigating to client page:', client.id);
           navigate(`/client/${client.id}`);
         } else {
+          console.log('Navigating to home page');
           navigate('/');
         }
       }

@@ -900,7 +900,6 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
       amount: matchingInvoice.amount,
       date: matchingInvoice.date,
       dueDate: matchingInvoice.due_date,
-      shootingDate: matchingInvoice.shooting_date,
       status,
       contractStatus,
       items: invoiceItems,
@@ -993,11 +992,21 @@ export const getClientInvoices = async (clientId: string): Promise<Invoice[]> =>
 };
 
 export const saveInvoice = async (invoice: Omit<Invoice, 'id' | 'viewLink'>): Promise<Invoice> => {
+  console.log('[saveInvoice] Starting invoice creation process', { 
+    clientId: invoice.clientId,
+    companyId: invoice.companyId,
+    jobId: invoice.jobId,
+    number: invoice.number,
+    hasPaymentSchedules: !!invoice.paymentSchedules && invoice.paymentSchedules.length > 0
+  });
+  
   try {
     // Generate a view link
     const viewLink = generateViewLink();
+    console.log('[saveInvoice] Generated view link:', viewLink);
     
     // Start a transaction by using the Supabase client
+    console.log('[saveInvoice] Inserting invoice into database');
     const { data: newInvoice, error: invoiceError } = await supabase
       .from('invoices')
       .insert({
@@ -1019,50 +1028,63 @@ export const saveInvoice = async (invoice: Omit<Invoice, 'id' | 'viewLink'>): Pr
       .single();
     
     if (invoiceError || !newInvoice) {
-      console.error('Error saving invoice:', invoiceError);
+      console.error('[saveInvoice] Error saving invoice:', invoiceError);
       throw new Error(invoiceError?.message || 'Failed to save invoice');
     }
+    
+    console.log('[saveInvoice] Invoice created successfully with ID:', newInvoice.id);
 
     // Save invoice items if they exist
     if (invoice.items && invoice.items.length > 0) {
+      console.log('[saveInvoice] Saving invoice items:', invoice.items.length);
+      const itemsToInsert = invoice.items.map(item => ({
+        invoice_id: newInvoice.id,
+        description: item.description,
+        quantity: item.quantity,
+        rate: item.rate,
+        amount: item.amount
+      }));
+      
+      console.log('[saveInvoice] Inserting invoice items');
       const { error: itemsError } = await supabase
         .from('invoice_items')
-        .insert(
-          invoice.items.map(item => ({
-            invoice_id: newInvoice.id,
-            description: item.description,
-            quantity: item.quantity,
-            rate: item.rate,
-            amount: item.amount
-          }))
-        );
+        .insert(itemsToInsert);
       
       if (itemsError) {
-        console.error('Error saving invoice items:', itemsError);
+        console.error('[saveInvoice] Error saving invoice items:', itemsError);
         throw new Error(itemsError.message || 'Failed to save invoice items');
       }
+      console.log('[saveInvoice] Invoice items saved successfully');
+    } else {
+      console.log('[saveInvoice] No invoice items to save');
     }
 
     // Save payment schedules if they exist
     if (invoice.paymentSchedules && invoice.paymentSchedules.length > 0) {
+      console.log('[saveInvoice] Saving payment schedules:', invoice.paymentSchedules.length);
+      const schedulesToInsert = invoice.paymentSchedules.map(schedule => ({
+        invoice_id: newInvoice.id,
+        description: schedule.description,
+        due_date: schedule.dueDate,
+        percentage: schedule.percentage,
+        status: schedule.status
+      }));
+      
+      console.log('[saveInvoice] Inserting payment schedules');
       const { error: schedulesError } = await supabase
         .from('payment_schedules')
-        .insert(
-          invoice.paymentSchedules.map(schedule => ({
-            invoice_id: newInvoice.id,
-            description: schedule.description,
-            due_date: schedule.dueDate,
-            percentage: schedule.percentage,
-            status: schedule.status
-          }))
-        );
+        .insert(schedulesToInsert);
       
       if (schedulesError) {
-        console.error('Error saving payment schedules:', schedulesError);
+        console.error('[saveInvoice] Error saving payment schedules:', schedulesError);
         throw new Error(schedulesError.message || 'Failed to save payment schedules');
       }
+      console.log('[saveInvoice] Payment schedules saved successfully');
+    } else {
+      console.log('[saveInvoice] No payment schedules to save');
     }
 
+    console.log('[saveInvoice] Invoice creation completed successfully');
     return {
       id: newInvoice.id,
       clientId: newInvoice.client_id,
@@ -1082,14 +1104,22 @@ export const saveInvoice = async (invoice: Omit<Invoice, 'id' | 'viewLink'>): Pr
       paymentSchedules: invoice.paymentSchedules
     };
   } catch (error) {
-    console.error('Error saving invoice:', error);
+    console.error('[saveInvoice] Error saving invoice:', error);
     throw error;
   }
 };
 
 export const updateInvoice = async (invoice: Invoice): Promise<Invoice> => {
+  console.log('[updateInvoice] Starting invoice update process', { 
+    invoiceId: invoice.id,
+    clientId: invoice.clientId,
+    number: invoice.number,
+    hasPaymentSchedules: !!invoice.paymentSchedules && invoice.paymentSchedules.length > 0
+  });
+  
   try {
     // Start a transaction by using the Supabase client
+    console.log('[updateInvoice] Updating invoice in database');
     const { data: updatedInvoice, error: invoiceError } = await supabase
       .from('invoices')
       .update({
@@ -1111,73 +1141,86 @@ export const updateInvoice = async (invoice: Invoice): Promise<Invoice> => {
       .single();
     
     if (invoiceError || !updatedInvoice) {
-      console.error('Error updating invoice:', invoiceError);
+      console.error('[updateInvoice] Error updating invoice:', invoiceError);
       throw new Error(invoiceError?.message || 'Failed to update invoice');
     }
     
+    console.log('[updateInvoice] Invoice updated successfully');
+    
     // Delete existing invoice items
+    console.log('[updateInvoice] Deleting existing invoice items');
     const { error: deleteItemsError } = await supabase
       .from('invoice_items')
       .delete()
       .eq('invoice_id', invoice.id);
     
     if (deleteItemsError) {
-      console.error('Error deleting existing invoice items:', deleteItemsError);
+      console.error('[updateInvoice] Error deleting existing invoice items:', deleteItemsError);
       throw new Error(deleteItemsError.message);
     }
     
     // Add new invoice items
     if (invoice.items && invoice.items.length > 0) {
+      console.log('[updateInvoice] Adding new invoice items:', invoice.items.length);
+      const itemsToInsert = invoice.items.map(item => ({
+        invoice_id: invoice.id,
+        description: item.description,
+        quantity: item.quantity,
+        rate: item.rate,
+        amount: item.amount
+      }));
+      
       const { error: itemsError } = await supabase
         .from('invoice_items')
-        .insert(
-          invoice.items.map(item => ({
-            invoice_id: invoice.id,
-            description: item.description,
-            quantity: item.quantity,
-            rate: item.rate,
-            amount: item.amount
-          }))
-        );
+        .insert(itemsToInsert);
       
       if (itemsError) {
-        console.error('Error adding new invoice items:', itemsError);
+        console.error('[updateInvoice] Error adding new invoice items:', itemsError);
         throw new Error(itemsError.message);
       }
+      console.log('[updateInvoice] New invoice items added successfully');
+    } else {
+      console.log('[updateInvoice] No invoice items to add');
     }
 
     // Handle payment schedules if they exist
     if (invoice.paymentSchedules && invoice.paymentSchedules.length > 0) {
       // First delete existing payment schedules
+      console.log('[updateInvoice] Deleting existing payment schedules');
       const { error: deleteSchedulesError } = await supabase
         .from('payment_schedules')
         .delete()
         .eq('invoice_id', invoice.id);
       
       if (deleteSchedulesError) {
-        console.error('Error deleting existing payment schedules:', deleteSchedulesError);
+        console.error('[updateInvoice] Error deleting existing payment schedules:', deleteSchedulesError);
         throw new Error(deleteSchedulesError.message);
       }
       
       // Then add the new ones
+      console.log('[updateInvoice] Adding new payment schedules:', invoice.paymentSchedules.length);
+      const schedulesToInsert = invoice.paymentSchedules.map(schedule => ({
+        invoice_id: invoice.id,
+        description: schedule.description,
+        due_date: schedule.dueDate,
+        percentage: schedule.percentage,
+        status: schedule.status
+      }));
+      
       const { error: schedulesError } = await supabase
         .from('payment_schedules')
-        .insert(
-          invoice.paymentSchedules.map(schedule => ({
-            invoice_id: invoice.id,
-            description: schedule.description,
-            due_date: schedule.dueDate,
-            percentage: schedule.percentage,
-            status: schedule.status
-          }))
-        );
+        .insert(schedulesToInsert);
       
       if (schedulesError) {
-        console.error('Error adding new payment schedules:', schedulesError);
+        console.error('[updateInvoice] Error adding new payment schedules:', schedulesError);
         throw new Error(schedulesError.message);
       }
+      console.log('[updateInvoice] New payment schedules added successfully');
+    } else {
+      console.log('[updateInvoice] No payment schedules to add');
     }
     
+    console.log('[updateInvoice] Invoice update completed successfully');
     return {
       id: updatedInvoice.id,
       clientId: updatedInvoice.client_id,
@@ -1197,7 +1240,7 @@ export const updateInvoice = async (invoice: Invoice): Promise<Invoice> => {
       paymentSchedules: invoice.paymentSchedules
     };
   } catch (error) {
-    console.error('Error updating invoice:', error);
+    console.error('[updateInvoice] Error updating invoice:', error);
     throw error;
   }
 };
@@ -1320,3 +1363,4 @@ export const updatePaymentScheduleStatus = async (scheduleId: string, status: Pa
     throw error;
   }
 };
+

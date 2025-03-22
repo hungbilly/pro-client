@@ -23,15 +23,19 @@ const InvoiceCreate = () => {
   const [contractTemplates, setContractTemplates] = useState<ContractTemplate[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(true);
   
+  console.log('InvoiceCreate component initialized with params:', { clientId, jobId, invoiceId });
+  
   useEffect(() => {
     const fetchInvoice = async () => {
       if (invoiceId) {
         try {
+          console.log('Fetching invoice with ID:', invoiceId);
           const fetchedInvoice = await getInvoice(invoiceId);
           if (fetchedInvoice) {
             console.log('Fetched invoice with payment schedules:', fetchedInvoice.paymentSchedules);
             setInvoice(fetchedInvoice);
           } else {
+            console.error('Invoice not found for ID:', invoiceId);
             toast.error('Invoice not found');
             // Navigate back based on available params
             if (jobId) {
@@ -55,14 +59,19 @@ const InvoiceCreate = () => {
 
     const fetchContractTemplates = async () => {
       try {
+        console.log('Fetching contract templates');
         setLoadingTemplates(true);
         const { data, error } = await supabase
           .from('contract_templates')
           .select('id, name, content')
           .order('name', { ascending: true });
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error fetching contract templates:', error);
+          throw error;
+        }
         
+        console.log('Contract templates fetched:', data?.length || 0);
         setContractTemplates(data || []);
       } catch (error) {
         console.error('Error fetching contract templates:', error);
@@ -88,6 +97,14 @@ const InvoiceCreate = () => {
       </PageTransition>
     );
   }
+
+  console.log('Rendering InvoiceForm with props:', { 
+    hasInvoice: !!invoice, 
+    clientId, 
+    jobId, 
+    invoiceId,
+    contractTemplatesCount: contractTemplates.length 
+  });
 
   return (
     <PageTransition>

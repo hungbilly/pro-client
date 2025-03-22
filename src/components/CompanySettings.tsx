@@ -36,15 +36,14 @@ const CompanySettings = () => {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // Form state with default values
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [website, setWebsite] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
-  const [country, setCountry] = useState('hk'); // Default to 'hk'
-  const [currency, setCurrency] = useState('hkd'); // Default to 'hkd'
+  const [country, setCountry] = useState('hk');
+  const [currency, setCurrency] = useState('hkd');
   const [isDefault, setIsDefault] = useState(false);
 
   useEffect(() => {
@@ -54,14 +53,12 @@ const CompanySettings = () => {
     if (!companyContextLoading) {
       setIsLoading(false);
       
-      // If there's at least one company, select the first one
       if (companies && companies.length > 0) {
         const defaultCompany = companies.find(c => c.is_default);
         const companyToSelect = defaultCompany || companies[0];
         setSelectedCompanyId(companyToSelect.id);
         populateFormWithCompany(companyToSelect);
       } else {
-        // If no companies exist, show the add new form
         setIsAddingNew(true);
         resetForm();
       }
@@ -75,8 +72,8 @@ const CompanySettings = () => {
     setEmail(company.email || '');
     setWebsite(company.website || '');
     setLogoUrl(company.logo_url || '');
-    setCountry(company.country || 'hk'); // Fallback to 'hk'
-    setCurrency(company.currency || 'hkd'); // Fallback to 'hkd'
+    setCountry(company.country || 'hk');
+    setCurrency(company.currency || 'hkd');
     setIsDefault(company.is_default);
   };
 
@@ -87,9 +84,9 @@ const CompanySettings = () => {
     setEmail('');
     setWebsite('');
     setLogoUrl('');
-    setCountry('hk'); // Reset to 'hk'
-    setCurrency('hkd'); // Reset to 'hkd'
-    setIsDefault(companies.length === 0); // Make default if it's the first company
+    setCountry('hk');
+    setCurrency('hkd');
+    setIsDefault(companies.length === 0);
   };
 
   const handleCompanySelect = (companyId: string) => {
@@ -122,7 +119,6 @@ const CompanySettings = () => {
     setIsLoading(true);
     try {
       if (isAddingNew) {
-        // Create new company
         const { data, error } = await supabase
           .from('companies')
           .insert({
@@ -142,7 +138,6 @@ const CompanySettings = () => {
         
         if (error) throw error;
         
-        // If setting as default, update other companies
         if (isDefault) {
           await updateDefaultCompany(data.id);
         }
@@ -152,7 +147,6 @@ const CompanySettings = () => {
         setSelectedCompanyId(data.id);
         await refreshCompanies();
       } else if (selectedCompanyId) {
-        // Update existing company
         const { error } = await supabase
           .from('companies')
           .update({
@@ -171,7 +165,6 @@ const CompanySettings = () => {
         
         if (error) throw error;
         
-        // If setting as default, update other companies
         if (isDefault) {
           await updateDefaultCompany(selectedCompanyId);
         }
@@ -189,7 +182,6 @@ const CompanySettings = () => {
 
   const updateDefaultCompany = async (newDefaultId: string) => {
     try {
-      // Set all other companies to not default
       const { error } = await supabase
         .from('companies')
         .update({ is_default: false })
@@ -229,14 +221,12 @@ const CompanySettings = () => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
     const fileType = file.type;
     if (fileType !== 'image/png' && fileType !== 'image/jpeg') {
       toast.error('Please upload a PNG or JPG image');
       return;
     }
 
-    // Validate file size (max 2MB)
     const fileSizeInMB = file.size / (1024 * 1024);
     if (fileSizeInMB > 2) {
       toast.error('Image size must be less than 2MB');
@@ -245,13 +235,11 @@ const CompanySettings = () => {
 
     setUploadingLogo(true);
     try {
-      // Create a unique file name with timestamp and original extension
       const extension = file.name.split('.').pop();
-      const fileName = `company_logos/${selectedCompanyId || 'new'}_${Date.now()}.${extension}`;
+      const fileName = `${user?.id}/${selectedCompanyId || 'new'}_${Date.now()}.${extension}`;
 
-      // Upload file to Supabase Storage
       const { data, error } = await supabase.storage
-        .from('uploads')
+        .from('company_logos')
         .upload(fileName, file, {
           cacheControl: '3600',
           upsert: true
@@ -259,9 +247,8 @@ const CompanySettings = () => {
 
       if (error) throw error;
 
-      // Get the public URL
       const { data: urlData } = supabase.storage
-        .from('uploads')
+        .from('company_logos')
         .getPublicUrl(fileName);
 
       setLogoUrl(urlData.publicUrl);
@@ -271,7 +258,6 @@ const CompanySettings = () => {
       toast.error(error.message || 'Failed to upload logo');
     } finally {
       setUploadingLogo(false);
-      // Reset the file input
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }

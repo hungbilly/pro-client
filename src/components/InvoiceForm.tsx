@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2, Calendar as CalendarIcon, CalendarPlus, GripVertical, Pencil, Copy, Package as PackageIcon, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, Calendar as CalendarIcon, CalendarPlus, GripVertical, Pencil, Copy, Package as PackageIcon, AlertCircle, Briefcase, Mail, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { getClient, saveInvoice, updateInvoice, getJob, getInvoice, getInvoicesByDate } from '@/lib/storage';
 import { format } from 'date-fns';
@@ -680,6 +680,65 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <Card>
+              <CardHeader className="pb-3 bg-muted/50">
+                <CardTitle className="text-lg">Job</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                {job ? (
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-3">
+                      <Briefcase className="h-5 w-5 text-muted-foreground mt-0.5" />
+                      <div>
+                        <h3 className="text-base font-medium">{job.title}</h3>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h3 className="text-base font-medium mt-4">Main Shoot</h3>
+                      <div className="flex items-start gap-3 mt-3">
+                        <CalendarIcon className="h-5 w-5 text-muted-foreground mt-0.5" />
+                        <div>
+                          <div className="text-sm text-muted-foreground">Date & Time</div>
+                          <div className="mt-1">
+                            {jobDate ? format(jobDate, "d MMMM yyyy") : "No date specified"}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-muted-foreground text-sm">No job selected</div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3 bg-muted/50">
+                <CardTitle className="text-lg">Client</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <User className="h-5 w-5 text-muted-foreground mt-0.5" />
+                    <div>
+                      <div className="text-base font-medium">{client.name}</div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start gap-3">
+                    <Mail className="h-5 w-5 text-muted-foreground mt-0.5" />
+                    <div>
+                      <div className="text-sm text-muted-foreground">Email</div>
+                      <div className="mt-1">{client.email}</div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div>
@@ -737,36 +796,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
             </div>
             
             <div className="space-y-4">
-              <div>
-                <Label>Job Date</Label>
-                <div className="flex gap-2">
-                  <Button
-                    variant={"outline"}
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !jobDate && "text-muted-foreground"
-                    )}
-                    disabled={true}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {jobDate ? format(jobDate, "PPP") : <span>No job date available</span>}
-                  </Button>
-                  {jobDate && (
-                    <Button 
-                      type="button"
-                      variant="outline"
-                      onClick={handleAddToGoogleCalendar}
-                      title="Add to Google Calendar"
-                    >
-                      <CalendarPlus className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Job date is imported from the job and cannot be modified here.
-                </p>
-              </div>
-              
               <div>
                 <Label htmlFor="status">Invoice Status</Label>
                 <Select value={status} onValueChange={(value) => setStatus(value as 'draft' | 'sent' | 'accepted' | 'paid')}>

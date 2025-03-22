@@ -53,13 +53,16 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
     });
     
     if (invoices.length > 0) {
-      logDebug('Sample invoices:', invoices.slice(0, 3).map(inv => ({
+      // Log more detailed information about invoices and their payment schedules
+      logDebug('Sample invoices with payment schedules:', invoices.slice(0, 3).map(inv => ({
         id: inv.id,
         amount: inv.amount,
         status: inv.status,
         date: inv.date,
         dateFormatted: inv.date ? formatDateToYYYYMMDD(parseDate(inv.date)) : 'no date',
-        paymentSchedules: inv?.paymentSchedules || []
+        paymentSchedules: inv?.paymentSchedules || [],
+        paymentSchedulesCount: inv?.paymentSchedules?.length || 0,
+        hasAnyPaidSchedules: inv?.paymentSchedules?.some(schedule => schedule.status === 'paid') || false
       })));
     }
     
@@ -157,6 +160,7 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
       let unpaidAmount = 0;
       
       invoices.forEach(invoice => {
+        // Check if invoice has paymentSchedules and use them
         const schedules = invoice.paymentSchedules && invoice.paymentSchedules.length > 0
           ? invoice.paymentSchedules
           : [{
@@ -164,10 +168,24 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
               dueDate: invoice.date,
               percentage: 100,
               description: 'Default schedule',
-              status: 'unpaid'
+              status: invoice.status === 'paid' ? 'paid' : 'unpaid'
             }];
+        
+        // Debug log for problematic invoices that might not have payment schedules
+        if (!invoice.paymentSchedules || invoice.paymentSchedules.length === 0) {
+          logDebug(`Invoice ${invoice.id} has no payment schedules, using default`, {
+            invoiceStatus: invoice.status,
+            amount: invoice.amount,
+            date: invoice.date
+          });
+        }
       
         schedules.forEach(schedule => {
+          if (!schedule.dueDate) {
+            logDebug(`Schedule has no due date for invoice ${invoice.id}`, schedule);
+            return;
+          }
+          
           const scheduleDueDate = parseDate(schedule.dueDate);
           const scheduleDueDateFormatted = formatDateToYYYYMMDD(scheduleDueDate);
           
@@ -184,10 +202,19 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
               dueDateFormatted: scheduleDueDateFormatted
             });
             
+            // Explicitly check for 'paid' status string
             if (schedule.status === 'paid') {
               paidAmount += scheduleAmount;
-            } else if (schedule.status === 'unpaid') {
+              logDebug(`Adding ${scheduleAmount} to paidAmount for invoice ${invoice.id}`, {
+                scheduleId: schedule.id,
+                newTotal: paidAmount
+              });
+            } else {
               unpaidAmount += scheduleAmount;
+              logDebug(`Adding ${scheduleAmount} to unpaidAmount for invoice ${invoice.id}`, {
+                scheduleId: schedule.id,
+                newTotal: unpaidAmount
+              });
             }
           }
         });

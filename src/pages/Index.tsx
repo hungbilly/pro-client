@@ -20,6 +20,15 @@ const Index = () => {
             </button>
           </div>
         }
+        onError={(error, info) => {
+          console.error("Dashboard error:", error);
+          console.error("Component stack:", info.componentStack);
+        }}
+        onReset={() => {
+          // Reset the state of your app here
+          console.log("ErrorBoundary reset");
+          window.location.reload();
+        }}
       >
         <Dashboard />
       </ErrorBoundary>

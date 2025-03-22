@@ -35,6 +35,16 @@ export function DatePicker({
   classNames,
   id,
 }: DatePickerProps) {
+  const handleSelect = React.useCallback((value: Date | null | DateRange) => {
+    if (onSelect) {
+      if (mode === "single") {
+        (onSelect as (date: Date | null) => void)(value as Date | null);
+      } else {
+        (onSelect as (range: DateRange | null) => void)(value as DateRange | null);
+      }
+    }
+  }, [mode, onSelect]);
+
   return (
     <div className="grid gap-2">
       {mode === "single" ? (
@@ -42,7 +52,7 @@ export function DatePicker({
           id={id}
           mode="single"
           selected={selected as Date | null}
-          onSelect={onSelect as (date: Date | null) => void}
+          onSelect={handleSelect as (date: Date | null) => void}
           initialFocus={initialFocus}
           disabled={disabled}
           className="pointer-events-auto"
@@ -51,7 +61,7 @@ export function DatePicker({
         <Calendar
           mode="range"
           selected={selected as DateRange | null}
-          onSelect={onSelect as (range: DateRange | null) => void}
+          onSelect={handleSelect as (range: DateRange | null) => void}
           initialFocus={initialFocus}
           disabled={disabled}
           className="pointer-events-auto"

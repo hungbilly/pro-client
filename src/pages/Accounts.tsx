@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO, differenceInDays, startOfMonth, endOfMonth, startOfYear, endOfYear, subMonths } from 'date-fns';
@@ -79,7 +80,9 @@ type Expense = {
 type ExpenseCategory = {
   id: string;
   name: string;
-  company_id?: string;
+  company_id: string;
+  created_at: string;
+  updated_at: string;
 };
 
 type PeriodOption = 'all' | 'this-month' | 'last-month' | 'this-year' | 'custom';
@@ -324,7 +327,13 @@ const Accounts = () => {
         if (defaultCategories && defaultCategories.length > 0) {
           // Add Uncategorized category if it doesn't exist
           if (!defaultCategories.some(cat => cat.name.toLowerCase() === 'uncategorized')) {
-            defaultCategories.push({ name: 'Uncategorized', id: 'default' });
+            defaultCategories.push({ 
+              name: 'Uncategorized', 
+              id: 'default',
+              company_id: null,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
           }
           
           const categoriesToInsert = defaultCategories.map(cat => ({

@@ -52,7 +52,6 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
       currentDateRange 
     });
     
-    // Log the first few invoices to debug
     if (invoices.length > 0) {
       logDebug('Sample invoices:', invoices.slice(0, 3).map(inv => ({
         id: inv.id,
@@ -60,14 +59,13 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
         status: inv.status,
         date: inv.date,
         dateFormatted: inv.date ? formatDateToYYYYMMDD(parseDate(inv.date)) : 'no date',
-        paymentSchedulesCount: inv?.paymentSchedules?.length || 0
+        paymentSchedules: inv?.paymentSchedules || []
       })));
     }
     
     generateChartData();
   }, [invoices, jobs, currentDateRange, customDateRange]);
   
-  // Helper function to normalize dates to YYYY-MM-DD format
   const formatDateToYYYYMMDD = (date: Date): string => {
     try {
       return format(date, 'yyyy-MM-dd');
@@ -77,13 +75,12 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
     }
   };
   
-  // Helper function to convert string dates to Date objects
   const parseDate = (dateString: string): Date => {
     try {
       return parseISO(dateString);
     } catch (error) {
       logDebug('Error parsing date', { dateString, error });
-      return new Date(); // Fallback to current date on error
+      return new Date();
     }
   };
   
@@ -133,16 +130,13 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
   const generateChartData = () => {
     const { startDate, endDate } = getDateRange();
     
-    // Log the date range we're generating data for
     logDebug('RevenueChart: Generating data for date range:', { 
       startDate: formatDateToYYYYMMDD(startDate), 
       endDate: formatDateToYYYYMMDD(endDate)
     });
     
-    // Create an array of all days in the date range
     const daysInRange = [];
     const currentDate = new Date(startDate);
-    
     while (currentDate <= endDate) {
       daysInRange.push(new Date(currentDate));
       currentDate.setDate(currentDate.getDate() + 1);
@@ -153,72 +147,54 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
     const data = daysInRange.map(day => {
       const dayFormatted = formatDateToYYYYMMDD(day);
       
-      // Get jobs for this day
       const dayJobs = jobs.filter(job => {
         if (!job.date) return false;
         const jobDate = parseDate(job.date);
         return formatDateToYYYYMMDD(jobDate) === dayFormatted;
       });
       
-      // Initialize revenue amounts
       let paidAmount = 0;
       let unpaidAmount = 0;
       
-      // Process invoices and their payment schedules
       invoices.forEach(invoice => {
-        // Handle invoices with payment schedules
-        if (invoice.paymentSchedules && invoice.paymentSchedules.length > 0) {
-          // Process each payment schedule
-          invoice.paymentSchedules.forEach(schedule => {
-            const scheduleDueDate = parseDate(schedule.dueDate);
-            const scheduleDueDateFormatted = formatDateToYYYYMMDD(scheduleDueDate);
-            
-            // Check if the schedule's due date matches the current day
-            if (scheduleDueDateFormatted === dayFormatted) {
-              const scheduleAmount = (schedule.percentage / 100) * invoice.amount;
-              
-              logDebug(`Found payment schedule for day ${dayFormatted}:`, {
-                invoiceId: invoice.id,
-                scheduleId: schedule.id,
-                totalAmount: invoice.amount,
-                schedulePercentage: schedule.percentage,
-                scheduleAmount,
-                status: schedule.status,
-                dueDateFormatted: scheduleDueDateFormatted
-              });
-              
-              // Add to paid or unpaid based on schedule status
-              if (schedule.status === 'paid') {
-                paidAmount += scheduleAmount;
-              } else if (schedule.status === 'unpaid') {
-                unpaidAmount += scheduleAmount;
-              }
-              // Note: if status is write-off, we don't count it in either category
-            }
-          });
-        } else {
-          // For invoices without payment schedules, use the invoice date
-          const invoiceDate = parseDate(invoice.date);
-          const invoiceDateFormatted = formatDateToYYYYMMDD(invoiceDate);
+        const schedules = invoice.paymentSchedules && invoice.paymentSchedules.length > 0
+          ? invoice.paymentSchedules
+          : [{
+              id: `default-${invoice.id}`,
+              dueDate: invoice.date,
+              percentage: 100,
+              description: 'Default schedule',
+              status: 'unpaid'
+            }];
+      
+        schedules.forEach(schedule => {
+          const scheduleDueDate = parseDate(schedule.dueDate);
+          const scheduleDueDateFormatted = formatDateToYYYYMMDD(scheduleDueDate);
           
-          if (invoiceDateFormatted === dayFormatted) {
-            logDebug(`Found invoice for day ${dayFormatted} without payment schedules:`, {
+          if (scheduleDueDateFormatted === dayFormatted) {
+            const scheduleAmount = (schedule.percentage / 100) * invoice.amount;
+            
+            logDebug(`Found payment schedule for day ${dayFormatted}:`, {
               invoiceId: invoice.id,
-              amount: invoice.amount,
-              status: invoice.status,
-              dateFormatted: invoiceDateFormatted
+              scheduleId: schedule.id,
+              totalAmount: invoice.amount,
+              schedulePercentage: schedule.percentage,
+              scheduleAmount,
+              status: schedule.status,
+              dueDateFormatted: scheduleDueDateFormatted
             });
             
-            // Since invoice.status doesn't directly relate to payment status,
-            // we classify everything as unpaid for invoices without schedules
-            unpaidAmount += invoice.amount;
+            if (schedule.status === 'paid') {
+              paidAmount += scheduleAmount;
+            } else if (schedule.status === 'unpaid') {
+              unpaidAmount += scheduleAmount;
+            }
           }
-        }
+        });
       });
-        
+      
       const totalAmount = paidAmount + unpaidAmount;
       
-      // Log non-zero data points to help with debugging
       if (paidAmount > 0 || unpaidAmount > 0) {
         logDebug(`Revenue data for ${dayFormatted}:`, { 
           paidAmount, 
@@ -231,9 +207,9 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
       return {
         date: dayFormatted,
         displayDate: format(day, 'd MMM'),
-        paidAmount: paidAmount,
-        unpaidAmount: unpaidAmount,
-        totalAmount: totalAmount,
+        paidAmount,
+        unpaidAmount,
+        totalAmount,
         jobCount: dayJobs.length,
       };
     });
@@ -262,10 +238,6 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
     }).format(value);
   };
 
-  const handleDateRangeChange = (range: DateRangeType) => {
-    setCurrentDateRange(range);
-  };
-  
   const dateRangeLabel = () => {
     const { startDate, endDate } = getDateRange();
     if (currentDateRange === 'custom' && customDateRange) {
@@ -288,6 +260,10 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
     }
   };
   
+  const handleDateRangeChange = (range: DateRangeType) => {
+    setCurrentDateRange(range);
+  };
+
   return (
     <Card className="w-full backdrop-blur-sm bg-white/80 border-transparent shadow-soft">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -437,7 +413,7 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
                 tickFormatter={formatCurrency}
                 tickLine={false}
                 axisLine={false}
-                domain={[0, 'auto']} // Ensure minimum is 0
+                domain={[0, 'auto']}
               />
               <YAxis 
                 yAxisId="right"
@@ -445,7 +421,7 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
                 tick={{ fontSize: 12 }}
                 tickLine={false}
                 axisLine={false}
-                domain={[0, 'auto']} // Ensure minimum is 0
+                domain={[0, 'auto']}
               />
               <Tooltip 
                 formatter={(value: number, name: string) => {
@@ -517,33 +493,6 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
       </CardContent>
     </Card>
   );
-  
-  // Helper function for date range label
-  const dateRangeLabel = () => {
-    const { startDate, endDate } = getDateRange();
-    if (currentDateRange === 'custom' && customDateRange) {
-      return `${format(startDate, 'MMM d, yyyy')} - ${format(endDate, 'MMM d, yyyy')}`;
-    }
-    
-    switch (currentDateRange) {
-      case 'this-month':
-        return format(startDate, 'MMMM yyyy');
-      case 'last-month':
-        return format(startDate, 'MMMM yyyy');
-      case 'this-year':
-        return format(startDate, 'yyyy');
-      case 'last-30-days':
-        return 'Last 30 Days';
-      case 'last-60-days':
-        return 'Last 60 Days';
-      default:
-        return 'Custom Date Range';
-    }
-  };
-  
-  const handleDateRangeChange = (range: DateRangeType) => {
-    setCurrentDateRange(range);
-  };
 };
 
 export default RevenueChart;

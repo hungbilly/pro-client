@@ -1,3 +1,4 @@
+
 export interface Client {
   id: string;
   name: string;
@@ -75,7 +76,6 @@ export interface Invoice {
   amount: number;
   date: string;
   dueDate: string;
-  shootingDate?: string;
   status: InvoiceStatus;
   contractStatus?: ContractStatus;
   items: InvoiceItem[];

@@ -13,7 +13,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Check, Calendar, FileText, DollarSign, Send, Camera, MailCheck, FileCheck, Edit, CalendarDays, Package } from 'lucide-react';
+import { ArrowLeft, Check, Calendar, FileText, DollarSign, Send, MailCheck, FileCheck, Edit, CalendarDays, Package } from 'lucide-react';
 import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { useAuth } from '@/context/AuthContext';
@@ -317,16 +317,9 @@ const InvoiceView = () => {
               </div>
               <div>
                 <h4 className="text-lg font-semibold mb-2">Invoice Details</h4>
-                <p>
+                <p className="flex items-center">
                   <strong>Job Date:</strong> {new Date(invoice.date).toLocaleDateString()}
                 </p>
-                {invoice.shootingDate && (
-                  <p className="flex items-center">
-                    <strong className="mr-1">Shooting Date:</strong>
-                    <Camera className="h-4 w-4 mr-1" />
-                    {new Date(invoice.shootingDate).toLocaleDateString()}
-                  </p>
-                )}
               </div>
             </div>
 
@@ -442,34 +435,32 @@ const InvoiceView = () => {
               </TabsContent>
               
               <TabsContent value="contract" className="mt-4">
-                <div className="mb-4">
-                  {isClientView && invoice.contractStatus !== 'accepted' && (
-                    <Button onClick={() => updateContractStatus(invoice.id, 'accepted')} className="mb-4">
-                      <Check className="h-4 w-4 mr-2" />
-                      Accept Contract Terms
-                    </Button>
-                  )}
+                {isClientView && invoice.contractStatus !== 'accepted' && (
+                  <Button onClick={() => updateContractStatus(invoice.id, 'accepted')} className="mb-4">
+                    <Check className="h-4 w-4 mr-2" />
+                    Accept Contract Terms
+                  </Button>
+                )}
                   
-                  {invoice.contractStatus === 'accepted' && !isClientView && (
-                    <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-md flex items-center gap-2">
-                      <FileCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
-                      <span className="text-green-800 dark:text-green-400">
-                        This contract has been accepted by the client
-                      </span>
-                    </div>
-                  )}
+                {invoice.contractStatus === 'accepted' && !isClientView && (
+                  <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-md flex items-center gap-2">
+                    <FileCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    <span className="text-green-800 dark:text-green-400">
+                      This contract has been accepted by the client
+                    </span>
+                  </div>
+                )}
                   
-                  <div className="flex items-center mb-3">
-                    <FileText className="h-5 w-5 mr-2" />
-                    <h4 className="text-lg font-semibold">Contract Terms</h4>
-                  </div>
-                  <div className="border rounded-md">
-                    <RichTextEditor
-                      value={invoice.contractTerms || 'No contract terms provided.'}
-                      onChange={() => {}}
-                      readOnly={true}
-                    />
-                  </div>
+                <div className="flex items-center mb-3">
+                  <FileText className="h-5 w-5 mr-2" />
+                  <h4 className="text-lg font-semibold">Contract Terms</h4>
+                </div>
+                <div className="border rounded-md">
+                  <RichTextEditor
+                    value={invoice.contractTerms || 'No contract terms provided.'}
+                    onChange={() => {}}
+                    readOnly={true}
+                  />
                 </div>
               </TabsContent>
             </Tabs>

@@ -1,8 +1,8 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Briefcase } from 'lucide-react';
-import AddJobModal from './AddJobModal';
+import { useNavigate } from 'react-router-dom';
 
 interface AddJobButtonProps {
   clientId?: string;
@@ -11,20 +11,21 @@ interface AddJobButtonProps {
 }
 
 const AddJobButton: React.FC<AddJobButtonProps> = ({ clientId, variant = "default", size = "default" }) => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const navigate = useNavigate();
 
-  const openModal = () => setIsModalOpen(true);
-  const closeModal = () => setIsModalOpen(false);
+  const handleClick = () => {
+    if (clientId) {
+      navigate(`/client/${clientId}/job/create`);
+    } else {
+      navigate('/job/new');
+    }
+  };
 
   return (
-    <>
-      <Button onClick={openModal} variant={variant} size={size} className="flex items-center gap-2">
-        <Briefcase size={18} />
-        <span>New Job</span>
-      </Button>
-      
-      <AddJobModal isOpen={isModalOpen} onClose={closeModal} clientId={clientId} />
-    </>
+    <Button onClick={handleClick} variant={variant} size={size} className="flex items-center gap-2">
+      <Briefcase size={18} />
+      <span>New Job</span>
+    </Button>
   );
 };
 

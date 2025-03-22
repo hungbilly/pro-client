@@ -5,9 +5,10 @@ import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getJobs } from '@/lib/storage';
-import { FileText, Plus } from 'lucide-react';
+import { FileText, Plus, Search } from 'lucide-react';
 import { useCompanyContext } from '@/context/CompanyContext';
 import AddJobButton from './AddJobButton';
+import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -26,12 +27,18 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({ isOpen, onClose
   const navigate = useNavigate();
   const { selectedCompany } = useCompanyContext();
   const selectedCompanyId = selectedCompany?.id;
+  const [searchQuery, setSearchQuery] = useState('');
   
   const { data: jobs = [], isLoading } = useQuery({
     queryKey: ['jobs', selectedCompanyId],
     queryFn: () => getJobs(selectedCompanyId),
     enabled: !!selectedCompanyId && isOpen,
   });
+
+  const filteredJobs = jobs.filter(job => 
+    job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    job.clientId.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const handleJobSelect = (jobId: string, clientId: string) => {
     // Navigate to create invoice page with the selected job
@@ -60,6 +67,16 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({ isOpen, onClose
             <AddJobButton size="sm" variant="outline" />
           </div>
           
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search jobs by title or client..."
+              className="pl-9"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          
           {isLoading ? (
             <div className="text-center py-8">Loading jobs...</div>
           ) : jobs.length === 0 ? (
@@ -69,6 +86,10 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({ isOpen, onClose
                 <Plus className="mr-2 h-4 w-4" />
                 Create New Job
               </Button>
+            </div>
+          ) : filteredJobs.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">No jobs found matching your search</p>
             </div>
           ) : (
             <div className="border rounded-md">
@@ -82,7 +103,7 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({ isOpen, onClose
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {jobs.map((job) => (
+                  {filteredJobs.map((job) => (
                     <TableRow key={job.id}>
                       <TableCell className="font-medium">{job.title}</TableCell>
                       <TableCell>{job.clientId}</TableCell>
@@ -110,13 +131,6 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({ isOpen, onClose
               </Table>
             </div>
           )}
-          
-          <div className="mt-6 pt-4 border-t">
-            <p className="text-sm text-muted-foreground mb-2">Or create an invoice directly for a client</p>
-            <Button variant="outline" onClick={() => navigate('/client/new/invoice/create')}>
-              Create Invoice Without Job
-            </Button>
-          </div>
         </div>
       </DialogContent>
     </Dialog>

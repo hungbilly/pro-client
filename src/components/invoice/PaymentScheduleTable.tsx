@@ -1,3 +1,4 @@
+
 import React, { memo, useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -44,7 +45,22 @@ const PaymentScheduleTable = memo(({
     const formattedDate = format(date, 'yyyy-MM-dd');
     onUpdatePaymentDate(paymentId, formattedDate);
     setEditingDateId(null);
-    toast.success(`Payment date updated to ${format(date, 'MMM d, yyyy')}`);
+    
+    // Make the toast notification more prominent
+    toast.success(`Payment date updated to ${format(date, 'MMM d, yyyy')}`, {
+      duration: 5000, // Increased duration to 5 seconds
+      position: 'top-center', // Position in the center for better visibility
+      style: {
+        backgroundColor: '#10B981', // Green background
+        color: 'white', // White text
+        fontSize: '16px', // Larger font
+        padding: '16px', // More padding
+        borderRadius: '8px', // Rounded corners
+        border: '2px solid #059669', // Border for extra visibility
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)', // More pronounced shadow
+      },
+      className: 'payment-toast-notification',
+    });
   };
 
   return (

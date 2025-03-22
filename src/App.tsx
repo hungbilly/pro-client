@@ -2,7 +2,7 @@
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import Routes from './Routes';
-import { Toaster } from './components/ui/toaster';
+import { Toaster } from 'sonner';
 import CompanyProvider from './context/CompanyContext';
 import { AuthProvider } from './context/AuthContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -22,7 +22,18 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <AuthProvider>
-          <Toaster />
+          <Toaster 
+            position="top-center"
+            toastOptions={{
+              style: {
+                fontSize: '16px',
+                padding: '16px',
+                borderRadius: '8px',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+              },
+              duration: 4000,
+            }}
+          />
           <CompanyProvider>
             <Routes />
           </CompanyProvider>

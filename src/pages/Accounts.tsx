@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO, differenceInDays, startOfMonth, endOfMonth, startOfYear, endOfYear, subMonths } from 'date-fns';
-import { MoreHorizontal, Download, Search, PlusCircle, DollarSign, TrendingDown, TrendingUp, Plus, AlertCircle } from 'lucide-react';
+import { MoreHorizontal, Download, Search, PlusCircle, DollarSign, TrendingDown, TrendingUp, Plus, AlertCircle, Edit, Trash } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompanyContext } from '@/context/CompanyContext';
 import { toast } from '@/hooks/use-toast';
@@ -109,6 +109,7 @@ const Accounts = () => {
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
   const [newCategory, setNewCategory] = useState('');
   const [newExpense, setNewExpense] = useState<{
+    id?: string;
     description: string;
     date: Date | undefined;
     amount: string;
@@ -119,6 +120,7 @@ const Accounts = () => {
     amount: '',
     categoryId: '',
   });
+  const [isEditMode, setIsEditMode] = useState(false);
   
   // Shared state
   const [isLoading, setIsLoading] = useState(true);
@@ -147,7 +149,6 @@ const Accounts = () => {
     description?: string;
     date?: string;
     amount?: string;
-    categoryId?: string;
   }>({});
 
   useEffect(() => {
@@ -321,6 +322,11 @@ const Accounts = () => {
         
         // Associate these categories with the current company
         if (defaultCategories && defaultCategories.length > 0) {
+          // Add Uncategorized category if it doesn't exist
+          if (!defaultCategories.some(cat => cat.name.toLowerCase() === 'uncategorized')) {
+            defaultCategories.push({ name: 'Uncategorized', id: 'default' });
+          }
+          
           const categoriesToInsert = defaultCategories.map(cat => ({
             name: cat.name,
             company_id: selectedCompanyId
@@ -336,6 +342,32 @@ const Accounts = () => {
           }
           
           setExpenseCategories(insertedData || []);
+        } else {
+          // Create an Uncategorized category if no default categories exist
+          const { data: uncategorizedData, error: uncategorizedError } = await supabase
+            .from('expense_categories')
+            .insert({ name: 'Uncategorized', company_id: selectedCompanyId })
+            .select();
+            
+          if (uncategorizedError) {
+            throw uncategorizedError;
+          }
+          
+          setExpenseCategories(uncategorizedData || []);
+        }
+      } else {
+        // Check if Uncategorized category exists, if not, create it
+        if (!data.some(cat => cat.name.toLowerCase() === 'uncategorized')) {
+          const { data: uncategorizedData, error: uncategorizedError } = await supabase
+            .from('expense_categories')
+            .insert({ name: 'Uncategorized', company_id: selectedCompanyId })
+            .select();
+            
+          if (uncategorizedError) {
+            throw uncategorizedError;
+          }
+          
+          setExpenseCategories([...data, ...(uncategorizedData || [])]);
         }
       }
     } catch (error) {
@@ -373,8 +405,8 @@ const Accounts = () => {
         date: expense.date,
         amount: Number(expense.amount),
         category: {
-          id: expense.category.id,
-          name: expense.category.name
+          id: expense.category?.id || '',
+          name: expense.category?.name || 'Uncategorized'
         },
         company_id: expense.company_id
       }));
@@ -589,6 +621,12 @@ const Accounts = () => {
     closePaymentDialog();
   };
   
+  const getUncategorizedCategoryId = () => {
+    const uncategorizedCategory = expenseCategories.find(cat => 
+      cat.name.toLowerCase() === 'uncategorized');
+    return uncategorizedCategory?.id || '';
+  };
+  
   const addExpense = async () => {
     // Reset form errors
     setExpenseFormErrors({});
@@ -597,7 +635,6 @@ const Accounts = () => {
       description?: string;
       date?: string;
       amount?: string;
-      categoryId?: string;
     } = {};
     
     if (!newExpense.description.trim()) {
@@ -617,10 +654,6 @@ const Accounts = () => {
       }
     }
     
-    if (!newExpense.categoryId) {
-      newErrors.categoryId = "Category is required";
-    }
-    
     // Check if there are any errors
     if (Object.keys(newErrors).length > 0) {
       setExpenseFormErrors(newErrors);
@@ -629,75 +662,178 @@ const Accounts = () => {
     
     const amount = parseFloat(newExpense.amount);
     
+    // Use the uncategorized category if no category is selected
+    const categoryId = newExpense.categoryId || getUncategorizedCategoryId();
+    
     setIsUpdating(true);
     try {
-      const { data, error } = await supabase
-        .from('expenses')
-        .insert({
-          description: newExpense.description,
-          amount: amount,
-          date: formatDate(newExpense.date, 'yyyy-MM-dd'),
-          category_id: newExpense.categoryId,
-          company_id: selectedCompanyId
-        })
-        .select(`
-          *,
-          category:category_id (
-            id,
-            name
-          )
-        `);
-      
-      if (error) throw error;
-      
-      // Add the new expense to the state
-      if (data && data.length > 0) {
-        const newExpenseItem: Expense = {
-          id: data[0].id,
-          description: data[0].description,
-          date: data[0].date,
-          amount: Number(data[0].amount),
-          category: {
-            id: data[0].category.id,
-            name: data[0].category.name
-          },
-          company_id: data[0].company_id
-        };
+      if (isEditMode && newExpense.id) {
+        // Update existing expense
+        const { data, error } = await supabase
+          .from('expenses')
+          .update({
+            description: newExpense.description,
+            amount: amount,
+            date: formatDate(newExpense.date, 'yyyy-MM-dd'),
+            category_id: categoryId,
+            company_id: selectedCompanyId
+          })
+          .eq('id', newExpense.id)
+          .select(`
+            *,
+            category:category_id (
+              id,
+              name
+            )
+          `);
         
-        setExpenses(prev => [newExpenseItem, ...prev]);
+        if (error) throw error;
         
-        setAccountStats(prev => ({
-          ...prev,
-          expenses: prev.expenses + amount,
-          profit: prev.paid - (prev.expenses + amount)
-        }));
+        if (data && data.length > 0) {
+          const updatedExpense: Expense = {
+            id: data[0].id,
+            description: data[0].description,
+            date: data[0].date,
+            amount: Number(data[0].amount),
+            category: {
+              id: data[0].category?.id || '',
+              name: data[0].category?.name || 'Uncategorized'
+            },
+            company_id: data[0].company_id
+          };
+          
+          setExpenses(prev => prev.map(exp => exp.id === updatedExpense.id ? updatedExpense : exp));
+          
+          toast({
+            title: 'Success',
+            description: 'Expense updated successfully',
+            variant: 'default'
+          });
+        }
+      } else {
+        // Add new expense
+        const { data, error } = await supabase
+          .from('expenses')
+          .insert({
+            description: newExpense.description,
+            amount: amount,
+            date: formatDate(newExpense.date, 'yyyy-MM-dd'),
+            category_id: categoryId,
+            company_id: selectedCompanyId
+          })
+          .select(`
+            *,
+            category:category_id (
+              id,
+              name
+            )
+          `);
+        
+        if (error) throw error;
+        
+        // Add the new expense to the state
+        if (data && data.length > 0) {
+          const newExpenseItem: Expense = {
+            id: data[0].id,
+            description: data[0].description,
+            date: data[0].date,
+            amount: Number(data[0].amount),
+            category: {
+              id: data[0].category?.id || '',
+              name: data[0].category?.name || 'Uncategorized'
+            },
+            company_id: data[0].company_id
+          };
+          
+          setExpenses(prev => [newExpenseItem, ...prev]);
+          
+          setAccountStats(prev => ({
+            ...prev,
+            expenses: prev.expenses + amount,
+            profit: prev.paid - (prev.expenses + amount)
+          }));
+          
+          toast({
+            title: 'Success',
+            description: 'Expense added successfully',
+            variant: 'default'
+          });
+        }
       }
       
-      toast({
-        title: 'Success',
-        description: 'Expense added successfully',
-        variant: 'default'
-      });
-      
       // Reset form
-      setNewExpense({
-        description: '',
-        date: new Date(),
-        amount: '',
-        categoryId: '',
-      });
-      
+      resetExpenseForm();
       setIsExpenseDialogOpen(false);
     } catch (error) {
-      console.error('Error adding expense:', error);
+      console.error('Error with expense:', error);
       toast({
         title: 'Error',
-        description: 'Failed to add expense',
+        description: `Failed to ${isEditMode ? 'update' : 'add'} expense`,
         variant: 'destructive'
       });
     } finally {
       setIsUpdating(false);
     }
+  };
+  
+  const editExpense = (expense: Expense) => {
+    setIsEditMode(true);
+    setNewExpense({
+      id: expense.id,
+      description: expense.description,
+      date: parseISO(expense.date),
+      amount: expense.amount.toString(),
+      categoryId: expense.category.id,
+    });
+    setIsExpenseDialogOpen(true);
+  };
+  
+  const deleteExpense = async (expense: Expense) => {
+    if (window.confirm("Are you sure you want to delete this expense?")) {
+      setIsUpdating(true);
+      try {
+        const { error } = await supabase
+          .from('expenses')
+          .delete()
+          .eq('id', expense.id);
+        
+        if (error) throw error;
+        
+        setExpenses(prev => prev.filter(exp => exp.id !== expense.id));
+        
+        setAccountStats(prev => ({
+          ...prev,
+          expenses: prev.expenses - expense.amount,
+          profit: prev.paid - (prev.expenses - expense.amount)
+        }));
+        
+        toast({
+          title: 'Success',
+          description: 'Expense deleted successfully',
+          variant: 'default'
+        });
+      } catch (error) {
+        console.error('Error deleting expense:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to delete expense',
+          variant: 'destructive'
+        });
+      } finally {
+        setIsUpdating(false);
+      }
+    }
+  };
+  
+  const resetExpenseForm = () => {
+    setNewExpense({
+      description: '',
+      date: new Date(),
+      amount: '',
+      categoryId: '',
+    });
+    setIsEditMode(false);
+    setExpenseFormErrors({});
   };
   
   const addExpenseCategory = async () => {
@@ -1051,18 +1187,19 @@ const Accounts = () => {
                     <TableHead>Description</TableHead>
                     <TableHead>Category</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center py-10">
+                      <TableCell colSpan={5} className="text-center py-10">
                         Loading expenses...
                       </TableCell>
                     </TableRow>
                   ) : filteredExpenses.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center py-10">
+                      <TableCell colSpan={5} className="text-center py-10">
                         No expenses found
                       </TableCell>
                     </TableRow>
@@ -1078,6 +1215,24 @@ const Accounts = () => {
                         </TableCell>
                         <TableCell className="text-right font-medium">
                           {formatCurrency(expense.amount)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end space-x-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => editExpense(expense)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => deleteExpense(expense)}
+                            >
+                              <Trash className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
@@ -1133,17 +1288,16 @@ const Accounts = () => {
         </DialogContent>
       </Dialog>
       
-      {/* Add Expense Dialog */}
+      {/* Add/Edit Expense Dialog */}
       <Dialog open={isExpenseDialogOpen} onOpenChange={(open) => {
         if (!open) {
-          // Reset form errors when dialog is closed
-          setExpenseFormErrors({});
+          resetExpenseForm();
         }
         setIsExpenseDialogOpen(open);
       }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add New Expense</DialogTitle>
+            <DialogTitle>{isEditMode ? 'Edit' : 'Add New'} Expense</DialogTitle>
             <DialogDescription>
               Enter the details of your expense.
             </DialogDescription>
@@ -1215,13 +1369,13 @@ const Accounts = () => {
             </div>
             
             <div className="space-y-2">
-              <label htmlFor="category" className="text-sm font-medium">Category</label>
+              <label htmlFor="category" className="text-sm font-medium">Category (Optional)</label>
               <Select 
                 value={newExpense.categoryId} 
                 onValueChange={(value) => setNewExpense({...newExpense, categoryId: value})}
               >
-                <SelectTrigger className={expenseFormErrors.categoryId ? "border-red-500" : ""}>
-                  <SelectValue placeholder="Select category" />
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category (optional)" />
                 </SelectTrigger>
                 <SelectContent>
                   {expenseCategories.map(category => (
@@ -1231,22 +1385,20 @@ const Accounts = () => {
                   ))}
                 </SelectContent>
               </Select>
-              {expenseFormErrors.categoryId && (
-                <p className="text-sm font-medium text-red-500 mt-1">
-                  {expenseFormErrors.categoryId}
-                </p>
-              )}
+              <p className="text-xs text-gray-500">
+                If no category is selected, expense will be marked as "Uncategorized"
+              </p>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => {
               setIsExpenseDialogOpen(false);
-              setExpenseFormErrors({});
+              resetExpenseForm();
             }}>
               Cancel
             </Button>
             <Button onClick={addExpense} disabled={isUpdating}>
-              {isUpdating ? 'Adding...' : 'Add Expense'}
+              {isUpdating ? (isEditMode ? 'Updating...' : 'Adding...') : (isEditMode ? 'Update Expense' : 'Add Expense')}
             </Button>
           </DialogFooter>
         </DialogContent>

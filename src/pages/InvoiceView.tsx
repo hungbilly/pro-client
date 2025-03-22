@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { 
@@ -23,7 +24,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import RichTextEditor from '@/components/RichTextEditor';
 import PaymentScheduleTable from '@/components/invoice/PaymentScheduleTable';
-import PaymentDateDialog from '@/components/invoice/PaymentDateDialog';
 import isEqual from 'lodash/isEqual';
 
 const InvoiceView = () => {
@@ -32,9 +32,6 @@ const InvoiceView = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null);
-  const [paymentDate, setPaymentDate] = useState<Date | undefined>(undefined);
-  const [showPaymentDateDialog, setShowPaymentDateDialog] = useState(false);
-  const [paymentIdToUpdate, setPaymentIdToUpdate] = useState<string | null>(null);
 
   const { isAdmin } = useAuth();
   const { selectedCompanyId } = useCompanyContext();
@@ -144,15 +141,17 @@ const InvoiceView = () => {
   const handlePaymentStatusUpdate = useCallback(async (paymentId: string, newStatus: 'paid' | 'unpaid' | 'write-off') => {
     if (!invoice || !paymentId) return;
     
-    if (newStatus === 'paid') {
-      setPaymentIdToUpdate(paymentId);
-      setShowPaymentDateDialog(true);
-      return;
-    }
-    
     setUpdatingPaymentId(paymentId);
     try {
-      const updatedSchedule = await updatePaymentScheduleStatus(paymentId, newStatus);
+      // If status is paid, automatically set today's date
+      let updatedSchedule;
+      if (newStatus === 'paid') {
+        const today = new Date();
+        const formattedDate = format(today, 'yyyy-MM-dd');
+        updatedSchedule = await updatePaymentScheduleStatus(paymentId, newStatus, formattedDate);
+      } else {
+        updatedSchedule = await updatePaymentScheduleStatus(paymentId, newStatus);
+      }
       
       if (!updatedSchedule) {
         toast.error('Failed to update payment status');
@@ -185,70 +184,6 @@ const InvoiceView = () => {
       setUpdatingPaymentId(null);
     }
   }, [invoice]);
-
-  // Handle confirm payment date
-  const handleConfirmPaymentDate = useCallback(async () => {
-    if (!paymentIdToUpdate || !invoice) {
-      toast.error('Payment ID is missing');
-      return;
-    }
-    
-    setUpdatingPaymentId(paymentIdToUpdate);
-    try {
-      // Use today's date
-      const today = new Date();
-      const formattedDate = format(today, 'yyyy-MM-dd');
-      
-      const updatedSchedule = await updatePaymentScheduleStatus(
-        paymentIdToUpdate, 
-        'paid', 
-        formattedDate
-      );
-      
-      if (!updatedSchedule) {
-        toast.error('Failed to update payment status');
-        return;
-      }
-      
-      if (invoice.paymentSchedules) {
-        const updatedSchedules = invoice.paymentSchedules.map(schedule => 
-          schedule.id === paymentIdToUpdate ? updatedSchedule : schedule
-        );
-        
-        // Use functional update with deep equality check
-        setInvoice(prev => {
-          if (!prev) return prev;
-          if (isEqual(prev.paymentSchedules, updatedSchedules)) {
-            return prev;
-          }
-          return {
-            ...prev,
-            paymentSchedules: updatedSchedules
-          };
-        });
-        
-        toast.success('Payment marked as paid');
-      }
-    } catch (err) {
-      console.error('Error updating payment status:', err);
-      toast.error('Error updating payment status');
-    } finally {
-      setUpdatingPaymentId(null);
-      setPaymentIdToUpdate(null);
-      setShowPaymentDateDialog(false);
-    }
-  }, [invoice, paymentIdToUpdate]);
-
-  // Handle cancel payment date
-  const handleCancelPaymentDate = useCallback(() => {
-    setShowPaymentDateDialog(false);
-    setPaymentIdToUpdate(null);
-  }, []);
-
-  // Handle payment date select
-  const handlePaymentDateSelect = useCallback((date: Date | undefined) => {
-    setPaymentDate(date);
-  }, []);
 
   if (loading) {
     return (
@@ -526,14 +461,6 @@ const InvoiceView = () => {
           </CardFooter>
         </Card>
       </div>
-
-      <PaymentDateDialog
-        open={showPaymentDateDialog}
-        onOpenChange={setShowPaymentDateDialog}
-        onConfirm={handleConfirmPaymentDate}
-        onCancel={handleCancelPaymentDate}
-        isUpdating={updatingPaymentId !== null}
-      />
     </PageTransition>
   );
 };

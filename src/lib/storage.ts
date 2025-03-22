@@ -710,208 +710,117 @@ export const getInvoicesByDate = async (date?: string): Promise<Invoice[]> => {
   }
 };
 
-export const getInvoice = async (id: string): Promise<Invoice | undefined> => {
-  try {
-    // First get the invoice
-    const { data: invoice, error: invoiceError } = await supabase
-      .from('invoices')
-      .select('*')
-      .eq('id', id)
-      .single();
-    
-    if (invoiceError || !invoice) {
-      console.error('Error fetching invoice:', invoiceError);
-      return undefined;
-    }
-    
-    // Then get the invoice items
-    const { data: itemsData, error: itemsError } = await supabase
-      .from('invoice_items')
-      .select('*')
-      .eq('invoice_id', id);
-    
-    if (itemsError || !itemsData) {
-      console.error('Error fetching invoice items:', itemsError);
-      return undefined;
-    }
+export const getInvoice = async (id: string): Promise<Invoice | null> => {
+  console.log('[getInvoice] Fetching invoice with ID:', id);
+  const { data, error } = await supabase
+    .from('invoices')
+    .select(`
+      *,
+      payment_schedules (
+        id,
+        due_date,
+        percentage,
+        description,
+        status,
+        payment_date
+      )
+    `)
+    .eq('id', id)
+    .single();
 
-    // Get payment schedules
-    const { data: schedulesData, error: schedulesError } = await supabase
-      .from('payment_schedules')
-      .select('*')
-      .eq('invoice_id', id);
-    
-    if (schedulesError) {
-      console.error('Error fetching payment schedules:', schedulesError);
-      // Continue without payment schedules
-    }
-    
-    // Map and transform the data
-    const invoiceItems = itemsData.map(item => ({
-      id: item.id,
-      description: item.description,
-      quantity: item.quantity,
-      rate: item.rate,
-      amount: item.amount
-    }));
+  if (error) {
+    console.error('[getInvoice] Error fetching invoice:', error);
+    return null;
+  }
 
-    // Map payment schedules
-    const paymentSchedules: PaymentSchedule[] = (schedulesData || []).map(schedule => ({
+  if (!data) {
+    console.log('[getInvoice] No invoice found for ID:', id);
+    return null;
+  }
+
+  console.log('[getInvoice] Fetched invoice:', data);
+  return {
+    id: data.id,
+    clientId: data.client_id,
+    companyId: data.company_id,
+    jobId: data.job_id,
+    number: data.number,
+    amount: data.amount,
+    date: data.date,
+    dueDate: data.due_date,
+    shootingDate: data.shooting_date,
+    status: data.status,
+    contractStatus: data.contract_status,
+    items: data.items || [],
+    notes: data.notes,
+    contractTerms: data.contract_terms,
+    viewLink: data.view_link,
+    paymentSchedules: data.payment_schedules?.map((schedule: any) => ({
       id: schedule.id,
-      description: schedule.description || '',
       dueDate: schedule.due_date,
       percentage: schedule.percentage,
-      status: parseEnum(schedule.status, ['paid', 'unpaid', 'write-off'], 'unpaid') as PaymentStatus
-    }));
-    
-    console.log('Payment schedules fetched:', paymentSchedules);
-    
-    return {
-      id: invoice.id,
-      clientId: invoice.client_id,
-      companyId: invoice.company_id,
-      jobId: invoice.job_id,
-      number: invoice.number,
-      amount: invoice.amount,
-      date: invoice.date,
-      dueDate: invoice.due_date,
-      shootingDate: invoice.shooting_date,
-      status: invoice.status as InvoiceStatus,
-      contractStatus: invoice.contract_status as ContractStatus,
-      items: invoiceItems,
-      notes: invoice.notes,
-      contractTerms: invoice.contract_terms,
-      viewLink: invoice.view_link,
-      paymentSchedules: paymentSchedules.length > 0 ? paymentSchedules : undefined
-    };
-  } catch (error) {
-    console.error('Error fetching invoice:', error);
-    return undefined;
-  }
+      description: schedule.description,
+      status: schedule.status,
+      paymentDate: schedule.payment_date
+    })) || []
+  };
 };
 
-export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | undefined> => {
-  try {
-    console.log('Searching for invoice with view_link parameter:', viewLink);
-    
-    // Get all invoices to search more flexibly
-    const { data: allInvoices, error: invoiceQueryError } = await supabase
-      .from('invoices')
-      .select('*');
-    
-    if (invoiceQueryError) {
-      console.error('Error querying invoices:', invoiceQueryError);
-      return undefined;
-    }
-    
-    // Log available invoices for debugging
-    console.log('Found invoices (view_links):', allInvoices?.map(inv => inv.view_link));
-    
-    // First try direct match
-    let matchingInvoice = allInvoices?.find(inv => inv.view_link === viewLink);
-    
-    // If no direct match, try to match just the ID portion
-    if (!matchingInvoice) {
-      // Extract the ID portion if it's a full URL
-      const idPortion = viewLink.includes('/invoice/') 
-        ? viewLink.split('/invoice/')[1]
-        : viewLink;
-      
-      console.log('Trying to match with ID portion:', idPortion);
-      
-      // Try to find by ID directly
-      matchingInvoice = allInvoices?.find(inv => inv.id === idPortion);
-      
-      // If still not found, try to find by partial view_link match
-      if (!matchingInvoice) {
-        matchingInvoice = allInvoices?.find(inv => {
-          if (!inv.view_link) return false;
-          return inv.view_link.includes(idPortion) || 
-                 (inv.view_link.includes('/invoice/') && 
-                  inv.view_link.split('/invoice/')[1] === idPortion);
-        });
-      }
-    }
-    
-    if (!matchingInvoice) {
-      console.error('No invoice found with matching view link or ID');
-      return undefined;
-    }
-    
-    console.log('Found matching invoice:', matchingInvoice);
-    
-    // Get the invoice items
-    const { data: itemsData, error: itemsError } = await supabase
-      .from('invoice_items')
-      .select('*')
-      .eq('invoice_id', matchingInvoice.id);
-    
-    if (itemsError) {
-      console.error('Error fetching invoice items:', itemsError);
-      return undefined;
-    }
-    
-    // Get payment schedules - Added this query to include payment schedules in the initial response
-    const { data: schedulesData, error: schedulesError } = await supabase
-      .from('payment_schedules')
-      .select('*')
-      .eq('invoice_id', matchingInvoice.id);
-    
-    if (schedulesError) {
-      console.error('Error fetching payment schedules:', schedulesError);
-      // Continue without payment schedules
-    } else {
-      console.log('Payment schedules fetched for view link:', schedulesData);
-    }
-    
-    // Map and transform the data
-    const invoiceItems = (itemsData || []).map(item => ({
-      id: item.id,
-      description: item.description,
-      quantity: item.quantity,
-      rate: item.rate,
-      amount: item.amount
-    }));
-    
-    // Map payment schedules
-    const paymentSchedules: PaymentSchedule[] = (schedulesData || []).map(schedule => ({
+export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | null> => {
+  console.log('[getInvoiceByViewLink] Fetching invoice with view link:', viewLink);
+  const { data: invoices, error: fetchError } = await supabase
+    .from('invoices')
+    .select(`
+      *,
+      payment_schedules (
+        id,
+        due_date,
+        percentage,
+        description,
+        status,
+        payment_date
+      )
+    `);
+
+  if (fetchError) {
+    console.error('[getInvoiceByViewLink] Error fetching invoices:', fetchError);
+    return null;
+  }
+
+  console.log('[getInvoiceByViewLink] Found invoices (view_links):', invoices.map((inv: any) => inv.view_link));
+  const invoice = invoices.find((inv: any) => inv.view_link.includes(viewLink));
+
+  if (!invoice) {
+    console.log('[getInvoiceByViewLink] No matching invoice found for view link:', viewLink);
+    return null;
+  }
+
+  console.log('[getInvoiceByViewLink] Found matching invoice:', invoice);
+  return {
+    id: invoice.id,
+    clientId: invoice.client_id,
+    companyId: invoice.company_id,
+    jobId: invoice.job_id,
+    number: invoice.number,
+    amount: invoice.amount,
+    date: invoice.date,
+    dueDate: invoice.due_date,
+    shootingDate: invoice.shooting_date,
+    status: invoice.status,
+    contractStatus: invoice.contract_status,
+    items: invoice.items || [],
+    notes: invoice.notes,
+    contractTerms: invoice.contract_terms,
+    viewLink: invoice.view_link,
+    paymentSchedules: invoice.payment_schedules?.map((schedule: any) => ({
       id: schedule.id,
-      description: schedule.description || '',
       dueDate: schedule.due_date,
       percentage: schedule.percentage,
-      status: parseEnum(schedule.status, ['paid', 'unpaid', 'write-off'], 'unpaid') as PaymentStatus
-    }));
-    
-    // Properly cast the status string to the InvoiceStatus type
-    const status = matchingInvoice.status as InvoiceStatus;
-    
-    // Handle possible undefined contractStatus
-    let contractStatus: ContractStatus | undefined = undefined;
-    if (matchingInvoice.contract_status) {
-      contractStatus = matchingInvoice.contract_status as ContractStatus;
-    }
-    
-    return {
-      id: matchingInvoice.id,
-      clientId: matchingInvoice.client_id,
-      companyId: matchingInvoice.company_id,
-      jobId: matchingInvoice.job_id,
-      number: matchingInvoice.number,
-      amount: matchingInvoice.amount,
-      date: matchingInvoice.date,
-      dueDate: matchingInvoice.due_date,
-      status,
-      contractStatus,
-      items: invoiceItems,
-      notes: matchingInvoice.notes,
-      contractTerms: matchingInvoice.contract_terms,
-      viewLink: matchingInvoice.view_link,
-      paymentSchedules: paymentSchedules.length > 0 ? paymentSchedules : undefined
-    };
-  } catch (error) {
-    console.error('Error in getInvoiceByViewLink:', error);
-    return undefined;
-  }
+      description: schedule.description,
+      status: schedule.status,
+      paymentDate: schedule.payment_date
+    })) || []
+  };
 };
 
 export const getClientInvoices = async (clientId: string): Promise<Invoice[]> => {

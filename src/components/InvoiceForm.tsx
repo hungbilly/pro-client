@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Client, Invoice, InvoiceItem, Job, PaymentSchedule } from '@/types';
@@ -52,6 +53,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 }) => {
   const navigate = useNavigate();
   const { selectedCompanyId } = useCompany();
+  const { user } = useAuth(); // Add this line to get the user from AuthContext
   const params = useParams();
   
   const clientId = propClientId || params.clientId;

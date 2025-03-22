@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Client, Invoice, InvoiceItem, Job, PaymentSchedule } from '@/types';
@@ -53,7 +52,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 }) => {
   const navigate = useNavigate();
   const { selectedCompanyId } = useCompany();
-  const { user } = useAuth(); // Add this line to get the user from AuthContext
+  const { user } = useAuth();
   const params = useParams();
   
   const clientId = propClientId || params.clientId;
@@ -65,7 +64,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   const [invoice, setInvoice] = useState<Invoice | undefined>(propInvoice);
   const [number, setNumber] = useState('');
   const [date, setDate] = useState<Date | null>(new Date());
-  const [dueDate, setDueDate] = useState<Date | null>(new Date());
   const [jobDate, setJobDate] = useState<Date | null>(null);
   const [status, setStatus] = useState<'draft' | 'sent' | 'accepted' | 'paid'>('draft');
   const [contractStatus, setContractStatus] = useState<'pending' | 'accepted'>('pending');
@@ -150,7 +148,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
             setInvoice(fetchedInvoice);
             setNumber(fetchedInvoice.number || '');
             setDate(fetchedInvoice.date ? new Date(fetchedInvoice.date) : new Date());
-            setDueDate(fetchedInvoice.dueDate ? new Date(fetchedInvoice.dueDate) : new Date());
             setJobDate(fetchedInvoice.shootingDate ? new Date(fetchedInvoice.shootingDate) : null);
             setStatus(fetchedInvoice.status as 'draft' | 'sent' | 'accepted' | 'paid');
             setContractStatus(fetchedInvoice.contractStatus as 'pending' | 'accepted');
@@ -503,9 +500,9 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
       return;
     }
 
-    if (!date || !dueDate) {
-      console.error('Form validation failed: Date and Due Date are required');
-      toast.error('Date and Due Date are required.');
+    if (!date) {
+      console.error('Form validation failed: Date is required');
+      toast.error('Date is required.');
       return;
     }
 
@@ -537,6 +534,8 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
       return;
     }
 
+    const firstPaymentDueDate = paymentSchedules.length > 0 ? paymentSchedules[0].dueDate : format(new Date(), 'yyyy-MM-dd');
+
     const amount = calculateTotalAmount();
     console.log('Calculated total amount:', amount);
 
@@ -566,7 +565,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
           number,
           amount,
           date: format(date, 'yyyy-MM-dd'),
-          dueDate: format(dueDate, 'yyyy-MM-dd'),
+          dueDate: firstPaymentDueDate,
           status,
           contractStatus,
           items,
@@ -605,7 +604,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
           number,
           amount,
           date: format(date, 'yyyy-MM-dd'),
-          dueDate: format(dueDate, 'yyyy-MM-dd'),
+          dueDate: firstPaymentDueDate,
           status,
           contractStatus,
           items,
@@ -730,32 +729,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                       mode="single"
                       selected={date}
                       onSelect={setDate}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-              
-              <div>
-                <Label>Due Date</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !dueDate && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {dueDate ? format(dueDate, "PPP") : <span>Pick a date</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <DatePicker
-                      mode="single"
-                      selected={dueDate}
-                      onSelect={setDueDate}
                       initialFocus
                     />
                   </PopoverContent>

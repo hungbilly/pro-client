@@ -162,8 +162,6 @@ const InvoiceView = () => {
             paymentSchedules: updatedSchedules
           };
         });
-        
-        toast.success(`Payment marked as ${newStatus}`);
       }
     } catch (err) {
       console.error('Failed to update payment status:', err);
@@ -204,8 +202,6 @@ const InvoiceView = () => {
             paymentSchedules: updatedSchedules
           };
         });
-        
-        toast.success('Payment date updated');
       }
     } catch (err) {
       console.error('Failed to update payment date:', err);

@@ -1,4 +1,3 @@
-
 import React, { memo, useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, Edit2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface PaymentScheduleTableProps {
   paymentSchedules: PaymentSchedule[];
@@ -44,6 +44,7 @@ const PaymentScheduleTable = memo(({
     const formattedDate = format(date, 'yyyy-MM-dd');
     onUpdatePaymentDate(paymentId, formattedDate);
     setEditingDateId(null);
+    toast.success(`Payment date updated to ${format(date, 'MMM d, yyyy')}`);
   };
 
   return (

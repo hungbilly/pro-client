@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, memo, useRef } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { 
   getInvoiceByViewLink, 
@@ -14,7 +14,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Check, Calendar, FileText, DollarSign, Send, MailCheck, FileCheck, Edit, CalendarDays, Package, Building, User, Phone, Mail, MapPin } from 'lucide-react';
+import { ArrowLeft, Check, Calendar, FileText, DollarSign, Send, MailCheck, FileCheck, Edit, CalendarDays, Package, Building, User, Phone, Mail, MapPin, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { useAuth } from '@/context/AuthContext';
@@ -33,6 +33,7 @@ const InvoiceView = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null);
+  const [invoiceRef, setInvoiceRef] = useState<HTMLDivElement | null>(null);
 
   const { isAdmin } = useAuth();
   const { selectedCompanyId, selectedCompany } = useCompanyContext();
@@ -222,6 +223,70 @@ const InvoiceView = () => {
     }
   }, [invoice]);
 
+  const handleDownloadInvoice = () => {
+    if (!invoice || !client) return;
+    
+    toast.info('Preparing PDF for download...');
+    
+    Promise.all([
+      import('html2canvas'),
+      import('jspdf')
+    ]).then(([html2canvasModule, jsPDFModule]) => {
+      const html2canvas = html2canvasModule.default;
+      const jsPDF = jsPDFModule.default;
+      
+      const element = invoiceRef.current;
+      if (!element) {
+        toast.error('Could not generate PDF');
+        return;
+      }
+      
+      const clonedElement = element.cloneNode(true) as HTMLElement;
+      
+      const buttonsToRemove = clonedElement.querySelectorAll('button');
+      buttonsToRemove.forEach(button => button.remove());
+      
+      clonedElement.style.position = 'absolute';
+      clonedElement.style.left = '-9999px';
+      document.body.appendChild(clonedElement);
+      
+      html2canvas(clonedElement, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        allowTaint: true
+      }).then(canvas => {
+        document.body.removeChild(clonedElement);
+        
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'a4'
+        });
+        
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+        const imgWidth = canvas.width;
+        const imgHeight = canvas.height;
+        const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+        const imgX = (pdfWidth - imgWidth * ratio) / 2;
+        
+        pdf.addImage(imgData, 'PNG', imgX, 0, imgWidth * ratio, imgHeight * ratio);
+        
+        pdf.save(`Invoice-${invoice.number}.pdf`);
+        
+        toast.success('Invoice downloaded successfully');
+      }).catch(err => {
+        console.error('PDF generation error:', err);
+        toast.error('Failed to generate PDF');
+      });
+    }).catch(err => {
+      console.error('Failed to load PDF libraries:', err);
+      toast.error('Could not load PDF generation tools');
+    });
+  };
+
   if (loading) {
     return (
       <PageTransition>
@@ -295,7 +360,7 @@ const InvoiceView = () => {
           </div>
         )}
         
-        <Card className="max-w-4xl mx-auto bg-white dark:bg-gray-900 shadow-sm">
+        <Card className="max-w-4xl mx-auto bg-white dark:bg-gray-900 shadow-sm" ref={invoiceRef}>
           <CardHeader className="pb-0">
             {!isClientView && (
               <div className="flex justify-end mb-2">
@@ -318,7 +383,6 @@ const InvoiceView = () => {
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-4">
-              {/* Left Column: Logo and Invoice # */}
               <div className="flex flex-col justify-between">
                 <div className="flex items-start mb-6 h-80">
                   {invoice.companyId && selectedCompany?.logo_url ? (
@@ -353,9 +417,7 @@ const InvoiceView = () => {
                 </div>
               </div>
               
-              {/* Right Column: From, To, Dates */}
               <div className="space-y-4">
-                {/* From: Company Information */}
                 <div>
                   <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">FROM</h4>
                   <div className="font-medium">{selectedCompany?.name}</div>
@@ -364,7 +426,6 @@ const InvoiceView = () => {
                   {selectedCompany?.address && <div className="text-sm">{selectedCompany.address}</div>}
                 </div>
                 
-                {/* To: Client and Job Information */}
                 <div>
                   <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">INVOICE FOR</h4>
                   {job && <div className="font-medium">{job.title}</div>}
@@ -391,7 +452,6 @@ const InvoiceView = () => {
                   </div>
                 </div>
                 
-                {/* Date Information */}
                 <div className="flex items-center space-x-4">
                   {job?.date && (
                     <div>
@@ -551,10 +611,10 @@ const InvoiceView = () => {
             {!isClientView && (
               <Button
                 variant="default"
-                disabled={!client?.email}
+                onClick={handleDownloadInvoice}
               >
-                <Send className="h-4 w-4 mr-2" />
-                Send Invoice
+                <Download className="h-4 w-4 mr-2" />
+                Download Invoice
               </Button>
             )}
           </CardFooter>

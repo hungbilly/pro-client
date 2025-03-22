@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO, isWithinInterval, subMonths, addMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO, isWithinInterval, subMonths, addMonths, subDays, startOfYear, endOfYear } from 'date-fns';
 import { 
   LineChart, 
   Line, 
@@ -13,9 +13,14 @@ import {
   Area,
   ComposedChart
 } from 'recharts';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DatePicker } from "@/components/ui/date-picker";
+import { Switch } from "@/components/ui/switch";
+import { type DateRange } from "react-day-picker";
 import { Invoice, Job } from '@/types';
 
 interface RevenueChartProps {
@@ -23,20 +28,74 @@ interface RevenueChartProps {
   jobs: Job[];
 }
 
+type DateRangeType = 'custom' | 'this-month' | 'last-month' | 'this-year' | 'last-30-days' | 'last-60-days';
+
 const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [currentDateRange, setCurrentDateRange] = useState<DateRangeType>('this-month');
+  const [customDateRange, setCustomDateRange] = useState<DateRange | undefined>({
+    from: subDays(new Date(), 30),
+    to: new Date()
+  });
   const [chartData, setChartData] = useState<any[]>([]);
+  
+  // Chart series display toggles
+  const [showPaidRevenue, setShowPaidRevenue] = useState(true);
+  const [showUnpaidRevenue, setShowUnpaidRevenue] = useState(true);
+  const [showTotalRevenue, setShowTotalRevenue] = useState(true);
+  const [showJobCount, setShowJobCount] = useState(true);
   
   useEffect(() => {
     generateChartData();
-  }, [invoices, jobs, currentMonth]);
+  }, [invoices, jobs, currentDateRange, customDateRange]);
+  
+  const getDateRange = (): { startDate: Date, endDate: Date } => {
+    const today = new Date();
+    
+    switch (currentDateRange) {
+      case 'this-month':
+        return {
+          startDate: startOfMonth(today),
+          endDate: endOfMonth(today)
+        };
+      case 'last-month':
+        const lastMonth = subMonths(today, 1);
+        return {
+          startDate: startOfMonth(lastMonth),
+          endDate: endOfMonth(lastMonth)
+        };
+      case 'this-year':
+        return {
+          startDate: startOfYear(today),
+          endDate: endOfYear(today)
+        };
+      case 'last-30-days':
+        return {
+          startDate: subDays(today, 30),
+          endDate: today
+        };
+      case 'last-60-days':
+        return {
+          startDate: subDays(today, 60),
+          endDate: today
+        };
+      case 'custom':
+        return {
+          startDate: customDateRange?.from || subDays(today, 30),
+          endDate: customDateRange?.to || today
+        };
+      default:
+        return {
+          startDate: startOfMonth(today),
+          endDate: endOfMonth(today)
+        };
+    }
+  };
   
   const generateChartData = () => {
-    const startDate = startOfMonth(currentMonth);
-    const endDate = endOfMonth(currentMonth);
-    const daysInMonth = eachDayOfInterval({ start: startDate, end: endDate });
+    const { startDate, endDate } = getDateRange();
+    const daysInRange = eachDayOfInterval({ start: startDate, end: endDate });
     
-    const data = daysInMonth.map(day => {
+    const data = daysInRange.map(day => {
       const dayFormatted = format(day, 'yyyy-MM-dd');
       
       const dayInvoices = invoices.filter(invoice => {
@@ -72,14 +131,6 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
     setChartData(data);
   };
   
-  const handlePreviousMonth = () => {
-    setCurrentMonth(subMonths(currentMonth, 1));
-  };
-  
-  const handleNextMonth = () => {
-    setCurrentMonth(addMonths(currentMonth, 1));
-  };
-  
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -87,34 +138,152 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
       minimumFractionDigits: 0,
     }).format(value);
   };
+
+  const handleDateRangeChange = (range: DateRangeType) => {
+    setCurrentDateRange(range);
+  };
+  
+  const dateRangeLabel = () => {
+    const { startDate, endDate } = getDateRange();
+    if (currentDateRange === 'custom' && customDateRange) {
+      return `${format(startDate, 'MMM d, yyyy')} - ${format(endDate, 'MMM d, yyyy')}`;
+    }
+    
+    switch (currentDateRange) {
+      case 'this-month':
+        return format(startDate, 'MMMM yyyy');
+      case 'last-month':
+        return format(startDate, 'MMMM yyyy');
+      case 'this-year':
+        return format(startDate, 'yyyy');
+      case 'last-30-days':
+        return 'Last 30 Days';
+      case 'last-60-days':
+        return 'Last 60 Days';
+      default:
+        return 'Custom Date Range';
+    }
+  };
   
   return (
     <Card className="w-full backdrop-blur-sm bg-white/80 border-transparent shadow-soft">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-md font-medium">Revenue & Jobs Overview</CardTitle>
         <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handlePreviousMonth}
-            className="h-8 w-8 p-0"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="text-sm font-medium">
-            {format(currentMonth, 'MMMM yyyy')}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleNextMonth}
-            className="h-8 w-8 p-0"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-2 gap-1"
+              >
+                <Calendar className="h-4 w-4" />
+                <span className="text-sm font-medium">
+                  {dateRangeLabel()}
+                </span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <div className="p-3 flex flex-col gap-2">
+                <p className="font-medium">Date Range</p>
+                <div className="grid gap-2">
+                  <Button 
+                    variant={currentDateRange === 'this-month' ? 'default' : 'outline'} 
+                    className="justify-start text-sm" 
+                    onClick={() => handleDateRangeChange('this-month')}
+                  >
+                    This Month
+                  </Button>
+                  <Button 
+                    variant={currentDateRange === 'last-month' ? 'default' : 'outline'} 
+                    className="justify-start text-sm" 
+                    onClick={() => handleDateRangeChange('last-month')}
+                  >
+                    Last Month
+                  </Button>
+                  <Button 
+                    variant={currentDateRange === 'this-year' ? 'default' : 'outline'} 
+                    className="justify-start text-sm" 
+                    onClick={() => handleDateRangeChange('this-year')}
+                  >
+                    This Year
+                  </Button>
+                  <Button 
+                    variant={currentDateRange === 'last-30-days' ? 'default' : 'outline'} 
+                    className="justify-start text-sm" 
+                    onClick={() => handleDateRangeChange('last-30-days')}
+                  >
+                    Last 30 Days
+                  </Button>
+                  <Button 
+                    variant={currentDateRange === 'last-60-days' ? 'default' : 'outline'} 
+                    className="justify-start text-sm" 
+                    onClick={() => handleDateRangeChange('last-60-days')}
+                  >
+                    Last 60 Days
+                  </Button>
+                  <Button 
+                    variant={currentDateRange === 'custom' ? 'default' : 'outline'} 
+                    className="justify-start text-sm" 
+                    onClick={() => handleDateRangeChange('custom')}
+                  >
+                    Custom Range
+                  </Button>
+                </div>
+                
+                {currentDateRange === 'custom' && (
+                  <div className="mt-2">
+                    <DatePicker
+                      mode="range"
+                      selected={customDateRange}
+                      onSelect={(range) => setCustomDateRange(range)}
+                    />
+                  </div>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
       </CardHeader>
       <CardContent>
+        <div className="flex flex-wrap gap-4 mb-4">
+          <label className="flex items-center space-x-2">
+            <Checkbox 
+              checked={showPaidRevenue} 
+              onCheckedChange={(checked) => setShowPaidRevenue(checked as boolean)} 
+              className="data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500"
+            />
+            <span className="text-sm">Paid Revenue</span>
+          </label>
+          
+          <label className="flex items-center space-x-2">
+            <Checkbox 
+              checked={showUnpaidRevenue} 
+              onCheckedChange={(checked) => setShowUnpaidRevenue(checked as boolean)}
+              className="data-[state=checked]:bg-blue-300 data-[state=checked]:border-blue-300" 
+            />
+            <span className="text-sm">Unpaid Revenue</span>
+          </label>
+          
+          <label className="flex items-center space-x-2">
+            <Checkbox 
+              checked={showTotalRevenue} 
+              onCheckedChange={(checked) => setShowTotalRevenue(checked as boolean)}
+              className="data-[state=checked]:bg-purple-700 data-[state=checked]:border-purple-700"
+            />
+            <span className="text-sm">Total Revenue</span>
+          </label>
+          
+          <label className="flex items-center space-x-2">
+            <Checkbox 
+              checked={showJobCount} 
+              onCheckedChange={(checked) => setShowJobCount(checked as boolean)}
+              className="data-[state=checked]:bg-orange-500 data-[state=checked]:border-orange-500"
+            />
+            <span className="text-sm">Jobs Count</span>
+          </label>
+        </div>
+        
         <div className="h-[300px]">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart
@@ -157,46 +326,54 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
                 labelFormatter={(label) => `Date: ${label}`}
               />
               <Legend />
-              <Area
-                yAxisId="left"
-                type="monotone"
-                dataKey="paidAmount"
-                name="Paid Revenue"
-                fill="#9b87f5"
-                fillOpacity={0.3}
-                stroke="#9b87f5"
-                activeDot={{ r: 8 }}
-              />
-              <Area
-                yAxisId="left"
-                type="monotone"
-                dataKey="unpaidAmount"
-                name="Unpaid Revenue"
-                fill="#E5DEFF"
-                fillOpacity={0.3}
-                stroke="#E5DEFF"
-                activeDot={{ r: 6 }}
-              />
-              <Line
-                yAxisId="left"
-                type="monotone"
-                dataKey="totalAmount"
-                name="Total Revenue"
-                stroke="#6E59A5"
-                strokeWidth={2}
-                dot={{ r: 4 }}
-                activeDot={{ r: 8 }}
-              />
-              <Line
-                yAxisId="right"
-                type="monotone"
-                dataKey="jobCount"
-                name="Jobs Count"
-                stroke="#F97316"
-                strokeWidth={2}
-                dot={{ r: 4 }}
-                activeDot={{ r: 8 }}
-              />
+              {showPaidRevenue && (
+                <Area
+                  yAxisId="left"
+                  type="monotone"
+                  dataKey="paidAmount"
+                  name="Paid Revenue"
+                  fill="#9b87f5"
+                  fillOpacity={0.3}
+                  stroke="#9b87f5"
+                  activeDot={{ r: 8 }}
+                />
+              )}
+              {showUnpaidRevenue && (
+                <Area
+                  yAxisId="left"
+                  type="monotone"
+                  dataKey="unpaidAmount"
+                  name="Unpaid Revenue"
+                  fill="#E5DEFF"
+                  fillOpacity={0.3}
+                  stroke="#E5DEFF"
+                  activeDot={{ r: 6 }}
+                />
+              )}
+              {showTotalRevenue && (
+                <Line
+                  yAxisId="left"
+                  type="monotone"
+                  dataKey="totalAmount"
+                  name="Total Revenue"
+                  stroke="#6E59A5"
+                  strokeWidth={2}
+                  dot={{ r: 4 }}
+                  activeDot={{ r: 8 }}
+                />
+              )}
+              {showJobCount && (
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="jobCount"
+                  name="Jobs Count"
+                  stroke="#F97316"
+                  strokeWidth={2}
+                  dot={{ r: 4 }}
+                  activeDot={{ r: 8 }}
+                />
+              )}
             </ComposedChart>
           </ResponsiveContainer>
         </div>

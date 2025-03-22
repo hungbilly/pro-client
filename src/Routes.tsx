@@ -19,6 +19,7 @@ import JobEdit from './pages/JobEdit';
 import AppLayout from './components/AppLayout';
 import Accounts from './pages/Accounts';
 import AuthCallback from './pages/AuthCallback';
+import Invoices from './pages/Invoices';
 
 const Routes = () => {
   return (
@@ -51,6 +52,7 @@ const Routes = () => {
         <Route path="/client/:clientId/job/create" element={<JobCreate />} />
         
         {/* Invoice routes */}
+        <Route path="/invoices" element={<Invoices />} />
         <Route path="/client/:clientId/invoice/new" element={<InvoiceCreate />} />
         <Route path="/client/:clientId/invoice/create" element={<InvoiceCreate />} />
         <Route path="/client/:clientId/invoice/:invoiceId/edit" element={<InvoiceCreate />} />

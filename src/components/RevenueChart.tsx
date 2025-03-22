@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO, isWithinInterval, subMonths, addMonths, subDays, startOfYear, endOfYear } from 'date-fns';
 import { 
@@ -20,7 +21,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { DatePicker } from "@/components/ui/date-picker";
 import { Switch } from "@/components/ui/switch";
 import { type DateRange } from "react-day-picker";
-import { Invoice, Job } from '@/types';
+import { Invoice, Job, PaymentSchedule } from '@/types';
+import { getInvoicesByDate, getInvoice } from '@/lib/storage';
 
 interface RevenueChartProps {
   invoices: Invoice[];
@@ -96,23 +98,43 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
     const data = daysInRange.map(day => {
       const dayFormatted = format(day, 'yyyy-MM-dd');
       
-      const dayInvoices = invoices.filter(invoice => {
-        const invoiceDate = parseISO(invoice.date);
-        return format(invoiceDate, 'yyyy-MM-dd') === dayFormatted;
-      });
-      
+      // Get jobs for this day
       const dayJobs = jobs.filter(job => {
         if (!job.date) return false;
         return job.date === dayFormatted;
       });
       
-      const paidAmount = dayInvoices
-        .filter(inv => inv.status === 'paid')
-        .reduce((sum, inv) => sum + inv.amount, 0);
-        
-      const unpaidAmount = dayInvoices
-        .filter(inv => inv.status !== 'paid')
-        .reduce((sum, inv) => sum + inv.amount, 0);
+      // Initialize revenue amounts
+      let paidAmount = 0;
+      let unpaidAmount = 0;
+      
+      // Process invoices with payment schedules
+      invoices.forEach(invoice => {
+        if (invoice.paymentSchedules && invoice.paymentSchedules.length > 0) {
+          // Process payment schedules
+          invoice.paymentSchedules.forEach(schedule => {
+            // Check if the schedule's due date matches the current day
+            if (schedule.dueDate === dayFormatted) {
+              const scheduleAmount = (schedule.percentage / 100) * invoice.amount;
+              
+              if (schedule.status === 'paid') {
+                paidAmount += scheduleAmount;
+              } else {
+                unpaidAmount += scheduleAmount;
+              }
+            }
+          });
+        } else {
+          // For invoices without payment schedules, use the invoice date
+          if (invoice.date === dayFormatted) {
+            if (invoice.status === 'paid') {
+              paidAmount += invoice.amount;
+            } else {
+              unpaidAmount += invoice.amount;
+            }
+          }
+        }
+      });
         
       const totalAmount = paidAmount + unpaidAmount;
       

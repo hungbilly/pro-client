@@ -34,5 +34,17 @@ export const logError = (message: string, error: any) => {
   }
 };
 
+// Add data transformation debugging
+export const logDataTransformation = (stage: string, data: any) => {
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] [Data Transform] ${stage}`, data);
+};
+
+// Add date handling debugging
+export const logDateProcessing = (context: string, dateInfo: any) => {
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] [Date Processing] ${context}`, dateInfo);
+};
+
 // Export supabase instance
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);

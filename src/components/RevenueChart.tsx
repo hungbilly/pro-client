@@ -23,6 +23,7 @@ import { Switch } from "@/components/ui/switch";
 import { type DateRange } from "react-day-picker";
 import { Invoice, Job, PaymentSchedule } from '@/types';
 import { getInvoicesByDate, getInvoice } from '@/lib/storage';
+import { logDebug } from '@/integrations/supabase/client';
 
 interface RevenueChartProps {
   invoices: Invoice[];
@@ -45,7 +46,7 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
   const [showJobCount, setShowJobCount] = useState(true);
   
   useEffect(() => {
-    console.log('RevenueChart: Generating chart data with', { 
+    logDebug('RevenueChart: Generating chart data with', { 
       invoiceCount: invoices.length, 
       jobCount: jobs.length,
       currentDateRange 
@@ -53,17 +54,28 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
     
     // Log the first few invoices to debug
     if (invoices.length > 0) {
-      console.log('Sample invoices:', invoices.slice(0, 3).map(inv => ({
+      logDebug('Sample invoices:', invoices.slice(0, 3).map(inv => ({
         id: inv.id,
         amount: inv.amount,
         status: inv.status,
         date: inv.date,
+        dateFormatted: inv.date ? formatDateToYYYYMMDD(inv.date) : 'no date',
         paymentSchedulesCount: inv?.paymentSchedules?.length || 0
       })));
     }
     
     generateChartData();
   }, [invoices, jobs, currentDateRange, customDateRange]);
+  
+  // Helper function to normalize dates to YYYY-MM-DD format
+  const formatDateToYYYYMMDD = (dateString: string): string => {
+    try {
+      return format(parseISO(dateString), 'yyyy-MM-dd');
+    } catch (error) {
+      logDebug('Error formatting date', { dateString, error });
+      return '';
+    }
+  };
   
   const getDateRange = (): { startDate: Date, endDate: Date } => {
     const today = new Date();
@@ -112,9 +124,9 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
     const { startDate, endDate } = getDateRange();
     const daysInRange = eachDayOfInterval({ start: startDate, end: endDate });
     
-    console.log('RevenueChart: Generating data for date range:', { 
-      startDate: startDate.toISOString().split('T')[0], 
-      endDate: endDate.toISOString().split('T')[0],
+    logDebug('RevenueChart: Generating data for date range:', { 
+      startDate: format(startDate, 'yyyy-MM-dd'), 
+      endDate: format(endDate, 'yyyy-MM-dd'),
       daysCount: daysInRange.length
     });
     
@@ -124,7 +136,8 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
       // Get jobs for this day
       const dayJobs = jobs.filter(job => {
         if (!job.date) return false;
-        return job.date === dayFormatted;
+        // Normalize job.date to YYYY-MM-DD
+        return formatDateToYYYYMMDD(job.date) === dayFormatted;
       });
       
       // Initialize revenue amounts
@@ -136,15 +149,20 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
         if (invoice.paymentSchedules && invoice.paymentSchedules.length > 0) {
           // Process payment schedules
           invoice.paymentSchedules.forEach(schedule => {
+            // Normalize schedule.dueDate to YYYY-MM-DD for comparison
+            const scheduleDueDate = formatDateToYYYYMMDD(schedule.dueDate);
+            
             // Check if the schedule's due date matches the current day
-            if (schedule.dueDate === dayFormatted) {
+            if (scheduleDueDate === dayFormatted) {
               const scheduleAmount = (schedule.percentage / 100) * invoice.amount;
-              console.log(`Found payment schedule for day ${dayFormatted}:`, {
+              logDebug(`Found payment schedule for day ${dayFormatted}:`, {
                 invoiceId: invoice.id,
                 totalAmount: invoice.amount,
                 schedulePercentage: schedule.percentage,
                 scheduleAmount,
-                status: schedule.status
+                status: schedule.status,
+                dueDateOriginal: schedule.dueDate,
+                dueDateFormatted: scheduleDueDate
               });
               
               if (schedule.status === 'paid') {
@@ -156,11 +174,15 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
           });
         } else {
           // For invoices without payment schedules, use the invoice date
-          if (invoice.date === dayFormatted) {
-            console.log(`Found invoice for day ${dayFormatted} without payment schedules:`, {
+          const invoiceDateFormatted = formatDateToYYYYMMDD(invoice.date);
+          
+          if (invoiceDateFormatted === dayFormatted) {
+            logDebug(`Found invoice for day ${dayFormatted} without payment schedules:`, {
               invoiceId: invoice.id,
               amount: invoice.amount,
-              status: invoice.status
+              status: invoice.status,
+              dateOriginal: invoice.date,
+              dateFormatted: invoiceDateFormatted
             });
             
             if (invoice.status === 'paid') {
@@ -176,7 +198,7 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
       
       // Log non-zero data points to help with debugging
       if (paidAmount > 0 || unpaidAmount > 0) {
-        console.log(`Revenue data for ${dayFormatted}:`, { 
+        logDebug(`Revenue data for ${dayFormatted}:`, { 
           paidAmount, 
           unpaidAmount, 
           totalAmount, 
@@ -194,12 +216,17 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
       };
     });
     
-    console.log('RevenueChart: Final chart data summary:', {
+    const totalPaid = data.reduce((sum, item) => sum + item.paidAmount, 0);
+    const totalUnpaid = data.reduce((sum, item) => sum + item.unpaidAmount, 0);
+    const totalRevenue = data.reduce((sum, item) => sum + item.totalAmount, 0);
+    const totalJobs = data.reduce((sum, item) => sum + item.jobCount, 0);
+    
+    logDebug('RevenueChart: Final chart data summary:', {
       dataPointsCount: data.length,
-      totalPaid: data.reduce((sum, item) => sum + item.paidAmount, 0),
-      totalUnpaid: data.reduce((sum, item) => sum + item.unpaidAmount, 0),
-      totalRevenue: data.reduce((sum, item) => sum + item.totalAmount, 0),
-      totalJobs: data.reduce((sum, item) => sum + item.jobCount, 0)
+      totalPaid,
+      totalUnpaid,
+      totalRevenue,
+      totalJobs
     });
     
     setChartData(data);
@@ -388,6 +415,7 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
                 tickFormatter={formatCurrency}
                 tickLine={false}
                 axisLine={false}
+                domain={[0, 'auto']} // Ensure minimum is 0
               />
               <YAxis 
                 yAxisId="right"
@@ -395,6 +423,7 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
                 tick={{ fontSize: 12 }}
                 tickLine={false}
                 axisLine={false}
+                domain={[0, 'auto']} // Ensure minimum is 0
               />
               <Tooltip 
                 formatter={(value: number, name: string) => {

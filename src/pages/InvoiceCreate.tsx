@@ -6,7 +6,7 @@ import { getInvoice } from '@/lib/storage';
 import { Invoice } from '@/types';
 import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
-import { supabase, logDebug } from '@/integrations/supabase/client';
+import { supabase, logDebug, logError, logDataTransformation } from '@/integrations/supabase/client';
 
 interface ContractTemplate {
   id: string;
@@ -31,11 +31,27 @@ const InvoiceCreate = () => {
         try {
           logDebug('Fetching invoice with ID:', invoiceId);
           const fetchedInvoice = await getInvoice(invoiceId);
+          logDataTransformation('Fetched invoice', fetchedInvoice);
+          
           if (fetchedInvoice) {
             logDebug('Fetched invoice with payment schedules:', {
               schedules: fetchedInvoice.paymentSchedules,
-              count: fetchedInvoice.paymentSchedules?.length || 0
+              count: fetchedInvoice.paymentSchedules?.length || 0,
+              firstSchedule: fetchedInvoice.paymentSchedules?.[0]
             });
+            
+            if (fetchedInvoice.paymentSchedules && fetchedInvoice.paymentSchedules.length > 0) {
+              // Log detailed information about the first few payment schedules
+              fetchedInvoice.paymentSchedules.slice(0, 3).forEach((schedule, index) => {
+                logDebug(`Payment schedule ${index + 1}:`, {
+                  id: schedule.id,
+                  dueDate: schedule.dueDate,
+                  percentage: schedule.percentage,
+                  status: schedule.status
+                });
+              });
+            }
+            
             setInvoice(fetchedInvoice);
           } else {
             console.error('Invoice not found for ID:', invoiceId);
@@ -50,7 +66,7 @@ const InvoiceCreate = () => {
             }
           }
         } catch (error) {
-          console.error('Failed to fetch invoice:', error);
+          logError('Failed to fetch invoice:', error);
           toast.error('Failed to load invoice data');
         } finally {
           setLoading(false);
@@ -70,14 +86,18 @@ const InvoiceCreate = () => {
           .order('name', { ascending: true });
 
         if (error) {
-          console.error('Error fetching contract templates:', error);
+          logError('Error fetching contract templates:', error);
           throw error;
         }
         
-        logDebug('Contract templates fetched:', data?.length || 0);
+        logDebug('Contract templates fetched:', {
+          count: data?.length || 0,
+          templates: data?.map(t => ({ id: t.id, name: t.name }))
+        });
+        
         setContractTemplates(data || []);
       } catch (error) {
-        console.error('Error fetching contract templates:', error);
+        logError('Error fetching contract templates:', error);
         toast.error('Failed to load contract templates');
       } finally {
         setLoadingTemplates(false);
@@ -107,7 +127,9 @@ const InvoiceCreate = () => {
     jobId, 
     invoiceId,
     contractTemplatesCount: contractTemplates.length,
-    paymentSchedules: invoice?.paymentSchedules?.length || 0
+    paymentSchedules: invoice?.paymentSchedules?.length || 0,
+    invoiceDate: invoice?.date,
+    invoiceStatus: invoice?.status
   });
 
   return (

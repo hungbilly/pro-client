@@ -75,7 +75,7 @@ const Dashboard: React.FC = () => {
         return [];
       }
       
-      // Get all payment schedules 
+      // Get all payment schedules including payment_date field
       const { data: schedulesData, error: schedulesError } = await supabase
         .from('payment_schedules')
         .select('*');
@@ -96,11 +96,18 @@ const Dashboard: React.FC = () => {
             dueDate: schedule.due_date,
             percentage: schedule.percentage,
             description: schedule.description || '',
-            status: schedule.status || 'unpaid'
+            status: schedule.status || 'unpaid',
+            paymentDate: schedule.payment_date // Include the payment_date field
           }));
         
         if (invoiceSchedules.length > 0) {
           logDebug(`Invoice ${invoice.id} has ${invoiceSchedules.length} payment schedules`);
+          logDebug('Sample schedule:', {
+            id: invoiceSchedules[0].id,
+            status: invoiceSchedules[0].status,
+            dueDate: invoiceSchedules[0].dueDate,
+            paymentDate: invoiceSchedules[0].paymentDate
+          });
         }
         
         return {
@@ -127,7 +134,8 @@ const Dashboard: React.FC = () => {
         sampleInvoice: invoicesWithSchedules.length > 0 ? {
           id: invoicesWithSchedules[0].id,
           paymentSchedulesCount: invoicesWithSchedules[0].paymentSchedules.length,
-          scheduleStatuses: invoicesWithSchedules[0].paymentSchedules.map(s => s.status)
+          scheduleStatuses: invoicesWithSchedules[0].paymentSchedules.map(s => s.status),
+          paymentDates: invoicesWithSchedules[0].paymentSchedules.map(s => s.paymentDate)
         } : null
       });
       

@@ -181,15 +181,33 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
         }
       
         schedules.forEach(schedule => {
-          if (!schedule.dueDate) {
-            logDebug(`Schedule has no due date for invoice ${invoice.id}`, schedule);
+          // Determine which date to use based on the schedule status
+          let relevantDate: string;
+          let dateType: string;
+          
+          if (schedule.status === 'paid' && schedule.paymentDate) {
+            // For paid schedules, use payment_date if available
+            relevantDate = schedule.paymentDate;
+            dateType = 'paymentDate';
+          } else if (schedule.dueDate) {
+            // For unpaid schedules or paid without payment_date, use due_date
+            relevantDate = schedule.dueDate;
+            dateType = 'dueDate';
+          } else {
+            // Fallback to invoice date if nothing else available
+            relevantDate = invoice.date;
+            dateType = 'invoiceDate';
+          }
+          
+          if (!relevantDate) {
+            logDebug(`Schedule has no valid date for invoice ${invoice.id}`, schedule);
             return;
           }
           
-          const scheduleDueDate = parseDate(schedule.dueDate);
-          const scheduleDueDateFormatted = formatDateToYYYYMMDD(scheduleDueDate);
+          const scheduleDate = parseDate(relevantDate);
+          const scheduleDateFormatted = formatDateToYYYYMMDD(scheduleDate);
           
-          if (scheduleDueDateFormatted === dayFormatted) {
+          if (scheduleDateFormatted === dayFormatted) {
             const scheduleAmount = (schedule.percentage / 100) * invoice.amount;
             
             logDebug(`Found payment schedule for day ${dayFormatted}:`, {
@@ -199,7 +217,9 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
               schedulePercentage: schedule.percentage,
               scheduleAmount,
               status: schedule.status,
-              dueDateFormatted: scheduleDueDateFormatted
+              dateUsed: dateType,
+              dateValue: relevantDate,
+              formattedDate: scheduleDateFormatted
             });
             
             // Explicitly check for 'paid' status string

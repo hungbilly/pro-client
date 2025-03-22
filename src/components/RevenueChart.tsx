@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { format, startOfMonth, endOfMonth, parseISO, subMonths, addMonths, subDays, startOfYear, endOfYear } from 'date-fns';
+import { format, startOfMonth, endOfMonth, parseISO, subMonths, addMonths, subDays, startOfYear, endOfYear, differenceInDays, getMonth, getYear, isValid } from 'date-fns';
 import { 
   LineChart, 
   Line, 
@@ -80,7 +80,8 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
   
   const parseDate = (dateString: string): Date => {
     try {
-      return parseISO(dateString);
+      const parsedDate = parseISO(dateString);
+      return isValid(parsedDate) ? parsedDate : new Date();
     } catch (error) {
       logDebug('Error parsing date', { dateString, error });
       return new Date();
@@ -132,12 +133,23 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
   
   const generateChartData = () => {
     const { startDate, endDate } = getDateRange();
+    const daysDifference = differenceInDays(endDate, startDate);
     
     logDebug('RevenueChart: Generating data for date range:', { 
       startDate: formatDateToYYYYMMDD(startDate), 
-      endDate: formatDateToYYYYMMDD(endDate)
+      endDate: formatDateToYYYYMMDD(endDate),
+      daysDifference
     });
     
+    // If the date range is greater than 30 days, show monthly data
+    if (daysDifference > 30) {
+      generateMonthlyChartData(startDate, endDate);
+    } else {
+      generateDailyChartData(startDate, endDate);
+    }
+  };
+  
+  const generateDailyChartData = (startDate: Date, endDate: Date) => {
     const daysInRange = [];
     const currentDate = new Date(startDate);
     while (currentDate <= endDate) {
@@ -145,7 +157,7 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
       currentDate.setDate(currentDate.getDate() + 1);
     }
     
-    logDebug(`Date range contains ${daysInRange.length} days`);
+    logDebug(`Date range contains ${daysInRange.length} days (daily view)`);
     
     const data = daysInRange.map(day => {
       const dayFormatted = formatDateToYYYYMMDD(day);
@@ -266,7 +278,7 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
     const totalRevenue = data.reduce((sum, item) => sum + item.totalAmount, 0);
     const totalJobs = data.reduce((sum, item) => sum + item.jobCount, 0);
     
-    logDebug('RevenueChart: Final chart data summary:', {
+    logDebug('RevenueChart: Final daily chart data summary:', {
       dataPointsCount: data.length,
       totalPaid,
       totalUnpaid,
@@ -275,6 +287,111 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
     });
     
     setChartData(data);
+  };
+  
+  const generateMonthlyChartData = (startDate: Date, endDate: Date) => {
+    // Create a map to store monthly aggregated data
+    const monthlyData = new Map();
+    
+    // Loop through all invoices and aggregate by month
+    invoices.forEach(invoice => {
+      const schedules = invoice.paymentSchedules && invoice.paymentSchedules.length > 0
+        ? invoice.paymentSchedules
+        : [{
+            id: `default-${invoice.id}`,
+            dueDate: invoice.date,
+            percentage: 100,
+            description: 'Default schedule',
+            status: invoice.status === 'paid' ? 'paid' : 'unpaid'
+          }];
+      
+      schedules.forEach(schedule => {
+        let relevantDate: string;
+        
+        if (schedule.status === 'paid' && schedule.paymentDate) {
+          relevantDate = schedule.paymentDate;
+        } else if (schedule.dueDate) {
+          relevantDate = schedule.dueDate;
+        } else {
+          relevantDate = invoice.date;
+        }
+        
+        if (!relevantDate) return;
+        
+        const scheduleDate = parseDate(relevantDate);
+        
+        // Skip if outside date range
+        if (scheduleDate < startDate || scheduleDate > endDate) return;
+        
+        const monthYear = `${getYear(scheduleDate)}-${getMonth(scheduleDate)}`;
+        const scheduleAmount = (schedule.percentage / 100) * invoice.amount;
+        
+        if (!monthlyData.has(monthYear)) {
+          monthlyData.set(monthYear, {
+            month: getMonth(scheduleDate),
+            year: getYear(scheduleDate),
+            date: scheduleDate,
+            paidAmount: 0,
+            unpaidAmount: 0,
+            totalAmount: 0,
+            jobCount: 0
+          });
+        }
+        
+        const monthData = monthlyData.get(monthYear);
+        
+        if (schedule.status === 'paid') {
+          monthData.paidAmount += scheduleAmount;
+        } else {
+          monthData.unpaidAmount += scheduleAmount;
+        }
+        
+        monthData.totalAmount = monthData.paidAmount + monthData.unpaidAmount;
+      });
+    });
+    
+    // Aggregate jobs by month
+    jobs.forEach(job => {
+      if (!job.date) return;
+      
+      const jobDate = parseDate(job.date);
+      
+      // Skip if outside date range
+      if (jobDate < startDate || jobDate > endDate) return;
+      
+      const monthYear = `${getYear(jobDate)}-${getMonth(jobDate)}`;
+      
+      if (!monthlyData.has(monthYear)) {
+        monthlyData.set(monthYear, {
+          month: getMonth(jobDate),
+          year: getYear(jobDate),
+          date: jobDate,
+          paidAmount: 0,
+          unpaidAmount: 0,
+          totalAmount: 0,
+          jobCount: 0
+        });
+      }
+      
+      const monthData = monthlyData.get(monthYear);
+      monthData.jobCount += 1;
+    });
+    
+    // Convert map to array and sort by date
+    const monthlyDataArray = Array.from(monthlyData.values())
+      .sort((a, b) => a.date.getTime() - b.date.getTime())
+      .map(data => ({
+        ...data,
+        date: formatDateToYYYYMMDD(data.date),
+        displayDate: format(data.date, 'MMM yyyy')
+      }));
+    
+    logDebug('RevenueChart: Final monthly chart data summary:', {
+      dataPointsCount: monthlyDataArray.length,
+      months: monthlyDataArray.map(m => m.displayDate)
+    });
+    
+    setChartData(monthlyDataArray);
   };
   
   const formatCurrency = (value: number) => {
@@ -309,6 +426,12 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
   
   const handleDateRangeChange = (range: DateRangeType) => {
     setCurrentDateRange(range);
+  };
+
+  // Determine if we're in monthly view (for label in UI)
+  const isMonthlyView = () => {
+    const { startDate, endDate } = getDateRange();
+    return differenceInDays(endDate, startDate) > 30;
   };
 
   return (
@@ -434,6 +557,12 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
             />
             <span className="text-sm">Jobs Count</span>
           </label>
+
+          {isMonthlyView() && (
+            <span className="ml-auto text-xs text-muted-foreground italic">
+              Showing monthly aggregated data
+            </span>
+          )}
         </div>
         
         <div className="h-[300px]">

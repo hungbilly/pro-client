@@ -19,6 +19,8 @@ interface DatePickerProps {
   initialFocus?: boolean
   disabled?: boolean
   placeholder?: string
+  highlightToday?: boolean
+  classNames?: Record<string, string>
 }
 
 export function DatePicker({ 
@@ -27,7 +29,9 @@ export function DatePicker({
   onSelect, 
   initialFocus,
   disabled,
-  placeholder = "Select date" 
+  placeholder = "Select date",
+  highlightToday = false,
+  classNames,
 }: DatePickerProps) {
   return (
     <div className="grid gap-2">
@@ -48,6 +52,13 @@ export function DatePicker({
           initialFocus={initialFocus}
           disabled={disabled}
           className="pointer-events-auto"
+          classNames={{
+            day_range_start: "bg-primary text-primary-foreground rounded-l-md",
+            day_range_end: "bg-primary text-primary-foreground rounded-r-md",
+            day_range_middle: "bg-primary/20 text-primary-foreground rounded-none",
+            ...classNames,
+          }}
+          today={highlightToday ? new Date() : undefined}
         />
       )}
     </div>

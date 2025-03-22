@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO, isWithinInterval, subMonths, addMonths, subDays, startOfYear, endOfYear } from 'date-fns';
 import { 
@@ -175,56 +174,56 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 px-2 gap-1"
+                className="h-8 px-2 gap-1 text-xs md:text-sm"
               >
-                <Calendar className="h-4 w-4" />
-                <span className="text-sm font-medium">
+                <Calendar className="h-3 w-3 md:h-4 md:w-4" />
+                <span className="max-w-[120px] md:max-w-[180px] truncate">
                   {dateRangeLabel()}
                 </span>
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
+            <PopoverContent className="w-auto p-0 max-w-[300px]" align="end">
               <div className="p-3 flex flex-col gap-2">
-                <p className="font-medium">Date Range</p>
-                <div className="grid gap-2">
+                <p className="font-medium text-sm">Date Range</p>
+                <div className="grid gap-1">
                   <Button 
                     variant={currentDateRange === 'this-month' ? 'default' : 'outline'} 
-                    className="justify-start text-sm" 
+                    className="justify-start text-xs h-8" 
                     onClick={() => handleDateRangeChange('this-month')}
                   >
                     This Month
                   </Button>
                   <Button 
                     variant={currentDateRange === 'last-month' ? 'default' : 'outline'} 
-                    className="justify-start text-sm" 
+                    className="justify-start text-xs h-8" 
                     onClick={() => handleDateRangeChange('last-month')}
                   >
                     Last Month
                   </Button>
                   <Button 
                     variant={currentDateRange === 'this-year' ? 'default' : 'outline'} 
-                    className="justify-start text-sm" 
+                    className="justify-start text-xs h-8" 
                     onClick={() => handleDateRangeChange('this-year')}
                   >
                     This Year
                   </Button>
                   <Button 
                     variant={currentDateRange === 'last-30-days' ? 'default' : 'outline'} 
-                    className="justify-start text-sm" 
+                    className="justify-start text-xs h-8" 
                     onClick={() => handleDateRangeChange('last-30-days')}
                   >
                     Last 30 Days
                   </Button>
                   <Button 
                     variant={currentDateRange === 'last-60-days' ? 'default' : 'outline'} 
-                    className="justify-start text-sm" 
+                    className="justify-start text-xs h-8" 
                     onClick={() => handleDateRangeChange('last-60-days')}
                   >
                     Last 60 Days
                   </Button>
                   <Button 
                     variant={currentDateRange === 'custom' ? 'default' : 'outline'} 
-                    className="justify-start text-sm" 
+                    className="justify-start text-xs h-8" 
                     onClick={() => handleDateRangeChange('custom')}
                   >
                     Custom Range
@@ -237,6 +236,12 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
                       mode="range"
                       selected={customDateRange}
                       onSelect={(range) => setCustomDateRange(range)}
+                      highlightToday={true}
+                      classNames={{
+                        day_range_start: "bg-primary text-primary-foreground rounded-l-md",
+                        day_range_end: "bg-primary text-primary-foreground rounded-r-md",
+                        day_range_middle: "bg-primary/20 text-primary rounded-none",
+                      }}
                     />
                   </div>
                 )}

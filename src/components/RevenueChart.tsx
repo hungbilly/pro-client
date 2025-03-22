@@ -59,7 +59,7 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
         amount: inv.amount,
         status: inv.status,
         date: inv.date,
-        dateFormatted: inv.date ? formatDateToYYYYMMDD(inv.date) : 'no date',
+        dateFormatted: inv.date ? formatDateToYYYYMMDD(new Date(inv.date)) : 'no date',
         paymentSchedulesCount: inv?.paymentSchedules?.length || 0
       })));
     }
@@ -68,12 +68,22 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
   }, [invoices, jobs, currentDateRange, customDateRange]);
   
   // Helper function to normalize dates to YYYY-MM-DD format
-  const formatDateToYYYYMMDD = (dateString: string): string => {
+  const formatDateToYYYYMMDD = (date: Date): string => {
     try {
-      return format(parseISO(dateString), 'yyyy-MM-dd');
+      return format(date, 'yyyy-MM-dd');
     } catch (error) {
-      logDebug('Error formatting date', { dateString, error });
+      logDebug('Error formatting date', { date, error });
       return '';
+    }
+  };
+  
+  // Helper function to convert string dates to Date objects
+  const parseDate = (dateString: string): Date => {
+    try {
+      return parseISO(dateString);
+    } catch (error) {
+      logDebug('Error parsing date', { dateString, error });
+      return new Date(); // Fallback to current date on error
     }
   };
   
@@ -125,19 +135,20 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
     const daysInRange = eachDayOfInterval({ start: startDate, end: endDate });
     
     logDebug('RevenueChart: Generating data for date range:', { 
-      startDate: format(startDate, 'yyyy-MM-dd'), 
-      endDate: format(endDate, 'yyyy-MM-dd'),
+      startDate: formatDateToYYYYMMDD(startDate), 
+      endDate: formatDateToYYYYMMDD(endDate),
       daysCount: daysInRange.length
     });
     
     const data = daysInRange.map(day => {
-      const dayFormatted = format(day, 'yyyy-MM-dd');
+      const dayFormatted = formatDateToYYYYMMDD(day);
       
       // Get jobs for this day
       const dayJobs = jobs.filter(job => {
         if (!job.date) return false;
-        // Normalize job.date to YYYY-MM-DD
-        return formatDateToYYYYMMDD(job.date) === dayFormatted;
+        // Parse job.date to a Date object and format it to YYYY-MM-DD
+        const jobDate = parseDate(job.date);
+        return formatDateToYYYYMMDD(jobDate) === dayFormatted;
       });
       
       // Initialize revenue amounts
@@ -149,11 +160,12 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
         if (invoice.paymentSchedules && invoice.paymentSchedules.length > 0) {
           // Process payment schedules
           invoice.paymentSchedules.forEach(schedule => {
-            // Normalize schedule.dueDate to YYYY-MM-DD for comparison
-            const scheduleDueDate = formatDateToYYYYMMDD(schedule.dueDate);
+            // Parse schedule.dueDate to a Date object and format it to YYYY-MM-DD for comparison
+            const scheduleDueDate = parseDate(schedule.dueDate);
+            const scheduleDueDateFormatted = formatDateToYYYYMMDD(scheduleDueDate);
             
             // Check if the schedule's due date matches the current day
-            if (scheduleDueDate === dayFormatted) {
+            if (scheduleDueDateFormatted === dayFormatted) {
               const scheduleAmount = (schedule.percentage / 100) * invoice.amount;
               logDebug(`Found payment schedule for day ${dayFormatted}:`, {
                 invoiceId: invoice.id,
@@ -162,7 +174,7 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
                 scheduleAmount,
                 status: schedule.status,
                 dueDateOriginal: schedule.dueDate,
-                dueDateFormatted: scheduleDueDate
+                dueDateFormatted: scheduleDueDateFormatted
               });
               
               if (schedule.status === 'paid') {
@@ -174,7 +186,8 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
           });
         } else {
           // For invoices without payment schedules, use the invoice date
-          const invoiceDateFormatted = formatDateToYYYYMMDD(invoice.date);
+          const invoiceDate = parseDate(invoice.date);
+          const invoiceDateFormatted = formatDateToYYYYMMDD(invoiceDate);
           
           if (invoiceDateFormatted === dayFormatted) {
             logDebug(`Found invoice for day ${dayFormatted} without payment schedules:`, {

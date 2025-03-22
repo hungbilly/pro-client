@@ -46,5 +46,40 @@ export const logDateProcessing = (context: string, dateInfo: any) => {
   console.log(`[${timestamp}] [Date Processing] ${context}`, dateInfo);
 };
 
+// Helper function to format dates consistently
+export const formatDate = (date: Date | string): string => {
+  try {
+    if (typeof date === 'string') {
+      // If it's already a string, make sure it's a valid date
+      const parsedDate = new Date(date);
+      if (isNaN(parsedDate.getTime())) {
+        logError('Invalid date string', { date });
+        return '';
+      }
+      return parsedDate.toISOString();
+    } else {
+      return date.toISOString();
+    }
+  } catch (error) {
+    logError('Error formatting date', { date, error });
+    return '';
+  }
+};
+
+// Helper function to parse dates safely
+export const parseDate = (dateString: string): Date | null => {
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      logError('Invalid date string during parsing', { dateString });
+      return null;
+    }
+    return date;
+  } catch (error) {
+    logError('Error parsing date', { dateString, error });
+    return null;
+  }
+};
+
 // Export supabase instance
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);

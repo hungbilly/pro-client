@@ -6,7 +6,7 @@ import { getInvoice } from '@/lib/storage';
 import { Invoice } from '@/types';
 import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
-import { supabase, logDebug, logError, logDataTransformation } from '@/integrations/supabase/client';
+import { supabase, logDebug, logError, logDataTransformation, formatDate, parseDate } from '@/integrations/supabase/client';
 
 interface ContractTemplate {
   id: string;
@@ -34,6 +34,20 @@ const InvoiceCreate = () => {
           logDataTransformation('Fetched invoice', fetchedInvoice);
           
           if (fetchedInvoice) {
+            // Validate dates
+            if (fetchedInvoice.date) {
+              const parsedDate = parseDate(fetchedInvoice.date);
+              if (parsedDate) {
+                logDebug('Invoice date validated:', { 
+                  original: fetchedInvoice.date,
+                  parsed: parsedDate.toISOString(),
+                  formatted: new Date(parsedDate).toLocaleDateString()
+                });
+              } else {
+                logError('Invalid invoice date', { date: fetchedInvoice.date });
+              }
+            }
+            
             logDebug('Fetched invoice with payment schedules:', {
               schedules: fetchedInvoice.paymentSchedules,
               count: fetchedInvoice.paymentSchedules?.length || 0,
@@ -43,9 +57,11 @@ const InvoiceCreate = () => {
             if (fetchedInvoice.paymentSchedules && fetchedInvoice.paymentSchedules.length > 0) {
               // Log detailed information about the first few payment schedules
               fetchedInvoice.paymentSchedules.slice(0, 3).forEach((schedule, index) => {
+                const parsedDueDate = parseDate(schedule.dueDate);
                 logDebug(`Payment schedule ${index + 1}:`, {
                   id: schedule.id,
                   dueDate: schedule.dueDate,
+                  dueDateParsed: parsedDueDate ? parsedDueDate.toISOString() : 'invalid date',
                   percentage: schedule.percentage,
                   status: schedule.status
                 });
@@ -119,6 +135,26 @@ const InvoiceCreate = () => {
         </div>
       </PageTransition>
     );
+  }
+
+  // Log more details about the invoice before rendering
+  if (invoice) {
+    logDebug('Rendering InvoiceForm with invoice data:', { 
+      id: invoice.id,
+      clientId: invoice.clientId,
+      jobId: invoice.jobId,
+      amount: invoice.amount,
+      date: invoice.date,
+      dateParsed: invoice.date ? new Date(invoice.date).toLocaleDateString() : 'no date',
+      status: invoice.status,
+      paymentSchedules: invoice.paymentSchedules?.map(s => ({
+        id: s.id,
+        dueDate: s.dueDate,
+        dueDateParsed: s.dueDate ? new Date(s.dueDate).toLocaleDateString() : 'no date',
+        percentage: s.percentage,
+        status: s.status
+      }))
+    });
   }
 
   logDebug('Rendering InvoiceForm with props:', { 

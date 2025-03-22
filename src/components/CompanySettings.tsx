@@ -1,12 +1,11 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PlusCircle, Trash2, Check } from 'lucide-react';
+import { PlusCircle, Trash2, Check, Upload, X, Image } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
@@ -34,6 +33,8 @@ const CompanySettings = () => {
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Form state with default values
   const [name, setName] = useState('');
@@ -224,7 +225,68 @@ const CompanySettings = () => {
     }
   };
 
-  // Display loading skeleton while the initial data is being fetched
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const fileType = file.type;
+    if (fileType !== 'image/png' && fileType !== 'image/jpeg') {
+      toast.error('Please upload a PNG or JPG image');
+      return;
+    }
+
+    // Validate file size (max 2MB)
+    const fileSizeInMB = file.size / (1024 * 1024);
+    if (fileSizeInMB > 2) {
+      toast.error('Image size must be less than 2MB');
+      return;
+    }
+
+    setUploadingLogo(true);
+    try {
+      // Create a unique file name with timestamp and original extension
+      const extension = file.name.split('.').pop();
+      const fileName = `company_logos/${selectedCompanyId || 'new'}_${Date.now()}.${extension}`;
+
+      // Upload file to Supabase Storage
+      const { data, error } = await supabase.storage
+        .from('uploads')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
+
+      if (error) throw error;
+
+      // Get the public URL
+      const { data: urlData } = supabase.storage
+        .from('uploads')
+        .getPublicUrl(fileName);
+
+      setLogoUrl(urlData.publicUrl);
+      toast.success('Logo uploaded successfully');
+    } catch (error: any) {
+      console.error('Error uploading logo:', error);
+      toast.error(error.message || 'Failed to upload logo');
+    } finally {
+      setUploadingLogo(false);
+      // Reset the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleRemoveLogo = () => {
+    setLogoUrl('');
+    toast.success('Logo removed');
+  };
+
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
+  };
+
   if (companyContextLoading) {
     return (
       <div className="space-y-6">
@@ -243,7 +305,6 @@ const CompanySettings = () => {
     );
   }
 
-  // Display message if no companies and not in adding mode
   if (companies.length === 0 && !isAddingNew) {
     return (
       <div className="text-center p-8">
@@ -296,6 +357,55 @@ const CompanySettings = () => {
             onChange={(e) => setName(e.target.value)}
             required
           />
+        </div>
+        
+        <div>
+          <Label htmlFor="logo">Company Logo</Label>
+          <div className="mt-2 space-y-3">
+            {logoUrl ? (
+              <div className="relative w-40 h-40 border rounded-md overflow-hidden">
+                <img 
+                  src={logoUrl} 
+                  alt="Company Logo" 
+                  className="w-full h-full object-contain"
+                />
+                <Button 
+                  variant="destructive" 
+                  size="icon"
+                  className="absolute top-2 right-2 h-6 w-6 rounded-full"
+                  onClick={handleRemoveLogo}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center w-40 h-40 bg-muted rounded-md border-2 border-dashed border-gray-300">
+                <Image className="h-10 w-10 text-gray-400" />
+              </div>
+            )}
+            
+            <div className="flex space-x-2">
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept="image/png,image/jpeg"
+                onChange={handleLogoUpload}
+              />
+              <Button 
+                variant="outline" 
+                onClick={triggerFileInput}
+                disabled={uploadingLogo}
+                className="flex items-center"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                {uploadingLogo ? 'Uploading...' : 'Upload Logo'}
+              </Button>
+              <p className="text-xs text-muted-foreground mt-1">
+                Upload PNG or JPG (max 2MB)
+              </p>
+            </div>
+          </div>
         </div>
         
         <div>
@@ -356,14 +466,6 @@ const CompanySettings = () => {
               onChange={(e) => setWebsite(e.target.value)}
             />
           </div>
-          <div>
-            <Label htmlFor="logo">Logo URL</Label>
-            <Input
-              id="logo"
-              value={logoUrl}
-              onChange={(e) => setLogoUrl(e.target.value)}
-            />
-          </div>
         </div>
         
         <div className="flex items-center space-x-2">
@@ -390,7 +492,7 @@ const CompanySettings = () => {
           </Button>
         )}
         <div className={!isAddingNew && selectedCompanyId ? '' : 'ml-auto'}>
-          <Button onClick={handleSave} disabled={isLoading}>
+          <Button onClick={handleSave} disabled={isLoading || uploadingLogo}>
             <Check className="h-4 w-4 mr-2" />
             {isAddingNew ? 'Create Company' : 'Update Company'}
           </Button>

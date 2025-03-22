@@ -393,10 +393,6 @@ const InvoiceView = () => {
                 
                 {/* Date Information */}
                 <div className="flex items-center space-x-4">
-                  <div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">DUE DATE</div>
-                    <div className="text-sm">{new Date(invoice.dueDate).toLocaleDateString()}</div>
-                  </div>
                   {job?.date && (
                     <div>
                       <div className="text-xs text-gray-500 dark:text-gray-400">JOB DATE</div>

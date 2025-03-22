@@ -28,10 +28,8 @@ const Routes = () => {
       <Route path="/auth" element={<Auth />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
       
-      {/* Public invoice view wrapped in AppLayout to show menu bar */}
-      <Route element={<AppLayout />}>
-        <Route path="/invoice/:viewLink" element={<InvoiceView />} />
-      </Route>
+      {/* Public invoice view without AppLayout for client view */}
+      <Route path="/invoice/:viewLink" element={<InvoiceView />} />
       
       {/* Protected routes with layout */}
       <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
@@ -61,7 +59,9 @@ const Routes = () => {
         <Route path="/job/:jobId/invoice/new" element={<InvoiceCreate />} />
         <Route path="/job/:jobId/invoice/create" element={<InvoiceCreate />} />
         <Route path="/job/:jobId/invoice/:invoiceId/edit" element={<InvoiceCreate />} />
-        <Route path="/invoice/:id" element={<InvoiceView />} />
+        
+        {/* Admin invoice view (wrapped in AppLayout) */}
+        <Route path="/invoice/:id/admin" element={<InvoiceView />} />
         
         {/* Account routes */}
         <Route path="/account" element={<Accounts />} />

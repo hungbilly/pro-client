@@ -41,8 +41,8 @@ const InvoiceView = () => {
   const location = useLocation();
 
   const isClientView = useMemo(() => 
-    (location.search.includes('client=true') || !location.search) && !isAdmin, 
-    [location.search, isAdmin]
+    !location.pathname.includes('/admin') && !isAdmin, 
+    [location.pathname, isAdmin]
   );
 
   const formatCurrency = useCallback((amount: number) => {
@@ -110,7 +110,6 @@ const InvoiceView = () => {
         
         setInvoice(fetchedInvoice);
         
-        // Fetch client data
         if (fetchedInvoice.clientId) {
           const fetchedClient = await getClient(fetchedInvoice.clientId);
           if (!fetchedClient) {
@@ -122,7 +121,6 @@ const InvoiceView = () => {
           setClient(fetchedClient);
         }
 
-        // Fetch job data if it exists
         if (fetchedInvoice.jobId) {
           const fetchedJob = await getJob(fetchedInvoice.jobId);
           if (fetchedJob) {
@@ -299,6 +297,32 @@ const InvoiceView = () => {
       });
   };
 
+  const handleAcceptInvoice = async () => {
+    if (!invoice) return;
+    
+    try {
+      await updateInvoiceStatus(invoice.id, 'accepted');
+      toast.success('Invoice accepted successfully');
+      setInvoice(prev => prev ? { ...prev, status: 'accepted' } : null);
+    } catch (err) {
+      console.error('Failed to accept invoice:', err);
+      toast.error('Error accepting invoice');
+    }
+  };
+
+  const handleAcceptContract = async () => {
+    if (!invoice) return;
+    
+    try {
+      await updateContractStatus(invoice.id, 'accepted');
+      toast.success('Contract terms accepted successfully');
+      setInvoice(prev => prev ? { ...prev, contractStatus: 'accepted' } : null);
+    } catch (err) {
+      console.error('Failed to accept contract:', err);
+      toast.error('Error accepting contract terms');
+    }
+  };
+
   if (loading) {
     return (
       <PageTransition>
@@ -372,6 +396,15 @@ const InvoiceView = () => {
           </div>
         )}
         
+        {isClientView && (
+          <div className="text-center mb-6">
+            <h1 className="text-2xl font-bold mb-2">Invoice #{invoice.number}</h1>
+            <p className="text-muted-foreground">
+              Please review and accept this invoice and contract terms.
+            </p>
+          </div>
+        )}
+        
         <Card className="max-w-4xl mx-auto bg-white dark:bg-gray-900 shadow-sm" ref={invoiceRef}>
           <CardHeader className="pb-0">
             {!isClientView && (
@@ -432,7 +465,7 @@ const InvoiceView = () => {
               <div className="space-y-4">
                 <div>
                   <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">FROM</h4>
-                  <div className="font-medium">{selectedCompany?.name}</div>
+                  <div className="font-medium">{selectedCompany?.name || invoice?.companyId}</div>
                   {selectedCompany?.email && <div className="text-sm">{selectedCompany.email}</div>}
                   {selectedCompany?.phone && <div className="text-sm">{selectedCompany.phone}</div>}
                   {selectedCompany?.address && <div className="text-sm">{selectedCompany.address}</div>}
@@ -500,17 +533,17 @@ const InvoiceView = () => {
               
               <TabsContent value="invoice" className="mt-6">
                 {isClientView && ['draft', 'sent'].includes(invoice.status) && (
-                  <Button onClick={() => updateInvoiceStatus(invoice.id, 'accepted')} className="mb-4">
+                  <Button onClick={handleAcceptInvoice} className="mb-4">
                     <Check className="h-4 w-4 mr-2" />
                     Accept Invoice
                   </Button>
                 )}
                 
-                {invoice.status === 'accepted' && !isClientView && (
+                {invoice.status === 'accepted' && (
                   <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-md flex items-center gap-2">
                     <FileCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
                     <span className="text-green-800 dark:text-green-400">
-                      This invoice has been accepted by the client
+                      This invoice has been accepted
                     </span>
                   </div>
                 )}
@@ -589,17 +622,17 @@ const InvoiceView = () => {
               
               <TabsContent value="contract" className="mt-6">
                 {isClientView && invoice.contractStatus !== 'accepted' && (
-                  <Button onClick={() => updateContractStatus(invoice.id, 'accepted')} className="mb-4">
+                  <Button onClick={handleAcceptContract} className="mb-4">
                     <Check className="h-4 w-4 mr-2" />
                     Accept Contract Terms
                   </Button>
                 )}
                   
-                {invoice.contractStatus === 'accepted' && !isClientView && (
+                {invoice.contractStatus === 'accepted' && (
                   <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-md flex items-center gap-2">
                     <FileCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
                     <span className="text-green-800 dark:text-green-400">
-                      This contract has been accepted by the client
+                      This contract has been accepted
                     </span>
                   </div>
                 )}

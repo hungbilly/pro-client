@@ -133,23 +133,29 @@ const PaymentScheduleTable = memo(({
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem 
-                        onClick={() => onUpdateStatus(schedule.id, 'paid')}
-                        className="text-green-600"
-                      >
-                        Mark as Paid
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        onClick={() => onUpdateStatus(schedule.id, 'unpaid')}
-                      >
-                        Mark as Unpaid
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        onClick={() => onUpdateStatus(schedule.id, 'write-off')}
-                        className="text-red-600"
-                      >
-                        Write Off
-                      </DropdownMenuItem>
+                      {schedule.status !== 'paid' && (
+                        <DropdownMenuItem 
+                          onClick={() => onUpdateStatus(schedule.id, 'paid')}
+                          className="text-green-600"
+                        >
+                          Mark as Paid
+                        </DropdownMenuItem>
+                      )}
+                      {schedule.status !== 'unpaid' && (
+                        <DropdownMenuItem 
+                          onClick={() => onUpdateStatus(schedule.id, 'unpaid')}
+                        >
+                          Mark as Unpaid
+                        </DropdownMenuItem>
+                      )}
+                      {schedule.status !== 'write-off' && (
+                        <DropdownMenuItem 
+                          onClick={() => onUpdateStatus(schedule.id, 'write-off')}
+                          className="text-red-600"
+                        >
+                          Write Off
+                        </DropdownMenuItem>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>

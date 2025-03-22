@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { 
@@ -300,16 +301,16 @@ const InvoiceView = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-4">
               {/* Left Column: Logo and Invoice # */}
               <div className="flex flex-col justify-between">
-                <div className="flex items-center mb-4 h-24">
+                <div className="flex items-start mb-6 h-40">
                   {invoice.companyId && selectedCompany?.logo_url ? (
                     <img 
                       src={selectedCompany.logo_url} 
                       alt={`${selectedCompany.name} Logo`}
-                      className="h-full max-h-24 w-auto object-contain mr-3" 
+                      className="h-full max-h-40 w-auto object-contain" 
                     />
                   ) : (
-                    <div className="h-16 w-16 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center text-gray-400">
-                      <Building className="h-10 w-10" />
+                    <div className="h-20 w-20 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center text-gray-400">
+                      <Building className="h-12 w-12" />
                     </div>
                   )}
                 </div>

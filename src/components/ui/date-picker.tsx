@@ -21,6 +21,7 @@ interface DatePickerProps {
   placeholder?: string
   highlightToday?: boolean
   classNames?: Record<string, string>
+  id?: string
 }
 
 export function DatePicker({ 
@@ -32,11 +33,13 @@ export function DatePicker({
   placeholder = "Select date",
   highlightToday = false,
   classNames,
+  id,
 }: DatePickerProps) {
   return (
     <div className="grid gap-2">
       {mode === "single" ? (
         <Calendar
+          id={id}
           mode="single"
           selected={selected as Date | null}
           onSelect={onSelect as (date: Date | null) => void}

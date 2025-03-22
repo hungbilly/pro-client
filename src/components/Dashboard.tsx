@@ -33,6 +33,8 @@ import { useCompany } from './CompanySelector';
 import AddClientButton from './ui-custom/AddClientButton';
 import AddJobButton from './ui-custom/AddJobButton';
 import RevenueChart from './RevenueChart';
+import { supabase } from '@/integrations/supabase/client';
+import { logDebug } from '@/integrations/supabase/client';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -59,9 +61,86 @@ const Dashboard: React.FC = () => {
     enabled: !!selectedCompanyId
   });
 
+  // Custom fetch function to get invoices with payment schedules
+  const fetchInvoicesWithSchedules = async (companyId: string) => {
+    try {
+      // Get invoices first
+      const { data: invoicesData, error: invoicesError } = await supabase
+        .from('invoices')
+        .select('*')
+        .eq('company_id', companyId);
+        
+      if (invoicesError) {
+        logDebug('Error fetching invoices:', invoicesError);
+        return [];
+      }
+      
+      // Get all payment schedules 
+      const { data: schedulesData, error: schedulesError } = await supabase
+        .from('payment_schedules')
+        .select('*');
+        
+      if (schedulesError) {
+        logDebug('Error fetching payment schedules:', schedulesError);
+        return [];
+      }
+      
+      logDebug(`Fetched ${invoicesData.length} invoices and ${schedulesData.length} payment schedules`);
+      
+      // Map invoices and attach their payment schedules
+      const invoicesWithSchedules = invoicesData.map(invoice => {
+        const invoiceSchedules = schedulesData
+          .filter(schedule => schedule.invoice_id === invoice.id)
+          .map(schedule => ({
+            id: schedule.id,
+            dueDate: schedule.due_date,
+            percentage: schedule.percentage,
+            description: schedule.description || '',
+            status: schedule.status || 'unpaid'
+          }));
+        
+        if (invoiceSchedules.length > 0) {
+          logDebug(`Invoice ${invoice.id} has ${invoiceSchedules.length} payment schedules`);
+        }
+        
+        return {
+          id: invoice.id,
+          clientId: invoice.client_id,
+          amount: invoice.amount,
+          date: invoice.date,
+          dueDate: invoice.due_date,
+          number: invoice.number,
+          status: invoice.status,
+          notes: invoice.notes,
+          jobId: invoice.job_id,
+          companyId: invoice.company_id,
+          contractStatus: invoice.contract_status,
+          contractTerms: invoice.contract_terms,
+          shootingDate: invoice.shooting_date,
+          viewLink: invoice.view_link,
+          paymentSchedules: invoiceSchedules
+        };
+      });
+      
+      logDebug('Processed invoices with schedules:', {
+        totalInvoices: invoicesWithSchedules.length,
+        sampleInvoice: invoicesWithSchedules.length > 0 ? {
+          id: invoicesWithSchedules[0].id,
+          paymentSchedulesCount: invoicesWithSchedules[0].paymentSchedules.length,
+          scheduleStatuses: invoicesWithSchedules[0].paymentSchedules.map(s => s.status)
+        } : null
+      });
+      
+      return invoicesWithSchedules;
+    } catch (error) {
+      logDebug('Unexpected error fetching invoices with schedules:', error);
+      return [];
+    }
+  };
+
   const { data: invoices = [], isLoading: invoicesLoading } = useQuery({
     queryKey: ['invoices', selectedCompanyId],
-    queryFn: () => getInvoices(selectedCompanyId),
+    queryFn: () => selectedCompanyId ? fetchInvoicesWithSchedules(selectedCompanyId) : [],
     enabled: !!selectedCompanyId
   });
 

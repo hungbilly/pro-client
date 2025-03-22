@@ -355,9 +355,10 @@ const InvoiceView = () => {
     if (!invoice || !paymentId) return;
     
     if (newStatus === 'paid') {
-      setPaymentIdToUpdate(paymentId);
       setPaymentDate(new Date());
+      setPaymentIdToUpdate(paymentId);
       setShowPaymentDateDialog(true);
+      console.log('[handlePaymentStatusUpdate] Opening payment date dialog for:', paymentId);
       return;
     }
     
@@ -391,41 +392,70 @@ const InvoiceView = () => {
   };
 
   const handleConfirmPaymentDate = async () => {
-    if (!paymentIdToUpdate || !paymentDate || !invoice) return;
+    console.log('[handleConfirmPaymentDate] Starting', { 
+      paymentIdToUpdate, 
+      paymentDate: paymentDate ? format(paymentDate, 'yyyy-MM-dd') : 'undefined' 
+    });
+    
+    if (!paymentIdToUpdate || !paymentDate || !invoice) {
+      console.log('[handleConfirmPaymentDate] Missing required data');
+      toast.error('Please select a payment date');
+      setShowPaymentDateDialog(false);
+      return;
+    }
     
     setUpdatingPaymentId(paymentIdToUpdate);
     try {
+      const formattedDate = format(paymentDate, 'yyyy-MM-dd');
+      console.log('[handleConfirmPaymentDate] Updating with date:', formattedDate);
+      
       const updatedSchedule = await updatePaymentScheduleStatus(
         paymentIdToUpdate, 
         'paid', 
-        format(paymentDate, 'yyyy-MM-dd')
+        formattedDate
       );
       
       if (!updatedSchedule) {
+        console.error('[handleConfirmPaymentDate] No updated schedule returned');
         toast.error('Failed to update payment status');
-        return;
-      }
-      
-      if (invoice.paymentSchedules) {
-        const updatedSchedules = invoice.paymentSchedules.map(schedule => 
-          schedule.id === paymentIdToUpdate ? updatedSchedule : schedule
-        );
+      } else {
+        console.log('[handleConfirmPaymentDate] Updated schedule:', updatedSchedule);
         
-        setInvoice({
-          ...invoice,
-          paymentSchedules: updatedSchedules
-        });
-        
-        toast.success('Payment marked as paid');
+        if (invoice.paymentSchedules) {
+          const updatedSchedules = invoice.paymentSchedules.map(schedule => 
+            schedule.id === paymentIdToUpdate ? updatedSchedule : schedule
+          );
+          
+          setInvoice({
+            ...invoice,
+            paymentSchedules: updatedSchedules
+          });
+          
+          toast.success('Payment marked as paid');
+        }
       }
     } catch (err) {
-      console.error('Failed to update payment status:', err);
+      console.error('[handleConfirmPaymentDate] Error updating payment status:', err);
       toast.error('Error updating payment status');
     } finally {
       setUpdatingPaymentId(null);
       setPaymentIdToUpdate(null);
       setShowPaymentDateDialog(false);
+      setTimeout(() => {
+        setPaymentDate(undefined);
+      }, 100);
+      console.log('[handleConfirmPaymentDate] Dialog closed, state reset');
     }
+  };
+
+  const handleCancelPaymentDate = () => {
+    console.log('[handleCancelPaymentDate] Cancelling payment date dialog');
+    setShowPaymentDateDialog(false);
+    setTimeout(() => {
+      setPaymentIdToUpdate(null);
+      setPaymentDate(undefined);
+    }, 100);
+    console.log('[handleCancelPaymentDate] State reset');
   };
 
   if (loading) {
@@ -861,7 +891,15 @@ const InvoiceView = () => {
         </Card>
       </div>
 
-      <Dialog open={showPaymentDateDialog} onOpenChange={setShowPaymentDateDialog}>
+      <Dialog 
+        open={showPaymentDateDialog} 
+        onOpenChange={(open) => {
+          console.log('[Dialog onOpenChange]', { open, current: showPaymentDateDialog });
+          if (!open) {
+            handleCancelPaymentDate();
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Enter Payment Date</DialogTitle>
@@ -874,16 +912,22 @@ const InvoiceView = () => {
               <Label htmlFor="payment-date">Payment Date</Label>
               <DatePicker
                 selected={paymentDate}
-                onSelect={(date) => setPaymentDate(date)}
+                onSelect={(date) => {
+                  console.log('[DatePicker] Selected date:', date);
+                  setPaymentDate(date);
+                }}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowPaymentDateDialog(false)}>
+            <Button variant="outline" onClick={handleCancelPaymentDate}>
               Cancel
             </Button>
-            <Button onClick={handleConfirmPaymentDate}>
-              Confirm
+            <Button 
+              onClick={handleConfirmPaymentDate}
+              disabled={!paymentDate || !!updatingPaymentId}
+            >
+              {updatingPaymentId ? 'Saving...' : 'Confirm'}
             </Button>
           </DialogFooter>
         </DialogContent>

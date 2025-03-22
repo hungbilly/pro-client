@@ -64,46 +64,66 @@ const InvoiceView = () => {
         setLoading(true);
         let fetchedInvoice: Invoice | null = null;
         
-        if (id) {
-          console.log('Attempting to fetch invoice with ID:', id);
-          fetchedInvoice = await getInvoice(id);
+        // Combine id and viewLink, preferring id if available
+        const identifier = id || viewLink;
+        if (!identifier) {
+          console.log('[InvoiceView] No identifier provided in URL');
+          setError('Invalid URL. Please provide an invoice ID or view link.');
+          return;
+        }
+        
+        console.log('[InvoiceView] Fetching invoice with identifier:', identifier);
+        
+        // Check if the identifier looks like a UUID (likely an invoice ID)
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
+        
+        if (isUUID) {
+          console.log('[InvoiceView] Identifier looks like a UUID, using getInvoice');
+          fetchedInvoice = await getInvoice(identifier);
+        } else {
+          console.log('[InvoiceView] Identifier does not look like a UUID, using getInvoiceByViewLink');
+          fetchedInvoice = await getInvoiceByViewLink(identifier);
         }
         
         if (!fetchedInvoice) {
+          // Try alternative approach if no invoice is found
           const urlPath = location.pathname;
           const lastPartOfUrl = urlPath.split('/').pop() || '';
           
-          console.log('URL path identifier:', lastPartOfUrl);
-          
-          if (lastPartOfUrl && lastPartOfUrl !== viewLink) {
-            console.log('Trying with path identifier as ID:', lastPartOfUrl);
-            fetchedInvoice = await getInvoice(lastPartOfUrl);
-          }
-          
-          if (!fetchedInvoice) {
-            const linkToUse = viewLink || lastPartOfUrl;
-            console.log('Trying with view link:', linkToUse);
-            fetchedInvoice = await getInvoiceByViewLink(linkToUse);
+          if (lastPartOfUrl && lastPartOfUrl !== identifier) {
+            console.log('[InvoiceView] Trying alternative identifier from URL path:', lastPartOfUrl);
+            
+            // Check if this alternative identifier is a UUID
+            const isLastPartUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(lastPartOfUrl);
+            
+            if (isLastPartUUID) {
+              fetchedInvoice = await getInvoice(lastPartOfUrl);
+            } else {
+              fetchedInvoice = await getInvoiceByViewLink(lastPartOfUrl);
+            }
           }
         }
         
         if (!fetchedInvoice) {
+          console.log('[InvoiceView] No invoice found for identifier:', identifier);
           setError('Invoice not found. Please check the URL or contact support.');
-          setLoading(false);
           return;
         }
-
+        
         // Check if the invoice belongs to the selected company
         if (selectedCompanyId && fetchedInvoice.companyId !== selectedCompanyId && !isClientView) {
+          console.log('[InvoiceView] Invoice company mismatch. Expected:', selectedCompanyId, 'Got:', fetchedInvoice.companyId);
           toast.error("This invoice belongs to a different company");
+          setError('This invoice belongs to a different company.');
           return;
         }
-                
+        
         setInvoice(fetchedInvoice);
-
+        
         if (fetchedInvoice.clientId) {
           const fetchedClient = await getClient(fetchedInvoice.clientId);
           if (!fetchedClient) {
+            console.log('[InvoiceView] No client found for clientId:', fetchedInvoice.clientId);
             setError('Client information not found.');
             return;
           }
@@ -111,24 +131,21 @@ const InvoiceView = () => {
           setClient(fetchedClient);
         }
       } catch (err) {
-        console.error('Failed to load invoice:', err);
+        console.error('[InvoiceView] Failed to load invoice:', err);
         setError('Failed to load invoice. Please try again later.');
       } finally {
         setLoading(false);
       }
     };
-
+    
     fetchInvoice();
-  }, [viewLink, id, location.pathname, selectedCompanyId, isClientView]);
+  }, [id, viewLink, location.pathname, selectedCompanyId, isClientView]);
 
   // Handle payment status update
   const handlePaymentStatusUpdate = useCallback(async (paymentId: string, newStatus: 'paid' | 'unpaid' | 'write-off') => {
     if (!invoice || !paymentId) return;
     
-    console.log('[handlePaymentStatusUpdate] Updating status for:', paymentId, newStatus);
-    
     if (newStatus === 'paid') {
-      console.log('[handlePaymentStatusUpdate] Opening payment date dialog for:', paymentId);
       setPaymentIdToUpdate(paymentId);
       setPaymentDate(new Date());
       setShowPaymentDateDialog(true);
@@ -153,7 +170,6 @@ const InvoiceView = () => {
         setInvoice(prev => {
           if (!prev) return prev;
           if (isEqual(prev.paymentSchedules, updatedSchedules)) {
-            console.log('[handlePaymentStatusUpdate] No changes in payment schedules, skipping state update');
             return prev;
           }
           return {

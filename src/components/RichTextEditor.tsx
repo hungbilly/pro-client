@@ -30,14 +30,16 @@ const RichTextEditor = memo(({
   readOnly = false
 }: RichTextEditorProps) => {
   const editorRef = useRef<HTMLDivElement>(null);
-  const [html, setHtml] = useState(value);
   const [showToolbar, setShowToolbar] = useState(alwaysShowToolbar);
-
+  const [lastHtml, setLastHtml] = useState(value);
+  
+  // Only update the editor content when the value prop changes
   useEffect(() => {
-    if (editorRef.current) {
+    if (editorRef.current && value !== lastHtml) {
       editorRef.current.innerHTML = value || '';
+      setLastHtml(value);
     }
-  }, [value]);
+  }, [value, lastHtml]);
 
   const handleCommand = (command: string, value: string | null = null) => {
     if (readOnly) return;
@@ -45,9 +47,7 @@ const RichTextEditor = memo(({
     if (editorRef.current) {
       editorRef.current.focus();
       document.execCommand(command, false, value);
-      const newContent = editorRef.current.innerHTML;
-      setHtml(newContent);
-      onChange(newContent);
+      updateContent();
     }
   };
 
@@ -57,18 +57,23 @@ const RichTextEditor = memo(({
     
     editorRef.current.focus();
     document.execCommand(listType, false, null);
+    updateContent();
+  };
+
+  const updateContent = () => {
+    if (!editorRef.current) return;
+    
     const newContent = editorRef.current.innerHTML;
-    setHtml(newContent);
-    onChange(newContent);
+    // Only update if content has changed
+    if (newContent !== lastHtml) {
+      setLastHtml(newContent);
+      onChange(newContent);
+    }
   };
 
   const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
     if (readOnly) return;
-    
-    const target = e.target as HTMLDivElement;
-    const newContent = target.innerHTML;
-    setHtml(newContent);
-    onChange(newContent);
+    updateContent();
   };
 
   const handleFocus = () => {

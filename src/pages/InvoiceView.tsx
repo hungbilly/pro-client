@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
+
+import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
+import { useParams, Link, useLocation } from 'react-router-dom';
 import { 
   getInvoiceByViewLink, 
   getClient, 
@@ -8,7 +9,7 @@ import {
   updateContractStatus,
   updatePaymentScheduleStatus
 } from '@/lib/storage';
-import { Invoice, Client, PaymentSchedule } from '@/types';
+import { Invoice, Client } from '@/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -20,62 +21,47 @@ import { useAuth } from '@/context/AuthContext';
 import { useCompanyContext } from '@/context/CompanyContext';
 import { format } from 'date-fns';
 import { supabase } from "@/integrations/supabase/client";
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import RichTextEditor from '@/components/RichTextEditor';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { DatePicker } from '@/components/ui/date-picker';
+import PaymentScheduleTable from '@/components/invoice/PaymentScheduleTable';
+import PaymentDateDialog from '@/components/invoice/PaymentDateDialog';
+import isEqual from 'lodash/isEqual';
 
 const InvoiceView = () => {
-  const { viewLink, id } = useParams<{ viewLink: string, id: string }>();
-  const [invoice, setInvoice] = useState<Invoice | undefined>(undefined);
-  const [client, setClient] = useState<Client | undefined>(undefined);
+  const [invoice, setInvoice] = useState<Invoice | null>(null);
+  const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sending, setSending] = useState(false);
-  const location = useLocation();
-  const navigate = useNavigate();
-  const { isAdmin } = useAuth();
-  const { selectedCompanyId } = useCompanyContext();
-  const [emailLogs, setEmailLogs] = useState<Array<{timestamp: Date, message: string, success: boolean}>>([]);
-  const [paymentScheduleLogs, setPaymentScheduleLogs] = useState<string[]>([]);
-  const [showEmailDialog, setShowEmailDialog] = useState(false);
-  const [showEmailForm, setShowEmailForm] = useState(false);
   const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null);
   const [paymentDate, setPaymentDate] = useState<Date | undefined>(undefined);
   const [showPaymentDateDialog, setShowPaymentDateDialog] = useState(false);
   const [paymentIdToUpdate, setPaymentIdToUpdate] = useState<string | null>(null);
-  
-  const isClientView = (location.search.includes('client=true') || !location.search) && !isAdmin;
 
-  const generateDefaultEmailContent = () => {
-    if (!client || !invoice) return "Dear Client,\r\n\r\nPlease find your invoice at the link below:\r\n[Invoice Link]\r\n\r\nThank you for your business.";
-    
-    const invoiceUrl = `${window.location.origin}/invoice/${viewLink}?client=true`;
-    
-    return `Dear ${client.name},\r\n\r\nPlease find your invoice (${invoice.number}) at the following link:\r\n${invoiceUrl}\r\n\r\nThank you for your business.`;
-  };
-  
-  const generateDefaultSubject = () => {
-    if (!client || !invoice) return "Invoice";
-    return `Invoice ${invoice.number} for ${client.name}`;
-  };
-  
-  const [emailContent, setEmailContent] = useState(generateDefaultEmailContent());
-  const [emailSubject, setEmailSubject] = useState(generateDefaultSubject());
+  const { isAdmin } = useAuth();
+  const { selectedCompanyId } = useCompanyContext();
+  const { viewLink, id } = useParams<{ viewLink: string, id: string }>();
+  const location = useLocation();
 
+  // Memoize frequently used values to prevent render loops
+  const isClientView = useMemo(() => 
+    (location.search.includes('client=true') || !location.search) && !isAdmin, 
+    [location.search, isAdmin]
+  );
+
+  // Format currency with memoization to prevent unnecessary re-renders
+  const formatCurrency = useCallback((amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    }).format(amount);
+  }, []);
+
+  // Fetch invoice and client data
   useEffect(() => {
-    if (!viewLink && !id) {
-      setError('Invoice identifier is missing.');
-      setLoading(false);
-      return;
-    }
-
     const fetchInvoice = async () => {
       try {
+        setLoading(true);
         let fetchedInvoice: Invoice | null = null;
         
         if (id) {
@@ -110,255 +96,42 @@ const InvoiceView = () => {
         // Check if the invoice belongs to the selected company
         if (selectedCompanyId && fetchedInvoice.companyId !== selectedCompanyId && !isClientView) {
           toast.error("This invoice belongs to a different company");
-          navigate('/');
           return;
         }
-        
-        if (fetchedInvoice.paymentSchedules) {
-          console.log('PAYMENT SCHEDULES FOUND IN FETCHED INVOICE:', JSON.stringify(fetchedInvoice.paymentSchedules));
-          setPaymentScheduleLogs(prev => [...prev, `Fetched invoice has ${fetchedInvoice.paymentSchedules?.length || 0} payment schedules`]);
-        } else {
-          console.log('NO PAYMENT SCHEDULES FOUND IN FETCHED INVOICE');
-          setPaymentScheduleLogs(prev => [...prev, 'No payment schedules in fetched invoice']);
-          
-          fetchedInvoice.paymentSchedules = [{ 
-            id: Date.now().toString(), 
-            dueDate: fetchedInvoice.dueDate,
-            percentage: 100,
-            description: 'Full payment',
-            status: 'unpaid'
-          }];
-        }
-        
+                
         setInvoice(fetchedInvoice);
 
         if (fetchedInvoice.clientId) {
           const fetchedClient = await getClient(fetchedInvoice.clientId);
           if (!fetchedClient) {
             setError('Client information not found.');
-            setLoading(false);
             return;
           }
           
           setClient(fetchedClient);
         }
-        
-        setLoading(false);
       } catch (err) {
         console.error('Failed to load invoice:', err);
         setError('Failed to load invoice. Please try again later.');
+      } finally {
         setLoading(false);
       }
     };
 
     fetchInvoice();
-  }, [viewLink, id, location.pathname, selectedCompanyId, navigate, isClientView]);
+  }, [viewLink, id, location.pathname, selectedCompanyId, isClientView]);
 
-  useEffect(() => {
-    if (client && invoice) {
-      setEmailContent(generateDefaultEmailContent());
-      setEmailSubject(generateDefaultSubject());
-    }
-  }, [client, invoice]);
-
-  const addToGoogleCalendar = () => {
-    if (!invoice?.shootingDate || !client) return false;
-    
-    try {
-      const formattedDate = format(new Date(invoice.shootingDate), 'yyyyMMdd');
-      const title = `Photo Shoot - ${client.name} - Invoice #${invoice.number}`;
-      const details = `Photo shooting session for ${client.name}.\n\nClient Contact:\nEmail: ${client.email}\nPhone: ${client.phone}\n\nAddress: ${client.address}\n\nInvoice #${invoice.number}`;
-      
-      const dateStart = formattedDate;
-      const dateEnd = formattedDate;
-      
-      const googleCalendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${dateStart}/${dateEnd}&details=${encodeURIComponent(details)}&location=${encodeURIComponent(client.address)}`;
-      
-      window.open(googleCalendarUrl, '_blank');
-      return true;
-    } catch (err) {
-      console.error('Failed to add to Google Calendar:', err);
-      return false;
-    }
-  };
-
-  const addToCompanyCalendar = async (invoiceId: string, clientId: string) => {
-    try {
-      const { data, error } = await supabase.functions.invoke('add-to-calendar', {
-        body: { invoiceId, clientId }
-      });
-      
-      if (error) {
-        console.error('Error calling add-to-calendar function:', error);
-        toast.error('Failed to add event to company calendar');
-        return false;
-      }
-      
-      if (data.success) {
-        toast.success('Event added to company calendar');
-        return true;
-      } else {
-        console.warn('Calendar function response:', data);
-        toast.warning(data.message || 'Could not add to calendar');
-        return false;
-      }
-    } catch (err) {
-      console.error('Failed to add to company calendar:', err);
-      toast.error('Failed to add event to company calendar');
-      return false;
-    }
-  };
-
-  const handleAcceptInvoice = async () => {
-    if (!invoice) return;
-
-    try {
-      const updatedInvoice = await updateInvoiceStatus(invoice.id, 'accepted');
-      if (updatedInvoice) {
-        setInvoice(updatedInvoice);
-        toast.success('Invoice accepted!');
-        
-        if (updatedInvoice.shootingDate && client) {
-          const calendarSuccess = await addToCompanyCalendar(updatedInvoice.id, client.id);
-          
-          if (!calendarSuccess) {
-            toast.warning('Using backup method to create calendar event');
-            const manualSuccess = addToGoogleCalendar();
-            if (manualSuccess) {
-              toast.success('Please add this event to your company calendar');
-            }
-          }
-        }
-      } else {
-        toast.error('Failed to update invoice status.');
-      }
-    } catch (err) {
-      toast.error('Failed to accept invoice.');
-    }
-  };
-
-  const handleAcceptContract = async () => {
-    if (!invoice) return;
-
-    try {
-      const updatedInvoice = await updateContractStatus(invoice.id, 'accepted');
-      if (updatedInvoice) {
-        setInvoice(updatedInvoice);
-        toast.success('Contract terms accepted!');
-      } else {
-        toast.error('Failed to update contract status.');
-      }
-    } catch (err) {
-      toast.error('Failed to accept contract terms.');
-    }
-  };
-
-  const handleSendEmail = async () => {
-    if (!invoice || !client || !client.email) {
-      toast.error('Client email is required');
-      return;
-    }
-    
-    setSending(true);
-    try {
-      console.log('Sending invoice email to:', client.email);
-      const invoiceUrl = `${window.location.origin}/invoice/${viewLink}?client=true`;
-      
-      const { data, error } = await supabase.functions.invoke('send-invoice-email', {
-        body: { 
-          clientEmail: client.email,
-          clientName: client.name,
-          invoiceNumber: invoice.number,
-          invoiceUrl: invoiceUrl,
-          emailSubject: emailSubject,
-          emailContent: emailContent
-        }
-      });
-      
-      if (error) {
-        console.error('Error sending email:', error);
-        toast.error('Email failed to send.');
-        setEmailLogs(prev => [
-          { timestamp: new Date(), message: `Failed to send email: ${error.message}`, success: false },
-          ...prev
-        ]);
-        return;
-      }
-      
-      if (data?.success) {
-        console.log('Email response:', data);
-        toast.success(`Email sent to ${client.email}`);
-        setEmailLogs(prev => [
-          { timestamp: new Date(), message: `Email sent successfully to ${client.email}`, success: true },
-          ...prev
-        ]);
-        
-        if (invoice.status === 'draft') {
-          const updatedInvoice = await updateInvoiceStatus(invoice.id, 'sent');
-          if (updatedInvoice) {
-            setInvoice(updatedInvoice);
-            setEmailLogs(prev => [
-              { timestamp: new Date(), message: `Invoice status updated to 'sent'`, success: true },
-              ...prev
-            ]);
-          }
-        }
-        
-        setShowEmailForm(false);
-      } else {
-        console.warn('Email response:', data);
-        toast.error(data?.message || 'Email failed to send.');
-        setEmailLogs(prev => [
-          { timestamp: new Date(), message: `Email sending failed: ${data?.message || 'Unknown error'}`, success: false },
-          ...prev
-        ]);
-        
-        if (data?.debug) {
-          console.log('Email debug info:', data.debug);
-          setEmailLogs(prev => [
-            { timestamp: new Date(), message: `Debug info: ${JSON.stringify(data.debug)}`, success: false },
-            ...prev
-          ]);
-        }
-      }
-    } catch (err) {
-      console.error('Failed to send email:', err);
-      toast.error('Failed to send email to client.');
-      setEmailLogs(prev => [
-        { timestamp: new Date(), message: `Exception: ${err.message}`, success: false },
-        ...prev
-      ]);
-    } finally {
-      setSending(false);
-    }
-  };
-
-  const handleEditInvoice = () => {
-    if (invoice && client) {
-      if (invoice.jobId) {
-        navigate(`/job/${invoice.jobId}/invoice/${invoice.id}/edit`);
-      } else {
-        navigate(`/client/${client.id}/invoice/${invoice.id}/edit`);
-      }
-    }
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-    }).format(amount);
-  };
-
-  const handlePaymentStatusUpdate = async (paymentId: string, newStatus: 'paid' | 'unpaid' | 'write-off') => {
+  // Handle payment status update
+  const handlePaymentStatusUpdate = useCallback(async (paymentId: string, newStatus: 'paid' | 'unpaid' | 'write-off') => {
     if (!invoice || !paymentId) return;
     
+    console.log('[handlePaymentStatusUpdate] Updating status for:', paymentId, newStatus);
+    
     if (newStatus === 'paid') {
-      setPaymentDate(new Date());
-      setPaymentIdToUpdate(paymentId);
-      setShowPaymentDateDialog(true);
       console.log('[handlePaymentStatusUpdate] Opening payment date dialog for:', paymentId);
+      setPaymentIdToUpdate(paymentId);
+      setPaymentDate(new Date());
+      setShowPaymentDateDialog(true);
       return;
     }
     
@@ -376,9 +149,17 @@ const InvoiceView = () => {
           schedule.id === paymentId ? updatedSchedule : schedule
         );
         
-        setInvoice({
-          ...invoice,
-          paymentSchedules: updatedSchedules
+        // Use functional update with deep equality check
+        setInvoice(prev => {
+          if (!prev) return prev;
+          if (isEqual(prev.paymentSchedules, updatedSchedules)) {
+            console.log('[handlePaymentStatusUpdate] No changes in payment schedules, skipping state update');
+            return prev;
+          }
+          return {
+            ...prev,
+            paymentSchedules: updatedSchedules
+          };
         });
         
         toast.success(`Payment marked as ${newStatus}`);
@@ -389,74 +170,69 @@ const InvoiceView = () => {
     } finally {
       setUpdatingPaymentId(null);
     }
-  };
+  }, [invoice]);
 
-  const handleConfirmPaymentDate = async () => {
-    console.log('[handleConfirmPaymentDate] Starting', { 
-      paymentIdToUpdate, 
-      paymentDate: paymentDate ? format(paymentDate, 'yyyy-MM-dd') : 'undefined' 
-    });
-    
+  // Handle confirm payment date
+  const handleConfirmPaymentDate = useCallback(async () => {
     if (!paymentIdToUpdate || !paymentDate || !invoice) {
-      console.log('[handleConfirmPaymentDate] Missing required data');
       toast.error('Please select a payment date');
-      setShowPaymentDateDialog(false);
       return;
     }
     
     setUpdatingPaymentId(paymentIdToUpdate);
     try {
-      const formattedDate = format(paymentDate, 'yyyy-MM-dd');
-      console.log('[handleConfirmPaymentDate] Updating with date:', formattedDate);
-      
       const updatedSchedule = await updatePaymentScheduleStatus(
         paymentIdToUpdate, 
         'paid', 
-        formattedDate
+        format(paymentDate, 'yyyy-MM-dd')
       );
       
       if (!updatedSchedule) {
-        console.error('[handleConfirmPaymentDate] No updated schedule returned');
         toast.error('Failed to update payment status');
-      } else {
-        console.log('[handleConfirmPaymentDate] Updated schedule:', updatedSchedule);
+        return;
+      }
+      
+      if (invoice.paymentSchedules) {
+        const updatedSchedules = invoice.paymentSchedules.map(schedule => 
+          schedule.id === paymentIdToUpdate ? updatedSchedule : schedule
+        );
         
-        if (invoice.paymentSchedules) {
-          const updatedSchedules = invoice.paymentSchedules.map(schedule => 
-            schedule.id === paymentIdToUpdate ? updatedSchedule : schedule
-          );
-          
-          setInvoice({
-            ...invoice,
+        // Use functional update with deep equality check
+        setInvoice(prev => {
+          if (!prev) return prev;
+          if (isEqual(prev.paymentSchedules, updatedSchedules)) {
+            return prev;
+          }
+          return {
+            ...prev,
             paymentSchedules: updatedSchedules
-          });
-          
-          toast.success('Payment marked as paid');
-        }
+          };
+        });
+        
+        toast.success('Payment marked as paid');
       }
     } catch (err) {
-      console.error('[handleConfirmPaymentDate] Error updating payment status:', err);
+      console.error('Error updating payment status:', err);
       toast.error('Error updating payment status');
     } finally {
       setUpdatingPaymentId(null);
       setPaymentIdToUpdate(null);
       setShowPaymentDateDialog(false);
-      setTimeout(() => {
-        setPaymentDate(undefined);
-      }, 100);
-      console.log('[handleConfirmPaymentDate] Dialog closed, state reset');
-    }
-  };
-
-  const handleCancelPaymentDate = () => {
-    console.log('[handleCancelPaymentDate] Cancelling payment date dialog');
-    setShowPaymentDateDialog(false);
-    setTimeout(() => {
-      setPaymentIdToUpdate(null);
       setPaymentDate(undefined);
-    }, 100);
-    console.log('[handleCancelPaymentDate] State reset');
-  };
+    }
+  }, [invoice, paymentIdToUpdate, paymentDate]);
+
+  // Handle cancel payment date
+  const handleCancelPaymentDate = useCallback(() => {
+    setShowPaymentDateDialog(false);
+    setPaymentDate(undefined);
+    setPaymentIdToUpdate(null);
+  }, []);
+
+  // Handle payment date select
+  const handlePaymentDateSelect = useCallback((date: Date | undefined) => {
+    setPaymentDate(date);
+  }, []);
 
   if (loading) {
     return (
@@ -499,20 +275,6 @@ const InvoiceView = () => {
     ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
     : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
 
-  const paymentStatusColors = {
-    paid: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-    unpaid: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-    'write-off': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-  };
-
-  const canClientAcceptInvoice = ['draft', 'sent'].includes(invoice.status);
-  const canClientAcceptContract = invoice.contractStatus !== 'accepted';
-
-  console.log('RENDERING INVOICE VIEW WITH PAYMENT SCHEDULES:', 
-              invoice.paymentSchedules ? JSON.stringify(invoice.paymentSchedules) : 'undefined');
-  console.log('Payment schedules type:', Array.isArray(invoice.paymentSchedules) ? 'array' : typeof invoice.paymentSchedules);
-  console.log('Payment schedules length:', Array.isArray(invoice.paymentSchedules) ? invoice.paymentSchedules.length : 0);
-
   return (
     <PageTransition>
       <div className="container py-8">
@@ -547,7 +309,13 @@ const InvoiceView = () => {
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  onClick={handleEditInvoice}
+                  onClick={() => {
+                    if (invoice.jobId) {
+                      window.location.href = `/job/${invoice.jobId}/invoice/${invoice.id}/edit`;
+                    } else {
+                      window.location.href = `/client/${client.id}/invoice/${invoice.id}/edit`;
+                    }
+                  }}
                   className="flex items-center gap-1"
                 >
                   <Edit className="h-3 w-3" />
@@ -608,8 +376,8 @@ const InvoiceView = () => {
               </TabsList>
               
               <TabsContent value="invoice" className="mt-4">
-                {isClientView && canClientAcceptInvoice && (
-                  <Button onClick={handleAcceptInvoice} className="mb-4">
+                {isClientView && ['draft', 'sent'].includes(invoice.status) && (
+                  <Button onClick={() => updateInvoiceStatus(invoice.id, 'accepted')} className="mb-4">
                     <Check className="h-4 w-4 mr-2" />
                     Accept Invoice
                   </Button>
@@ -630,54 +398,30 @@ const InvoiceView = () => {
                     <h4 className="text-lg font-semibold">Products / Packages</h4>
                   </div>
                   
-                  <div className="border rounded-md overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-muted/50">
-                          <TableHead className="w-1/4">Product / Package</TableHead>
-                          <TableHead className="w-2/5">Description</TableHead>
-                          <TableHead className="text-right">Unit Price</TableHead>
-                          <TableHead className="text-right">Quantity</TableHead>
-                          <TableHead className="text-right">Amount</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {invoice.items.map((item) => (
-                          <TableRow key={item.id}>
-                            <TableCell className="font-medium">
-                              {item.description ? item.description.split('<')[0] : 'Product'}
-                            </TableCell>
-                            <TableCell>
-                              {item.description ? (
-                                <div dangerouslySetInnerHTML={{ __html: item.description }} />
-                              ) : (
-                                'No description'
-                              )}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {formatCurrency(item.rate)}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {item.quantity}
-                            </TableCell>
-                            <TableCell className="text-right font-medium">
-                              {formatCurrency(item.amount)}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                  
-                  <div className="mt-4 flex justify-end">
-                    <div className="w-72 space-y-2">
-                      <div className="flex justify-between py-2">
-                        <span className="font-medium">Subtotal</span>
-                        <span className="font-medium">{formatCurrency(invoice.amount)}</span>
-                      </div>
-                      <div className="flex justify-between py-2 border-t border-b">
-                        <span className="font-medium">Total Due</span>
-                        <span className="font-bold">{formatCurrency(invoice.amount)}</span>
+                  <div className="border rounded-md p-4">
+                    {invoice.items && invoice.items.length > 0 ? (
+                      invoice.items.map((item) => (
+                        <div key={item.id} className="mb-4 pb-4 border-b last:mb-0 last:pb-0 last:border-b-0">
+                          <div className="flex justify-between">
+                            <h5 className="font-medium">{item.description ? item.description.split('<')[0] : 'Product'}</h5>
+                            <span className="font-medium">{formatCurrency(item.amount)}</span>
+                          </div>
+                          <div className="mt-1 text-sm text-muted-foreground">
+                            {item.quantity} x {formatCurrency(item.rate)}
+                          </div>
+                          {item.description && (
+                            <div className="mt-2 text-sm" dangerouslySetInnerHTML={{ __html: item.description }} />
+                          )}
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-muted-foreground">No items in this invoice.</p>
+                    )}
+                    
+                    <div className="mt-4 pt-4 border-t">
+                      <div className="flex justify-between font-medium">
+                        <span>Total</span>
+                        <span>{formatCurrency(invoice.amount)}</span>
                       </div>
                     </div>
                   </div>
@@ -685,8 +429,12 @@ const InvoiceView = () => {
                 
                 <div>
                   <h4 className="text-lg font-semibold mb-2">Notes</h4>
-                  <div className="border rounded-md p-4">
-                    <div dangerouslySetInnerHTML={{ __html: invoice.notes || 'No notes provided.' }} />
+                  <div className="border rounded-md">
+                    <RichTextEditor
+                      value={invoice.notes || 'No notes provided.'}
+                      onChange={() => {}}
+                      readOnly={true}
+                    />
                   </div>
                 </div>
                 
@@ -699,80 +447,14 @@ const InvoiceView = () => {
                   </div>
                   
                   {Array.isArray(invoice.paymentSchedules) && invoice.paymentSchedules.length > 0 ? (
-                    <div className="border rounded-md overflow-hidden">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="bg-muted/50">
-                            <TableHead>Description</TableHead>
-                            <TableHead>Due Date</TableHead>
-                            <TableHead className="text-right">Percentage</TableHead>
-                            <TableHead className="text-right">Amount</TableHead>
-                            <TableHead>Status</TableHead>
-                            {!isClientView && <TableHead className="w-24"></TableHead>}
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {invoice.paymentSchedules.map((schedule) => (
-                            <TableRow key={schedule.id}>
-                              <TableCell>{schedule.description}</TableCell>
-                              <TableCell>
-                                {new Date(schedule.dueDate).toLocaleDateString()}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                {schedule.percentage}%
-                              </TableCell>
-                              <TableCell className="text-right font-medium">
-                                {formatCurrency((invoice.amount * schedule.percentage) / 100)}
-                              </TableCell>
-                              <TableCell>
-                                <Badge className={paymentStatusColors[schedule.status] || paymentStatusColors.unpaid}>
-                                  {schedule.status.toUpperCase()}
-                                </Badge>
-                                {schedule.paymentDate && (
-                                  <div className="text-xs text-muted-foreground mt-1">
-                                    Paid on: {new Date(schedule.paymentDate).toLocaleDateString()}
-                                  </div>
-                                )}
-                              </TableCell>
-                              {!isClientView && (
-                                <TableCell>
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <Button 
-                                        variant="ghost" 
-                                        size="sm"
-                                        disabled={updatingPaymentId === schedule.id}
-                                      >
-                                        {updatingPaymentId === schedule.id ? 'Updating...' : 'Set Status'}
-                                      </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                      <DropdownMenuItem 
-                                        onClick={() => handlePaymentStatusUpdate(schedule.id, 'paid')}
-                                        className="text-green-600"
-                                      >
-                                        Mark as Paid
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem 
-                                        onClick={() => handlePaymentStatusUpdate(schedule.id, 'unpaid')}
-                                      >
-                                        Mark as Unpaid
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem 
-                                        onClick={() => handlePaymentStatusUpdate(schedule.id, 'write-off')}
-                                        className="text-red-600"
-                                      >
-                                        Write Off
-                                      </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
-                                </TableCell>
-                              )}
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
+                    <PaymentScheduleTable
+                      paymentSchedules={invoice.paymentSchedules}
+                      amount={invoice.amount}
+                      isClientView={isClientView}
+                      updatingPaymentId={updatingPaymentId}
+                      onUpdateStatus={handlePaymentStatusUpdate}
+                      formatCurrency={formatCurrency}
+                    />
                   ) : (
                     <div className="text-muted-foreground border rounded-md p-4">
                       Full payment of {formatCurrency(invoice.amount)} due on {new Date(invoice.dueDate).toLocaleDateString()}
@@ -783,8 +465,8 @@ const InvoiceView = () => {
               
               <TabsContent value="contract" className="mt-4">
                 <div className="mb-4">
-                  {isClientView && canClientAcceptContract && (
-                    <Button onClick={handleAcceptContract} className="mb-4">
+                  {isClientView && invoice.contractStatus !== 'accepted' && (
+                    <Button onClick={() => updateContractStatus(invoice.id, 'accepted')} className="mb-4">
                       <Check className="h-4 w-4 mr-2" />
                       Accept Contract Terms
                     </Button>
@@ -803,8 +485,12 @@ const InvoiceView = () => {
                     <FileText className="h-5 w-5 mr-2" />
                     <h4 className="text-lg font-semibold">Contract Terms</h4>
                   </div>
-                  <div className="border rounded-md p-4">
-                    <div className="whitespace-pre-line" dangerouslySetInnerHTML={{ __html: invoice.contractTerms }} />
+                  <div className="border rounded-md">
+                    <RichTextEditor
+                      value={invoice.contractTerms || 'No contract terms provided.'}
+                      onChange={() => {}}
+                      readOnly={true}
+                    />
                   </div>
                 </div>
               </TabsContent>
@@ -813,125 +499,27 @@ const InvoiceView = () => {
           
           <CardFooter className="justify-end gap-2 flex-wrap">
             {!isClientView && (
-              <>
-                <Dialog open={showEmailDialog} onOpenChange={setShowEmailDialog}>
-                  <DialogTrigger asChild>
-                    <Button
-                      variant="default"
-                      disabled={!client?.email}
-                    >
-                      <Send className="h-4 w-4 mr-2" />
-                      Send Invoice
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[600px]">
-                    <DialogHeader>
-                      <DialogTitle>Send Invoice to Client</DialogTitle>
-                      <DialogDescription>
-                        Customize the email that will be sent to {client.name} ({client.email})
-                      </DialogDescription>
-                    </DialogHeader>
-                    
-                    <div className="flex flex-col gap-4 py-4">
-                      <div className="flex flex-col gap-2">
-                        <Label htmlFor="emailSubject">Email Subject</Label>
-                        <Input
-                          id="emailSubject"
-                          value={emailSubject}
-                          onChange={(e) => setEmailSubject(e.target.value)}
-                          placeholder={generateDefaultSubject()}
-                        />
-                      </div>
-                      
-                      <div className="flex flex-col gap-2">
-                        <Label htmlFor="emailContent">Email Content</Label>
-                        <RichTextEditor
-                          id="emailContent"
-                          value={emailContent}
-                          onChange={setEmailContent}
-                          placeholder={generateDefaultEmailContent()}
-                          className="min-h-[200px]"
-                        />
-                      </div>
-                      
-                      {emailLogs.length > 0 && (
-                        <div className="w-full mt-2 bg-muted p-2 rounded-md max-h-[150px] overflow-y-auto text-sm">
-                          <h5 className="font-semibold">Email Logs:</h5>
-                          {emailLogs.map((log, index) => (
-                            <div key={index} className={`my-1 ${log.success ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                              <span className="text-xs opacity-70">{log.timestamp.toLocaleTimeString()}: </span> 
-                              {log.message}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    
-                    <DialogFooter>
-                      <Button 
-                        type="button" 
-                        variant="outline" 
-                        onClick={() => setShowEmailDialog(false)}
-                      >
-                        Cancel
-                      </Button>
-                      <Button 
-                        onClick={handleSendEmail} 
-                        variant="default" 
-                        disabled={sending || !client?.email}
-                      >
-                        {sending ? 'Sending...' : 'Send Email'}
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </>
+              <Button
+                variant="default"
+                disabled={!client?.email}
+              >
+                <Send className="h-4 w-4 mr-2" />
+                Send Invoice
+              </Button>
             )}
           </CardFooter>
         </Card>
       </div>
 
-      <Dialog 
-        open={showPaymentDateDialog} 
-        onOpenChange={(open) => {
-          console.log('[Dialog onOpenChange]', { open, current: showPaymentDateDialog });
-          if (!open) {
-            handleCancelPaymentDate();
-          }
-        }}
-      >
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Enter Payment Date</DialogTitle>
-            <DialogDescription>
-              When was this payment received? Please select a date.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <div className="space-y-2">
-              <Label htmlFor="payment-date">Payment Date</Label>
-              <DatePicker
-                selected={paymentDate}
-                onSelect={(date) => {
-                  console.log('[DatePicker] Selected date:', date);
-                  setPaymentDate(date);
-                }}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={handleCancelPaymentDate}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleConfirmPaymentDate}
-              disabled={!paymentDate || !!updatingPaymentId}
-            >
-              {updatingPaymentId ? 'Saving...' : 'Confirm'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <PaymentDateDialog
+        open={showPaymentDateDialog}
+        onOpenChange={setShowPaymentDateDialog}
+        paymentDate={paymentDate}
+        onDateSelect={handlePaymentDateSelect}
+        onConfirm={handleConfirmPaymentDate}
+        onCancel={handleCancelPaymentDate}
+        isUpdating={updatingPaymentId !== null}
+      />
     </PageTransition>
   );
 };

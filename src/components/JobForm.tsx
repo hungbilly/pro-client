@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CalendarIcon, Clock } from 'lucide-react';
+import { CalendarIcon, Clock, User, Mail, Phone, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import { getClient, saveJob, updateJob, getJob } from '@/lib/storage';
 import { format } from 'date-fns';
@@ -156,7 +156,45 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
     <Card className="w-full max-w-4xl mx-auto">
       <CardHeader>
         <CardTitle>{existingJob ? 'Edit Job' : 'Create Job'}</CardTitle>
-        <CardDescription>For client: {client.name}</CardDescription>
+        <CardDescription>
+          <Card className="mt-4 bg-slate-50 border-slate-200">
+            <CardContent className="p-4">
+              <div className="text-lg font-medium mb-3 border-b pb-2">Client Information</div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex items-center gap-2">
+                  <User className="h-5 w-5 text-primary" />
+                  <div>
+                    <div className="font-medium">{client.name}</div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Mail className="h-5 w-5 text-primary" />
+                  <div>
+                    <div className="text-sm text-gray-600">Email</div>
+                    <div>{client.email}</div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Phone className="h-5 w-5 text-primary" />
+                  <div>
+                    <div className="text-sm text-gray-600">Phone</div>
+                    <div>{client.phone}</div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-5 w-5 text-primary" />
+                  <div>
+                    <div className="text-sm text-gray-600">Address</div>
+                    <div className="text-sm">{client.address}</div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">

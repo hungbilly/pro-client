@@ -37,7 +37,7 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({ isOpen, onClose
 
   const filteredJobs = jobs.filter(job => 
     job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    job.clientId.toLowerCase().includes(searchQuery.toLowerCase())
+    (job.clientId && job.clientId.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const handleJobSelect = (jobId: string, clientId: string) => {
@@ -49,6 +49,12 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({ isOpen, onClose
   const navigateToNewJob = () => {
     navigate('/job/new');
     onClose();
+  };
+
+  // Helper function to safely capitalize a string, handling null/undefined values
+  const capitalizeStatus = (status: string | null | undefined): string => {
+    if (!status) return 'Unknown';
+    return status.charAt(0).toUpperCase() + status.slice(1);
   };
 
   return (
@@ -113,7 +119,7 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({ isOpen, onClose
                           job.status === 'completed' ? 'bg-blue-100 text-blue-800' :
                           'bg-gray-100 text-gray-800'
                         }`}>
-                          {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
+                          {capitalizeStatus(job.status)}
                         </span>
                       </TableCell>
                       <TableCell className="text-right">

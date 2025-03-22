@@ -181,7 +181,7 @@ const JobsTable = () => {
                                 </Link>
                               </DropdownMenuItem>
                               <DropdownMenuItem asChild>
-                                <Link to={`/job/edit/${job.id}`}>
+                                <Link to={`/job/${job.id}/edit`}>
                                   <FileEdit className="mr-2 h-4 w-4" />
                                   <span>Edit</span>
                                 </Link>

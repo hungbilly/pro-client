@@ -14,7 +14,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Check, Calendar, FileText, DollarSign, Send, MailCheck, FileCheck, Edit, CalendarDays, Package, Building, User, Phone, Mail, MapPin, Download } from 'lucide-react';
+import { ArrowLeft, Check, Calendar, FileText, DollarSign, Send, MailCheck, FileCheck, Edit, CalendarDays, Package, Building, User, Phone, Mail, MapPin, Download, Copy, Link } from 'lucide-react';
 import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { useAuth } from '@/context/AuthContext';
@@ -285,6 +285,18 @@ const InvoiceView = () => {
       console.error('Failed to load PDF libraries:', err);
       toast.error('Could not load PDF generation tools');
     });
+  };
+
+  const handleCopyInvoiceLink = () => {
+    const url = window.location.origin + location.pathname;
+    navigator.clipboard.writeText(url)
+      .then(() => {
+        toast.success('Invoice link copied to clipboard');
+      })
+      .catch((err) => {
+        console.error('Failed to copy invoice link:', err);
+        toast.error('Failed to copy link to clipboard');
+      });
   };
 
   if (loading) {
@@ -609,13 +621,22 @@ const InvoiceView = () => {
           
           <CardFooter className="justify-end gap-2 flex-wrap pt-4 border-t">
             {!isClientView && (
-              <Button
-                variant="default"
-                onClick={handleDownloadInvoice}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Download Invoice
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  onClick={handleCopyInvoiceLink}
+                >
+                  <Link className="h-4 w-4 mr-2" />
+                  Copy Invoice Link
+                </Button>
+                <Button
+                  variant="default"
+                  onClick={handleDownloadInvoice}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download Invoice
+                </Button>
+              </>
             )}
           </CardFooter>
         </Card>

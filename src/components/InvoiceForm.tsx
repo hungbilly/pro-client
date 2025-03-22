@@ -696,7 +696,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                     </div>
                     
                     <div>
-                      <h3 className="text-base font-medium mt-4">Main Shoot</h3>
+                      <h3 className="text-base font-medium mt-4">Job Date</h3>
                       <div className="flex items-start gap-3 mt-3">
                         <CalendarIcon className="h-5 w-5 text-muted-foreground mt-0.5" />
                         <div>

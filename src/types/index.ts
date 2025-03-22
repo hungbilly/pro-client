@@ -83,6 +83,7 @@ export interface Invoice {
   contractTerms?: string;
   viewLink: string;
   paymentSchedules?: PaymentSchedule[];
+  shootingDate?: string; // Added shootingDate property
 }
 
 export interface InvoiceItem {

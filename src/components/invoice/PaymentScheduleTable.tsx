@@ -43,10 +43,12 @@ const PaymentScheduleTable = memo(({
     if (!date || !onUpdatePaymentDate) return;
 
     const formattedDate = format(date, 'yyyy-MM-dd');
+    
+    // Call the update function without showing a toast - parent component will handle notification
     onUpdatePaymentDate(paymentId, formattedDate);
     setEditingDateId(null);
     
-    // Make the toast notification more prominent
+    // Show only one prominent toast notification
     toast.success(`Payment date updated to ${format(date, 'MMM d, yyyy')}`, {
       duration: 5000, // Increased duration to 5 seconds
       position: 'top-center', // Position in the center for better visibility

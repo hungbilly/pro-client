@@ -268,12 +268,32 @@ const InvoiceView = () => {
     <PageTransition>
       <div className="container py-8">
         {!isClientView && (
-          <Button asChild variant="ghost" className="mb-4">
-            <Link to="/">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Dashboard
-            </Link>
-          </Button>
+          <div className="flex gap-2 mb-4">
+            <Button asChild variant="ghost">
+              <Link to="/">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Dashboard
+              </Link>
+            </Button>
+            
+            {invoice?.jobId && (
+              <Button asChild variant="ghost">
+                <Link to={`/job/${invoice.jobId}`}>
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Job
+                </Link>
+              </Button>
+            )}
+            
+            {invoice?.clientId && (
+              <Button asChild variant="ghost">
+                <Link to={`/client/${invoice.clientId}`}>
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Client
+                </Link>
+              </Button>
+            )}
+          </div>
         )}
         
         <Card className="max-w-4xl mx-auto bg-white dark:bg-gray-900 shadow-sm">

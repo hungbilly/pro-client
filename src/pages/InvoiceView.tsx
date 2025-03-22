@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { 
@@ -6,14 +7,15 @@ import {
   updateInvoiceStatus, 
   getInvoice, 
   updateContractStatus,
-  updatePaymentScheduleStatus
+  updatePaymentScheduleStatus,
+  getJob
 } from '@/lib/storage';
-import { Invoice, Client } from '@/types';
+import { Invoice, Client, Job } from '@/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Check, Calendar, FileText, DollarSign, Send, MailCheck, FileCheck, Edit, CalendarDays, Package } from 'lucide-react';
+import { ArrowLeft, Check, Calendar, FileText, DollarSign, Send, MailCheck, FileCheck, Edit, CalendarDays, Package, Building, User, Phone, Mail, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { useAuth } from '@/context/AuthContext';
@@ -28,12 +30,13 @@ import isEqual from 'lodash/isEqual';
 const InvoiceView = () => {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [client, setClient] = useState<Client | null>(null);
+  const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null);
 
   const { isAdmin } = useAuth();
-  const { selectedCompanyId } = useCompanyContext();
+  const { selectedCompanyId, selectedCompany } = useCompanyContext();
   const { viewLink, id } = useParams<{ viewLink: string, id: string }>();
   const location = useLocation();
 
@@ -107,6 +110,7 @@ const InvoiceView = () => {
         
         setInvoice(fetchedInvoice);
         
+        // Fetch client data
         if (fetchedInvoice.clientId) {
           const fetchedClient = await getClient(fetchedInvoice.clientId);
           if (!fetchedClient) {
@@ -116,6 +120,14 @@ const InvoiceView = () => {
           }
           
           setClient(fetchedClient);
+        }
+
+        // Fetch job data if it exists
+        if (fetchedInvoice.jobId) {
+          const fetchedJob = await getJob(fetchedInvoice.jobId);
+          if (fetchedJob) {
+            setJob(fetchedJob);
+          }
         }
       } catch (err) {
         console.error('[InvoiceView] Failed to load invoice:', err);
@@ -264,25 +276,10 @@ const InvoiceView = () => {
           </Button>
         )}
         
-        <Card className="max-w-3xl mx-auto">
-          <CardHeader>
-            <CardTitle className="text-2xl font-bold flex items-center justify-between">
-              <span>Invoice: {invoice.number}</span>
-              <div className="flex flex-col gap-1">
-                <Badge className={statusColors[invoice.status] || 'bg-gray-100 text-gray-800'}>
-                  {invoice.status.toUpperCase()}
-                </Badge>
-                {invoice.contractStatus === 'accepted' && (
-                  <Badge variant="outline" className={`flex items-center gap-1 ${contractStatusColor}`}>
-                    <FileCheck className="h-3 w-3" />
-                    Contract Accepted
-                  </Badge>
-                )}
-              </div>
-            </CardTitle>
-            <CardDescription className="flex justify-between items-center">
-              <span>View invoice details and contract terms.</span>
-              {!isClientView && (
+        <Card className="max-w-4xl mx-auto bg-white dark:bg-gray-900 shadow-sm">
+          <CardHeader className="pb-0">
+            {!isClientView && (
+              <div className="flex justify-end mb-2">
                 <Button 
                   variant="outline" 
                   size="sm" 
@@ -298,34 +295,101 @@ const InvoiceView = () => {
                   <Edit className="h-3 w-3" />
                   Edit Invoice
                 </Button>
-              )}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <h4 className="text-lg font-semibold mb-2">Client Information</h4>
-                <p>
-                  <strong>Name:</strong> {client.name}
-                </p>
-                <p>
-                  <strong>Email:</strong> {client.email}
-                </p>
-                <p>
-                  <strong>Phone:</strong> {client.phone}
-                </p>
               </div>
-              <div>
-                <h4 className="text-lg font-semibold mb-2">Invoice Details</h4>
-                <p className="flex items-center">
-                  <strong>Job Date:</strong> {new Date(invoice.date).toLocaleDateString()}
-                </p>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-4">
+              {/* Left Column: Logo and Invoice # */}
+              <div className="flex flex-col justify-between">
+                <div className="flex items-center mb-4">
+                  {selectedCompany?.logo_url ? (
+                    <img 
+                      src={selectedCompany.logo_url} 
+                      alt="Company Logo" 
+                      className="h-14 w-auto object-contain mr-3" 
+                    />
+                  ) : (
+                    <div className="h-14 w-14 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center text-gray-400">
+                      <Building className="h-8 w-8" />
+                    </div>
+                  )}
+                </div>
+                
+                <div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400">INVOICE</div>
+                  <div className="text-2xl font-bold"># {invoice.number}</div>
+                  <div className="mt-1 flex items-center">
+                    <Badge className={statusColors[invoice.status] || 'bg-gray-100 text-gray-800'}>
+                      {invoice.status.toUpperCase()}
+                    </Badge>
+                    {invoice.contractStatus === 'accepted' && (
+                      <Badge variant="outline" className={`ml-2 flex items-center gap-1 ${contractStatusColor}`}>
+                        <FileCheck className="h-3 w-3" />
+                        Contract Accepted
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Right Column: From, To, Dates */}
+              <div className="space-y-4">
+                {/* From: Company Information */}
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">FROM</h4>
+                  <div className="font-medium">{selectedCompany?.name}</div>
+                  {selectedCompany?.email && <div className="text-sm">{selectedCompany.email}</div>}
+                  {selectedCompany?.phone && <div className="text-sm">{selectedCompany.phone}</div>}
+                  {selectedCompany?.address && <div className="text-sm">{selectedCompany.address}</div>}
+                </div>
+                
+                {/* To: Client and Job Information */}
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">INVOICE FOR</h4>
+                  {job && <div className="font-medium">{job.title}</div>}
+                  <div className="text-sm font-medium mt-1">Client: {client.name}</div>
+                  <div className="text-sm grid grid-cols-1 gap-1 mt-1">
+                    {client.email && (
+                      <div className="flex items-center text-gray-600 dark:text-gray-400">
+                        <Mail className="h-3 w-3 mr-1" />
+                        {client.email}
+                      </div>
+                    )}
+                    {client.phone && (
+                      <div className="flex items-center text-gray-600 dark:text-gray-400">
+                        <Phone className="h-3 w-3 mr-1" />
+                        {client.phone}
+                      </div>
+                    )}
+                    {client.address && (
+                      <div className="flex items-center text-gray-600 dark:text-gray-400">
+                        <MapPin className="h-3 w-3 mr-1" />
+                        {client.address}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Date Information */}
+                <div className="flex items-center space-x-4">
+                  <div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">DATE</div>
+                    <div className="text-sm">{new Date(invoice.date).toLocaleDateString()}</div>
+                  </div>
+                  {job?.date && (
+                    <div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">JOB DATE</div>
+                      <div className="text-sm">{job.date}</div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-
-            <Separator className="my-6" />
-
-            <Tabs defaultValue="invoice" className="w-full mt-4">
+            <Separator className="mt-6" />
+          </CardHeader>
+          
+          <CardContent className="pt-6">
+            <Tabs defaultValue="invoice" className="w-full">
               <TabsList className="w-full">
                 <TabsTrigger value="invoice" className="flex-1">
                   Invoice Details
@@ -345,7 +409,7 @@ const InvoiceView = () => {
                 </TabsTrigger>
               </TabsList>
               
-              <TabsContent value="invoice" className="mt-4">
+              <TabsContent value="invoice" className="mt-6">
                 {isClientView && ['draft', 'sent'].includes(invoice.status) && (
                   <Button onClick={() => updateInvoiceStatus(invoice.id, 'accepted')} className="mb-4">
                     <Check className="h-4 w-4 mr-2" />
@@ -368,7 +432,7 @@ const InvoiceView = () => {
                     <h4 className="text-lg font-semibold">Products / Packages</h4>
                   </div>
                   
-                  <div className="border rounded-md p-4">
+                  <div className="border rounded-md p-4 bg-gray-50 dark:bg-gray-900/50">
                     {invoice.items && invoice.items.length > 0 ? (
                       invoice.items.map((item) => (
                         <div key={item.id} className="mb-4 pb-4 border-b last:mb-0 last:pb-0 last:border-b-0">
@@ -427,14 +491,14 @@ const InvoiceView = () => {
                       onUpdatePaymentDate={handlePaymentDateUpdate}
                     />
                   ) : (
-                    <div className="text-muted-foreground border rounded-md p-4">
+                    <div className="text-muted-foreground border rounded-md p-4 bg-gray-50 dark:bg-gray-900/50">
                       Full payment of {formatCurrency(invoice.amount)} due on {new Date(invoice.dueDate).toLocaleDateString()}
                     </div>
                   )}
                 </div>
               </TabsContent>
               
-              <TabsContent value="contract" className="mt-4">
+              <TabsContent value="contract" className="mt-6">
                 {isClientView && invoice.contractStatus !== 'accepted' && (
                   <Button onClick={() => updateContractStatus(invoice.id, 'accepted')} className="mb-4">
                     <Check className="h-4 w-4 mr-2" />
@@ -466,7 +530,7 @@ const InvoiceView = () => {
             </Tabs>
           </CardContent>
           
-          <CardFooter className="justify-end gap-2 flex-wrap">
+          <CardFooter className="justify-end gap-2 flex-wrap pt-4 border-t">
             {!isClientView && (
               <Button
                 variant="default"

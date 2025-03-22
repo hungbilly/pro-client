@@ -27,6 +27,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useCompanyContext } from '@/context/CompanyContext';
+import { supabase } from '@/integrations/supabase/client';
 
 const Invoices = () => {
   const { selectedCompany } = useCompanyContext();
@@ -39,6 +40,43 @@ const Invoices = () => {
     queryFn: () => getInvoices(selectedCompanyId),
     enabled: !!selectedCompanyId,
   });
+
+  // Fetch clients to display names instead of IDs
+  const { data: clients = [] } = useQuery({
+    queryKey: ['clients', selectedCompanyId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('clients')
+        .select('id, name')
+        .eq('company_id', selectedCompanyId);
+      return data || [];
+    },
+    enabled: !!selectedCompanyId,
+  });
+
+  // Fetch jobs to display job names
+  const { data: jobs = [] } = useQuery({
+    queryKey: ['jobs', selectedCompanyId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('jobs')
+        .select('id, title')
+        .eq('company_id', selectedCompanyId);
+      return data || [];
+    },
+    enabled: !!selectedCompanyId,
+  });
+
+  const getClientName = (clientId) => {
+    const client = clients.find(client => client.id === clientId);
+    return client ? client.name : 'Unknown Client';
+  };
+
+  const getJobName = (jobId) => {
+    if (!jobId) return 'N/A';
+    const job = jobs.find(job => job.id === jobId);
+    return job ? job.title : 'Unknown Job';
+  };
 
   const handleRowClick = (invoiceId: string) => {
     navigate(`/invoice/${invoiceId}`);
@@ -108,6 +146,7 @@ const Invoices = () => {
                     <TableRow>
                       <TableHead>Invoice #</TableHead>
                       <TableHead>Client</TableHead>
+                      <TableHead className="hidden md:table-cell">Job</TableHead>
                       <TableHead className="hidden md:table-cell">Date</TableHead>
                       <TableHead className="hidden md:table-cell">Amount</TableHead>
                       <TableHead>Status</TableHead>
@@ -127,10 +166,8 @@ const Invoices = () => {
                         }}
                       >
                         <TableCell className="font-medium">{invoice.number || '-'}</TableCell>
-                        <TableCell>
-                          {/* We need to fetch client name from the clientId, for now just show clientId */}
-                          {invoice.clientId}
-                        </TableCell>
+                        <TableCell>{getClientName(invoice.clientId)}</TableCell>
+                        <TableCell className="hidden md:table-cell">{getJobName(invoice.jobId)}</TableCell>
                         <TableCell className="hidden md:table-cell">
                           {invoice.date ? new Date(invoice.date).toLocaleDateString() : '-'}
                         </TableCell>

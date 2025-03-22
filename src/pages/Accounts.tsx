@@ -43,6 +43,8 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format as formatDate } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { FormMessage } from '@/components/ui/form';
 
 // Income tab - PaymentScheduleWithDetails type
 type PaymentScheduleWithDetails = {
@@ -139,6 +141,14 @@ const Accounts = () => {
     profit: 0
   });
   const [showCustomDateRange, setShowCustomDateRange] = useState(false);
+  
+  // Form validation state for expense dialog
+  const [expenseFormErrors, setExpenseFormErrors] = useState<{
+    description?: string;
+    date?: string;
+    amount?: string;
+    categoryId?: string;
+  }>({});
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -580,44 +590,40 @@ const Accounts = () => {
   };
   
   const addExpense = async () => {
-    const validationErrors = [];
+    // Reset form errors
+    setExpenseFormErrors({});
+    
+    const newErrors: {
+      description?: string;
+      date?: string;
+      amount?: string;
+      categoryId?: string;
+    } = {};
     
     if (!newExpense.description.trim()) {
-      validationErrors.push("Description is required");
+      newErrors.description = "Description is required";
     }
     
     if (!newExpense.date) {
-      validationErrors.push("Date is required");
+      newErrors.date = "Date is required";
     }
     
     if (!newExpense.amount || newExpense.amount === '') {
-      validationErrors.push("Amount is required");
+      newErrors.amount = "Amount is required";
     } else {
       const amount = parseFloat(newExpense.amount);
       if (isNaN(amount) || amount <= 0) {
-        validationErrors.push("Amount must be a positive number");
+        newErrors.amount = "Amount must be a positive number";
       }
     }
     
     if (!newExpense.categoryId) {
-      validationErrors.push("Category is required");
+      newErrors.categoryId = "Category is required";
     }
     
-    if (validationErrors.length > 0) {
-      toast({
-        title: 'Please correct the following:',
-        description: (
-          <div className="mt-2 space-y-2 text-sm">
-            {validationErrors.map((error, index) => (
-              <div key={index} className="flex items-center">
-                <AlertCircle className="h-4 w-4 mr-2 text-destructive" />
-                <span>{error}</span>
-              </div>
-            ))}
-          </div>
-        ),
-        variant: 'destructive'
-      });
+    // Check if there are any errors
+    if (Object.keys(newErrors).length > 0) {
+      setExpenseFormErrors(newErrors);
       return;
     }
     
@@ -1128,7 +1134,13 @@ const Accounts = () => {
       </Dialog>
       
       {/* Add Expense Dialog */}
-      <Dialog open={isExpenseDialogOpen} onOpenChange={setIsExpenseDialogOpen}>
+      <Dialog open={isExpenseDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          // Reset form errors when dialog is closed
+          setExpenseFormErrors({});
+        }
+        setIsExpenseDialogOpen(open);
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add New Expense</DialogTitle>
@@ -1144,7 +1156,13 @@ const Accounts = () => {
                 value={newExpense.description}
                 onChange={(e) => setNewExpense({...newExpense, description: e.target.value})}
                 placeholder="Enter expense description"
+                className={expenseFormErrors.description ? "border-red-500" : ""}
               />
+              {expenseFormErrors.description && (
+                <p className="text-sm font-medium text-red-500 mt-1">
+                  {expenseFormErrors.description}
+                </p>
+              )}
             </div>
             
             <div className="space-y-2">
@@ -1156,12 +1174,17 @@ const Accounts = () => {
                   type="number"
                   min="0"
                   step="0.01"
-                  className="pl-10"
+                  className={`pl-10 ${expenseFormErrors.amount ? "border-red-500" : ""}`}
                   value={newExpense.amount}
                   onChange={(e) => setNewExpense({...newExpense, amount: e.target.value})}
                   placeholder="0.00"
                 />
               </div>
+              {expenseFormErrors.amount && (
+                <p className="text-sm font-medium text-red-500 mt-1">
+                  {expenseFormErrors.amount}
+                </p>
+              )}
             </div>
             
             <div className="space-y-2">
@@ -1170,7 +1193,7 @@ const Accounts = () => {
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
-                    className="w-full justify-start text-left font-normal"
+                    className={`w-full justify-start text-left font-normal ${expenseFormErrors.date ? "border-red-500" : ""}`}
                   >
                     {newExpense.date ? formatDate(newExpense.date, "PPP") : "Select date"}
                   </Button>
@@ -1184,6 +1207,11 @@ const Accounts = () => {
                   />
                 </PopoverContent>
               </Popover>
+              {expenseFormErrors.date && (
+                <p className="text-sm font-medium text-red-500 mt-1">
+                  {expenseFormErrors.date}
+                </p>
+              )}
             </div>
             
             <div className="space-y-2">
@@ -1192,7 +1220,7 @@ const Accounts = () => {
                 value={newExpense.categoryId} 
                 onValueChange={(value) => setNewExpense({...newExpense, categoryId: value})}
               >
-                <SelectTrigger>
+                <SelectTrigger className={expenseFormErrors.categoryId ? "border-red-500" : ""}>
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1203,10 +1231,18 @@ const Accounts = () => {
                   ))}
                 </SelectContent>
               </Select>
+              {expenseFormErrors.categoryId && (
+                <p className="text-sm font-medium text-red-500 mt-1">
+                  {expenseFormErrors.categoryId}
+                </p>
+              )}
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsExpenseDialogOpen(false)}>
+            <Button variant="outline" onClick={() => {
+              setIsExpenseDialogOpen(false);
+              setExpenseFormErrors({});
+            }}>
               Cancel
             </Button>
             <Button onClick={addExpense} disabled={isUpdating}>
@@ -1251,4 +1287,3 @@ const Accounts = () => {
 };
 
 export default Accounts;
-

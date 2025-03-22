@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getInvoices } from '@/lib/storage';
 import { Link, useNavigate } from 'react-router-dom';
@@ -9,6 +9,7 @@ import { FileText, MoreHorizontal, Receipt } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { formatCurrency } from '@/lib/utils';
+import CreateInvoiceModal from '@/components/ui-custom/CreateInvoiceModal';
 
 import {
   Table,
@@ -31,6 +32,7 @@ const Invoices = () => {
   const { selectedCompany } = useCompanyContext();
   const selectedCompanyId = selectedCompany?.id;
   const navigate = useNavigate();
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   
   const { data: invoices = [], isLoading, error } = useQuery({
     queryKey: ['invoices', selectedCompanyId],
@@ -40,6 +42,14 @@ const Invoices = () => {
 
   const handleRowClick = (invoiceId: string) => {
     navigate(`/invoice/${invoiceId}`);
+  };
+
+  const openCreateModal = () => {
+    setIsCreateModalOpen(true);
+  };
+
+  const closeCreateModal = () => {
+    setIsCreateModalOpen(false);
   };
 
   const getStatusColor = (status: string) => {
@@ -62,11 +72,9 @@ const Invoices = () => {
       <div className="container mx-auto py-6 px-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
           <h1 className="text-3xl font-bold mb-4 sm:mb-0">Invoices</h1>
-          <Button asChild>
-            <Link to="/client/new/invoice/create">
-              <FileText className="mr-2 h-4 w-4" />
-              <span>Create New Invoice</span>
-            </Link>
+          <Button onClick={openCreateModal}>
+            <FileText className="mr-2 h-4 w-4" />
+            <span>Create New Invoice</span>
           </Button>
         </div>
         
@@ -169,6 +177,11 @@ const Invoices = () => {
             )}
           </CardContent>
         </Card>
+
+        <CreateInvoiceModal 
+          isOpen={isCreateModalOpen} 
+          onClose={closeCreateModal} 
+        />
       </div>
     </PageTransition>
   );

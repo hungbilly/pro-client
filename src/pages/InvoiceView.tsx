@@ -302,10 +302,10 @@ const InvoiceView = () => {
               {/* Left Column: Logo and Invoice # */}
               <div className="flex flex-col justify-between">
                 <div className="flex items-center mb-4">
-                  {selectedCompany?.logo_url ? (
+                  {invoice.companyId && selectedCompany?.logo_url ? (
                     <img 
                       src={selectedCompany.logo_url} 
-                      alt="Company Logo" 
+                      alt={`${selectedCompany.name} Logo`}
                       className="h-14 w-auto object-contain mr-3" 
                     />
                   ) : (

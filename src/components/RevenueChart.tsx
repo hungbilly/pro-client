@@ -45,6 +45,23 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
   const [showJobCount, setShowJobCount] = useState(true);
   
   useEffect(() => {
+    console.log('RevenueChart: Generating chart data with', { 
+      invoiceCount: invoices.length, 
+      jobCount: jobs.length,
+      currentDateRange 
+    });
+    
+    // Log the first few invoices to debug
+    if (invoices.length > 0) {
+      console.log('Sample invoices:', invoices.slice(0, 3).map(inv => ({
+        id: inv.id,
+        amount: inv.amount,
+        status: inv.status,
+        date: inv.date,
+        paymentSchedulesCount: inv?.paymentSchedules?.length || 0
+      })));
+    }
+    
     generateChartData();
   }, [invoices, jobs, currentDateRange, customDateRange]);
   
@@ -95,6 +112,12 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
     const { startDate, endDate } = getDateRange();
     const daysInRange = eachDayOfInterval({ start: startDate, end: endDate });
     
+    console.log('RevenueChart: Generating data for date range:', { 
+      startDate: startDate.toISOString().split('T')[0], 
+      endDate: endDate.toISOString().split('T')[0],
+      daysCount: daysInRange.length
+    });
+    
     const data = daysInRange.map(day => {
       const dayFormatted = format(day, 'yyyy-MM-dd');
       
@@ -116,6 +139,13 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
             // Check if the schedule's due date matches the current day
             if (schedule.dueDate === dayFormatted) {
               const scheduleAmount = (schedule.percentage / 100) * invoice.amount;
+              console.log(`Found payment schedule for day ${dayFormatted}:`, {
+                invoiceId: invoice.id,
+                totalAmount: invoice.amount,
+                schedulePercentage: schedule.percentage,
+                scheduleAmount,
+                status: schedule.status
+              });
               
               if (schedule.status === 'paid') {
                 paidAmount += scheduleAmount;
@@ -127,6 +157,12 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
         } else {
           // For invoices without payment schedules, use the invoice date
           if (invoice.date === dayFormatted) {
+            console.log(`Found invoice for day ${dayFormatted} without payment schedules:`, {
+              invoiceId: invoice.id,
+              amount: invoice.amount,
+              status: invoice.status
+            });
+            
             if (invoice.status === 'paid') {
               paidAmount += invoice.amount;
             } else {
@@ -138,6 +174,16 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
         
       const totalAmount = paidAmount + unpaidAmount;
       
+      // Log non-zero data points to help with debugging
+      if (paidAmount > 0 || unpaidAmount > 0) {
+        console.log(`Revenue data for ${dayFormatted}:`, { 
+          paidAmount, 
+          unpaidAmount, 
+          totalAmount, 
+          jobCount: dayJobs.length 
+        });
+      }
+      
       return {
         date: dayFormatted,
         displayDate: format(day, 'd MMM'),
@@ -146,6 +192,14 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
         totalAmount: totalAmount,
         jobCount: dayJobs.length,
       };
+    });
+    
+    console.log('RevenueChart: Final chart data summary:', {
+      dataPointsCount: data.length,
+      totalPaid: data.reduce((sum, item) => sum + item.paidAmount, 0),
+      totalUnpaid: data.reduce((sum, item) => sum + item.unpaidAmount, 0),
+      totalRevenue: data.reduce((sum, item) => sum + item.totalAmount, 0),
+      totalJobs: data.reduce((sum, item) => sum + item.jobCount, 0)
     });
     
     setChartData(data);
@@ -363,7 +417,7 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
                   yAxisId="left"
                   type="monotone"
                   dataKey="paidAmount"
-                  name="paidAmount"
+                  name="Paid Revenue"
                   fill="#9b87f5"
                   fillOpacity={0.3}
                   stroke="#9b87f5"
@@ -375,7 +429,7 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
                   yAxisId="left"
                   type="monotone"
                   dataKey="unpaidAmount"
-                  name="unpaidAmount"
+                  name="Unpaid Revenue"
                   fill="#E5DEFF"
                   fillOpacity={0.3}
                   stroke="#E5DEFF"
@@ -387,7 +441,7 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
                   yAxisId="left"
                   type="monotone"
                   dataKey="totalAmount"
-                  name="totalAmount"
+                  name="Total Revenue"
                   stroke="#6E59A5"
                   strokeWidth={2}
                   dot={{ r: 4 }}
@@ -399,7 +453,7 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
                   yAxisId="right"
                   type="monotone"
                   dataKey="jobCount"
-                  name="jobCount"
+                  name="Jobs Count"
                   stroke="#F97316"
                   strokeWidth={2}
                   dot={{ r: 4 }}

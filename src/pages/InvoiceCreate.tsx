@@ -6,7 +6,7 @@ import { getInvoice } from '@/lib/storage';
 import { Invoice } from '@/types';
 import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, logDebug } from '@/integrations/supabase/client';
 
 interface ContractTemplate {
   id: string;
@@ -23,16 +23,19 @@ const InvoiceCreate = () => {
   const [contractTemplates, setContractTemplates] = useState<ContractTemplate[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(true);
   
-  console.log('InvoiceCreate component initialized with params:', { clientId, jobId, invoiceId });
+  logDebug('InvoiceCreate component initialized with params:', { clientId, jobId, invoiceId });
   
   useEffect(() => {
     const fetchInvoice = async () => {
       if (invoiceId) {
         try {
-          console.log('Fetching invoice with ID:', invoiceId);
+          logDebug('Fetching invoice with ID:', invoiceId);
           const fetchedInvoice = await getInvoice(invoiceId);
           if (fetchedInvoice) {
-            console.log('Fetched invoice with payment schedules:', fetchedInvoice.paymentSchedules);
+            logDebug('Fetched invoice with payment schedules:', {
+              schedules: fetchedInvoice.paymentSchedules,
+              count: fetchedInvoice.paymentSchedules?.length || 0
+            });
             setInvoice(fetchedInvoice);
           } else {
             console.error('Invoice not found for ID:', invoiceId);
@@ -59,7 +62,7 @@ const InvoiceCreate = () => {
 
     const fetchContractTemplates = async () => {
       try {
-        console.log('Fetching contract templates');
+        logDebug('Fetching contract templates');
         setLoadingTemplates(true);
         const { data, error } = await supabase
           .from('contract_templates')
@@ -71,7 +74,7 @@ const InvoiceCreate = () => {
           throw error;
         }
         
-        console.log('Contract templates fetched:', data?.length || 0);
+        logDebug('Contract templates fetched:', data?.length || 0);
         setContractTemplates(data || []);
       } catch (error) {
         console.error('Error fetching contract templates:', error);
@@ -98,12 +101,13 @@ const InvoiceCreate = () => {
     );
   }
 
-  console.log('Rendering InvoiceForm with props:', { 
+  logDebug('Rendering InvoiceForm with props:', { 
     hasInvoice: !!invoice, 
     clientId, 
     jobId, 
     invoiceId,
-    contractTemplatesCount: contractTemplates.length 
+    contractTemplatesCount: contractTemplates.length,
+    paymentSchedules: invoice?.paymentSchedules?.length || 0
   });
 
   return (

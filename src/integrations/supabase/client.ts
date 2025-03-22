@@ -11,7 +11,28 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 
 // Add a debug logging function 
 export const logDebug = (message: string, data?: any) => {
-  console.log(`[Supabase Debug] ${message}`, data ? data : '');
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] [Supabase Debug] ${message}`, data ? data : '');
 };
 
+// Add detailed error logging
+export const logError = (message: string, error: any) => {
+  const timestamp = new Date().toISOString();
+  console.error(`[${timestamp}] [Supabase Error] ${message}`, error);
+  
+  // Log additional details if available
+  if (error?.message) {
+    console.error(`Error message: ${error.message}`);
+  }
+  
+  if (error?.code) {
+    console.error(`Error code: ${error.code}`);
+  }
+  
+  if (error?.details) {
+    console.error(`Error details:`, error.details);
+  }
+};
+
+// Export supabase instance
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);

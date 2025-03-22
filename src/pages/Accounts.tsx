@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO, differenceInDays, startOfMonth, endOfMonth, startOfYear, endOfYear, subMonths } from 'date-fns';
-import { MoreHorizontal, Download, Search, PlusCircle, DollarSign, TrendingDown, TrendingUp, Plus } from 'lucide-react';
+import { MoreHorizontal, Download, Search, PlusCircle, DollarSign, TrendingDown, TrendingUp, Plus, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompanyContext } from '@/context/CompanyContext';
 import { toast } from '@/hooks/use-toast';
@@ -581,24 +580,48 @@ const Accounts = () => {
   };
   
   const addExpense = async () => {
-    if (!newExpense.description || !newExpense.date || !newExpense.amount || !newExpense.categoryId) {
+    const validationErrors = [];
+    
+    if (!newExpense.description.trim()) {
+      validationErrors.push("Description is required");
+    }
+    
+    if (!newExpense.date) {
+      validationErrors.push("Date is required");
+    }
+    
+    if (!newExpense.amount || newExpense.amount === '') {
+      validationErrors.push("Amount is required");
+    } else {
+      const amount = parseFloat(newExpense.amount);
+      if (isNaN(amount) || amount <= 0) {
+        validationErrors.push("Amount must be a positive number");
+      }
+    }
+    
+    if (!newExpense.categoryId) {
+      validationErrors.push("Category is required");
+    }
+    
+    if (validationErrors.length > 0) {
       toast({
-        title: 'Validation Error',
-        description: 'Please fill all required fields',
+        title: 'Please correct the following:',
+        description: (
+          <div className="mt-2 space-y-2 text-sm">
+            {validationErrors.map((error, index) => (
+              <div key={index} className="flex items-center">
+                <AlertCircle className="h-4 w-4 mr-2 text-destructive" />
+                <span>{error}</span>
+              </div>
+            ))}
+          </div>
+        ),
         variant: 'destructive'
       });
       return;
     }
     
     const amount = parseFloat(newExpense.amount);
-    if (isNaN(amount) || amount <= 0) {
-      toast({
-        title: 'Validation Error',
-        description: 'Amount must be a positive number',
-        variant: 'destructive'
-      });
-      return;
-    }
     
     setIsUpdating(true);
     try {
@@ -1228,3 +1251,4 @@ const Accounts = () => {
 };
 
 export default Accounts;
+

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import InvoiceForm from '@/components/InvoiceForm';
@@ -168,6 +167,42 @@ const InvoiceCreate = () => {
     invoiceStatus: invoice?.status
   });
 
+  // Pass down a function to check for duplicate invoice numbers
+  const checkDuplicateInvoiceNumber = async (number: string, currentInvoiceId?: string) => {
+    try {
+      logDebug('Checking for duplicate invoice number:', number);
+      
+      const { data, error } = await supabase
+        .from('invoices')
+        .select('id, number')
+        .eq('number', number);
+        
+      if (error) {
+        logError('Error checking duplicate invoice number:', error);
+        throw error;
+      }
+      
+      if (data && data.length > 0) {
+        // If we're editing an existing invoice, it's okay if the number matches the current invoice
+        if (currentInvoiceId && data.length === 1 && data[0].id === currentInvoiceId) {
+          return false;
+        }
+        
+        logDebug('Found duplicate invoice number:', {
+          number,
+          matches: data.map(inv => ({ id: inv.id, number: inv.number }))
+        });
+        
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      logError('Error in checkDuplicateInvoiceNumber:', error);
+      return false;
+    }
+  };
+
   return (
     <PageTransition>
       <div className="container py-8">
@@ -177,6 +212,7 @@ const InvoiceCreate = () => {
           jobId={jobId}
           invoiceId={invoiceId}
           contractTemplates={contractTemplates}
+          checkDuplicateInvoiceNumber={checkDuplicateInvoiceNumber}
         />
       </div>
     </PageTransition>

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Client, Invoice, InvoiceItem, Job, PaymentSchedule } from '@/types';
@@ -7,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2, Calendar as CalendarIcon, CalendarPlus, GripVertical, Pencil, Copy, Package as PackageIcon } from 'lucide-react';
+import { Plus, Trash2, Calendar as CalendarIcon, CalendarPlus, GripVertical, Pencil, Copy, Package as PackageIcon, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { getClient, saveInvoice, updateInvoice, getJob, getInvoice, getInvoicesByDate } from '@/lib/storage';
 import { format } from 'date-fns';
@@ -40,6 +39,7 @@ interface InvoiceFormProps {
   jobId?: string;
   invoiceId?: string;
   contractTemplates?: ContractTemplate[];
+  checkDuplicateInvoiceNumber?: (number: string, currentInvoiceId?: string) => Promise<boolean>;
 }
 
 const InvoiceForm: React.FC<InvoiceFormProps> = ({ 
@@ -47,7 +47,8 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   clientId: propClientId, 
   jobId: propJobId, 
   invoiceId: propInvoiceId,
-  contractTemplates = []
+  contractTemplates = [],
+  checkDuplicateInvoiceNumber
 }) => {
   const navigate = useNavigate();
   const { selectedCompanyId } = useCompany();
@@ -72,7 +73,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   const [loading, setLoading] = useState(true);
   const [generatingInvoiceNumber, setGeneratingInvoiceNumber] = useState(false);
   const [initialized, setInitialized] = useState(false);
-
   const [paymentSchedules, setPaymentSchedules] = useState<PaymentSchedule[]>([
     { 
       id: Date.now().toString(), 
@@ -82,15 +82,14 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
       status: 'unpaid'
     }
   ]);
-
   const [templates, setTemplates] = useState<Template[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [selectedContractTemplateId, setSelectedContractTemplateId] = useState<string | null>(null);
-  const { user } = useAuth();
-
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
   const [isEditMode, setIsEditMode] = useState(!!invoiceId);
-  
+  const [invoiceNumberError, setInvoiceNumberError] = useState<string | null>(null);
+  const [checkingInvoiceNumber, setCheckingInvoiceNumber] = useState(false);
+
   const generateInvoiceNumber = useCallback(async () => {
     if (isEditMode || generatingInvoiceNumber) return;
     
@@ -451,6 +450,47 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     return `${value}%`;
   };
 
+  const validateInvoiceNumber = useCallback(
+    async (number: string) => {
+      if (!number.trim()) {
+        setInvoiceNumberError("Invoice number is required");
+        return false;
+      }
+      
+      if (checkDuplicateInvoiceNumber) {
+        setCheckingInvoiceNumber(true);
+        try {
+          const isDuplicate = await checkDuplicateInvoiceNumber(number, invoiceId);
+          if (isDuplicate) {
+            setInvoiceNumberError(`Invoice number "${number}" already exists. Please use a different number.`);
+            return false;
+          } else {
+            setInvoiceNumberError(null);
+            return true;
+          }
+        } catch (error) {
+          console.error("Error checking invoice number:", error);
+          return false;
+        } finally {
+          setCheckingInvoiceNumber(false);
+        }
+      }
+      
+      return true;
+    },
+    [checkDuplicateInvoiceNumber, invoiceId]
+  );
+
+  const handleNumberChange = async (value: string) => {
+    setNumber(value);
+    // Debounce validation to avoid too many requests
+    if (value !== invoice?.number) {
+      setTimeout(() => validateInvoiceNumber(value), 500);
+    } else {
+      setInvoiceNumberError(null);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log('Invoice form submission started');
@@ -477,6 +517,15 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
       console.error('Form validation failed: Invoice number is required');
       toast.error('Invoice number is required.');
       return;
+    }
+    
+    if (checkDuplicateInvoiceNumber) {
+      const isDuplicate = await checkDuplicateInvoiceNumber(number, invoiceId);
+      if (isDuplicate) {
+        console.error('Form validation failed: Duplicate invoice number');
+        toast.error(`Invoice number "${number}" already exists. Please use a different number.`);
+        return;
+      }
     }
     
     console.log('Validating payment schedules:', paymentSchedules);
@@ -638,16 +687,25 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                   type="text"
                   id="number"
                   value={number}
-                  onChange={(e) => setNumber(e.target.value)}
+                  onChange={(e) => handleNumberChange(e.target.value)}
                   required
                   placeholder="Auto-generated (YYYYMMDD-X)"
-                  disabled={generatingInvoiceNumber}
+                  disabled={generatingInvoiceNumber || checkingInvoiceNumber}
+                  className={invoiceNumberError ? "border-red-500" : ""}
                 />
-                <p className="text-xs text-muted-foreground mt-1">
-                  {isEditMode ? 
-                    "You can change the invoice number, but it must be unique." : 
-                    "Automatically generated with format YYYYMMDD-X. X is the sequence number for today."}
-                </p>
+                {invoiceNumberError && (
+                  <div className="flex items-center mt-1 text-sm text-red-500">
+                    <AlertCircle className="h-4 w-4 mr-1" />
+                    {invoiceNumberError}
+                  </div>
+                )}
+                {!invoiceNumberError && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {isEditMode ? 
+                      "You can change the invoice number, but it must be unique." : 
+                      "Automatically generated with format YYYYMMDD-X. X is the sequence number for today."}
+                  </p>
+                )}
               </div>
               
               <div>
@@ -1128,7 +1186,12 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
         >
           Cancel
         </Button>
-        <Button onClick={handleSubmit}>{isEditMode ? 'Update Invoice' : 'Create Invoice'}</Button>
+        <Button 
+          onClick={handleSubmit} 
+          disabled={!!invoiceNumberError || checkingInvoiceNumber}
+        >
+          {isEditMode ? 'Update Invoice' : 'Create Invoice'}
+        </Button>
       </CardFooter>
     </Card>
   );

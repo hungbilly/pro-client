@@ -118,13 +118,16 @@ const Invoices = () => {
                           }
                         }}
                       >
-                        <TableCell className="font-medium">{invoice.invoiceNumber || '-'}</TableCell>
-                        <TableCell>{invoice.clientName}</TableCell>
+                        <TableCell className="font-medium">{invoice.number || '-'}</TableCell>
+                        <TableCell>
+                          {/* We need to fetch client name from the clientId, for now just show clientId */}
+                          {invoice.clientId}
+                        </TableCell>
                         <TableCell className="hidden md:table-cell">
                           {invoice.date ? new Date(invoice.date).toLocaleDateString() : '-'}
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
-                          {formatCurrency(invoice.totalAmount || 0, invoice.currency || 'USD')}
+                          {formatCurrency(invoice.amount || 0, 'USD')}
                         </TableCell>
                         <TableCell>
                           <Badge className={getStatusColor(invoice.status)}>

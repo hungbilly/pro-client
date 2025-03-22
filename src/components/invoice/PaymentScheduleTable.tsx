@@ -10,7 +10,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, Edit2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
 
 interface PaymentScheduleTableProps {
   paymentSchedules: PaymentSchedule[];
@@ -43,26 +42,8 @@ const PaymentScheduleTable = memo(({
     if (!date || !onUpdatePaymentDate) return;
 
     const formattedDate = format(date, 'yyyy-MM-dd');
-    
-    // Call the update function without showing a toast - parent component will handle notification
     onUpdatePaymentDate(paymentId, formattedDate);
     setEditingDateId(null);
-    
-    // Show only one prominent toast notification
-    toast.success(`Payment date updated to ${format(date, 'MMM d, yyyy')}`, {
-      duration: 5000, // Increased duration to 5 seconds
-      position: 'top-center', // Position in the center for better visibility
-      style: {
-        backgroundColor: '#10B981', // Green background
-        color: 'white', // White text
-        fontSize: '16px', // Larger font
-        padding: '16px', // More padding
-        borderRadius: '8px', // Rounded corners
-        border: '2px solid #059669', // Border for extra visibility
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)', // More pronounced shadow
-      },
-      className: 'payment-toast-notification',
-    });
   };
 
   return (

@@ -716,6 +716,7 @@ export const getInvoice = async (id: string): Promise<Invoice | null> => {
     .from('invoices')
     .select(`
       *,
+      invoice_items(*),
       payment_schedules (
         id,
         due_date,
@@ -749,9 +750,17 @@ export const getInvoice = async (id: string): Promise<Invoice | null> => {
     date: data.date,
     dueDate: data.due_date,
     shootingDate: data.shooting_date,
-    status: data.status as InvoiceStatus,
-    contractStatus: data.contract_status as ContractStatus,
-    items: Array.isArray(data.items) ? data.items : [],
+    status: parseEnum(data.status, ['draft', 'sent', 'accepted', 'paid'], 'draft') as InvoiceStatus,
+    contractStatus: data.contract_status ? 
+      parseEnum(data.contract_status, ['pending', 'accepted'], 'pending') as ContractStatus : 
+      undefined,
+    items: data.invoice_items?.map((item: any) => ({
+      id: item.id,
+      description: item.description,
+      quantity: item.quantity,
+      rate: item.rate,
+      amount: item.amount
+    })) || [],
     notes: data.notes,
     contractTerms: data.contract_terms,
     viewLink: data.view_link,
@@ -760,7 +769,7 @@ export const getInvoice = async (id: string): Promise<Invoice | null> => {
       dueDate: schedule.due_date,
       percentage: schedule.percentage,
       description: schedule.description,
-      status: schedule.status,
+      status: parseEnum(schedule.status, ['paid', 'unpaid', 'write-off'], 'unpaid') as PaymentStatus,
       paymentDate: schedule.payment_date
     })) || []
   };
@@ -772,6 +781,7 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
     .from('invoices')
     .select(`
       *,
+      invoice_items(*),
       payment_schedules (
         id,
         due_date,
@@ -806,9 +816,17 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
     date: invoice.date,
     dueDate: invoice.due_date,
     shootingDate: invoice.shooting_date,
-    status: invoice.status as InvoiceStatus,
-    contractStatus: invoice.contract_status as ContractStatus,
-    items: Array.isArray(invoice.items) ? invoice.items : [],
+    status: parseEnum(invoice.status, ['draft', 'sent', 'accepted', 'paid'], 'draft') as InvoiceStatus,
+    contractStatus: invoice.contract_status ? 
+      parseEnum(invoice.contract_status, ['pending', 'accepted'], 'pending') as ContractStatus : 
+      undefined,
+    items: invoice.invoice_items?.map((item: any) => ({
+      id: item.id,
+      description: item.description,
+      quantity: item.quantity,
+      rate: item.rate,
+      amount: item.amount
+    })) || [],
     notes: invoice.notes,
     contractTerms: invoice.contract_terms,
     viewLink: invoice.view_link,
@@ -817,7 +835,7 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
       dueDate: schedule.due_date,
       percentage: schedule.percentage,
       description: schedule.description,
-      status: schedule.status,
+      status: parseEnum(schedule.status, ['paid', 'unpaid', 'write-off'], 'unpaid') as PaymentStatus,
       paymentDate: schedule.payment_date
     })) || []
   };

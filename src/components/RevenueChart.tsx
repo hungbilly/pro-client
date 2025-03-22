@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO, isWithinInterval, subMonths, addMonths, subDays, startOfYear, endOfYear } from 'date-fns';
+import { format, startOfMonth, endOfMonth, parseISO, subMonths, addMonths, subDays, startOfYear, endOfYear } from 'date-fns';
 import { 
   LineChart, 
   Line, 
@@ -23,7 +23,7 @@ import { Switch } from "@/components/ui/switch";
 import { type DateRange } from "react-day-picker";
 import { Invoice, Job, PaymentSchedule } from '@/types';
 import { getInvoicesByDate, getInvoice } from '@/lib/storage';
-import { logDebug } from '@/integrations/supabase/client';
+import { logDebug, logError, logDataTransformation } from '@/integrations/supabase/client';
 
 interface RevenueChartProps {
   invoices: Invoice[];
@@ -59,7 +59,7 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
         amount: inv.amount,
         status: inv.status,
         date: inv.date,
-        dateFormatted: inv.date ? formatDateToYYYYMMDD(new Date(inv.date)) : 'no date',
+        dateFormatted: inv.date ? formatDateToYYYYMMDD(parseDate(inv.date)) : 'no date',
         paymentSchedulesCount: inv?.paymentSchedules?.length || 0
       })));
     }
@@ -132,13 +132,23 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
   
   const generateChartData = () => {
     const { startDate, endDate } = getDateRange();
-    const daysInRange = eachDayOfInterval({ start: startDate, end: endDate });
     
+    // Log the date range we're generating data for
     logDebug('RevenueChart: Generating data for date range:', { 
       startDate: formatDateToYYYYMMDD(startDate), 
-      endDate: formatDateToYYYYMMDD(endDate),
-      daysCount: daysInRange.length
+      endDate: formatDateToYYYYMMDD(endDate)
     });
+    
+    // Create an array of all days in the date range
+    const daysInRange = [];
+    const currentDate = new Date(startDate);
+    
+    while (currentDate <= endDate) {
+      daysInRange.push(new Date(currentDate));
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    logDebug(`Date range contains ${daysInRange.length} days`);
     
     const data = daysInRange.map(day => {
       const dayFormatted = formatDateToYYYYMMDD(day);
@@ -146,7 +156,6 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
       // Get jobs for this day
       const dayJobs = jobs.filter(job => {
         if (!job.date) return false;
-        // Parse job.date to a Date object and format it to YYYY-MM-DD
         const jobDate = parseDate(job.date);
         return formatDateToYYYYMMDD(jobDate) === dayFormatted;
       });
@@ -155,33 +164,36 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
       let paidAmount = 0;
       let unpaidAmount = 0;
       
-      // Process invoices with payment schedules
+      // Process invoices and their payment schedules
       invoices.forEach(invoice => {
+        // Handle invoices with payment schedules
         if (invoice.paymentSchedules && invoice.paymentSchedules.length > 0) {
-          // Process payment schedules
+          // Process each payment schedule
           invoice.paymentSchedules.forEach(schedule => {
-            // Parse schedule.dueDate to a Date object and format it to YYYY-MM-DD for comparison
             const scheduleDueDate = parseDate(schedule.dueDate);
             const scheduleDueDateFormatted = formatDateToYYYYMMDD(scheduleDueDate);
             
             // Check if the schedule's due date matches the current day
             if (scheduleDueDateFormatted === dayFormatted) {
               const scheduleAmount = (schedule.percentage / 100) * invoice.amount;
+              
               logDebug(`Found payment schedule for day ${dayFormatted}:`, {
                 invoiceId: invoice.id,
+                scheduleId: schedule.id,
                 totalAmount: invoice.amount,
                 schedulePercentage: schedule.percentage,
                 scheduleAmount,
                 status: schedule.status,
-                dueDateOriginal: schedule.dueDate,
                 dueDateFormatted: scheduleDueDateFormatted
               });
               
+              // Add to paid or unpaid based on schedule status
               if (schedule.status === 'paid') {
                 paidAmount += scheduleAmount;
-              } else {
+              } else if (schedule.status === 'unpaid') {
                 unpaidAmount += scheduleAmount;
               }
+              // Note: if status is write-off, we don't count it in either category
             }
           });
         } else {
@@ -194,15 +206,12 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
               invoiceId: invoice.id,
               amount: invoice.amount,
               status: invoice.status,
-              dateOriginal: invoice.date,
               dateFormatted: invoiceDateFormatted
             });
             
-            if (invoice.status === 'paid') {
-              paidAmount += invoice.amount;
-            } else {
-              unpaidAmount += invoice.amount;
-            }
+            // Since invoice.status doesn't directly relate to payment status,
+            // we classify everything as unpaid for invoices without schedules
+            unpaidAmount += invoice.amount;
           }
         }
       });
@@ -508,6 +517,33 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
       </CardContent>
     </Card>
   );
+  
+  // Helper function for date range label
+  const dateRangeLabel = () => {
+    const { startDate, endDate } = getDateRange();
+    if (currentDateRange === 'custom' && customDateRange) {
+      return `${format(startDate, 'MMM d, yyyy')} - ${format(endDate, 'MMM d, yyyy')}`;
+    }
+    
+    switch (currentDateRange) {
+      case 'this-month':
+        return format(startDate, 'MMMM yyyy');
+      case 'last-month':
+        return format(startDate, 'MMMM yyyy');
+      case 'this-year':
+        return format(startDate, 'yyyy');
+      case 'last-30-days':
+        return 'Last 30 Days';
+      case 'last-60-days':
+        return 'Last 60 Days';
+      default:
+        return 'Custom Date Range';
+    }
+  };
+  
+  const handleDateRangeChange = (range: DateRangeType) => {
+    setCurrentDateRange(range);
+  };
 };
 
 export default RevenueChart;

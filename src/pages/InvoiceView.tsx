@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { 
@@ -38,13 +37,11 @@ const InvoiceView = () => {
   const { viewLink, id } = useParams<{ viewLink: string, id: string }>();
   const location = useLocation();
 
-  // Memoize frequently used values to prevent render loops
   const isClientView = useMemo(() => 
     (location.search.includes('client=true') || !location.search) && !isAdmin, 
     [location.search, isAdmin]
   );
 
-  // Format currency with memoization to prevent unnecessary re-renders
   const formatCurrency = useCallback((amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -53,14 +50,12 @@ const InvoiceView = () => {
     }).format(amount);
   }, []);
 
-  // Fetch invoice and client data
   useEffect(() => {
     const fetchInvoice = async () => {
       try {
         setLoading(true);
         let fetchedInvoice: Invoice | null = null;
         
-        // Combine id and viewLink, preferring id if available
         const identifier = id || viewLink;
         if (!identifier) {
           console.log('[InvoiceView] No identifier provided in URL');
@@ -70,7 +65,6 @@ const InvoiceView = () => {
         
         console.log('[InvoiceView] Fetching invoice with identifier:', identifier);
         
-        // Check if the identifier looks like a UUID (likely an invoice ID)
         const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
         
         if (isUUID) {
@@ -82,14 +76,12 @@ const InvoiceView = () => {
         }
         
         if (!fetchedInvoice) {
-          // Try alternative approach if no invoice is found
           const urlPath = location.pathname;
           const lastPartOfUrl = urlPath.split('/').pop() || '';
           
           if (lastPartOfUrl && lastPartOfUrl !== identifier) {
             console.log('[InvoiceView] Trying alternative identifier from URL path:', lastPartOfUrl);
             
-            // Check if this alternative identifier is a UUID
             const isLastPartUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(lastPartOfUrl);
             
             if (isLastPartUUID) {
@@ -106,7 +98,6 @@ const InvoiceView = () => {
           return;
         }
         
-        // Check if the invoice belongs to the selected company
         if (selectedCompanyId && fetchedInvoice.companyId !== selectedCompanyId && !isClientView) {
           console.log('[InvoiceView] Invoice company mismatch. Expected:', selectedCompanyId, 'Got:', fetchedInvoice.companyId);
           toast.error("This invoice belongs to a different company");
@@ -137,13 +128,11 @@ const InvoiceView = () => {
     fetchInvoice();
   }, [id, viewLink, location.pathname, selectedCompanyId, isClientView]);
 
-  // Handle payment status update
   const handlePaymentStatusUpdate = useCallback(async (paymentId: string, newStatus: 'paid' | 'unpaid' | 'write-off') => {
     if (!invoice || !paymentId) return;
     
     setUpdatingPaymentId(paymentId);
     try {
-      // If status is paid, automatically set today's date
       let updatedSchedule;
       if (newStatus === 'paid') {
         const today = new Date();
@@ -163,7 +152,6 @@ const InvoiceView = () => {
           schedule.id === paymentId ? updatedSchedule : schedule
         );
         
-        // Use functional update with deep equality check
         setInvoice(prev => {
           if (!prev) return prev;
           if (isEqual(prev.paymentSchedules, updatedSchedules)) {
@@ -180,6 +168,48 @@ const InvoiceView = () => {
     } catch (err) {
       console.error('Failed to update payment status:', err);
       toast.error('Error updating payment status');
+    } finally {
+      setUpdatingPaymentId(null);
+    }
+  }, [invoice]);
+
+  const handlePaymentDateUpdate = useCallback(async (paymentId: string, paymentDate: string) => {
+    if (!invoice || !paymentId) return;
+    
+    setUpdatingPaymentId(paymentId);
+    try {
+      const updatedSchedule = await updatePaymentScheduleStatus(
+        paymentId, 
+        'paid',
+        paymentDate
+      );
+      
+      if (!updatedSchedule) {
+        toast.error('Failed to update payment date');
+        return;
+      }
+      
+      if (invoice.paymentSchedules) {
+        const updatedSchedules = invoice.paymentSchedules.map(schedule => 
+          schedule.id === paymentId ? updatedSchedule : schedule
+        );
+        
+        setInvoice(prev => {
+          if (!prev) return prev;
+          if (isEqual(prev.paymentSchedules, updatedSchedules)) {
+            return prev;
+          }
+          return {
+            ...prev,
+            paymentSchedules: updatedSchedules
+          };
+        });
+        
+        toast.success('Payment date updated');
+      }
+    } catch (err) {
+      console.error('Failed to update payment date:', err);
+      toast.error('Error updating payment date');
     } finally {
       setUpdatingPaymentId(null);
     }
@@ -405,6 +435,7 @@ const InvoiceView = () => {
                       updatingPaymentId={updatingPaymentId}
                       onUpdateStatus={handlePaymentStatusUpdate}
                       formatCurrency={formatCurrency}
+                      onUpdatePaymentDate={handlePaymentDateUpdate}
                     />
                   ) : (
                     <div className="text-muted-foreground border rounded-md p-4">

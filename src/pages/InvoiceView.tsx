@@ -53,6 +53,20 @@ const InvoiceView = () => {
     }).format(amount);
   }, []);
 
+  const [selectedCompanyState, setSelectedCompanyState] = useState<{ 
+    id: string; 
+    name: string; 
+    logo_url?: string;
+    address?: string;
+    email?: string;
+    phone?: string;
+    website?: string;
+    country?: string;
+    currency?: string;
+    is_default: boolean;
+    user_id: string;
+  } | null>(null);
+
   useEffect(() => {
     const fetchInvoice = async () => {
       try {
@@ -125,6 +139,38 @@ const InvoiceView = () => {
           const fetchedJob = await getJob(fetchedInvoice.jobId);
           if (fetchedJob) {
             setJob(fetchedJob);
+          }
+        }
+        
+        if (isClientView && fetchedInvoice.companyId) {
+          try {
+            console.log('[InvoiceView] Client view - fetching company info for:', fetchedInvoice.companyId);
+            const { data: companyData, error: companyError } = await supabase
+              .from('companies')
+              .select('*')
+              .eq('id', fetchedInvoice.companyId)
+              .single();
+            
+            if (companyError) {
+              console.error('[InvoiceView] Error fetching company:', companyError);
+            } else if (companyData) {
+              console.log('[InvoiceView] Fetched company data for client view:', companyData);
+              setSelectedCompanyState({
+                id: companyData.id,
+                name: companyData.name,
+                logo_url: companyData.logo_url,
+                address: companyData.address,
+                email: companyData.email,
+                phone: companyData.phone,
+                website: companyData.website,
+                country: companyData.country,
+                currency: companyData.currency,
+                is_default: companyData.is_default,
+                user_id: companyData.user_id
+              });
+            }
+          } catch (err) {
+            console.error('[InvoiceView] Failed to fetch company data:', err);
           }
         }
       } catch (err) {
@@ -323,6 +369,8 @@ const InvoiceView = () => {
     }
   };
 
+  const displayCompany = isClientView ? selectedCompanyState : selectedCompany;
+
   if (loading) {
     return (
       <PageTransition>
@@ -430,10 +478,10 @@ const InvoiceView = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-4">
               <div className="flex flex-col justify-between">
                 <div className="flex items-start mb-6 h-80">
-                  {invoice.companyId && selectedCompany?.logo_url ? (
+                  {displayCompany?.logo_url ? (
                     <img 
-                      src={selectedCompany.logo_url} 
-                      alt={`${selectedCompany.name} Logo`}
+                      src={displayCompany.logo_url} 
+                      alt={`${displayCompany.name} Logo`}
                       className="h-full max-h-80 w-auto object-contain" 
                     />
                   ) : (
@@ -465,10 +513,10 @@ const InvoiceView = () => {
               <div className="space-y-4">
                 <div>
                   <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">FROM</h4>
-                  <div className="font-medium">{selectedCompany?.name || invoice?.companyId}</div>
-                  {selectedCompany?.email && <div className="text-sm">{selectedCompany.email}</div>}
-                  {selectedCompany?.phone && <div className="text-sm">{selectedCompany.phone}</div>}
-                  {selectedCompany?.address && <div className="text-sm">{selectedCompany.address}</div>}
+                  <div className="font-medium">{displayCompany?.name || 'Company'}</div>
+                  {displayCompany?.email && <div className="text-sm">{displayCompany.email}</div>}
+                  {displayCompany?.phone && <div className="text-sm">{displayCompany.phone}</div>}
+                  {displayCompany?.address && <div className="text-sm">{displayCompany.address}</div>}
                 </div>
                 
                 <div>

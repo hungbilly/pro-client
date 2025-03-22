@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getClients, getInvoices, getJobs, deleteClient } from '@/lib/storage';
@@ -6,14 +7,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Link, useNavigate } from 'react-router-dom';
-import { UserPlus, FileText, Users, CircleDollarSign, BarChart4, Clock, Briefcase, FilePlus, Eye, FileEdit, MoreHorizontal, Trash2 } from 'lucide-react';
-import ClientCard from './ClientCard';
+import { UserPlus, FileText, Users, Briefcase, FilePlus, Eye, FileEdit, MoreHorizontal, Trash2, Search } from 'lucide-react';
 import { AnimatedBackground } from './ui-custom/AnimatedBackground';
-import JobList from './JobList';
-import InvoiceList from './InvoiceList';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from './ui/badge';
 import { toast } from 'sonner';
+import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,13 +32,16 @@ import {
 import { useCompany } from './CompanySelector';
 import AddClientButton from './ui-custom/AddClientButton';
 import AddJobButton from './ui-custom/AddJobButton';
-import AddJobModal from './ui-custom/AddJobModal';
+import RevenueChart from './RevenueChart';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const [clientToDelete, setClientToDelete] = React.useState<string | null>(null);
   const [isAddJobModalOpen, setIsAddJobModalOpen] = useState(false);
   const queryClient = useQueryClient();
+  const [clientSearchQuery, setClientSearchQuery] = useState('');
+  const [jobSearchQuery, setJobSearchQuery] = useState('');
+  const [invoiceSearchQuery, setInvoiceSearchQuery] = useState('');
   
   const { companies, selectedCompanyId, loading: companyLoading } = useCompany();
   
@@ -93,60 +95,27 @@ const Dashboard: React.FC = () => {
     );
   }
 
-  const stats = {
-    totalClients: clients.length,
-    totalJobs: jobs.length,
-    totalInvoices: invoices.length,
-    totalAmount: invoices.reduce((sum, invoice) => sum + invoice.amount, 0),
-    pendingAmount: invoices
-      .filter(inv => ['sent', 'accepted'].includes(inv.status))
-      .reduce((sum, invoice) => sum + invoice.amount, 0),
-    paidAmount: invoices
-      .filter(inv => inv.status === 'paid')
-      .reduce((sum, invoice) => sum + invoice.amount, 0),
-  };
-
-  const sortedClients = [...clients].sort((a, b) => 
-    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
+  const sortedClients = [...clients]
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .filter(client => 
+      client.name.toLowerCase().includes(clientSearchQuery.toLowerCase()) ||
+      client.email.toLowerCase().includes(clientSearchQuery.toLowerCase()) ||
+      client.phone.toLowerCase().includes(clientSearchQuery.toLowerCase())
+    );
   
-  const recentInvoices = [...invoices]
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 5);
-
-  const today = new Date();
-  const thirtyDaysFromNow = new Date(today);
-  thirtyDaysFromNow.setDate(today.getDate() + 30);
+  const filteredJobs = [...jobs]
+    .filter(job => 
+      job.title.toLowerCase().includes(jobSearchQuery.toLowerCase()) ||
+      clients.find(c => c.id === job.clientId)?.name.toLowerCase().includes(jobSearchQuery.toLowerCase()) ||
+      (job.location && job.location.toLowerCase().includes(jobSearchQuery.toLowerCase()))
+    );
   
-  const upcomingInvoices = invoices
+  const filteredInvoices = [...invoices]
     .filter(invoice => 
-      ['sent', 'accepted'].includes(invoice.status) && 
-      new Date(invoice.dueDate) <= thirtyDaysFromNow
-    )
-    .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
-
-  const defaultClient = clients.length > 0 ? clients[0] : null;
-
-  const handleJobDelete = (jobId: string) => {
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active':
-      case 'sent':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-      case 'completed':
-      case 'accepted':
-      case 'paid':
-        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
-      case 'draft':
-        return 'bg-muted text-muted-foreground';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
+      invoice.number.toLowerCase().includes(invoiceSearchQuery.toLowerCase()) ||
+      clients.find(c => c.id === invoice.clientId)?.name.toLowerCase().includes(invoiceSearchQuery.toLowerCase()) ||
+      invoice.status.toLowerCase().includes(invoiceSearchQuery.toLowerCase())
+    );
 
   const handleClientRowClick = (clientId: string) => {
     navigate(`/client/${clientId}`);
@@ -182,6 +151,24 @@ const Dashboard: React.FC = () => {
 
   const cancelDeleteClient = () => {
     setClientToDelete(null);
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active':
+      case 'sent':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+      case 'completed':
+      case 'accepted':
+      case 'paid':
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+      case 'draft':
+        return 'bg-muted text-muted-foreground';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
   };
 
   const isLoading = clientsLoading || invoicesLoading || jobsLoading;
@@ -224,54 +211,8 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <Card className="backdrop-blur-sm bg-white/80 border-transparent shadow-soft hover:shadow-glow transition-all duration-300">
-            <CardContent className="flex items-center p-6">
-              <div className="rounded-full p-3 bg-blue-100 dark:bg-blue-900/20 mr-4">
-                <Users className="h-5 w-5 text-blue-700 dark:text-blue-400" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Clients</p>
-                <h3 className="text-2xl font-bold">{stats.totalClients}</h3>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="backdrop-blur-sm bg-white/80 border-transparent shadow-soft hover:shadow-glow transition-all duration-300">
-            <CardContent className="flex items-center p-6">
-              <div className="rounded-full p-3 bg-purple-100 dark:bg-purple-900/20 mr-4">
-                <Briefcase className="h-5 w-5 text-purple-700 dark:text-purple-400" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Jobs</p>
-                <h3 className="text-2xl font-bold">{stats.totalJobs}</h3>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="backdrop-blur-sm bg-white/80 border-transparent shadow-soft hover:shadow-glow transition-all duration-300">
-            <CardContent className="flex items-center p-6">
-              <div className="rounded-full p-3 bg-amber-100 dark:bg-amber-900/20 mr-4">
-                <Clock className="h-5 w-5 text-amber-700 dark:text-amber-400" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Pending</p>
-                <h3 className="text-2xl font-bold">${stats.pendingAmount.toFixed(2)}</h3>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="backdrop-blur-sm bg-white/80 border-transparent shadow-soft hover:shadow-glow transition-all duration-300">
-            <CardContent className="flex items-center p-6">
-              <div className="rounded-full p-3 bg-green-100 dark:bg-green-900/20 mr-4">
-                <CircleDollarSign className="h-5 w-5 text-green-700 dark:text-green-400" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Revenue</p>
-                <h3 className="text-2xl font-bold">${stats.paidAmount.toFixed(2)}</h3>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="mb-8">
+          <RevenueChart invoices={invoices} jobs={jobs} />
         </div>
 
         <Card className="backdrop-blur-sm bg-white/80 border-transparent shadow-soft">
@@ -302,6 +243,16 @@ const Dashboard: React.FC = () => {
                   <AddClientButton />
                 </div>
                 
+                <div className="relative mb-4">
+                  <Input
+                    placeholder="Search clients by name, email, or phone..."
+                    value={clientSearchQuery}
+                    onChange={(e) => setClientSearchQuery(e.target.value)}
+                    className="pr-10"
+                  />
+                  <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                </div>
+                
                 {clients.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-8 text-center">
                     <Users className="h-12 w-12 text-muted-foreground mb-4" />
@@ -310,6 +261,10 @@ const Dashboard: React.FC = () => {
                       You haven't added any clients yet. Add your first client to get started.
                     </p>
                     <AddClientButton />
+                  </div>
+                ) : sortedClients.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">No clients match your search</p>
                   </div>
                 ) : (
                   <div className="rounded-md border">
@@ -386,6 +341,16 @@ const Dashboard: React.FC = () => {
                   )}
                 </div>
                 
+                <div className="relative mb-4">
+                  <Input
+                    placeholder="Search jobs by title, client name, or location..."
+                    value={jobSearchQuery}
+                    onChange={(e) => setJobSearchQuery(e.target.value)}
+                    className="pr-10"
+                  />
+                  <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                </div>
+                
                 {jobs.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-8 text-center">
                     <Briefcase className="h-12 w-12 text-muted-foreground mb-4" />
@@ -396,6 +361,10 @@ const Dashboard: React.FC = () => {
                     {clients.length > 0 && (
                       <AddJobButton />
                     )}
+                  </div>
+                ) : filteredJobs.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">No jobs match your search</p>
                   </div>
                 ) : (
                   <div className="rounded-md border">
@@ -410,7 +379,7 @@ const Dashboard: React.FC = () => {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {jobs.map((job) => {
+                        {filteredJobs.map((job) => {
                           const jobClient = clients.find((c) => c.id === job.clientId) || null;
                           return (
                             <TableRow 
@@ -458,6 +427,16 @@ const Dashboard: React.FC = () => {
                   )}
                 </div>
                 
+                <div className="relative mb-4">
+                  <Input
+                    placeholder="Search invoices by number, client name, or status..."
+                    value={invoiceSearchQuery}
+                    onChange={(e) => setInvoiceSearchQuery(e.target.value)}
+                    className="pr-10"
+                  />
+                  <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                </div>
+                
                 {invoices.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-8 text-center">
                     <FilePlus className="h-12 w-12 text-muted-foreground mb-4" />
@@ -472,6 +451,10 @@ const Dashboard: React.FC = () => {
                         </Link>
                       </Button>
                     )}
+                  </div>
+                ) : filteredInvoices.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">No invoices match your search</p>
                   </div>
                 ) : (
                   <div className="rounded-md border">
@@ -488,7 +471,7 @@ const Dashboard: React.FC = () => {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {invoices.map((invoice) => {
+                        {filteredInvoices.map((invoice) => {
                           const invoiceClient = clients.find((c) => c.id === invoice.clientId) || null;
                           return (
                             <TableRow 
@@ -531,11 +514,6 @@ const Dashboard: React.FC = () => {
           </CardContent>
         </Card>
       </div>
-      
-      <AddJobModal 
-        isOpen={isAddJobModalOpen} 
-        onClose={() => setIsAddJobModalOpen(false)} 
-      />
     </AnimatedBackground>
   );
 };

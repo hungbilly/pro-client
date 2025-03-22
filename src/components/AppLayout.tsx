@@ -2,7 +2,6 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
 import TopNavbar from './TopNavbar';
-import MainNavbar from './MainNavbar';
 
 const AppLayout = () => {
   return (
@@ -17,4 +16,3 @@ const AppLayout = () => {
 };
 
 export default AppLayout;
-

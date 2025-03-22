@@ -37,7 +37,6 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
   });
   const [chartData, setChartData] = useState<any[]>([]);
   
-  // Chart series display toggles
   const [showPaidRevenue, setShowPaidRevenue] = useState(true);
   const [showUnpaidRevenue, setShowUnpaidRevenue] = useState(true);
   const [showTotalRevenue, setShowTotalRevenue] = useState(true);
@@ -323,10 +322,16 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
               />
               <Tooltip 
                 formatter={(value: number, name: string) => {
-                  if (name === 'paidAmount' || name === 'unpaidAmount' || name === 'totalAmount') {
-                    return [formatCurrency(value), name === 'paidAmount' ? 'Paid' : name === 'unpaidAmount' ? 'Unpaid' : 'Total'];
+                  if (name === 'paidAmount') {
+                    return [formatCurrency(value), 'Paid Revenue'];
+                  } else if (name === 'unpaidAmount') {
+                    return [formatCurrency(value), 'Unpaid Revenue'];
+                  } else if (name === 'totalAmount') {
+                    return [formatCurrency(value), 'Total Revenue'];
+                  } else if (name === 'jobCount') {
+                    return [value, 'Jobs Count'];
                   }
-                  return [value, 'Jobs'];
+                  return [value, name];
                 }}
                 labelFormatter={(label) => `Date: ${label}`}
               />
@@ -336,7 +341,7 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
                   yAxisId="left"
                   type="monotone"
                   dataKey="paidAmount"
-                  name="Paid Revenue"
+                  name="paidAmount"
                   fill="#9b87f5"
                   fillOpacity={0.3}
                   stroke="#9b87f5"
@@ -348,7 +353,7 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
                   yAxisId="left"
                   type="monotone"
                   dataKey="unpaidAmount"
-                  name="Unpaid Revenue"
+                  name="unpaidAmount"
                   fill="#E5DEFF"
                   fillOpacity={0.3}
                   stroke="#E5DEFF"
@@ -360,7 +365,7 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
                   yAxisId="left"
                   type="monotone"
                   dataKey="totalAmount"
-                  name="Total Revenue"
+                  name="totalAmount"
                   stroke="#6E59A5"
                   strokeWidth={2}
                   dot={{ r: 4 }}
@@ -372,7 +377,7 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
                   yAxisId="right"
                   type="monotone"
                   dataKey="jobCount"
-                  name="Jobs Count"
+                  name="jobCount"
                   stroke="#F97316"
                   strokeWidth={2}
                   dot={{ r: 4 }}

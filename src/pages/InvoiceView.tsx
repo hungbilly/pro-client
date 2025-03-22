@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { 
@@ -338,6 +337,8 @@ const InvoiceView = () => {
                 <div>
                   <div className="text-sm text-gray-500 dark:text-gray-400">INVOICE</div>
                   <div className="text-2xl font-bold"># {invoice.number}</div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">INVOICE ISSUE DATE</div>
+                  <div className="text-sm">{new Date(invoice.date).toLocaleDateString()}</div>
                   <div className="mt-1 flex items-center">
                     <Badge className={statusColors[invoice.status] || 'bg-gray-100 text-gray-800'}>
                       {invoice.status.toUpperCase()}
@@ -393,8 +394,8 @@ const InvoiceView = () => {
                 {/* Date Information */}
                 <div className="flex items-center space-x-4">
                   <div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">DATE</div>
-                    <div className="text-sm">{new Date(invoice.date).toLocaleDateString()}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">DUE DATE</div>
+                    <div className="text-sm">{new Date(invoice.dueDate).toLocaleDateString()}</div>
                   </div>
                   {job?.date && (
                     <div>

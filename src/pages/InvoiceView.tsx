@@ -873,7 +873,6 @@ const InvoiceView = () => {
             <div className="space-y-2">
               <Label htmlFor="payment-date">Payment Date</Label>
               <DatePicker
-                id="payment-date"
                 selected={paymentDate}
                 onSelect={(date) => setPaymentDate(date)}
               />

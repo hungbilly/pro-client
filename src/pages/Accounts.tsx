@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO, differenceInDays, startOfMonth, endOfMonth, startOfYear, endOfYear, subMonths } from 'date-fns';
-import { MoreHorizontal, Download, Search, PlusCircle, DollarSign, TrendingDown, TrendingUp } from 'lucide-react';
+import { MoreHorizontal, Download, Search, PlusCircle, DollarSign, TrendingDown, TrendingUp, Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompanyContext } from '@/context/CompanyContext';
 import { toast } from '@/hooks/use-toast';
@@ -67,7 +67,18 @@ type Expense = {
   description: string;
   date: string;
   amount: number;
-  category: string;
+  category: {
+    id: string;
+    name: string;
+  };
+  company_id?: string;
+};
+
+// New expense category type
+type ExpenseCategory = {
+  id: string;
+  name: string;
+  company_id?: string;
 };
 
 type PeriodOption = 'all' | 'this-month' | 'last-month' | 'this-year' | 'custom';
@@ -93,16 +104,19 @@ const Accounts = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [filteredExpenses, setFilteredExpenses] = useState<Expense[]>([]);
   const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
+  const [expenseCategories, setExpenseCategories] = useState<ExpenseCategory[]>([]);
+  const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
+  const [newCategory, setNewCategory] = useState('');
   const [newExpense, setNewExpense] = useState<{
     description: string;
     date: Date | undefined;
     amount: string;
-    category: string;
+    categoryId: string;
   }>({
     description: '',
     date: new Date(),
     amount: '',
-    category: 'general',
+    categoryId: '',
   });
   
   // Shared state
@@ -138,6 +152,7 @@ const Accounts = () => {
     if (selectedCompany) {
       fetchPayments();
       fetchExpenses();
+      fetchExpenseCategories();
     }
   }, [selectedCompany]);
 
@@ -268,37 +283,94 @@ const Accounts = () => {
     }
   };
   
-  // Mock function for fetching expenses - in a real app this would connect to a database
+  const fetchExpenseCategories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('expense_categories')
+        .select('*')
+        .eq('company_id', selectedCompanyId)
+        .order('name');
+
+      if (error) {
+        throw error;
+      }
+
+      setExpenseCategories(data || []);
+      
+      // If there are no expense categories with this company ID,
+      // it means we need to associate the default categories with this company
+      if (data?.length === 0) {
+        // Fetch the default categories (those without company_id)
+        const { data: defaultCategories, error: defaultError } = await supabase
+          .from('expense_categories')
+          .select('*')
+          .is('company_id', null);
+        
+        if (defaultError) {
+          throw defaultError;
+        }
+        
+        // Associate these categories with the current company
+        if (defaultCategories && defaultCategories.length > 0) {
+          const categoriesToInsert = defaultCategories.map(cat => ({
+            name: cat.name,
+            company_id: selectedCompanyId
+          }));
+          
+          const { data: insertedData, error: insertError } = await supabase
+            .from('expense_categories')
+            .insert(categoriesToInsert)
+            .select();
+            
+          if (insertError) {
+            throw insertError;
+          }
+          
+          setExpenseCategories(insertedData || []);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching expense categories:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load expense categories',
+        variant: 'destructive'
+      });
+    }
+  };
+  
   const fetchExpenses = async () => {
     setIsLoading(true);
     try {
-      // This would be replaced with an actual database call
-      // For now we'll use mock data
-      const mockExpenses: Expense[] = [
-        {
-          id: '1',
-          description: 'Camera Equipment',
-          date: '2023-05-15',
-          amount: 1200,
-          category: 'equipment'
-        },
-        {
-          id: '2',
-          description: 'Studio Rent',
-          date: '2023-05-01',
-          amount: 800,
-          category: 'rent'
-        },
-        {
-          id: '3',
-          description: 'Software Subscription',
-          date: '2023-05-10',
-          amount: 50,
-          category: 'software'
-        }
-      ];
+      const { data, error } = await supabase
+        .from('expenses')
+        .select(`
+          *,
+          category:category_id (
+            id,
+            name
+          )
+        `)
+        .eq('company_id', selectedCompanyId)
+        .order('date', { ascending: false });
+
+      if (error) {
+        throw error;
+      }
       
-      setExpenses(mockExpenses);
+      const transformedExpenses: Expense[] = (data || []).map(expense => ({
+        id: expense.id,
+        description: expense.description,
+        date: expense.date,
+        amount: Number(expense.amount),
+        category: {
+          id: expense.category.id,
+          name: expense.category.name
+        },
+        company_id: expense.company_id
+      }));
+      
+      setExpenses(transformedExpenses);
     } catch (error) {
       console.error('Error fetching expenses:', error);
       toast({
@@ -353,7 +425,7 @@ const Accounts = () => {
       const query = searchQuery.toLowerCase();
       filteredExpenses = filteredExpenses.filter(expense => 
         expense.description.toLowerCase().includes(query) ||
-        expense.category.toLowerCase().includes(query)
+        expense.category.name.toLowerCase().includes(query)
       );
     }
     
@@ -508,8 +580,8 @@ const Accounts = () => {
     closePaymentDialog();
   };
   
-  const addExpense = () => {
-    if (!newExpense.description || !newExpense.date || !newExpense.amount) {
+  const addExpense = async () => {
+    if (!newExpense.description || !newExpense.date || !newExpense.amount || !newExpense.categoryId) {
       toast({
         title: 'Validation Error',
         description: 'Please fill all required fields',
@@ -528,38 +600,120 @@ const Accounts = () => {
       return;
     }
     
-    // In a real app, this would save to the database
-    const newExpenseItem: Expense = {
-      id: Date.now().toString(), // temporary ID
-      description: newExpense.description,
-      date: formatDate(newExpense.date, 'yyyy-MM-dd'),
-      amount: amount,
-      category: newExpense.category
-    };
+    setIsUpdating(true);
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .insert({
+          description: newExpense.description,
+          amount: amount,
+          date: formatDate(newExpense.date, 'yyyy-MM-dd'),
+          category_id: newExpense.categoryId,
+          company_id: selectedCompanyId
+        })
+        .select(`
+          *,
+          category:category_id (
+            id,
+            name
+          )
+        `);
+      
+      if (error) throw error;
+      
+      // Add the new expense to the state
+      if (data && data.length > 0) {
+        const newExpenseItem: Expense = {
+          id: data[0].id,
+          description: data[0].description,
+          date: data[0].date,
+          amount: Number(data[0].amount),
+          category: {
+            id: data[0].category.id,
+            name: data[0].category.name
+          },
+          company_id: data[0].company_id
+        };
+        
+        setExpenses(prev => [newExpenseItem, ...prev]);
+        
+        setAccountStats(prev => ({
+          ...prev,
+          expenses: prev.expenses + amount,
+          profit: prev.paid - (prev.expenses + amount)
+        }));
+      }
+      
+      toast({
+        title: 'Success',
+        description: 'Expense added successfully',
+        variant: 'default'
+      });
+      
+      // Reset form
+      setNewExpense({
+        description: '',
+        date: new Date(),
+        amount: '',
+        categoryId: '',
+      });
+      
+      setIsExpenseDialogOpen(false);
+    } catch (error) {
+      console.error('Error adding expense:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to add expense',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+  
+  const addExpenseCategory = async () => {
+    if (!newCategory.trim()) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please enter a category name',
+        variant: 'destructive'
+      });
+      return;
+    }
     
-    setExpenses([...expenses, newExpenseItem]);
-    
-    setAccountStats(prev => ({
-      ...prev,
-      expenses: prev.expenses + amount,
-      profit: prev.paid - (prev.expenses + amount)
-    }));
-    
-    toast({
-      title: 'Success',
-      description: 'Expense added successfully',
-      variant: 'default'
-    });
-    
-    // Reset form
-    setNewExpense({
-      description: '',
-      date: new Date(),
-      amount: '',
-      category: 'general',
-    });
-    
-    setIsExpenseDialogOpen(false);
+    setIsUpdating(true);
+    try {
+      const { data, error } = await supabase
+        .from('expense_categories')
+        .insert({
+          name: newCategory.trim(),
+          company_id: selectedCompanyId
+        })
+        .select();
+      
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        setExpenseCategories(prev => [...prev, data[0]]);
+        setNewCategory('');
+        setIsCategoryDialogOpen(false);
+        
+        toast({
+          title: 'Success',
+          description: 'Category added successfully',
+          variant: 'default'
+        });
+      }
+    } catch (error) {
+      console.error('Error adding category:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to add category',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const handleRowClick = (invoiceId: string, event: React.MouseEvent) => {
@@ -763,6 +917,14 @@ const Accounts = () => {
               </Button>
               <Button 
                 variant="outline" 
+                onClick={() => setIsCategoryDialogOpen(true)}
+                className="whitespace-nowrap"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add Category
+              </Button>
+              <Button 
+                variant="outline" 
                 onClick={exportData}
                 className="whitespace-nowrap"
               >
@@ -882,7 +1044,7 @@ const Accounts = () => {
                         <TableCell>{expense.description}</TableCell>
                         <TableCell>
                           <Badge>
-                            {expense.category}
+                            {expense.category.name}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right font-medium">
@@ -1004,20 +1166,18 @@ const Accounts = () => {
             <div className="space-y-2">
               <label htmlFor="category" className="text-sm font-medium">Category</label>
               <Select 
-                value={newExpense.category} 
-                onValueChange={(value) => setNewExpense({...newExpense, category: value})}
+                value={newExpense.categoryId} 
+                onValueChange={(value) => setNewExpense({...newExpense, categoryId: value})}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="equipment">Equipment</SelectItem>
-                  <SelectItem value="software">Software</SelectItem>
-                  <SelectItem value="rent">Rent</SelectItem>
-                  <SelectItem value="utilities">Utilities</SelectItem>
-                  <SelectItem value="travel">Travel</SelectItem>
-                  <SelectItem value="marketing">Marketing</SelectItem>
-                  <SelectItem value="general">General</SelectItem>
+                  {expenseCategories.map(category => (
+                    <SelectItem key={category.id} value={category.id}>
+                      {category.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -1026,8 +1186,39 @@ const Accounts = () => {
             <Button variant="outline" onClick={() => setIsExpenseDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={addExpense}>
-              Add Expense
+            <Button onClick={addExpense} disabled={isUpdating}>
+              {isUpdating ? 'Adding...' : 'Add Expense'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Add Category Dialog */}
+      <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Category</DialogTitle>
+            <DialogDescription>
+              Create a new expense category.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label htmlFor="categoryName" className="text-sm font-medium">Category Name</label>
+              <Input
+                id="categoryName"
+                value={newCategory}
+                onChange={(e) => setNewCategory(e.target.value)}
+                placeholder="Enter category name"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCategoryDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={addExpenseCategory} disabled={isUpdating}>
+              {isUpdating ? 'Adding...' : 'Add Category'}
             </Button>
           </DialogFooter>
         </DialogContent>

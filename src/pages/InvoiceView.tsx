@@ -20,6 +20,7 @@ const InvoiceView = () => {
   const [client, setClient] = useState<Client | null>(null);
   const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
+  const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null);
   const { selectedCompany } = useCompany();
 
   useEffect(() => {
@@ -120,6 +121,81 @@ const InvoiceView = () => {
     navigate(`/invoice/edit/${invoice.id}`);
   };
 
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: selectedCompany?.currency || 'USD',
+      minimumFractionDigits: 2,
+    }).format(amount);
+  };
+
+  const handleUpdatePaymentStatus = async (paymentId: string, status: 'paid' | 'unpaid' | 'write-off') => {
+    setUpdatingPaymentId(paymentId);
+    try {
+      // Here you would implement actual update logic to the database
+      // For now we just simulate a delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // For this example, we'll just update the local state
+      if (invoice && invoice.paymentSchedules) {
+        const updatedSchedules = invoice.paymentSchedules.map(schedule => {
+          if (schedule.id === paymentId) {
+            return {
+              ...schedule,
+              status,
+              // If marking as paid, set payment date to today
+              paymentDate: status === 'paid' ? format(new Date(), 'yyyy-MM-dd') : schedule.paymentDate
+            };
+          }
+          return schedule;
+        });
+        
+        setInvoice({
+          ...invoice,
+          paymentSchedules: updatedSchedules
+        });
+        
+        toast.success(`Payment status updated to ${status}`);
+      }
+    } catch (error) {
+      console.error('Error updating payment status:', error);
+      toast.error('Failed to update payment status');
+    } finally {
+      setUpdatingPaymentId(null);
+    }
+  };
+
+  const handleUpdatePaymentDate = async (paymentId: string, paymentDate: string) => {
+    setUpdatingPaymentId(paymentId);
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Update local state
+      if (invoice && invoice.paymentSchedules) {
+        const updatedSchedules = invoice.paymentSchedules.map(schedule => {
+          if (schedule.id === paymentId) {
+            return {
+              ...schedule,
+              paymentDate
+            };
+          }
+          return schedule;
+        });
+        
+        setInvoice({
+          ...invoice,
+          paymentSchedules: updatedSchedules
+        });
+      }
+    } catch (error) {
+      console.error('Error updating payment date:', error);
+      toast.error('Failed to update payment date');
+    } finally {
+      setUpdatingPaymentId(null);
+    }
+  };
+
   return (
     <PageTransition>
       <div className="container py-8">
@@ -159,9 +235,13 @@ const InvoiceView = () => {
             <div className="mt-8">
               <h3 className="text-lg font-medium mb-4">Payment Schedule</h3>
               <PaymentScheduleTable 
-                schedules={invoice.paymentSchedules} 
-                invoiceId={invoice.id}
-                invoiceTotal={invoice.amount}
+                paymentSchedules={invoice.paymentSchedules}
+                amount={invoice.amount}
+                isClientView={false}
+                updatingPaymentId={updatingPaymentId}
+                onUpdateStatus={handleUpdatePaymentStatus}
+                formatCurrency={formatCurrency}
+                onUpdatePaymentDate={handleUpdatePaymentDate}
               />
             </div>
           )}

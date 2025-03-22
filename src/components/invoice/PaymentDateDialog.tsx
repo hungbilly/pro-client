@@ -2,14 +2,11 @@
 import React, { memo } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { DatePicker } from '@/components/ui/date-picker';
+import { format } from 'date-fns';
 
 interface PaymentDateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  paymentDate: Date | undefined;
-  onDateSelect: (date: Date | undefined) => void;
   onConfirm: () => void;
   onCancel: () => void;
   isUpdating: boolean;
@@ -18,37 +15,22 @@ interface PaymentDateDialogProps {
 const PaymentDateDialog = memo(({
   open,
   onOpenChange,
-  paymentDate,
-  onDateSelect,
   onConfirm,
   onCancel,
   isUpdating
 }: PaymentDateDialogProps) => {
+  const today = new Date();
+  const formattedDate = format(today, 'MMMM d, yyyy');
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Enter Payment Date</DialogTitle>
+          <DialogTitle>Confirm Payment</DialogTitle>
           <DialogDescription>
-            When was this payment received? Please select a date.
+            Are you sure you want to mark this payment as paid? The payment date will be set to today ({formattedDate}).
           </DialogDescription>
         </DialogHeader>
-        <div className="py-4">
-          <div className="space-y-2">
-            <Label htmlFor="payment-date">Payment Date</Label>
-            <DatePicker
-              id="payment-date"
-              selected={paymentDate}
-              onSelect={(date) => {
-                console.log('[DatePicker] Date selected:', date);
-                onDateSelect(date);
-              }}
-            />
-            {!paymentDate && (
-              <p className="text-sm text-red-500 mt-1">Please select a payment date</p>
-            )}
-          </div>
-        </div>
         <DialogFooter>
           <Button 
             variant="outline" 
@@ -60,7 +42,7 @@ const PaymentDateDialog = memo(({
           </Button>
           <Button 
             onClick={onConfirm} 
-            disabled={!paymentDate || isUpdating}
+            disabled={isUpdating}
             type="button"
           >
             {isUpdating ? 'Updating...' : 'Confirm'}

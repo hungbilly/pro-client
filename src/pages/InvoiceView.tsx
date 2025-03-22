@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { 
@@ -147,7 +146,6 @@ const InvoiceView = () => {
     
     if (newStatus === 'paid') {
       setPaymentIdToUpdate(paymentId);
-      setPaymentDate(new Date());
       setShowPaymentDateDialog(true);
       return;
     }
@@ -190,17 +188,21 @@ const InvoiceView = () => {
 
   // Handle confirm payment date
   const handleConfirmPaymentDate = useCallback(async () => {
-    if (!paymentIdToUpdate || !paymentDate || !invoice) {
-      toast.error('Please select a payment date');
+    if (!paymentIdToUpdate || !invoice) {
+      toast.error('Payment ID is missing');
       return;
     }
     
     setUpdatingPaymentId(paymentIdToUpdate);
     try {
+      // Use today's date
+      const today = new Date();
+      const formattedDate = format(today, 'yyyy-MM-dd');
+      
       const updatedSchedule = await updatePaymentScheduleStatus(
         paymentIdToUpdate, 
         'paid', 
-        format(paymentDate, 'yyyy-MM-dd')
+        formattedDate
       );
       
       if (!updatedSchedule) {
@@ -234,14 +236,12 @@ const InvoiceView = () => {
       setUpdatingPaymentId(null);
       setPaymentIdToUpdate(null);
       setShowPaymentDateDialog(false);
-      setPaymentDate(undefined);
     }
-  }, [invoice, paymentIdToUpdate, paymentDate]);
+  }, [invoice, paymentIdToUpdate]);
 
   // Handle cancel payment date
   const handleCancelPaymentDate = useCallback(() => {
     setShowPaymentDateDialog(false);
-    setPaymentDate(undefined);
     setPaymentIdToUpdate(null);
   }, []);
 
@@ -530,8 +530,6 @@ const InvoiceView = () => {
       <PaymentDateDialog
         open={showPaymentDateDialog}
         onOpenChange={setShowPaymentDateDialog}
-        paymentDate={paymentDate}
-        onDateSelect={handlePaymentDateSelect}
         onConfirm={handleConfirmPaymentDate}
         onCancel={handleCancelPaymentDate}
         isUpdating={updatingPaymentId !== null}

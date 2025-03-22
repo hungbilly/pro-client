@@ -1021,7 +1021,7 @@ export const saveInvoice = async (invoice: Omit<Invoice, 'id' | 'viewLink'>): Pr
         status: invoice.status,
         contract_status: invoice.contractStatus,
         notes: invoice.notes,
-        contract_terms: invoice.contract_terms,
+        contract_terms: invoice.contractTerms,
         view_link: viewLink
       })
       .select()
@@ -1134,7 +1134,7 @@ export const updateInvoice = async (invoice: Invoice): Promise<Invoice> => {
         status: invoice.status,
         contract_status: invoice.contractStatus,
         notes: invoice.notes,
-        contract_terms: invoice.contract_terms
+        contract_terms: invoice.contractTerms,
       })
       .eq('id', invoice.id)
       .select()

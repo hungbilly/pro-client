@@ -46,6 +46,12 @@ export const logDateProcessing = (context: string, dateInfo: any) => {
   console.log(`[${timestamp}] [Date Processing] ${context}`, dateInfo);
 };
 
+// Add payment processing debugging
+export const logPaymentProcessing = (context: string, paymentInfo: any) => {
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] [Payment Processing] ${context}`, paymentInfo);
+};
+
 // Helper function to format dates consistently
 export const formatDate = (date: Date | string): string => {
   try {

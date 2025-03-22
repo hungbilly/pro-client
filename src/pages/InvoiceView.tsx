@@ -27,6 +27,7 @@ import RichTextEditor from '@/components/RichTextEditor';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DatePicker } from '@/components/ui/date-picker';
 
 const InvoiceView = () => {
   const { viewLink, id } = useParams<{ viewLink: string, id: string }>();
@@ -44,6 +45,9 @@ const InvoiceView = () => {
   const [showEmailDialog, setShowEmailDialog] = useState(false);
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null);
+  const [paymentDate, setPaymentDate] = useState<Date | undefined>(undefined);
+  const [showPaymentDateDialog, setShowPaymentDateDialog] = useState(false);
+  const [paymentIdToUpdate, setPaymentIdToUpdate] = useState<string | null>(null);
   
   const isClientView = (location.search.includes('client=true') || !location.search) && !isAdmin;
 
@@ -350,6 +354,13 @@ const InvoiceView = () => {
   const handlePaymentStatusUpdate = async (paymentId: string, newStatus: 'paid' | 'unpaid' | 'write-off') => {
     if (!invoice || !paymentId) return;
     
+    if (newStatus === 'paid') {
+      setPaymentIdToUpdate(paymentId);
+      setPaymentDate(new Date());
+      setShowPaymentDateDialog(true);
+      return;
+    }
+    
     setUpdatingPaymentId(paymentId);
     try {
       const updatedSchedule = await updatePaymentScheduleStatus(paymentId, newStatus);
@@ -376,6 +387,44 @@ const InvoiceView = () => {
       toast.error('Error updating payment status');
     } finally {
       setUpdatingPaymentId(null);
+    }
+  };
+
+  const handleConfirmPaymentDate = async () => {
+    if (!paymentIdToUpdate || !paymentDate || !invoice) return;
+    
+    setUpdatingPaymentId(paymentIdToUpdate);
+    try {
+      const updatedSchedule = await updatePaymentScheduleStatus(
+        paymentIdToUpdate, 
+        'paid', 
+        format(paymentDate, 'yyyy-MM-dd')
+      );
+      
+      if (!updatedSchedule) {
+        toast.error('Failed to update payment status');
+        return;
+      }
+      
+      if (invoice.paymentSchedules) {
+        const updatedSchedules = invoice.paymentSchedules.map(schedule => 
+          schedule.id === paymentIdToUpdate ? updatedSchedule : schedule
+        );
+        
+        setInvoice({
+          ...invoice,
+          paymentSchedules: updatedSchedules
+        });
+        
+        toast.success('Payment marked as paid');
+      }
+    } catch (err) {
+      console.error('Failed to update payment status:', err);
+      toast.error('Error updating payment status');
+    } finally {
+      setUpdatingPaymentId(null);
+      setPaymentIdToUpdate(null);
+      setShowPaymentDateDialog(false);
     }
   };
 
@@ -649,6 +698,11 @@ const InvoiceView = () => {
                                 <Badge className={paymentStatusColors[schedule.status] || paymentStatusColors.unpaid}>
                                   {schedule.status.toUpperCase()}
                                 </Badge>
+                                {schedule.paymentDate && (
+                                  <div className="text-xs text-muted-foreground mt-1">
+                                    Paid on: {new Date(schedule.paymentDate).toLocaleDateString()}
+                                  </div>
+                                )}
                               </TableCell>
                               {!isClientView && (
                                 <TableCell>
@@ -806,9 +860,37 @@ const InvoiceView = () => {
           </CardFooter>
         </Card>
       </div>
+
+      <Dialog open={showPaymentDateDialog} onOpenChange={setShowPaymentDateDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Enter Payment Date</DialogTitle>
+            <DialogDescription>
+              When was this payment received? Please select a date.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="space-y-2">
+              <Label htmlFor="payment-date">Payment Date</Label>
+              <DatePicker
+                id="payment-date"
+                selected={paymentDate}
+                onSelect={(date) => setPaymentDate(date)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPaymentDateDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmPaymentDate}>
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageTransition>
   );
 };
 
 export default InvoiceView;
-

@@ -1021,7 +1021,7 @@ export const saveInvoice = async (invoice: Omit<Invoice, 'id' | 'viewLink'>): Pr
         status: invoice.status,
         contract_status: invoice.contractStatus,
         notes: invoice.notes,
-        contract_terms: invoice.contractTerms,
+        contract_terms: invoice.contract_terms,
         view_link: viewLink
       })
       .select()
@@ -1134,7 +1134,7 @@ export const updateInvoice = async (invoice: Invoice): Promise<Invoice> => {
         status: invoice.status,
         contract_status: invoice.contractStatus,
         notes: invoice.notes,
-        contract_terms: invoice.contractTerms
+        contract_terms: invoice.contract_terms
       })
       .eq('id', invoice.id)
       .select()
@@ -1332,13 +1332,25 @@ export const updateContractStatus = async (invoiceId: string, contractStatus: Co
 /**
  * Updates the status of a payment schedule
  */
-export const updatePaymentScheduleStatus = async (scheduleId: string, status: PaymentStatus): Promise<PaymentSchedule | undefined> => {
+export const updatePaymentScheduleStatus = async (
+  scheduleId: string, 
+  status: PaymentStatus,
+  paymentDate?: string
+): Promise<PaymentSchedule | undefined> => {
   try {
-    console.log(`Attempting to update payment schedule ${scheduleId} to status: ${status}`);
+    console.log(`Attempting to update payment schedule ${scheduleId} to status: ${status}`, 
+      paymentDate ? `with payment date: ${paymentDate}` : 'without payment date');
+    
+    const updateData: any = { status };
+    
+    // Only add payment_date if it's provided and status is 'paid'
+    if (status === 'paid' && paymentDate) {
+      updateData.payment_date = paymentDate;
+    }
     
     const { data, error } = await supabase
       .from('payment_schedules')
-      .update({ status })
+      .update(updateData)
       .eq('id', scheduleId)
       .select()
       .single();
@@ -1356,11 +1368,11 @@ export const updatePaymentScheduleStatus = async (scheduleId: string, status: Pa
       description: data.description || '',
       dueDate: data.due_date,
       percentage: data.percentage,
-      status: parseEnum(data.status, ['paid', 'unpaid', 'write-off'], 'unpaid') as PaymentStatus
+      status: parseEnum(data.status, ['paid', 'unpaid', 'write-off'], 'unpaid') as PaymentStatus,
+      paymentDate: data.payment_date || undefined
     };
   } catch (error) {
     console.error('Error in updatePaymentScheduleStatus:', error);
     throw error;
   }
 };
-

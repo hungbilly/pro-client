@@ -1,4 +1,3 @@
-
 export interface Client {
   id: string;
   name: string;
@@ -60,10 +59,11 @@ export type PaymentStatus = 'paid' | 'unpaid' | 'write-off';
 
 export interface PaymentSchedule {
   id: string;
-  description?: string;
+  description: string;
   dueDate: string;
   percentage: number;
-  status: 'paid' | 'unpaid' | 'write-off';
+  status: PaymentStatus;
+  paymentDate?: string;
 }
 
 export interface Invoice {

@@ -33,7 +33,7 @@ const InvoiceView = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null);
-  const [invoiceRef, setInvoiceRef] = useState<HTMLDivElement | null>(null);
+  const invoiceRef = useRef<HTMLDivElement>(null);
 
   const { isAdmin } = useAuth();
   const { selectedCompanyId, selectedCompany } = useCompanyContext();

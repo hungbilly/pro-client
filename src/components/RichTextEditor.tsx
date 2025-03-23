@@ -199,11 +199,28 @@ const RichTextEditor = memo(({
     if (readOnly) return;
     if (!editorRef.current) return;
 
-    const cursorPosition = saveCursorPosition();
-    editorRef.current.focus();
-    document.execCommand('fontSize', false, fontSize);
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+    
+    const range = selection.getRangeAt(0);
+    
+    const span = document.createElement('span');
+    span.style.fontSize = `${fontSize}px`;
+    
+    if (!range.collapsed) {
+      range.surroundContents(span);
+    } else {
+      span.innerHTML = '&nbsp;';
+      range.insertNode(span);
+      
+      const newRange = document.createRange();
+      newRange.setStart(span, 1);
+      newRange.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(newRange);
+    }
+    
     updateContent();
-    restoreCursorPosition(cursorPosition);
   };
 
   const updateContent = () => {
@@ -351,45 +368,45 @@ const RichTextEditor = memo(({
                     variant="ghost" 
                     size="sm"
                     className="justify-start rounded-none h-8 text-xl"
-                    onClick={() => handleFontSize('5')}
+                    onClick={() => handleFontSize('24')}
                   >
-                    Heading
+                    24px
                   </Button>
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
                     className="justify-start rounded-none h-8 text-lg"
-                    onClick={() => handleFontSize('4')}
+                    onClick={() => handleFontSize('20')}
                   >
-                    Subheading
+                    20px
                   </Button>
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
                     className="justify-start rounded-none h-8"
-                    onClick={() => handleFontSize('3')}
+                    onClick={() => handleFontSize('16')}
                   >
-                    Normal
+                    16px
                   </Button>
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
                     className="justify-start rounded-none h-8 text-sm"
-                    onClick={() => handleFontSize('2')}
+                    onClick={() => handleFontSize('14')}
                   >
-                    Small
+                    14px
                   </Button>
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
                     className="justify-start rounded-none h-8 text-xs"
-                    onClick={() => handleFontSize('1')}
+                    onClick={() => handleFontSize('12')}
                   >
-                    Tiny
+                    12px
                   </Button>
                 </div>
               </PopoverContent>

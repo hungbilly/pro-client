@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Client, Invoice, InvoiceItem, Job, PaymentSchedule } from '@/types';
@@ -895,3 +896,336 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
           
           <div>
             <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium">Invoice Items</h3>
+              <div className="flex gap-2">
+                <PackageSelector 
+                  onSelect={handlePackageSelect}
+                  buttonVariant="outline"
+                  buttonLabel={
+                    <div className="flex items-center">
+                      <PackageIcon className="h-4 w-4 mr-2" />
+                      <span>Add Package</span>
+                    </div>
+                  }
+                />
+                
+                <Button 
+                  type="button" 
+                  onClick={handleAddItem}
+                  variant="outline"
+                  className="flex items-center"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  <span>Add New Item</span>
+                </Button>
+              </div>
+            </div>
+            
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[50%]">Description</TableHead>
+                  <TableHead className="text-right">Qty</TableHead>
+                  <TableHead className="text-right">Rate</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {items.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                      No items added. Click "Add New Item" to add an item.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  items.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell className="align-top">
+                        {activeRowId === item.id ? (
+                          <div className="mb-4">
+                            <Button 
+                              type="button" 
+                              size="sm" 
+                              variant="outline" 
+                              onClick={handleDoneEditing}
+                              className="text-xs mt-2"
+                            >
+                              Done
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="max-w-lg">{item.description}</div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">{item.quantity}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(item.rate)}</TableCell>
+                      <TableCell className="text-right font-medium">{formatCurrency(item.amount)}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button 
+                            type="button" 
+                            size="icon" 
+                            variant="ghost" 
+                            onClick={() => handleEditItem(item)}
+                            className="h-8 w-8"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          
+                          <Button 
+                            type="button" 
+                            size="icon" 
+                            variant="ghost" 
+                            onClick={() => handleDuplicateItem(item.id)}
+                            className="h-8 w-8"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                          
+                          <Button 
+                            type="button" 
+                            size="icon" 
+                            variant="ghost" 
+                            onClick={() => handleRemoveItem(item.id)}
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+                <TableRow>
+                  <TableCell colSpan={3} className="text-right font-semibold">Total:</TableCell>
+                  <TableCell className="text-right font-bold">{formatCurrency(calculateTotalAmount())}</TableCell>
+                  <TableCell></TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div>
+              <h3 className="text-lg font-medium mb-4">Payment Schedule</h3>
+              
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <p className="text-sm text-muted-foreground">Define how and when payments will be collected</p>
+                  <Button 
+                    type="button" 
+                    onClick={handleAddPaymentSchedule}
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center"
+                  >
+                    <CalendarPlus className="h-4 w-4 mr-2" />
+                    <span>Add Payment</span>
+                  </Button>
+                </div>
+                
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead className="text-right">Percentage</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead className="text-right">Status</TableHead>
+                      <TableHead className="w-[80px]"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paymentSchedules.map((schedule) => {
+                      const scheduleAmount = (calculateTotalAmount() * schedule.percentage) / 100;
+                      return (
+                        <TableRow key={schedule.id}>
+                          <TableCell>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  variant={"outline"}
+                                  className={cn(
+                                    "w-full justify-start text-left font-normal",
+                                    !schedule.dueDate && "text-muted-foreground"
+                                  )}
+                                >
+                                  <CalendarIcon className="mr-2 h-4 w-4" />
+                                  {schedule.dueDate ? format(new Date(schedule.dueDate), "PPP") : <span>Pick a date</span>}
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <DatePicker
+                                  mode="single"
+                                  selected={schedule.dueDate ? new Date(schedule.dueDate) : null}
+                                  onSelect={(newDate) => {
+                                    if (newDate) {
+                                      handleScheduleChange(schedule.id, 'dueDate', format(newDate, 'yyyy-MM-dd'));
+                                    }
+                                  }}
+                                  initialFocus
+                                />
+                              </PopoverContent>
+                            </Popover>
+                          </TableCell>
+                          <TableCell>
+                            <Input 
+                              type="text" 
+                              value={schedule.description || ''}
+                              onChange={(e) => handleScheduleChange(schedule.id, 'description', e.target.value)}
+                              placeholder="Payment description"
+                            />
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Input 
+                              type="number" 
+                              value={schedule.percentage} 
+                              onChange={(e) => handleScheduleChange(schedule.id, 'percentage', parseInt(e.target.value) || 0)}
+                              className="text-right"
+                              min="0"
+                              max="100"
+                            />
+                          </TableCell>
+                          <TableCell className="text-right">{formatCurrency(scheduleAmount)}</TableCell>
+                          <TableCell>
+                            <Select 
+                              value={schedule.status || 'unpaid'} 
+                              onValueChange={(value) => handleScheduleChange(schedule.id, 'status', value)}
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="unpaid">Unpaid</SelectItem>
+                                <SelectItem value="paid">Paid</SelectItem>
+                                <SelectItem value="partial">Partial</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell>
+                            <Button 
+                              type="button" 
+                              size="icon" 
+                              variant="ghost" 
+                              onClick={() => handleRemovePaymentSchedule(schedule.id)}
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              disabled={paymentSchedules.length <= 1}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-lg font-medium mb-4">Notes</h3>
+              <RichTextEditor 
+                value={notes} 
+                onChange={setNotes}
+                placeholder="Add notes to the invoice..."
+              />
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-lg font-medium mb-4">Contract Terms</h3>
+            <RichTextEditor 
+              value={contractTerms} 
+              onChange={setContractTerms}
+              placeholder="Add contract terms..."
+            />
+          </div>
+
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                if (job?.id) {
+                  navigate(`/job/${job.id}`);
+                } else if (client?.id) {
+                  navigate(`/client/${client.id}`);
+                } else {
+                  navigate('/');
+                }
+              }}
+            >
+              Cancel
+            </Button>
+            <Button type="submit">
+              {isEditMode ? 'Update Invoice' : 'Create Invoice'}
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+
+      <Dialog open={isItemDialogOpen} onOpenChange={setIsItemDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>{editingItem?.id && items.some(item => item.id === editingItem.id) ? 'Edit Item' : 'Add New Item'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="description">Description</Label>
+              <Input
+                id="description"
+                value={editingItem?.description || ''}
+                onChange={(e) => handleItemChange('description', e.target.value)}
+                placeholder="Item description"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="quantity">Quantity</Label>
+                <Input
+                  id="quantity"
+                  type="number"
+                  value={editingItem?.quantity || 0}
+                  onChange={(e) => handleItemChange('quantity', parseFloat(e.target.value) || 0)}
+                  min="0"
+                  step="1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="rate">Rate</Label>
+                <Input
+                  id="rate"
+                  type="number"
+                  value={editingItem?.rate || 0}
+                  onChange={(e) => handleItemChange('rate', parseFloat(e.target.value) || 0)}
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+            </div>
+            <div>
+              <Label>Amount</Label>
+              <div className="font-medium text-lg">
+                {editingItem ? formatCurrency(editingItem.amount) : formatCurrency(0)}
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                Automatically calculated as Quantity × Rate
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsItemDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveItem}>
+              Save Item
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </Card>
+  );
+};
+
+export default InvoiceForm;

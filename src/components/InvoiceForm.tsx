@@ -274,7 +274,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   };
 
   const handleEditItem = (item: InvoiceItem) => {
-    // Prevent the event from bubbling up and potentially causing form submission
     setEditingItem({...item});
     setIsItemDialogOpen(true);
   };
@@ -917,11 +916,11 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                   <TableRow className="bg-muted/50">
                     <TableHead className="w-12"></TableHead>
                     <TableHead>Description</TableHead>
-                    <TableHead className="w-28 text-right">Unit Price</TableHead>
-                    <TableHead className="w-24 text-right">Quantity</TableHead>
-                    <TableHead className="w-24 text-right">Discount</TableHead>
-                    <TableHead className="w-24 text-right">Tax</TableHead>
-                    <TableHead className="w-32 text-right">Amount</TableHead>
+                    <TableHead className="w-28 text-right hidden md:table-cell">Unit Price</TableHead>
+                    <TableHead className="w-24 text-right hidden md:table-cell">Quantity</TableHead>
+                    <TableHead className="w-24 text-right hidden md:table-cell">Discount</TableHead>
+                    <TableHead className="w-24 text-right hidden md:table-cell">Tax</TableHead>
+                    <TableHead className="w-32 text-right hidden md:table-cell">Amount</TableHead>
                     <TableHead className="w-24 text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -943,6 +942,30 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                               No description provided
                             </span>
                           )}
+                          
+                          <div className="md:hidden space-y-1 mt-2">
+                            <div className="text-sm flex justify-between">
+                              <span className="text-muted-foreground">Unit Price:</span>
+                              <span>{formatCurrency(item.rate)}</span>
+                            </div>
+                            <div className="text-sm flex justify-between">
+                              <span className="text-muted-foreground">Quantity:</span>
+                              <span>{item.quantity}</span>
+                            </div>
+                            <div className="text-sm flex justify-between">
+                              <span className="text-muted-foreground">Discount:</span>
+                              <span>0%</span>
+                            </div>
+                            <div className="text-sm flex justify-between">
+                              <span className="text-muted-foreground">Tax:</span>
+                              <span>No Tax</span>
+                            </div>
+                            <div className="text-sm flex justify-between font-medium">
+                              <span className="text-muted-foreground">Amount:</span>
+                              <span>{formatCurrency(item.amount)}</span>
+                            </div>
+                          </div>
+                          
                           <Button 
                             variant="ghost" 
                             size="sm"
@@ -959,19 +982,19 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                           </Button>
                         </div>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right hidden md:table-cell">
                         {formatCurrency(item.rate)}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right hidden md:table-cell">
                         {item.quantity}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right hidden md:table-cell">
                         0%
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right hidden md:table-cell">
                         No Tax
                       </TableCell>
-                      <TableCell className="text-right font-medium">
+                      <TableCell className="text-right font-medium hidden md:table-cell">
                         {formatCurrency(item.amount)}
                       </TableCell>
                       <TableCell>
@@ -1067,7 +1090,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
               )}
             </div>
             
-            {/* Contract Terms section now spanning full width */}
             <div className="mt-6">
               <Label htmlFor="contractTerms">Contract Terms</Label>
               <RichTextEditor
@@ -1193,7 +1215,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
         </Button>
       </CardFooter>
 
-      {/* Item Edit Dialog */}
       <Dialog 
         open={isItemDialogOpen} 
         onOpenChange={(open) => {

@@ -918,8 +918,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                     <TableHead>Description</TableHead>
                     <TableHead className="w-28 text-right hidden md:table-cell">Unit Price</TableHead>
                     <TableHead className="w-24 text-right hidden md:table-cell">Quantity</TableHead>
-                    <TableHead className="w-24 text-right hidden md:table-cell">Discount</TableHead>
-                    <TableHead className="w-24 text-right hidden md:table-cell">Tax</TableHead>
                     <TableHead className="w-32 text-right hidden md:table-cell">Amount</TableHead>
                     <TableHead className="w-24 text-right">Actions</TableHead>
                   </TableRow>
@@ -952,14 +950,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                               <span className="text-muted-foreground">Quantity:</span>
                               <span>{item.quantity}</span>
                             </div>
-                            <div className="text-sm flex justify-between">
-                              <span className="text-muted-foreground">Discount:</span>
-                              <span>0%</span>
-                            </div>
-                            <div className="text-sm flex justify-between">
-                              <span className="text-muted-foreground">Tax:</span>
-                              <span>No Tax</span>
-                            </div>
                             <div className="text-sm flex justify-between font-medium">
                               <span className="text-muted-foreground">Amount:</span>
                               <span>{formatCurrency(item.amount)}</span>
@@ -969,11 +959,11 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                           <Button 
                             variant="ghost" 
                             size="sm"
-                            type="button" // Make sure this is set to type="button"
+                            type="button"
                             className="text-xs text-muted-foreground hover:text-foreground"
                             onClick={(e) => {
-                              e.preventDefault(); // Prevent form submission
-                              e.stopPropagation(); // Stop event propagation
+                              e.preventDefault();
+                              e.stopPropagation();
                               handleEditItem(item);
                             }}
                           >
@@ -987,12 +977,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                       </TableCell>
                       <TableCell className="text-right hidden md:table-cell">
                         {item.quantity}
-                      </TableCell>
-                      <TableCell className="text-right hidden md:table-cell">
-                        0%
-                      </TableCell>
-                      <TableCell className="text-right hidden md:table-cell">
-                        No Tax
                       </TableCell>
                       <TableCell className="text-right font-medium hidden md:table-cell">
                         {formatCurrency(item.amount)}
@@ -1011,7 +995,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                   ))}
                   {items.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={8} className="h-24 text-center">
+                      <TableCell colSpan={6} className="h-24 text-center">
                         No items added yet. Click "Add Line Item" to get started.
                       </TableCell>
                     </TableRow>

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Client, Invoice, InvoiceItem, Job, PaymentSchedule } from '@/types';
@@ -899,14 +898,9 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
               <h3 className="text-lg font-medium">Invoice Items</h3>
               <div className="flex gap-2">
                 <PackageSelector 
-                  onSelect={handlePackageSelect}
-                  buttonVariant="outline"
-                  buttonLabel={
-                    <div className="flex items-center">
-                      <PackageIcon className="h-4 w-4 mr-2" />
-                      <span>Add Package</span>
-                    </div>
-                  }
+                  onPackageSelect={handlePackageSelect}
+                  variant="default"
+                  placeholder="Add Package"
                 />
                 
                 <Button 
@@ -1229,3 +1223,4 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 };
 
 export default InvoiceForm;
+

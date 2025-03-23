@@ -267,44 +267,6 @@ const InvoiceView = () => {
     }
   }, [invoice]);
 
-  const handleGeneratePdfLink = async () => {
-    if (!invoice) return;
-    
-    try {
-      toast.info('Preparing PDF for client view...');
-      
-      const { data, error } = await supabase.functions.invoke('generate-invoice-pdf', {
-        body: { invoiceId: invoice.id }
-      });
-      
-      if (error) {
-        console.error('Error generating PDF:', error);
-        toast.error('Failed to generate invoice PDF');
-        return;
-      }
-      
-      if (data?.pdfUrl) {
-        setInvoice(prev => prev ? { ...prev, pdfUrl: data.pdfUrl } : null);
-        
-        const viewLinkId = invoice.viewLink.split('/').pop();
-        
-        const clientLink = `${window.location.origin}/invoice/pdf/${viewLinkId}`;
-        
-        navigator.clipboard.writeText(clientLink)
-          .then(() => {
-            toast.success('Client PDF link copied to clipboard');
-          })
-          .catch((err) => {
-            console.error('Failed to copy invoice link:', err);
-            toast.error('Failed to copy link to clipboard');
-          });
-      }
-    } catch (err) {
-      console.error('Error generating PDF link:', err);
-      toast.error('Failed to generate client PDF link');
-    }
-  };
-
   const handleCopyInvoiceLink = () => {
     if (!invoice) return;
     
@@ -720,13 +682,6 @@ const InvoiceView = () => {
                   Copy Invoice Link
                 </Button>
                 <Button
-                  variant="outline"
-                  onClick={handleGeneratePdfLink}
-                >
-                  <LinkIcon className="h-4 w-4 mr-2" />
-                  Generate PDF Link for Client
-                </Button>
-                <Button
                   variant="default"
                   onClick={handleDownloadInvoice}
                 >
@@ -743,4 +698,3 @@ const InvoiceView = () => {
 };
 
 export default InvoiceView;
-

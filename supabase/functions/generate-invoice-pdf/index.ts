@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import jspdf from 'https://esm.sh/jspdf@2.5.1';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
@@ -139,6 +138,7 @@ async function fetchInvoiceData(invoiceId: string): Promise<FormattedInvoice | n
 
 async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
   console.log('Generating PDF for invoice:', invoiceData.number);
+  console.log('Contract terms length:', invoiceData.contractTerms?.length || 0);
   
   try {
     const doc = new jspdf({
@@ -328,6 +328,8 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
     
     // Add contract terms if available
     if (invoiceData.contractTerms) {
+      console.log('Adding contract terms to PDF, length:', invoiceData.contractTerms.length);
+      
       // Check if we need a new page
       if (y > 230) {
         doc.addPage();

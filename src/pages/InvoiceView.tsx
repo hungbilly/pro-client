@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useCallback, memo, useRef } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { 
@@ -15,12 +14,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { 
-  ArrowLeft, Check, Calendar, FileText, DollarSign, Send, 
-  MailCheck, FileCheck, Edit, CalendarDays, Package, Building, 
-  User, Phone, Mail, MapPin, Download, Copy, Link as LinkIcon,
-  Grid
-} from 'lucide-react';
+import { ArrowLeft, Check, Calendar, FileText, DollarSign, Send, MailCheck, FileCheck, Edit, CalendarDays, Package, Building, User, Phone, Mail, MapPin, Download, Copy, Link as LinkIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { useAuth } from '@/context/AuthContext';
@@ -30,15 +24,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import RichTextEditor from '@/components/RichTextEditor';
 import PaymentScheduleTable from '@/components/invoice/PaymentScheduleTable';
-import { 
-  Table, 
-  TableBody, 
-  TableCaption, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table";
 import isEqual from 'lodash/isEqual';
 
 const InvoiceView = () => {
@@ -428,27 +413,6 @@ const InvoiceView = () => {
     ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
     : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
 
-  // Format invoice items for better display
-  const formattedItems = invoice.items?.map(item => {
-    // Extract title from the description if available
-    let title = item.description;
-    let details = '';
-    
-    if (item.description && item.description.includes('<')) {
-      // It's HTML content, so try to extract the title
-      const match = item.description.match(/<[^>]*>([^<]*)<\/[^>]*>/);
-      if (match && match[1]) {
-        title = match[1].trim();
-      }
-    }
-    
-    return {
-      ...item,
-      title,
-      details: item.description
-    };
-  }) || [];
-
   return (
     <PageTransition>
       <div className="container py-8">
@@ -639,101 +603,29 @@ const InvoiceView = () => {
                     <h4 className="text-lg font-semibold">Products / Packages</h4>
                   </div>
                   
-                  <div className="border rounded-md overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-muted/50">
-                          <TableHead className="w-[80px]">Item</TableHead>
-                          <TableHead className="min-w-[300px]">Description</TableHead>
-                          <TableHead className="text-right">Unit Price</TableHead>
-                          <TableHead className="text-right">Quantity</TableHead>
-                          <TableHead className="text-right">Discount</TableHead>
-                          <TableHead className="text-right">Tax</TableHead>
-                          <TableHead className="text-right">Amount</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {invoice.items && invoice.items.length > 0 ? (
-                          invoice.items.map((item, index) => (
-                            <TableRow key={item.id}>
-                              <TableCell className="font-medium text-center w-[80px]">
-                                <div className="flex items-center justify-center">
-                                  <Grid className="h-5 w-5 text-muted-foreground" />
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                {item.description ? (
-                                  <div className="space-y-2">
-                                    <div className="font-bold">{item.description.split('<')[0] || 'Package'}</div>
-                                    <div className="text-sm text-muted-foreground">
-                                      The perfect starter package with great coverage and high-resolution photos.
-                                    </div>
-                                    <ul className="list-disc pl-5 text-sm space-y-1">
-                                      <li>One Snapshot Photographer - Billy</li>
-                                      <li>One Standard Photographer - Billy</li>
-                                      <li>One Lighting Assistant</li>
-                                      <li>Service Hour: up to 3hrs</li>
-                                      <li>Includes high-res fine tuned photos in jpg format</li>
-                                      <li>Wedding Album (15"x10")</li>
-                                      <li>Online Gallery for 1 year</li>
-                                    </ul>
-                                    <div className="text-xs text-muted-foreground pt-2 space-y-1">
-                                      <p>*Early charge before 8:30am: 1500HKD per half hour (latest then 06:30am)</p>
-                                      <p>*Late charge after 11:00pm 1500HKD per half hour (latest 12am)</p>
-                                      <p>*Overtime: 1500HKD per half hour</p>
-                                      <p>*Tax fee and crew meals will be payable by the client</p>
-                                      <p>*Early release fee: less then 12 weeks +3000HKD</p>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <div className="text-muted-foreground">No description provided</div>
-                                )}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                {formatCurrency(item.rate)}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                {item.quantity}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                0%
-                              </TableCell>
-                              <TableCell className="text-right">
-                                No Tax
-                              </TableCell>
-                              <TableCell className="text-right font-medium">
-                                {formatCurrency(item.amount)}
-                              </TableCell>
-                            </TableRow>
-                          ))
-                        ) : (
-                          <TableRow>
-                            <TableCell colSpan={7} className="text-center text-muted-foreground">
-                              No items in this invoice.
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
-                  
-                  <div className="flex justify-end mt-4">
-                    <div className="w-[250px] space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-sm text-muted-foreground">Subtotal:</span>
-                        <span className="text-sm font-medium">{formatCurrency(invoice.amount)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm text-muted-foreground">Discount:</span>
-                        <span className="text-sm font-medium">0%</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm text-muted-foreground">Tax:</span>
-                        <span className="text-sm font-medium">No Tax</span>
-                      </div>
-                      <Separator className="my-2" />
-                      <div className="flex justify-between font-bold">
-                        <span>Total:</span>
+                  <div className="border rounded-md p-4 bg-gray-50 dark:bg-gray-900/50">
+                    {invoice.items && invoice.items.length > 0 ? (
+                      invoice.items.map((item) => (
+                        <div key={item.id} className="mb-4 pb-4 border-b last:mb-0 last:pb-0 last:border-b-0">
+                          <div className="flex justify-between">
+                            <h5 className="font-medium">{item.description ? item.description.split('<')[0] : 'Product'}</h5>
+                            <span className="font-medium">{formatCurrency(item.amount)}</span>
+                          </div>
+                          <div className="mt-1 text-sm text-muted-foreground">
+                            {item.quantity} x {formatCurrency(item.rate)}
+                          </div>
+                          {item.description && (
+                            <div className="mt-2 text-sm" dangerouslySetInnerHTML={{ __html: item.description }} />
+                          )}
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-muted-foreground">No items in this invoice.</p>
+                    )}
+                    
+                    <div className="mt-4 pt-4 border-t">
+                      <div className="flex justify-between font-medium">
+                        <span>Total</span>
                         <span>{formatCurrency(invoice.amount)}</span>
                       </div>
                     </div>

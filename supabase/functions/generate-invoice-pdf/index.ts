@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import jspdf from 'https://esm.sh/jspdf@2.5.1';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
@@ -154,6 +155,42 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
         minimumFractionDigits: 2,
       }).format(amount);
     };
+
+    // Helper function to properly handle rich text content with line breaks
+    const addFormattedText = (text: string, x: number, y: number, maxWidth: number): number => {
+      if (!text) return y;
+
+      // Strip HTML tags but preserve line breaks and paragraphs
+      const strippedText = text
+        .replace(/<br\s*\/?>/gi, '\n')             // Replace <br> tags with newlines
+        .replace(/<\/p><p>/gi, '\n\n')             // Replace </p><p> with double newlines (paragraphs)
+        .replace(/<\/li><li>/gi, '\n- ')           // Replace </li><li> with newlines and bullets
+        .replace(/<li>/gi, '- ')                   // Replace <li> with bullets
+        .replace(/<\/li>/gi, '')                   // Remove </li>
+        .replace(/<\/h[1-6]><h[1-6]>/gi, '\n\n')   // Replace header transitions
+        .replace(/<[^>]*>/g, '')                   // Remove all remaining HTML tags
+        .replace(/&amp;/g, '&')                    // Replace HTML entities
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&nbsp;/g, ' ');
+      
+      // Split the text into lines and add each line to the PDF
+      const lines = doc.splitTextToSize(strippedText, maxWidth);
+      
+      // Calculate line height based on font size
+      const fontSize = doc.getFontSize();
+      const lineHeight = fontSize * 0.5;
+      
+      // Add each line, incrementing the y position
+      let currentY = y;
+      lines.forEach((line: string) => {
+        doc.text(line, x, currentY);
+        currentY += lineHeight;
+      });
+      
+      // Return the new y position after all lines
+      return currentY + 5; // Add a bit of extra space after the text block
+    };
     
     // Set initial position
     let y = 20;
@@ -284,10 +321,9 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       
-      // Strip HTML tags from notes
-      const plainNotes = invoiceData.notes.replace(/<[^>]*>/g, '');
-      doc.text(plainNotes, 20, y, { maxWidth: 170 });
-      y += 15;
+      // Add formatted notes text with proper line breaks
+      y = addFormattedText(invoiceData.notes, 20, y, 170);
+      y += 5; // Add extra spacing after notes
     }
     
     // Add contract terms if available
@@ -306,9 +342,8 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       
-      // Strip HTML tags from contract terms
-      const plainTerms = invoiceData.contractTerms.replace(/<[^>]*>/g, '');
-      doc.text(plainTerms, 20, y, { maxWidth: 170 });
+      // Add formatted contract terms with proper line breaks
+      y = addFormattedText(invoiceData.contractTerms, 20, y, 170);
     }
     
     // Add view link

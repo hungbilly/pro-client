@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -330,6 +329,14 @@ const RichTextEditor = memo(({
     setShowToolbar(false);
   };
 
+  const handleEditorMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (fontSizePopoverOpen) {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log('Prevented mouse down on editor while Popover is open');
+    }
+  };
+
   return (
     <div className={cn("rounded-md border rich-text-editor", className)}>
       {showToolbar && !readOnly && (
@@ -381,45 +388,55 @@ const RichTextEditor = memo(({
                   <span className="text-xs">Size</span>
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0 z-[999]" align="start">
+              <PopoverContent className="w-auto p-0" align="start">
                 <div className="flex flex-col">
                   <button
                     type="button" 
                     className="px-4 py-2 text-left text-xl hover:bg-accent hover:text-accent-foreground cursor-pointer"
-                    onClick={() => handleFontSize('24')}
-                    style={{ cursor: 'pointer' }}
+                    onClick={() => {
+                      console.log('24px button clicked');
+                      handleFontSize('24');
+                    }}
                   >
                     24px
                   </button>
                   <button
                     type="button"
                     className="px-4 py-2 text-left text-lg hover:bg-accent hover:text-accent-foreground cursor-pointer"
-                    onClick={() => handleFontSize('20')}
-                    style={{ cursor: 'pointer' }}
+                    onClick={() => {
+                      console.log('20px button clicked');
+                      handleFontSize('20');
+                    }}
                   >
                     20px
                   </button>
                   <button
                     type="button"
                     className="px-4 py-2 text-left hover:bg-accent hover:text-accent-foreground cursor-pointer"
-                    onClick={() => handleFontSize('16')}
-                    style={{ cursor: 'pointer' }}
+                    onClick={() => {
+                      console.log('16px button clicked');
+                      handleFontSize('16');
+                    }}
                   >
                     16px
                   </button>
                   <button
                     type="button"
                     className="px-4 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
-                    onClick={() => handleFontSize('14')}
-                    style={{ cursor: 'pointer' }}
+                    onClick={() => {
+                      console.log('14px button clicked');
+                      handleFontSize('14');
+                    }}
                   >
                     14px
                   </button>
                   <button
                     type="button"
                     className="px-4 py-2 text-left text-xs hover:bg-accent hover:text-accent-foreground cursor-pointer"
-                    onClick={() => handleFontSize('12')}
-                    style={{ cursor: 'pointer' }}
+                    onClick={() => {
+                      console.log('12px button clicked');
+                      handleFontSize('12');
+                    }}
                   >
                     12px
                   </button>
@@ -526,6 +543,7 @@ const RichTextEditor = memo(({
         onKeyDown={handleKeyDown}
         onFocus={handleFocus}
         onBlur={handleBlur}
+        onMouseDown={handleEditorMouseDown}
         data-placeholder={placeholder}
         dir="ltr"
         style={{
@@ -535,8 +553,8 @@ const RichTextEditor = memo(({
           writingMode: 'horizontal-tb',
           '--tw-prose-bullets': 'currentColor',
           '--tw-prose-counters': 'currentColor',
-          position: 'relative', 
-          zIndex: 10
+          position: 'relative',
+          zIndex: fontSizePopoverOpen ? 0 : 10
         } as React.CSSProperties}
         suppressContentEditableWarning={true}
       />
@@ -544,6 +562,10 @@ const RichTextEditor = memo(({
       <style>
         {`.rich-text-editor button {
           cursor: pointer !important;
+        }
+        .rich-text-editor [data-radix-popper-content-wrapper] {
+          z-index: 9999 !important;
+          pointer-events: auto !important;
         }`}
       </style>
     </div>

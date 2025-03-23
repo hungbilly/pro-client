@@ -963,8 +963,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                                 handleEditItem(item);
                               }}
                             >
-                              <Pencil className="mr-1 h-3 w-3" />
-                              Edit details
+                              <Pencil className="h-3 w-3" />
                             </Button>
                             
                             <Button 

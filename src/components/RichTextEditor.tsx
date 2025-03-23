@@ -199,28 +199,39 @@ const RichTextEditor = memo(({
     if (readOnly) return;
     if (!editorRef.current) return;
 
+    editorRef.current.focus();
+    
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
     
     const range = selection.getRangeAt(0);
     
-    const span = document.createElement('span');
-    span.style.fontSize = `${fontSize}px`;
-    
-    if (!range.collapsed) {
-      range.surroundContents(span);
-    } else {
-      span.innerHTML = '&nbsp;';
+    if (range.collapsed) {
+      const span = document.createElement('span');
+      span.style.fontSize = `${fontSize}px`;
+      span.textContent = '\u200B';
+      
       range.insertNode(span);
       
-      const newRange = document.createRange();
-      newRange.setStart(span, 1);
-      newRange.collapse(true);
+      range.setStartAfter(span);
       selection.removeAllRanges();
-      selection.addRange(newRange);
+      selection.addRange(range);
+    } else {
+      const fragment = range.extractContents();
+      const span = document.createElement('span');
+      span.style.fontSize = `${fontSize}px`;
+      span.appendChild(fragment);
+      range.insertNode(span);
+      
+      range.setStartAfter(span);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
     }
     
     updateContent();
+    
+    console.log(`Applied font size ${fontSize}px to selected text`);
   };
 
   const updateContent = () => {

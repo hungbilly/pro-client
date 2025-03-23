@@ -35,6 +35,7 @@ const RichTextEditor = memo(({
   const [internalContent, setInternalContent] = useState(value || '');
   const [isFirstRender, setIsFirstRender] = useState(true);
   const isUpdatingRef = useRef(false);
+  const [fontSizePopoverOpen, setFontSizePopoverOpen] = useState(false);
 
   useEffect(() => {
     if (id === 'contract-terms-editor') {
@@ -200,43 +201,46 @@ const RichTextEditor = memo(({
     if (readOnly) return;
     if (!editorRef.current) return;
 
-    console.log(`Attempting to apply font size: ${fontSize}px`);
+    console.log(`Applying font size: ${fontSize}px`);
     
+    // Close the popover
+    setFontSizePopoverOpen(false);
+    
+    // Focus the editor before applying the font size
     editorRef.current.focus();
     
-    const size = parseInt(fontSize, 10);
-    
-    document.execCommand('fontSize', false, '7');
-    
-    const fontElements = editorRef.current.querySelectorAll('font[size="7"]');
-    
-    fontElements.forEach(element => {
-      // Properly cast the element to HTMLElement to access style property
-      if (element instanceof HTMLElement) {
-        element.removeAttribute('size');
-        element.style.fontSize = `${fontSize}px`;
-      }
-    });
-    
+    // Get the current selection
     const selection = window.getSelection();
-    if (selection && selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0);
-      if (range.collapsed) {
-        const span = document.createElement('span');
-        span.style.fontSize = `${fontSize}px`;
-        const space = document.createTextNode('\u200B');
-        span.appendChild(space);
-        range.insertNode(span);
-        range.setStartAfter(span);
-        range.collapse(true);
-        selection.removeAllRanges();
-        selection.addRange(range);
-      }
+    const hasSelection = selection && selection.rangeCount > 0 && !selection.getRangeAt(0).collapsed;
+    
+    if (hasSelection && selection) {
+      // Apply font size to the selected text
+      document.execCommand('fontSize', false, '7');
+      
+      // Find all font elements with size 7 (the ones we just created)
+      const fontElements = document.querySelectorAll('font[size="7"]');
+      fontElements.forEach(element => {
+        if (element instanceof HTMLElement) {
+          element.removeAttribute('size');
+          element.style.fontSize = `${fontSize}px`;
+        }
+      });
+    } else {
+      // If no text is selected, create a span with the desired font size at cursor position
+      const span = document.createElement('span');
+      span.style.fontSize = `${fontSize}px`;
+      
+      // Insert a zero-width space to make the span visible and selectable
+      span.innerHTML = '&#8203;'; // Zero-width space
+      
+      document.execCommand('insertHTML', false, span.outerHTML);
     }
     
-    updateContent();
-    
-    console.log(`Applied font size ${fontSize}px to selected text`);
+    // Update the content
+    setTimeout(() => {
+      updateContent();
+      console.log(`Applied font size ${fontSize}px successfully`);
+    }, 10);
   };
 
   const updateContent = () => {
@@ -364,7 +368,7 @@ const RichTextEditor = memo(({
               <Underline className="h-4 w-4" />
             </Button>
 
-            <Popover>
+            <Popover open={fontSizePopoverOpen} onOpenChange={setFontSizePopoverOpen}>
               <PopoverTrigger asChild>
                 <Button
                   type="button"
@@ -377,12 +381,13 @@ const RichTextEditor = memo(({
                   <span className="text-xs">Size</span>
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
+              <PopoverContent className="w-auto p-0 z-[999]" align="start">
                 <div className="flex flex-col">
                   <button
                     type="button" 
                     className="px-4 py-2 text-left text-xl hover:bg-accent hover:text-accent-foreground cursor-pointer"
                     onClick={() => handleFontSize('24')}
+                    style={{ cursor: 'pointer' }}
                   >
                     24px
                   </button>
@@ -390,6 +395,7 @@ const RichTextEditor = memo(({
                     type="button"
                     className="px-4 py-2 text-left text-lg hover:bg-accent hover:text-accent-foreground cursor-pointer"
                     onClick={() => handleFontSize('20')}
+                    style={{ cursor: 'pointer' }}
                   >
                     20px
                   </button>
@@ -397,6 +403,7 @@ const RichTextEditor = memo(({
                     type="button"
                     className="px-4 py-2 text-left hover:bg-accent hover:text-accent-foreground cursor-pointer"
                     onClick={() => handleFontSize('16')}
+                    style={{ cursor: 'pointer' }}
                   >
                     16px
                   </button>
@@ -404,6 +411,7 @@ const RichTextEditor = memo(({
                     type="button"
                     className="px-4 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
                     onClick={() => handleFontSize('14')}
+                    style={{ cursor: 'pointer' }}
                   >
                     14px
                   </button>
@@ -411,6 +419,7 @@ const RichTextEditor = memo(({
                     type="button"
                     className="px-4 py-2 text-left text-xs hover:bg-accent hover:text-accent-foreground cursor-pointer"
                     onClick={() => handleFontSize('12')}
+                    style={{ cursor: 'pointer' }}
                   >
                     12px
                   </button>
@@ -526,9 +535,17 @@ const RichTextEditor = memo(({
           writingMode: 'horizontal-tb',
           '--tw-prose-bullets': 'currentColor',
           '--tw-prose-counters': 'currentColor',
+          position: 'relative', 
+          zIndex: 10
         } as React.CSSProperties}
         suppressContentEditableWarning={true}
       />
+
+      <style jsx global>{`
+        .rich-text-editor button {
+          cursor: pointer !important;
+        }
+      `}</style>
     </div>
   );
 });

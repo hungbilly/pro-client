@@ -61,32 +61,38 @@ const NotFound = () => {
   // Fix for malformed URL with duplicate domain - enhanced to handle more cases
   const fixDuplicateUrl = () => {
     if (hasDuplicateUrl) {
-      const fullPath = location.pathname;
+      console.log("Fixing duplicate URL in path:", location.pathname);
       
-      // Extract any viewLink IDs that might be at the end of the path
-      const viewLinkMatch = fullPath.match(/\/([^\/]+)$/);
-      const possibleViewLink = viewLinkMatch ? viewLinkMatch[1] : null;
-      
-      // Check if it's a UUID-like string (simple check)
-      const looksLikeViewLink = possibleViewLink && !possibleViewLink.includes('http');
-      
-      if (looksLikeViewLink) {
-        return `/invoice/${possibleViewLink}`;
-      }
-      
-      // If we find a duplicate domain pattern, extract what comes after it
-      const domainPattern = new RegExp(`https?://[^/]+/invoice/`);
-      if (domainPattern.test(fullPath)) {
-        const parts = fullPath.split(domainPattern);
-        if (parts.length > 1) {
-          return `/invoice/${parts[parts.length - 1]}`;
+      // If we have an invoice path with embedded URL
+      if (isInvoiceRoute) {
+        // Extract the viewLink ID which should be at the end
+        // This regex looks for anything that doesn't look like a URL at the end of the string
+        const viewLinkPattern = /\/([^\/]+)$/;
+        const viewLinkMatch = location.pathname.match(viewLinkPattern);
+        
+        // If we found something that might be a viewLink
+        if (viewLinkMatch && viewLinkMatch[1]) {
+          const possibleViewLink = viewLinkMatch[1];
+          
+          // Make sure it's not part of a URL
+          if (!possibleViewLink.includes('http') && !possibleViewLink.includes(window.location.host)) {
+            console.log("Found potential viewLink:", possibleViewLink);
+            return `/invoice/${possibleViewLink}`;
+          }
         }
-      }
-      
-      // Look for a viewlink ID after '/invoice/' anywhere in the URL
-      const invoiceLinkMatch = fullPath.match(/\/invoice\/([^\/]+)$/);
-      if (invoiceLinkMatch && invoiceLinkMatch[1]) {
-        return `/invoice/${invoiceLinkMatch[1]}`;
+        
+        // Look for viewLink after any 'invoice/' part
+        const invoiceLinkPattern = /\/invoice\/([^\/\?]+)/g;
+        const matches = Array.from(location.pathname.matchAll(invoiceLinkPattern));
+        
+        // If we found matches, the last one is likely the actual viewLink
+        if (matches.length > 0) {
+          const lastMatch = matches[matches.length - 1];
+          if (lastMatch && lastMatch[1]) {
+            console.log("Found invoice viewLink from pattern:", lastMatch[1]);
+            return `/invoice/${lastMatch[1]}`;
+          }
+        }
       }
     }
     return null;

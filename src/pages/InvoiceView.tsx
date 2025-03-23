@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback, memo, useRef } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { 
@@ -270,8 +271,15 @@ const InvoiceView = () => {
   const handleCopyInvoiceLink = () => {
     if (!invoice) return;
     
-    const url = `${window.location.origin}/invoice/${invoice.viewLink}`;
-    navigator.clipboard.writeText(url)
+    // Generate a clean URL with just the origin and viewLink path
+    // This ensures we don't accidentally duplicate domains in the URL
+    const baseUrl = window.location.origin;
+    const cleanUrl = `${baseUrl}/invoice/${invoice.viewLink}`;
+    
+    // Log the URL being copied for debugging purposes
+    console.log('Copying invoice link:', cleanUrl);
+    
+    navigator.clipboard.writeText(cleanUrl)
       .then(() => {
         toast.success('Invoice link copied to clipboard');
       })

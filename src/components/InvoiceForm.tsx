@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2, Calendar as CalendarIcon, CalendarPlus, GripVertical, Pencil, Copy, Package as PackageIcon, AlertCircle, Briefcase, Mail, User } from 'lucide-react';
+import { Plus, Calendar as CalendarIcon, CalendarPlus, GripVertical, Pencil, Copy, Package as PackageIcon, AlertCircle, Briefcase, Mail, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { getClient, saveInvoice, updateInvoice, getJob, getInvoice, getInvoicesByDate } from '@/lib/storage';
 import { format } from 'date-fns';
@@ -17,7 +17,7 @@ import { useCompany } from './CompanySelector';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import PackageSelector from './PackageSelector';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import InvoiceItemsTable from './invoice/InvoiceItemsTable';
 import RichTextEditor from './RichTextEditor';
 
 interface ContractTemplate {
@@ -642,6 +642,14 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     }
   };
 
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    }).format(amount);
+  };
+
   if (loading) {
     return (
       <Card className="w-full max-w-5xl mx-auto">
@@ -661,14 +669,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
       </Card>
     );
   }
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-    }).format(amount);
-  };
 
   return (
     <Card className="w-full max-w-5xl mx-auto">
@@ -892,119 +892,18 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
               </div>
             </div>
             
-            <div className="border rounded-md overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead className="w-12"></TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead className="w-28 text-right">Unit Price</TableHead>
-                    <TableHead className="w-24 text-right">Quantity</TableHead>
-                    <TableHead className="w-24 text-right">Discount</TableHead>
-                    <TableHead className="w-24 text-right">Tax</TableHead>
-                    <TableHead className="w-32 text-right">Amount</TableHead>
-                    <TableHead className="w-24 text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {items.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell className="p-2 text-center">
-                        <GripVertical className="h-4 w-4 mx-auto text-muted-foreground" />
-                      </TableCell>
-                      <TableCell>
-                        {activeRowId === item.id ? (
-                          <RichTextEditor
-                            value={item.description}
-                            onChange={(value) => handleItemChange(item.id, 'description', value)}
-                            className="border-none min-h-0 p-0"
-                            placeholder="Add description..."
-                            alwaysShowToolbar={true}
-                            showDoneButton={true}
-                            onDone={handleDoneEditing}
-                          />
-                        ) : (
-                          item.description ? (
-                            <RichTextEditor
-                              value={item.description}
-                              onChange={(value) => handleItemChange(item.id, 'description', value)}
-                              className="border-none min-h-0 p-0"
-                              placeholder="Add description..."
-                              onFocus={() => setActiveRowId(item.id)}
-                            />
-                          ) : (
-                            <div className="space-y-1">
-                              <PackageSelector 
-                                onPackageSelect={handlePackageSelect} 
-                                variant="inline" 
-                                placeholder="Select an existing package..." 
-                              />
-                              <Button 
-                                variant="ghost" 
-                                className="w-full justify-start text-left text-muted-foreground hover:text-foreground"
-                                onClick={() => handleManualPackageEntry(item.id)}
-                              >
-                                <Pencil className="mr-2 h-4 w-4" />
-                                Add your own product/package...
-                              </Button>
-                            </div>
-                          )
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Input
-                          type="number"
-                          placeholder="0.00"
-                          value={item.rate}
-                          onChange={(e) => handleItemChange(item.id, 'rate', parseFloat(e.target.value) || 0)}
-                          className="max-w-24 text-right ml-auto"
-                        />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Input
-                          type="number"
-                          placeholder="1"
-                          value={item.quantity}
-                          onChange={(e) => handleItemChange(item.id, 'quantity', parseFloat(e.target.value) || 0)}
-                          className="max-w-16 text-right ml-auto"
-                        />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Input
-                          type="text"
-                          placeholder="0%"
-                          defaultValue="0%"
-                          className="max-w-16 text-right ml-auto"
-                          disabled
-                        />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Input
-                          type="text"
-                          placeholder="No Tax"
-                          defaultValue="No Tax"
-                          className="max-w-16 text-right ml-auto"
-                          disabled
-                        />
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatCurrency(item.amount)}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => handleDuplicateItem(item.id)}>
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.id)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+            <InvoiceItemsTable 
+              items={items}
+              onEditItem={() => {}}
+              onDuplicateItem={handleDuplicateItem}
+              onRemoveItem={handleRemoveItem}
+              activeRowId={activeRowId}
+              setActiveRowId={setActiveRowId}
+              handleItemChange={handleItemChange}
+              handleDoneEditing={handleDoneEditing}
+              handleManualPackageEntry={handleManualPackageEntry}
+              formatCurrency={formatCurrency}
+            />
             
             <div className="mt-4 flex justify-end">
               <div className="w-72 space-y-2">
@@ -1076,7 +975,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
               )}
             </div>
             
-            {/* Contract Terms section now spanning full width */}
             <div className="mt-6">
               <Label htmlFor="contractTerms">Contract Terms</Label>
               <RichTextEditor

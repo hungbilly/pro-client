@@ -47,12 +47,8 @@ const RichTextEditor = memo(({
   // Only update the editor content when the value prop changes
   useEffect(() => {
     if (editorRef.current && value !== lastHtml) {
-      // Ensure we have valid HTML content
-      if (value) {
-        editorRef.current.innerHTML = value;
-      } else {
-        editorRef.current.innerHTML = '';
-      }
+      // Instead of setting innerHTML directly, we'll rely on dangerouslySetInnerHTML
+      // to handle rendering the content
       setLastHtml(value || '');
     }
   }, [value, lastHtml]);

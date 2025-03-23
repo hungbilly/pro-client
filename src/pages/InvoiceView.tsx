@@ -286,7 +286,9 @@ const InvoiceView = () => {
       if (data?.pdfUrl) {
         setInvoice(prev => prev ? { ...prev, pdfUrl: data.pdfUrl } : null);
         
-        const clientLink = `${window.location.origin}/invoice/pdf/${invoice.viewLink}`;
+        const viewLinkId = invoice.viewLink.split('/').pop();
+        
+        const clientLink = `${window.location.origin}/invoice/pdf/${viewLinkId}`;
         
         navigator.clipboard.writeText(clientLink)
           .then(() => {
@@ -741,3 +743,4 @@ const InvoiceView = () => {
 };
 
 export default InvoiceView;
+

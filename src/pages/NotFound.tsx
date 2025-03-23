@@ -1,4 +1,3 @@
-
 import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -48,6 +47,29 @@ const NotFound = () => {
   const jobIdMatch = location.pathname.match(/\/job\/([^\/]+)/);
   const jobId = jobIdMatch ? jobIdMatch[1] : null;
 
+  // Check if this is a PDF view route with an incorrect URL format
+  const isPdfViewWithFullUrl = isInvoiceRoute && 
+    location.pathname.includes('/pdf/') && 
+    location.pathname.includes('https://');
+  
+  // Fix for malformed PDF URL (containing full URL instead of just the view link ID)
+  const fixPdfUrl = () => {
+    if (isPdfViewWithFullUrl) {
+      const fullPath = location.pathname;
+      const urlParts = fullPath.split('/');
+      // Find the last part which should be the view link ID
+      const lastPart = urlParts[urlParts.length - 1];
+      if (lastPart && lastPart.includes('/')) {
+        // Extract just the ID from the full URL
+        const viewLinkId = lastPart.split('/').pop();
+        if (viewLinkId) {
+          return `/invoice/pdf/${viewLinkId}`;
+        }
+      }
+    }
+    return null;
+  };
+
   // Determine correct route for common mistakes
   const getCorrectRoute = () => {
     if (isClientEditRouteWithIssue && editClientId) {
@@ -69,7 +91,7 @@ const NotFound = () => {
     return null;
   };
 
-  const correctRoute = getCorrectRoute();
+  const correctRoute = isPdfViewWithFullUrl ? fixPdfUrl() : getCorrectRoute();
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
@@ -81,26 +103,30 @@ const NotFound = () => {
            "Oops! This page doesn't exist"}
         </p>
         <p className="text-gray-500 mb-6">
-          {isInvoiceRoute 
-            ? "The invoice you're looking for could not be found. It may have been deleted or the link is incorrect."
-            : isJobRoute
-            ? "The job you're looking for could not be found. It may have been deleted or the link is incorrect."
-            : isClientEditRouteWithIssue
-            ? "It looks like you're trying to edit a client, but the URL format is incorrect."
-            : `The page you're looking for at ${location.pathname} could not be found.`
+          {isPdfViewWithFullUrl
+            ? "It looks like the invoice PDF URL is malformed. It might contain a full URL instead of just the view link ID."
+            : isInvoiceRoute 
+              ? "The invoice you're looking for could not be found. It may have been deleted or the link is incorrect."
+              : isJobRoute
+              ? "The job you're looking for could not be found. It may have been deleted or the link is incorrect."
+              : isClientEditRouteWithIssue
+              ? "It looks like you're trying to edit a client, but the URL format is incorrect."
+              : `The page you're looking for at ${location.pathname} could not be found.`
           }
           {correctRoute && (
             <span className="block mt-2 text-blue-500">
-              {isClientEditRouteWithIssue 
-                ? "The correct URL format is /client/[id]/edit"
-                : "Did you mean to go to the new page instead of create?"}
+              {isPdfViewWithFullUrl 
+                ? "We can try to fix this URL for you."
+                : isClientEditRouteWithIssue 
+                  ? "The correct URL format is /client/[id]/edit"
+                  : "Did you mean to go to the new page instead of create?"}
             </span>
           )}
         </p>
         <div className="flex flex-col space-y-2">
           {correctRoute && (
             <Button onClick={() => navigate(correctRoute)} className="px-6 w-full bg-blue-500 hover:bg-blue-600">
-              Go to Correct Page
+              {isPdfViewWithFullUrl ? "Go to Corrected PDF URL" : "Go to Correct Page"}
             </Button>
           )}
           

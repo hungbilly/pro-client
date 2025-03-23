@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { getInvoiceByViewLink, updateInvoiceStatus, updateContractStatus } from '@/lib/storage';
@@ -27,7 +26,13 @@ const InvoicePdfView = () => {
           return;
         }
 
-        const fetchedInvoice = await getInvoiceByViewLink(viewLink);
+        const cleanViewLink = viewLink.includes('/')
+          ? viewLink.split('/').pop() || viewLink
+          : viewLink;
+
+        logDebug('Fetching invoice with cleaned view link:', cleanViewLink);
+        
+        const fetchedInvoice = await getInvoiceByViewLink(cleanViewLink);
         if (!fetchedInvoice) {
           setError('Invoice not found. Please check the URL or contact support.');
           return;
@@ -35,7 +40,6 @@ const InvoicePdfView = () => {
 
         setInvoice(fetchedInvoice);
         
-        // If the PDF doesn't exist yet, generate it
         if (!fetchedInvoice.pdfUrl) {
           generateInvoicePdf(fetchedInvoice.id);
         }
@@ -58,7 +62,6 @@ const InvoicePdfView = () => {
       
       logDebug('Calling generate-invoice-pdf function', { invoiceId });
       
-      // Call our serverless function to generate the PDF
       const { data, error } = await supabase.functions.invoke('generate-invoice-pdf', {
         body: { invoiceId }
       });
@@ -71,7 +74,6 @@ const InvoicePdfView = () => {
       }
       
       if (data?.pdfUrl) {
-        // Update our local state with the new PDF URL
         setInvoice(prev => prev ? { ...prev, pdfUrl: data.pdfUrl } : null);
         toast.success('Invoice PDF ready');
       } else {
@@ -122,7 +124,6 @@ const InvoicePdfView = () => {
   const handleDownloadPdf = () => {
     if (!invoice?.pdfUrl) return;
     
-    // Open the PDF URL in a new tab for download
     window.open(invoice.pdfUrl, '_blank');
   };
 
@@ -198,7 +199,6 @@ const InvoicePdfView = () => {
           
           <CardContent>
             {invoice.pdfUrl ? (
-              // Display the PDF using an embed tag
               <div className="w-full h-[70vh] border rounded-md overflow-hidden">
                 <embed 
                   src={invoice.pdfUrl} 

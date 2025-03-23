@@ -1,5 +1,6 @@
 
 project_id = "htjvyzmuqsrjpesdurni"
+
 [api]
 # Port to use for the API URL.
 port = 54321
@@ -14,11 +15,14 @@ max_rows = 1000
 [db]
 # Port to use for the local database URL.
 port = 54322
-# Port used by psql to connect to the database.
-psql_port = 54323
 # The database major version to use. This has to be the same as your remote database's. Run `SHOW
 # server_version;` on the remote database to check.
 major_version = 15
+
+# Use an PSQL port to connect.
+# For port:
+[db.psql]
+port = 54323
 
 [studio]
 enabled = true
@@ -105,10 +109,12 @@ backend = "postgres"
 # Configures Postgres storage engine to use OrioleDB (S3)
 orioledb_version = ""
 
-# Configure local file storage driver of the storage api
+# Configure storage
+[storage]
+file_size_limit = "50MiB"
+
+# For files
 [storage.file]
 enabled = true
-path = "/var/lib/storage"
-multipart_upload_ttl = "1209600s"
-max_upload_file_size = "10MiB"
-max_upload_batch_size = "1000"
+```data_path = "/var/lib/storage"
+```

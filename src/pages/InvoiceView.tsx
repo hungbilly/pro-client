@@ -37,7 +37,7 @@ const InvoiceView = () => {
 
   const { isAdmin } = useAuth();
   const { selectedCompanyId, selectedCompany } = useCompanyContext();
-  const { viewLink, id } = useParams<{ viewLink: string, id: string }>();
+  const { idOrViewLink } = useParams<{ idOrViewLink: string }>();
   const location = useLocation();
 
   const isClientView = useMemo(() => 
@@ -73,7 +73,7 @@ const InvoiceView = () => {
         setLoading(true);
         let fetchedInvoice: Invoice | null = null;
         
-        const identifier = id || viewLink;
+        const identifier = idOrViewLink;
         if (!identifier) {
           console.log('[InvoiceView] No identifier provided in URL');
           setError('Invalid URL. Please provide an invoice ID or view link.');
@@ -182,7 +182,7 @@ const InvoiceView = () => {
     };
     
     fetchInvoice();
-  }, [id, viewLink, location.pathname, selectedCompanyId, isClientView]);
+  }, [idOrViewLink, location.pathname, selectedCompanyId, isClientView]);
 
   const handlePaymentStatusUpdate = useCallback(async (paymentId: string, newStatus: 'paid' | 'unpaid' | 'write-off') => {
     if (!invoice || !paymentId) return;
@@ -267,72 +267,46 @@ const InvoiceView = () => {
     }
   }, [invoice]);
 
-  const handleDownloadInvoice = () => {
-    if (!invoice || !client) return;
+  const handleGeneratePdfLink = async () => {
+    if (!invoice) return;
     
-    toast.info('Preparing PDF for download...');
-    
-    Promise.all([
-      import('html2canvas'),
-      import('jspdf')
-    ]).then(([html2canvasModule, jsPDFModule]) => {
-      const html2canvas = html2canvasModule.default;
-      const jsPDF = jsPDFModule.default;
+    try {
+      toast.info('Preparing PDF for client view...');
       
-      const element = invoiceRef.current;
-      if (!element) {
-        toast.error('Could not generate PDF');
+      const { data, error } = await supabase.functions.invoke('generate-invoice-pdf', {
+        body: { invoiceId: invoice.id }
+      });
+      
+      if (error) {
+        console.error('Error generating PDF:', error);
+        toast.error('Failed to generate invoice PDF');
         return;
       }
       
-      const clonedElement = element.cloneNode(true) as HTMLElement;
-      
-      const buttonsToRemove = clonedElement.querySelectorAll('button');
-      buttonsToRemove.forEach(button => button.remove());
-      
-      clonedElement.style.position = 'absolute';
-      clonedElement.style.left = '-9999px';
-      document.body.appendChild(clonedElement);
-      
-      html2canvas(clonedElement, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        allowTaint: true
-      }).then(canvas => {
-        document.body.removeChild(clonedElement);
+      if (data?.pdfUrl) {
+        setInvoice(prev => prev ? { ...prev, pdfUrl: data.pdfUrl } : null);
         
-        const imgData = canvas.toDataURL('image/png');
-        const pdf = new jsPDF({
-          orientation: 'portrait',
-          unit: 'mm',
-          format: 'a4'
-        });
+        const clientLink = `${window.location.origin}/invoice/pdf/${invoice.viewLink}`;
         
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = pdf.internal.pageSize.getHeight();
-        const imgWidth = canvas.width;
-        const imgHeight = canvas.height;
-        const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
-        const imgX = (pdfWidth - imgWidth * ratio) / 2;
-        
-        pdf.addImage(imgData, 'PNG', imgX, 0, imgWidth * ratio, imgHeight * ratio);
-        
-        pdf.save(`Invoice-${invoice.number}.pdf`);
-        
-        toast.success('Invoice downloaded successfully');
-      }).catch(err => {
-        console.error('PDF generation error:', err);
-        toast.error('Failed to generate PDF');
-      });
-    }).catch(err => {
-      console.error('Failed to load PDF libraries:', err);
-      toast.error('Could not load PDF generation tools');
-    });
+        navigator.clipboard.writeText(clientLink)
+          .then(() => {
+            toast.success('Client PDF link copied to clipboard');
+          })
+          .catch((err) => {
+            console.error('Failed to copy invoice link:', err);
+            toast.error('Failed to copy link to clipboard');
+          });
+      }
+    } catch (err) {
+      console.error('Error generating PDF link:', err);
+      toast.error('Failed to generate client PDF link');
+    }
   };
 
   const handleCopyInvoiceLink = () => {
-    const url = window.location.origin + location.pathname;
+    if (!invoice) return;
+    
+    const url = `${window.location.origin}/invoice/${invoice.viewLink}`;
     navigator.clipboard.writeText(url)
       .then(() => {
         toast.success('Invoice link copied to clipboard');
@@ -341,6 +315,39 @@ const InvoiceView = () => {
         console.error('Failed to copy invoice link:', err);
         toast.error('Failed to copy link to clipboard');
       });
+  };
+
+  const handleDownloadInvoice = async () => {
+    if (!invoice) return;
+    
+    if (invoice.pdfUrl) {
+      window.open(invoice.pdfUrl, '_blank');
+      return;
+    }
+    
+    try {
+      toast.info('Preparing PDF for download...');
+      
+      const { data, error } = await supabase.functions.invoke('generate-invoice-pdf', {
+        body: { invoiceId: invoice.id }
+      });
+      
+      if (error) {
+        console.error('Error generating PDF:', error);
+        toast.error('Failed to generate invoice PDF');
+        return;
+      }
+      
+      if (data?.pdfUrl) {
+        setInvoice(prev => prev ? { ...prev, pdfUrl: data.pdfUrl } : null);
+        
+        window.open(data.pdfUrl, '_blank');
+        toast.success('Invoice downloaded successfully');
+      }
+    } catch (err) {
+      console.error('Error downloading invoice:', err);
+      toast.error('Failed to download invoice');
+    }
   };
 
   const handleAcceptInvoice = async () => {
@@ -709,6 +716,13 @@ const InvoiceView = () => {
                 >
                   <LinkIcon className="h-4 w-4 mr-2" />
                   Copy Invoice Link
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleGeneratePdfLink}
+                >
+                  <LinkIcon className="h-4 w-4 mr-2" />
+                  Generate PDF Link for Client
                 </Button>
                 <Button
                   variant="default"

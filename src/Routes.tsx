@@ -20,6 +20,7 @@ import AppLayout from './components/AppLayout';
 import Accounts from './pages/Accounts';
 import AuthCallback from './pages/AuthCallback';
 import Invoices from './pages/Invoices';
+import InvoicePdfView from './pages/InvoicePdfView';
 
 const Routes = () => {
   return (
@@ -28,8 +29,9 @@ const Routes = () => {
       <Route path="/auth" element={<Auth />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
       
-      {/* Public invoice view without AppLayout for client view */}
-      <Route path="/invoice/:viewLink" element={<InvoiceView />} />
+      {/* Public invoice views without AppLayout for client view */}
+      <Route path="/invoice/:idOrViewLink" element={<InvoiceView />} />
+      <Route path="/invoice/pdf/:viewLink" element={<InvoicePdfView />} />
       
       {/* Protected routes with layout */}
       <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>

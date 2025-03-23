@@ -318,6 +318,7 @@ export type Database = {
           job_id: string | null
           notes: string | null
           number: string
+          pdf_url: string | null
           shooting_date: string | null
           status: string
           view_link: string
@@ -335,6 +336,7 @@ export type Database = {
           job_id?: string | null
           notes?: string | null
           number: string
+          pdf_url?: string | null
           shooting_date?: string | null
           status: string
           view_link: string
@@ -352,6 +354,7 @@ export type Database = {
           job_id?: string | null
           notes?: string | null
           number?: string
+          pdf_url?: string | null
           shooting_date?: string | null
           status?: string
           view_link?: string

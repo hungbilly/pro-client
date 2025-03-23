@@ -1024,37 +1024,37 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
             </div>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <Label htmlFor="notes">Invoice Notes</Label>
-              {templates.length > 0 && (
-                <div className="mb-2">
-                  <Label htmlFor="template">Invoice Template</Label>
-                  <Select 
-                    value={selectedTemplateId || ''} 
-                    onValueChange={handleTemplateSelect}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select a template" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {templates.map(template => (
-                        <SelectItem key={template.id} value={template.id}>{template.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              <RichTextEditor
-                value={notes}
-                onChange={(value) => setNotes(value)}
-                placeholder="Enter invoice notes..."
-              />
-            </div>
-            
-            <div>
+          <div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div>
+                <Label htmlFor="notes">Invoice Notes</Label>
+                {templates.length > 0 && (
+                  <div className="mb-2">
+                    <Label htmlFor="template">Invoice Template</Label>
+                    <Select 
+                      value={selectedTemplateId || ''} 
+                      onValueChange={handleTemplateSelect}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select a template" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {templates.map(template => (
+                          <SelectItem key={template.id} value={template.id}>{template.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                <RichTextEditor
+                  value={notes}
+                  onChange={(value) => setNotes(value)}
+                  placeholder="Enter invoice notes..."
+                />
+              </div>
+              
               {contractTemplates.length > 0 && (
-                <div className="mb-2">
+                <div>
                   <Label htmlFor="contractTemplate">Contract Template</Label>
                   <Select 
                     value={selectedContractTemplateId || ''} 
@@ -1074,6 +1074,10 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                   </p>
                 </div>
               )}
+            </div>
+            
+            {/* Contract Terms section now spanning full width */}
+            <div className="mt-6">
               <Label htmlFor="contractTerms">Contract Terms</Label>
               <RichTextEditor
                 value={contractTerms}

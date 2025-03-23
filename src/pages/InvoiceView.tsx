@@ -607,16 +607,28 @@ const InvoiceView = () => {
                     {invoice.items && invoice.items.length > 0 ? (
                       invoice.items.map((item) => (
                         <div key={item.id} className="mb-4 pb-4 border-b last:mb-0 last:pb-0 last:border-b-0">
-                          <div className="flex justify-between">
-                            <h5 className="font-medium">{item.description ? item.description.split('<')[0] : 'Product'}</h5>
-                            <span className="font-medium">{formatCurrency(item.amount)}</span>
+                          <div className="md:flex md:justify-between md:items-start">
+                            <div className="md:flex-1 md:pr-4">
+                              <h5 className="font-medium">{item.description ? item.description.split('<')[0] : 'Product'}</h5>
+                              {item.description && (
+                                <div className="mt-2 text-sm" dangerouslySetInnerHTML={{ __html: item.description }} />
+                              )}
+                            </div>
+                            <div className="mt-2 md:mt-0 flex flex-col md:flex-row md:items-center md:space-x-6 md:min-w-[260px] md:justify-end">
+                              <div className="text-sm text-muted-foreground md:text-right">
+                                <span className="md:hidden">Quantity: </span>
+                                <span>{item.quantity}</span>
+                              </div>
+                              <div className="text-sm text-muted-foreground md:text-right">
+                                <span className="md:hidden">Unit Price: </span>
+                                <span>{formatCurrency(item.rate)}</span>
+                              </div>
+                              <div className="font-medium md:text-right">
+                                <span className="md:hidden">Total: </span>
+                                <span>{formatCurrency(item.amount)}</span>
+                              </div>
+                            </div>
                           </div>
-                          <div className="mt-1 text-sm text-muted-foreground">
-                            {item.quantity} x {formatCurrency(item.rate)}
-                          </div>
-                          {item.description && (
-                            <div className="mt-2 text-sm" dangerouslySetInnerHTML={{ __html: item.description }} />
-                          )}
                         </div>
                       ))
                     ) : (

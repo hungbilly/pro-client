@@ -33,11 +33,27 @@ const RichTextEditor = memo(({
   const [showToolbar, setShowToolbar] = useState(alwaysShowToolbar);
   const [lastHtml, setLastHtml] = useState(value);
   
+  // Debug logging for contract content
+  useEffect(() => {
+    if (id === 'contract-terms-editor') {
+      console.log('RichTextEditor contract terms value:', {
+        valueLength: value?.length || 0,
+        preview: value?.substring(0, 100) || 'empty',
+        isEmpty: !value || value.length === 0
+      });
+    }
+  }, [value, id]);
+  
   // Only update the editor content when the value prop changes
   useEffect(() => {
     if (editorRef.current && value !== lastHtml) {
-      editorRef.current.innerHTML = value || '';
-      setLastHtml(value);
+      // Ensure we have valid HTML content
+      if (value) {
+        editorRef.current.innerHTML = value;
+      } else {
+        editorRef.current.innerHTML = '';
+      }
+      setLastHtml(value || '');
     }
   }, [value, lastHtml]);
 
@@ -244,6 +260,7 @@ const RichTextEditor = memo(({
           '--tw-prose-counters': 'currentColor',
         } as React.CSSProperties}
         suppressContentEditableWarning={true}
+        dangerouslySetInnerHTML={{ __html: value || '' }}
       />
     </div>
   );

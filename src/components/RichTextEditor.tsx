@@ -253,6 +253,8 @@ const RichTextEditor = memo(({
         style={{ 
           textAlign: 'left',
           direction: 'ltr',
+          unicodeBidi: 'isolate',
+          writingMode: 'horizontal-tb',
           '--tw-prose-bullets': 'currentColor',
           '--tw-prose-counters': 'currentColor',
         } as React.CSSProperties}

@@ -252,6 +252,7 @@ const RichTextEditor = memo(({
         dir="ltr"
         style={{ 
           textAlign: 'left',
+          direction: 'ltr',
           '--tw-prose-bullets': 'currentColor',
           '--tw-prose-counters': 'currentColor',
         } as React.CSSProperties}

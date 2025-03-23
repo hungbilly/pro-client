@@ -1,139 +1,328 @@
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import jspdf from 'https://esm.sh/jspdf@2.5.1';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
-// Define proper CORS headers - CRITICAL for browser requests
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Max-Age': '86400',
-};
+// Define types based on your database schema
+interface Invoice {
+  id: string;
+  client_id: string;
+  company_id: string;
+  job_id?: string;
+  number: string;
+  amount: number;
+  date: string;
+  due_date: string;
+  status: string;
+  notes?: string;
+  contract_terms?: string;
+  view_link?: string;
+  shooting_date?: string;
+  contract_status?: string;
+  pdf_url?: string;
+  invoice_items?: InvoiceItem[];
+  payment_schedules?: PaymentSchedule[];
+}
 
-// Get environment variables
-const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+interface InvoiceItem {
+  id: string;
+  invoice_id: string;
+  description?: string;
+  quantity: number;
+  rate: number;
+  amount: number;
+}
 
-console.log('Function initialization - URL defined:', !!supabaseUrl, 'Key defined:', !!supabaseServiceKey);
+interface Client {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  user_id: string;
+}
 
-// Create Supabase client
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+interface Company {
+  id: string;
+  name: string;
+  address?: string;
+  email?: string;
+  phone?: string;
+  website?: string;
+  logo_url?: string;
+  user_id: string;
+}
+
+interface Job {
+  id: string;
+  title: string;
+  description?: string;
+  date?: string;
+  client_id: string;
+  user_id: string;
+}
+
+interface PaymentSchedule {
+  id: string;
+  invoice_id: string;
+  due_date: string;
+  percentage: number;
+  description?: string;
+  status: string;
+  payment_date?: string | null;
+}
 
 interface FormattedInvoice {
   id: string;
   number: string;
   date: string;
   dueDate: string;
-  status: string;
   amount: number;
-  clientName: string;
-  clientEmail: string;
-  clientPhone: string;
-  clientAddress: string;
-  companyName: string;
-  companyEmail: string;
-  companyPhone: string;
-  companyAddress: string;
-  companyLogoUrl?: string;
+  status: string;
+  notes?: string;
+  contractTerms?: string;
+  contractStatus?: string;
+  viewLink?: string;
+  shootingDate?: string;
+  client: {
+    id: string;
+    name: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+  };
+  company: {
+    id: string;
+    name: string;
+    address?: string;
+    email?: string;
+    phone?: string;
+    website?: string;
+    logoUrl?: string;
+  };
+  job?: {
+    id: string;
+    title: string;
+    description?: string;
+    date?: string;
+  };
   items: {
-    description: string;
+    id: string;
+    description?: string;
     quantity: number;
     rate: number;
     amount: number;
   }[];
-  notes?: string;
-  contractTerms?: string;
-  viewLink: string;
+  paymentSchedules: {
+    id: string;
+    dueDate: string;
+    percentage: number;
+    description?: string;
+    status: string;
+    paymentDate?: string | null;
+    amount: number;
+  }[];
 }
 
-async function fetchInvoiceData(invoiceId: string): Promise<FormattedInvoice | null> {
-  console.log('Fetching invoice data for ID:', invoiceId);
-  
+// Supabase client setup
+const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+serve(async (req) => {
+  // Set CORS headers for browser clients
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  };
+
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers, status: 204 });
+  }
+
   try {
-    // Get invoice with items and payment schedules
+    const { invoiceId } = await req.json();
+    console.log('Received request to generate PDF for invoice:', invoiceId);
+
+    if (!invoiceId) {
+      return new Response(
+        JSON.stringify({ error: 'Missing required parameter: invoiceId' }),
+        { headers: { ...headers, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+
+    // Fetch invoice data
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
-      .select(`
-        *,
-        invoice_items(*),
-        payment_schedules (
-          id,
-          due_date,
-          percentage,
-          description,
-          status,
-          payment_date
-        )
-      `)
+      .select('*, invoice_items(*), payment_schedules(*)')
       .eq('id', invoiceId)
       .single();
-    
+
     if (invoiceError || !invoice) {
       console.error('Error fetching invoice:', invoiceError);
-      return null;
+      return new Response(
+        JSON.stringify({ error: 'Failed to fetch invoice data' }),
+        { headers: { ...headers, 'Content-Type': 'application/json' }, status: 500 }
+      );
     }
-    
-    console.log('Invoice fetched successfully:', invoice.id);
-    
-    // Get client
-    const { data: client, error: clientError } = await supabase
+
+    // Log contract terms to verify it's being fetched
+    console.log('Fetched invoice contract terms:', {
+      hasContractTerms: !!invoice.contract_terms,
+      contractTermsLength: invoice.contract_terms?.length || 0,
+      preview: invoice.contract_terms?.substring(0, 100)
+    });
+
+    // Fetch associated data
+    const { data: client } = await supabase
       .from('clients')
       .select('*')
       .eq('id', invoice.client_id)
       .single();
-    
-    if (clientError || !client) {
-      console.error('Error fetching client:', clientError);
-      return null;
-    }
-    
-    console.log('Client fetched successfully:', client.id);
-    
-    // Get company
-    const { data: company, error: companyError } = await supabase
+
+    const { data: company } = await supabase
       .from('companies')
       .select('*')
       .eq('id', invoice.company_id)
       .single();
-    
-    if (companyError || !company) {
-      console.error('Error fetching company:', companyError);
-      return null;
+
+    let job = null;
+    if (invoice.job_id) {
+      const { data: jobData } = await supabase
+        .from('jobs')
+        .select('*')
+        .eq('id', invoice.job_id)
+        .single();
+      job = jobData;
     }
-    
-    console.log('Company fetched successfully:', company.id);
-    
-    // Format the data
-    return {
+
+    // Format invoice data for the PDF generation
+    const formattedInvoice: FormattedInvoice = {
       id: invoice.id,
       number: invoice.number,
       date: invoice.date,
       dueDate: invoice.due_date,
-      status: invoice.status,
       amount: invoice.amount,
-      clientName: client.name,
-      clientEmail: client.email,
-      clientPhone: client.phone,
-      clientAddress: client.address,
-      companyName: company.name,
-      companyEmail: company.email,
-      companyPhone: company.phone,
-      companyAddress: company.address,
-      companyLogoUrl: company.logo_url,
-      items: invoice.invoice_items.map((item: any) => ({
-        description: item.description ? item.description.split('<')[0] : 'Product', // Strip HTML
-        quantity: item.quantity || 1,
-        rate: item.rate || 0,
-        amount: item.amount || 0
-      })),
+      status: invoice.status,
       notes: invoice.notes,
       contractTerms: invoice.contract_terms,
-      viewLink: invoice.view_link || ''
+      contractStatus: invoice.contract_status,
+      viewLink: invoice.view_link,
+      shootingDate: invoice.shooting_date,
+      client: client || { id: 'unknown', name: 'Unknown Client' },
+      company: company || { id: 'unknown', name: 'Unknown Company' },
+      job: job ? {
+        id: job.id,
+        title: job.title,
+        description: job.description,
+        date: job.date,
+      } : undefined,
+      items: (invoice.invoice_items || []).map((item: InvoiceItem) => ({
+        id: item.id,
+        description: item.description,
+        quantity: item.quantity,
+        rate: item.rate,
+        amount: item.amount,
+      })),
+      paymentSchedules: (invoice.payment_schedules || []).map((schedule: PaymentSchedule) => ({
+        id: schedule.id,
+        dueDate: schedule.due_date,
+        percentage: schedule.percentage,
+        description: schedule.description,
+        status: schedule.status,
+        paymentDate: schedule.payment_date,
+        amount: (invoice.amount * schedule.percentage) / 100,
+      })),
     };
-  } catch (err) {
-    console.error('Error in fetchInvoiceData:', err);
-    return null;
+
+    console.log('Uploading PDF for invoice:', invoiceId);
+    const pdfData = await generatePDF(formattedInvoice);
+
+    // Upload PDF to Storage bucket
+    const filePath = `invoices/${invoiceId}.pdf`;
+    const { data: uploadData, error: uploadError } = await supabase
+      .storage
+      .from('invoice-pdfs')
+      .upload(filePath, pdfData, {
+        contentType: 'application/pdf',
+        upsert: true,
+      });
+
+    if (uploadError) {
+      console.error('Error uploading PDF:', uploadError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to upload PDF' }),
+        { headers: { ...headers, 'Content-Type': 'application/json' }, status: 500 }
+      );
+    }
+
+    // Get public URL for the PDF
+    const { data: publicUrlData } = supabase
+      .storage
+      .from('invoice-pdfs')
+      .getPublicUrl(filePath);
+
+    // Update invoice with PDF URL
+    await supabase
+      .from('invoices')
+      .update({ pdf_url: publicUrlData.publicUrl })
+      .eq('id', invoiceId);
+
+    return new Response(
+      JSON.stringify({ pdfUrl: publicUrlData.publicUrl }),
+      { headers: { ...headers, 'Content-Type': 'application/json' }, status: 200 }
+    );
+  } catch (error) {
+    console.error('Error processing request:', error);
+    return new Response(
+      JSON.stringify({ error: 'Internal server error' }),
+      { headers: { ...headers, 'Content-Type': 'application/json' }, status: 500 }
+    );
   }
+});
+
+// Helper function to strip HTML tags and format text
+function stripHtml(html: string): string {
+  if (!html) return '';
+  
+  // Replace <br>, </p>, </div>, </li> with newlines
+  let text = html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<\/div>/gi, '\n')
+    .replace(/<\/li>/gi, '\n')
+    .replace(/<\/h[1-6]>/gi, '\n');
+  
+  // Remove all other HTML tags
+  text = text.replace(/<[^>]*>/g, '');
+  
+  // Decode HTML entities
+  text = text.replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+  
+  // Normalize whitespace
+  text = text.replace(/\n{3,}/g, '\n\n');
+  
+  return text.trim();
+}
+
+// Helper function to add text with wrapping
+function addWrappedText(doc: any, text: string, x: number, y: number, maxWidth: number, lineHeight: number = 7): number {
+  if (!text) return y;
+  
+  const cleanText = stripHtml(text);
+  const lines = doc.splitTextToSize(cleanText, maxWidth);
+  
+  for (let i = 0; i < lines.length; i++) {
+    doc.text(lines[i], x, y + (i * lineHeight));
+  }
+  
+  return y + (lines.length * lineHeight);
 }
 
 async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
@@ -144,186 +333,247 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
     const doc = new jspdf({
       orientation: 'portrait',
       unit: 'mm',
-      format: 'a4'
+      format: 'a4',
     });
     
-    // Helper function to format currency
-    const formatCurrency = (amount: number) => {
-      return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-        minimumFractionDigits: 2,
-      }).format(amount);
-    };
-
-    // Helper function to properly handle rich text content with line breaks
-    const addFormattedText = (text: string, x: number, y: number, maxWidth: number): number => {
-      if (!text) return y;
-
-      // Strip HTML tags but preserve line breaks and paragraphs
-      const strippedText = text
-        .replace(/<br\s*\/?>/gi, '\n')             // Replace <br> tags with newlines
-        .replace(/<\/p><p>/gi, '\n\n')             // Replace </p><p> with double newlines (paragraphs)
-        .replace(/<\/li><li>/gi, '\n- ')           // Replace </li><li> with newlines and bullets
-        .replace(/<li>/gi, '- ')                   // Replace <li> with bullets
-        .replace(/<\/li>/gi, '')                   // Remove </li>
-        .replace(/<\/h[1-6]><h[1-6]>/gi, '\n\n')   // Replace header transitions
-        .replace(/<[^>]*>/g, '')                   // Remove all remaining HTML tags
-        .replace(/&amp;/g, '&')                    // Replace HTML entities
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&nbsp;/g, ' ');
-      
-      // Split the text into lines and add each line to the PDF
-      const lines = doc.splitTextToSize(strippedText, maxWidth);
-      
-      // Calculate line height based on font size
-      const fontSize = doc.getFontSize();
-      const lineHeight = fontSize * 0.5;
-      
-      // Add each line, incrementing the y position
-      let currentY = y;
-      lines.forEach((line: string) => {
-        doc.text(line, x, currentY);
-        currentY += lineHeight;
-      });
-      
-      // Return the new y position after all lines
-      return currentY + 5; // Add a bit of extra space after the text block
-    };
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 20;
+    const contentWidth = pageWidth - (margin * 2);
     
-    // Set initial position
-    let y = 20;
+    let y = margin;
     
-    // Add company info
-    doc.setFontSize(18);
-    doc.setFont('helvetica', 'bold');
-    doc.text(invoiceData.companyName, 20, y);
-    y += 10;
+    // Add company logo if available
+    if (invoiceData.company.logoUrl) {
+      try {
+        const response = await fetch(invoiceData.company.logoUrl);
+        const blob = await response.blob();
+        const logo = await blobToBase64(blob);
+        
+        // Calculate logo dimensions (max height 30mm, maintain aspect ratio)
+        const maxLogoHeight = 30;
+        const imgProps = doc.getImageProperties(logo);
+        const aspectRatio = imgProps.width / imgProps.height;
+        const logoHeight = Math.min(maxLogoHeight, imgProps.height);
+        const logoWidth = logoHeight * aspectRatio;
+        
+        // Add logo
+        doc.addImage(logo, 'PNG', margin, y, logoWidth, logoHeight);
+        
+        y += logoHeight + 10;
+      } catch (logoError) {
+        console.error('Error adding logo:', logoError);
+        // Continue without logo if there's an error
+        y += 10;
+      }
+    } else {
+      // Add company name if no logo
+      doc.setFontSize(18);
+      doc.setFont('helvetica', 'bold');
+      doc.text(invoiceData.company.name, margin, y + 10);
+      y += 20;
+    }
     
+    // Company details
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    if (invoiceData.companyEmail) {
-      doc.text(`Email: ${invoiceData.companyEmail}`, 20, y);
-      y += 6;
-    }
-    if (invoiceData.companyPhone) {
-      doc.text(`Phone: ${invoiceData.companyPhone}`, 20, y);
-      y += 6;
-    }
-    if (invoiceData.companyAddress) {
-      doc.text(`Address: ${invoiceData.companyAddress}`, 20, y);
-      y += 10;
-    }
     
-    // Add invoice details
+    const companyInfo = [];
+    if (invoiceData.company.address) companyInfo.push(invoiceData.company.address);
+    if (invoiceData.company.email) companyInfo.push(`Email: ${invoiceData.company.email}`);
+    if (invoiceData.company.phone) companyInfo.push(`Phone: ${invoiceData.company.phone}`);
+    if (invoiceData.company.website) companyInfo.push(`Website: ${invoiceData.company.website}`);
+    
+    companyInfo.forEach(info => {
+      doc.text(info, margin, y);
+      y += 5;
+    });
+    
+    y += 5;
+    
+    // Invoice header
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.text('INVOICE', 20, y);
+    doc.text('INVOICE', pageWidth - margin - 30, margin + 10);
+    
+    doc.setFontSize(12);
+    doc.text(`# ${invoiceData.number}`, pageWidth - margin - 30, margin + 20);
+    
+    // Client info box
+    doc.setDrawColor(200, 200, 200);
+    doc.setFillColor(250, 250, 250);
+    doc.roundedRect(margin, y, contentWidth, 40, 3, 3, 'FD');
+    
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('BILL TO:', margin + 5, y + 10);
+    
+    doc.setFont('helvetica', 'normal');
+    doc.text(invoiceData.client.name, margin + 5, y + 18);
+    
+    let clientDetailsY = y + 26;
+    if (invoiceData.client.email) {
+      doc.text(`Email: ${invoiceData.client.email}`, margin + 5, clientDetailsY);
+      clientDetailsY += 6;
+    }
+    if (invoiceData.client.phone) {
+      doc.text(`Phone: ${invoiceData.client.phone}`, margin + 5, clientDetailsY);
+      clientDetailsY += 6;
+    }
+    if (invoiceData.client.address) {
+      doc.text(`Address: ${invoiceData.client.address}`, margin + 5, clientDetailsY);
+    }
+    
+    // Invoice details
+    doc.setFontSize(11);
+    
+    const infoX = pageWidth - margin - 50;
+    const infoLabelX = infoX - 30;
+    
+    doc.setFont('helvetica', 'bold');
+    doc.text('Invoice Date:', infoLabelX, y + 10);
+    doc.text('Due Date:', infoLabelX, y + 18);
+    doc.text('Status:', infoLabelX, y + 26);
+    if (invoiceData.job?.date) {
+      doc.text('Job Date:', infoLabelX, y + 34);
+    }
+    
+    doc.setFont('helvetica', 'normal');
+    doc.text(new Date(invoiceData.date).toLocaleDateString(), infoX, y + 10);
+    doc.text(new Date(invoiceData.dueDate).toLocaleDateString(), infoX, y + 18);
+    doc.text(invoiceData.status.toUpperCase(), infoX, y + 26);
+    if (invoiceData.job?.date) {
+      doc.text(new Date(invoiceData.job.date).toLocaleDateString(), infoX, y + 34);
+    }
+    
+    y += 50;
+    
+    // Job details if available
+    if (invoiceData.job) {
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('JOB DETAILS', margin, y);
+      
+      y += 8;
+      
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Title: ${invoiceData.job.title}`, margin, y);
+      
+      y += 6;
+      
+      if (invoiceData.job.description) {
+        const descriptionY = addWrappedText(doc, invoiceData.job.description, margin, y, contentWidth);
+        y = descriptionY + 8;
+      }
+    }
+    
+    // Invoice items
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('INVOICE ITEMS', margin, y);
+    
     y += 8;
     
+    // Table header
+    doc.setFillColor(240, 240, 240);
+    doc.rect(margin, y, contentWidth, 8, 'F');
+    
     doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Invoice Number: #${invoiceData.number}`, 20, y);
-    y += 6;
-    doc.text(`Date: ${new Date(invoiceData.date).toLocaleDateString()}`, 20, y);
-    y += 6;
-    doc.text(`Due Date: ${new Date(invoiceData.dueDate).toLocaleDateString()}`, 20, y);
-    y += 6;
-    doc.text(`Status: ${invoiceData.status.toUpperCase()}`, 20, y);
+    doc.text('Description', margin + 5, y + 6);
+    doc.text('Qty', margin + 120, y + 6);
+    doc.text('Rate', margin + 140, y + 6);
+    doc.text('Amount', pageWidth - margin - 20, y + 6, { align: 'right' });
+    
     y += 10;
     
-    // Add client info
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Bill To:', 20, y);
-    y += 6;
-    
-    doc.setFontSize(10);
+    // Table rows
     doc.setFont('helvetica', 'normal');
-    doc.text(invoiceData.clientName, 20, y);
-    y += 6;
-    if (invoiceData.clientEmail) {
-      doc.text(`Email: ${invoiceData.clientEmail}`, 20, y);
+    
+    for (const item of invoiceData.items) {
+      const initialY = y;
+      
+      if (item.description) {
+        const descY = addWrappedText(doc, item.description, margin + 5, y, 110);
+        y = descY + 2;
+      } else {
+        doc.text('Product/Service', margin + 5, y);
+        y += 6;
+      }
+      
+      doc.text(item.quantity.toString(), margin + 120, initialY);
+      doc.text(`$${item.rate.toFixed(2)}`, margin + 140, initialY);
+      doc.text(`$${item.amount.toFixed(2)}`, pageWidth - margin - 20, initialY, { align: 'right' });
+      
+      y += 4;
+      doc.setDrawColor(220, 220, 220);
+      doc.line(margin, y, margin + contentWidth, y);
       y += 6;
     }
-    if (invoiceData.clientPhone) {
-      doc.text(`Phone: ${invoiceData.clientPhone}`, 20, y);
-      y += 6;
-    }
-    if (invoiceData.clientAddress) {
-      doc.text(`Address: ${invoiceData.clientAddress}`, 20, y);
-      y += 10;
-    }
     
-    // Add items
-    doc.setFontSize(12);
+    // Total
+    y += 5;
     doc.setFont('helvetica', 'bold');
-    doc.text('Items', 20, y);
-    y += 8;
+    doc.text('Total:', margin + 140, y);
+    doc.text(`$${invoiceData.amount.toFixed(2)}`, pageWidth - margin - 20, y, { align: 'right' });
     
-    // Add table headers
-    doc.setFontSize(10);
-    doc.text('Description', 20, y);
-    doc.text('Qty', 120, y);
-    doc.text('Rate', 140, y);
-    doc.text('Amount', 170, y);
-    y += 4;
-    
-    // Add line
-    doc.line(20, y, 190, y);
-    y += 6;
-    
-    // Add items
-    doc.setFont('helvetica', 'normal');
-    if (invoiceData.items && invoiceData.items.length > 0) {
-      invoiceData.items.forEach(item => {
-        // Check if we need a new page
-        if (y > 250) {
-          doc.addPage();
-          y = 20;
-        }
-        
-        doc.text(item.description || 'Product', 20, y, { maxWidth: 95 });
-        doc.text(item.quantity.toString(), 120, y);
-        doc.text(formatCurrency(item.rate), 140, y);
-        doc.text(formatCurrency(item.amount), 170, y);
-        y += 10;
-      });
-    } else {
-      doc.text('No items', 20, y);
-      y += 10;
-    }
-    
-    // Add line
-    doc.line(20, y, 190, y);
-    y += 6;
-    
-    // Add total
-    doc.setFont('helvetica', 'bold');
-    doc.text('Total:', 140, y);
-    doc.text(formatCurrency(invoiceData.amount), 170, y);
     y += 15;
+    
+    // Payment schedule if available
+    if (invoiceData.paymentSchedules && invoiceData.paymentSchedules.length > 0) {
+      doc.setFontSize(12);
+      doc.text('PAYMENT SCHEDULE', margin, y);
+      
+      y += 8;
+      
+      // Table header
+      doc.setFillColor(240, 240, 240);
+      doc.rect(margin, y, contentWidth, 8, 'F');
+      
+      doc.setFontSize(10);
+      doc.text('Description', margin + 5, y + 6);
+      doc.text('Due Date', margin + 80, y + 6);
+      doc.text('Status', margin + 130, y + 6);
+      doc.text('Percentage', margin + 155, y + 6);
+      doc.text('Amount', pageWidth - margin - 20, y + 6, { align: 'right' });
+      
+      y += 10;
+      
+      // Table rows
+      doc.setFont('helvetica', 'normal');
+      
+      for (const schedule of invoiceData.paymentSchedules) {
+        doc.text(schedule.description || '', margin + 5, y);
+        doc.text(new Date(schedule.dueDate).toLocaleDateString(), margin + 80, y);
+        doc.text(schedule.status.toUpperCase(), margin + 130, y);
+        doc.text(`${schedule.percentage}%`, margin + 155, y);
+        doc.text(`$${schedule.amount.toFixed(2)}`, pageWidth - margin - 20, y, { align: 'right' });
+        
+        y += 8;
+      }
+      
+      y += 7;
+    }
     
     // Add notes if available
     if (invoiceData.notes) {
       // Check if we need a new page
-      if (y > 230) {
+      if (y > 220) {
         doc.addPage();
-        y = 20;
+        y = margin;
       }
       
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
-      doc.text('Notes', 20, y);
+      doc.text('NOTES', margin, y);
+      
       y += 8;
       
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       
-      // Add formatted notes text with proper line breaks
-      y = addFormattedText(invoiceData.notes, 20, y, 170);
-      y += 5; // Add extra spacing after notes
+      const notesY = addWrappedText(doc, invoiceData.notes, margin, y, contentWidth);
+      y = notesY + 15;
     }
     
     // Add contract terms if available
@@ -333,27 +583,35 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       // Check if we need a new page
       if (y > 230) {
         doc.addPage();
-        y = 20;
+        y = margin;
       }
       
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
-      doc.text('Contract Terms', 20, y);
+      doc.text('CONTRACT TERMS', margin, y);
+      
       y += 8;
       
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       
-      // Add formatted contract terms with proper line breaks
-      y = addFormattedText(invoiceData.contractTerms, 20, y, 170);
+      const contractY = addWrappedText(doc, invoiceData.contractTerms, margin, y, contentWidth);
+      y = contractY + 15;
     }
     
-    // Add view link
+    // Footer
+    const footerY = pageHeight - 15;
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'italic');
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Generated on ${new Date().toLocaleDateString()}`, margin, footerY);
+    
     if (invoiceData.viewLink) {
-      doc.setFontSize(8);
-      doc.text(`View online: ${invoiceData.viewLink}`, 20, 285);
+      const viewLinkText = `View online: ${invoiceData.viewLink}`;
+      doc.text(viewLinkText, pageWidth - margin, footerY, { align: 'right' });
     }
     
+    // Return PDF as buffer
     return doc.output('arraybuffer');
   } catch (error) {
     console.error('Error generating PDF:', error);
@@ -361,197 +619,12 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
   }
 }
 
-async function uploadPDF(pdfBuffer: Uint8Array, invoiceId: string): Promise<string | null> {
-  try {
-    console.log('Uploading PDF for invoice:', invoiceId);
-    
-    const fileName = `invoices/${invoiceId}.pdf`;
-    
-    // Check if the bucket exists
-    const { data: buckets, error: bucketsError } = await supabase.storage
-      .listBuckets();
-    
-    if (bucketsError) {
-      console.error('Error listing buckets:', bucketsError);
-      return null;
-    }
-    
-    console.log('Available buckets:', buckets.map(b => b.name).join(', '));
-    
-    const bucketExists = buckets.some(bucket => bucket.name === 'invoice-pdfs');
-    
-    if (!bucketExists) {
-      console.error('Bucket invoice-pdfs does not exist, falling back to default public bucket');
-      // Try to use a default bucket instead
-      const defaultBucket = 'public';
-      const { data, error } = await supabase.storage
-        .from(defaultBucket)
-        .upload(fileName, pdfBuffer, {
-          contentType: 'application/pdf',
-          upsert: true,
-        });
-      
-      if (error) {
-        console.error(`Error uploading PDF to ${defaultBucket} bucket:`, error);
-        return null;
-      }
-      
-      console.log(`PDF uploaded successfully to ${defaultBucket} bucket:`, data?.path);
-      
-      // Get public URL
-      const { data: publicUrlData } = supabase.storage
-        .from(defaultBucket)
-        .getPublicUrl(fileName);
-      
-      if (!publicUrlData || !publicUrlData.publicUrl) {
-        console.error('Failed to get public URL for PDF');
-        return null;
-      }
-      
-      console.log('PDF public URL:', publicUrlData.publicUrl);
-      
-      // Update invoice with PDF URL
-      const { error: updateError } = await supabase
-        .from('invoices')
-        .update({ pdf_url: publicUrlData.publicUrl })
-        .eq('id', invoiceId);
-      
-      if (updateError) {
-        console.error('Error updating invoice with PDF URL:', updateError);
-        return null;
-      }
-      
-      console.log('Invoice updated with PDF URL using default bucket');
-      
-      return publicUrlData.publicUrl;
-    }
-    
-    console.log('Uploading PDF to bucket: invoice-pdfs');
-    
-    const { data, error } = await supabase.storage
-      .from('invoice-pdfs')
-      .upload(fileName, pdfBuffer, {
-        contentType: 'application/pdf',
-        upsert: true,
-      });
-    
-    if (error) {
-      console.error('Error uploading PDF:', error);
-      return null;
-    }
-    
-    console.log('PDF uploaded successfully:', data?.path);
-    
-    // Get public URL
-    const { data: publicUrlData } = supabase.storage
-      .from('invoice-pdfs')
-      .getPublicUrl(fileName);
-    
-    if (!publicUrlData || !publicUrlData.publicUrl) {
-      console.error('Failed to get public URL for PDF');
-      return null;
-    }
-    
-    console.log('PDF public URL:', publicUrlData.publicUrl);
-    
-    // Update invoice with PDF URL
-    const { error: updateError } = await supabase
-      .from('invoices')
-      .update({ pdf_url: publicUrlData.publicUrl })
-      .eq('id', invoiceId);
-    
-    if (updateError) {
-      console.error('Error updating invoice with PDF URL:', updateError);
-      return null;
-    }
-    
-    console.log('Invoice updated with PDF URL');
-    
-    return publicUrlData.publicUrl;
-  } catch (err) {
-    console.error('Error in uploadPDF:', err);
-    return null;
-  }
+// Helper function to convert Blob to base64
+async function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 }
-
-serve(async (req) => {
-  console.log('Received request:', req.method, req.url);
-  
-  // Handle CORS preflight requests - THIS IS CRITICAL
-  if (req.method === 'OPTIONS') {
-    console.log('Handling CORS preflight request');
-    return new Response(null, { 
-      headers: corsHeaders, 
-      status: 204 
-    });
-  }
-  
-  try {
-    // Only allow POST requests
-    if (req.method !== 'POST') {
-      console.log('Method not allowed:', req.method);
-      return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-        status: 405,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-    
-    console.log('Parsing request body');
-    
-    // Parse the request body
-    const requestData = await req.json();
-    const { invoiceId } = requestData;
-    
-    console.log('Request data:', { invoiceId });
-    
-    if (!invoiceId) {
-      console.log('Missing invoiceId in request');
-      return new Response(JSON.stringify({ error: 'Invoice ID is required' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-    
-    // Fetch the invoice data
-    console.log('Fetching invoice data');
-    const invoiceData = await fetchInvoiceData(invoiceId);
-    
-    if (!invoiceData) {
-      console.log('Invoice not found');
-      return new Response(JSON.stringify({ error: 'Invoice not found' }), {
-        status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-    
-    // Generate the PDF
-    console.log('Generating PDF');
-    const pdfBuffer = await generatePDF(invoiceData);
-    
-    // Upload the PDF to Supabase Storage
-    console.log('Uploading PDF');
-    const pdfUrl = await uploadPDF(pdfBuffer, invoiceId);
-    
-    if (!pdfUrl) {
-      console.log('Failed to upload PDF');
-      return new Response(JSON.stringify({ error: 'Failed to upload PDF' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-    
-    // Return the PDF URL
-    console.log('Successfully generated and uploaded PDF:', pdfUrl);
-    return new Response(JSON.stringify({ pdfUrl }), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
-  } catch (error) {
-    console.error('Error in generate-invoice-pdf function:', error);
-    
-    return new Response(JSON.stringify({ error: 'Internal server error', details: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
-  }
-});

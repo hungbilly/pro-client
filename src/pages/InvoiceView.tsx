@@ -115,6 +115,14 @@ const InvoiceView = () => {
           return;
         }
         
+        console.log('[InvoiceView] Fetched invoice with contract terms:', {
+          id: fetchedInvoice.id,
+          hasContractTerms: !!fetchedInvoice.contractTerms,
+          contractTermsLength: fetchedInvoice.contractTerms?.length || 0,
+          contractStatus: fetchedInvoice.contractStatus,
+          contractTermsPreview: fetchedInvoice.contractTerms?.substring(0, 100)
+        });
+        
         if (selectedCompanyId && fetchedInvoice.companyId !== selectedCompanyId && !isClientView) {
           console.log('[InvoiceView] Invoice company mismatch. Expected:', selectedCompanyId, 'Got:', fetchedInvoice.companyId);
           toast.error("This invoice belongs to a different company");
@@ -352,6 +360,17 @@ const InvoiceView = () => {
   };
 
   const displayCompany = isClientView ? selectedCompanyState : selectedCompany;
+
+  useEffect(() => {
+    if (invoice) {
+      console.log('[InvoiceView] Current invoice contract terms:', {
+        hasContractTerms: !!invoice.contractTerms,
+        contractTermsLength: invoice.contractTerms?.length || 0,
+        contractStatus: invoice.contractStatus,
+        contractPreview: invoice.contractTerms?.substring(0, 100)
+      });
+    }
+  }, [invoice]);
 
   if (loading) {
     return (
@@ -672,11 +691,17 @@ const InvoiceView = () => {
                   <h4 className="text-lg font-semibold">Contract Terms</h4>
                 </div>
                 <div className="border rounded-md">
-                  <RichTextEditor
-                    value={invoice.contractTerms || 'No contract terms provided.'}
-                    onChange={() => {}}
-                    readOnly={true}
-                  />
+                  {invoice.contractTerms ? (
+                    <RichTextEditor
+                      value={invoice.contractTerms}
+                      onChange={() => {}}
+                      readOnly={true}
+                    />
+                  ) : (
+                    <div className="p-4 text-muted-foreground">
+                      No contract terms provided.
+                    </div>
+                  )}
                 </div>
               </TabsContent>
             </Tabs>

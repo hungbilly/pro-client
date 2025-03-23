@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -188,8 +189,9 @@ const RichTextEditor = memo(({
           selection.removeAllRanges();
           selection.addRange(range);
           
+          // Fix: Check if lastNode is an HTMLElement before calling scrollIntoView
           const lastNode = editorRef.current.lastChild;
-          if (lastNode) {
+          if (lastNode instanceof HTMLElement) {
             lastNode.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
           }
         }

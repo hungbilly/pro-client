@@ -914,7 +914,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
-                    <TableHead className="w-12"></TableHead>
                     <TableHead>Description</TableHead>
                     <TableHead className="w-28 text-right hidden md:table-cell">Unit Price</TableHead>
                     <TableHead className="w-24 text-right hidden md:table-cell">Quantity</TableHead>
@@ -925,9 +924,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                 <TableBody>
                   {items.map((item) => (
                     <TableRow key={item.id}>
-                      <TableCell className="p-2 text-center">
-                        <GripVertical className="h-4 w-4 mx-auto text-muted-foreground" />
-                      </TableCell>
                       <TableCell>
                         <div className="space-y-1">
                           {item.description ? (
@@ -995,7 +991,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                   ))}
                   {items.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={6} className="h-24 text-center">
+                      <TableCell colSpan={5} className="h-24 text-center">
                         No items added yet. Click "Add Line Item" to get started.
                       </TableCell>
                     </TableRow>

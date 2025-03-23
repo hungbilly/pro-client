@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -35,7 +34,6 @@ const RichTextEditor = memo(({
   const [isFirstRender, setIsFirstRender] = useState(true);
   const isUpdatingRef = useRef(false);
 
-  // Debug logging for contract content
   useEffect(() => {
     if (id === 'contract-terms-editor') {
       console.log('RichTextEditor contract terms value:', {
@@ -46,7 +44,6 @@ const RichTextEditor = memo(({
     }
   }, [value, id]);
 
-  // Initialize the editor content on first render
   useEffect(() => {
     if (editorRef.current && isFirstRender) {
       editorRef.current.innerHTML = value || '';
@@ -55,7 +52,6 @@ const RichTextEditor = memo(({
     }
   }, [value, isFirstRender]);
 
-  // Sync internal content with external value prop when it changes
   useEffect(() => {
     if (value !== internalContent && !isUpdatingRef.current) {
       setInternalContent(value || '');
@@ -65,7 +61,6 @@ const RichTextEditor = memo(({
     }
   }, [value]);
 
-  // Function to save the cursor position
   const saveCursorPosition = () => {
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0 || !editorRef.current) return null;
@@ -82,7 +77,6 @@ const RichTextEditor = memo(({
     };
   };
 
-  // Function to restore the cursor position
   const restoreCursorPosition = (position: { start: number; end: number } | null) => {
     if (!position || !editorRef.current) return;
 

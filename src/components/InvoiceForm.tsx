@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Client, Invoice, InvoiceItem, Job, PaymentSchedule } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,7 @@ import { supabase } from '@/integrations/supabase/client';
 import PackageSelector from './PackageSelector';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import RichTextEditor from './RichTextEditor';
+import EditInvoiceItemDialog from './EditInvoiceItemDialog';
 
 interface ContractTemplate {
   id: string;
@@ -89,6 +90,9 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   const [isEditMode, setIsEditMode] = useState(!!invoiceId);
   const [invoiceNumberError, setInvoiceNumberError] = useState<string | null>(null);
   const [checkingInvoiceNumber, setCheckingInvoiceNumber] = useState(false);
+  
+  const [isEditItemDialogOpen, setIsEditItemDialogOpen] = useState(false);
+  const [currentEditItem, setCurrentEditItem] = useState<InvoiceItem | null>(null);
 
   const generateInvoiceNumber = useCallback(async () => {
     if (isEditMode || generatingInvoiceNumber) return;
@@ -265,8 +269,43 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
   const handleAddItem = () => {
     const newItemId = Date.now().toString();
-    setItems([...items, { id: newItemId, description: '', quantity: 1, rate: 0, amount: 0 }]);
-    setActiveRowId(newItemId);
+    const newItem: InvoiceItem = { 
+      id: newItemId, 
+      description: '', 
+      quantity: 1, 
+      rate: 0, 
+      amount: 0 
+    };
+    
+    setCurrentEditItem(newItem);
+    setIsEditItemDialogOpen(true);
+  };
+
+  const handleEditItem = (item: InvoiceItem) => {
+    setCurrentEditItem({...item});
+    setIsEditItemDialogOpen(true);
+  };
+
+  const handleSaveEditedItem = (editedItem: InvoiceItem) => {
+    if (!editedItem.id) return;
+    
+    // Check if this is a new item or an existing one
+    const existingItemIndex = items.findIndex(item => item.id === editedItem.id);
+    
+    let updatedItems;
+    if (existingItemIndex >= 0) {
+      // Update existing item
+      updatedItems = [...items];
+      updatedItems[existingItemIndex] = editedItem;
+    } else {
+      // Add new item
+      updatedItems = [...items, editedItem];
+    }
+    
+    setItems(updatedItems);
+    setIsEditItemDialogOpen(false);
+    setCurrentEditItem(null);
+    setActiveRowId(null);
   };
 
   const handleRemoveItem = (id: string) => {
@@ -860,349 +899,3 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                 </SelectTrigger>
                 <SelectContent>
                   {contractTemplates.map(template => (
-                    <SelectItem key={template.id} value={template.id}>{template.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-sm text-muted-foreground mt-1">
-                Select a template to quickly fill in contract terms
-              </p>
-            </div>
-          )}
-          
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium">Line Items</h3>
-              <div className="flex gap-2">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button type="button" variant="outline">
-                      <PackageIcon className="h-4 w-4 mr-2" />
-                      Add Existing Package
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[300px] p-0">
-                    <PackageSelector onPackageSelect={handlePackageSelect} variant="direct-list" />
-                  </PopoverContent>
-                </Popover>
-                <Button type="button" onClick={handleAddItem} variant="outline">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Line Item
-                </Button>
-              </div>
-            </div>
-            
-            <div className="border rounded-md overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead className="w-12"></TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead className="w-28 text-right">Unit Price</TableHead>
-                    <TableHead className="w-24 text-right">Quantity</TableHead>
-                    <TableHead className="w-24 text-right">Discount</TableHead>
-                    <TableHead className="w-24 text-right">Tax</TableHead>
-                    <TableHead className="w-32 text-right">Amount</TableHead>
-                    <TableHead className="w-24 text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {items.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell className="p-2 text-center">
-                        <GripVertical className="h-4 w-4 mx-auto text-muted-foreground" />
-                      </TableCell>
-                      <TableCell>
-                        {activeRowId === item.id ? (
-                          <RichTextEditor
-                            value={item.description}
-                            onChange={(value) => handleItemChange(item.id, 'description', value)}
-                            className="border-none min-h-0 p-0"
-                            placeholder="Add description..."
-                            alwaysShowToolbar={true}
-                            showDoneButton={true}
-                            onDone={handleDoneEditing}
-                          />
-                        ) : (
-                          item.description ? (
-                            <RichTextEditor
-                              value={item.description}
-                              onChange={(value) => handleItemChange(item.id, 'description', value)}
-                              className="border-none min-h-0 p-0"
-                              placeholder="Add description..."
-                              onFocus={() => setActiveRowId(item.id)}
-                            />
-                          ) : (
-                            <div className="space-y-1">
-                              <PackageSelector 
-                                onPackageSelect={handlePackageSelect} 
-                                variant="inline" 
-                                placeholder="Select an existing package..." 
-                              />
-                              <Button 
-                                variant="ghost" 
-                                className="w-full justify-start text-left text-muted-foreground hover:text-foreground"
-                                onClick={() => handleManualPackageEntry(item.id)}
-                              >
-                                <Pencil className="mr-2 h-4 w-4" />
-                                Add your own product/package...
-                              </Button>
-                            </div>
-                          )
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Input
-                          type="number"
-                          placeholder="0.00"
-                          value={item.rate}
-                          onChange={(e) => handleItemChange(item.id, 'rate', parseFloat(e.target.value) || 0)}
-                          className="max-w-24 text-right ml-auto"
-                        />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Input
-                          type="number"
-                          placeholder="1"
-                          value={item.quantity}
-                          onChange={(e) => handleItemChange(item.id, 'quantity', parseFloat(e.target.value) || 0)}
-                          className="max-w-16 text-right ml-auto"
-                        />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Input
-                          type="text"
-                          placeholder="0%"
-                          defaultValue="0%"
-                          className="max-w-16 text-right ml-auto"
-                          disabled
-                        />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Input
-                          type="text"
-                          placeholder="No Tax"
-                          defaultValue="No Tax"
-                          className="max-w-16 text-right ml-auto"
-                          disabled
-                        />
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatCurrency(item.amount)}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => handleDuplicateItem(item.id)}>
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.id)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-            
-            <div className="mt-4 flex justify-end">
-              <div className="w-72 space-y-2">
-                <div className="flex justify-between py-2 border-t">
-                  <span className="font-medium">Subtotal</span>
-                  <span className="font-medium">{formatCurrency(calculateTotalAmount())}</span>
-                </div>
-                <div className="flex justify-between text-sm text-muted-foreground">
-                  <span>Discount</span>
-                  <span>None</span>
-                </div>
-                <div className="flex justify-between py-2 border-t border-b">
-                  <span className="font-medium">Total Due</span>
-                  <span className="font-bold">{formatCurrency(calculateTotalAmount())}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              <div>
-                <Label htmlFor="notes">Invoice Notes</Label>
-                {templates.length > 0 && (
-                  <div className="mb-2">
-                    <Label htmlFor="template">Invoice Template</Label>
-                    <Select 
-                      value={selectedTemplateId || ''} 
-                      onValueChange={handleTemplateSelect}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select a template" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {templates.map(template => (
-                          <SelectItem key={template.id} value={template.id}>{template.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-                <RichTextEditor
-                  value={notes}
-                  onChange={(value) => setNotes(value)}
-                  placeholder="Enter invoice notes..."
-                />
-              </div>
-              
-              {contractTemplates.length > 0 && (
-                <div>
-                  <Label htmlFor="contractTemplate">Contract Template</Label>
-                  <Select 
-                    value={selectedContractTemplateId || ''} 
-                    onValueChange={handleContractTemplateSelect}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select a contract template" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {contractTemplates.map(template => (
-                        <SelectItem key={template.id} value={template.id}>{template.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Select a template to quickly fill in contract terms
-                  </p>
-                </div>
-              )}
-            </div>
-            
-            {/* Contract Terms section now spanning full width */}
-            <div className="mt-6">
-              <Label htmlFor="contractTerms">Contract Terms</Label>
-              <RichTextEditor
-                value={contractTerms}
-                onChange={(value) => setContractTerms(value)}
-                placeholder="Enter contract terms..."
-              />
-            </div>
-          </div>
-          
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-medium">Payment Schedule</h3>
-            <Button type="button" onClick={handleAddPaymentSchedule} variant="outline">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Payment
-            </Button>
-          </div>
-          
-          <div className="border rounded-md overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/50">
-                  <TableHead>Description</TableHead>
-                  <TableHead>Due Date</TableHead>
-                  <TableHead className="text-right">Percentage</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead className="w-24 text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paymentSchedules.map((schedule) => {
-                  const scheduleAmount = calculateTotalAmount() * (schedule.percentage / 100);
-                  
-                  return (
-                    <TableRow key={schedule.id}>
-                      <TableCell>
-                        <Input
-                          type="text"
-                          value={schedule.description}
-                          onChange={(e) => handleScheduleChange(schedule.id, 'description', e.target.value)}
-                          className="w-full"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "w-full justify-start text-left font-normal",
-                              )}
-                            >
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {format(new Date(schedule.dueDate), "PPP")}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <DatePicker
-                              mode="single"
-                              selected={new Date(schedule.dueDate)}
-                              onSelect={(date) => date && handleScheduleChange(schedule.id, 'dueDate', format(date, 'yyyy-MM-dd'))}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Input
-                            type="number"
-                            value={schedule.percentage}
-                            onChange={(e) => handleScheduleChange(schedule.id, 'percentage', e.target.value)}
-                            className="max-w-16 text-right"
-                          />
-                          <span className="text-muted-foreground">%</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatCurrency(scheduleAmount)}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex justify-end">
-                          <Button variant="ghost" size="icon" onClick={() => handleRemovePaymentSchedule(schedule.id)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-                {paymentSchedules.reduce((total, schedule) => total + schedule.percentage, 0) !== 100 && (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center text-amber-600">
-                      Warning: Payment schedules must add up to 100%. Current total: {paymentSchedules.reduce((total, schedule) => total + schedule.percentage, 0)}%
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </form>
-      </CardContent>
-      <CardFooter className="flex justify-between">
-        <Button 
-          variant="outline" 
-          onClick={() => {
-            if (job?.id) {
-              navigate(`/job/${job.id}`);
-            } else if (client) {
-              navigate(`/client/${client.id}`);
-            } else {
-              navigate('/');
-            }
-          }}
-        >
-          Cancel
-        </Button>
-        <Button 
-          onClick={handleSubmit} 
-          disabled={!!invoiceNumberError || checkingInvoiceNumber}
-        >
-          {isEditMode ? 'Update Invoice' : 'Create Invoice'}
-        </Button>
-      </CardFooter>
-    </Card>
-  );
-};
-
-export default InvoiceForm;

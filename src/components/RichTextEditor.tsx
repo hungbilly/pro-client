@@ -31,7 +31,7 @@ const RichTextEditor = memo(({
 }: RichTextEditorProps) => {
   const editorRef = useRef<HTMLDivElement>(null);
   const [showToolbar, setShowToolbar] = useState(alwaysShowToolbar);
-  const [lastHtml, setLastHtml] = useState(value);
+  const [internalContent, setInternalContent] = useState(value || '');
   
   // Debug logging for contract content
   useEffect(() => {
@@ -44,14 +44,13 @@ const RichTextEditor = memo(({
     }
   }, [value, id]);
   
-  // Only update the editor content when the value prop changes
+  // Only update the editor content when the external value prop changes
+  // and is different from our internal state
   useEffect(() => {
-    if (editorRef.current && value !== lastHtml) {
-      // Instead of setting innerHTML directly, we'll rely on dangerouslySetInnerHTML
-      // to handle rendering the content
-      setLastHtml(value || '');
+    if (value !== internalContent) {
+      setInternalContent(value || '');
     }
-  }, [value, lastHtml]);
+  }, [value]);
 
   const handleCommand = (command: string, value: string | null = null) => {
     if (readOnly) return;
@@ -76,9 +75,8 @@ const RichTextEditor = memo(({
     if (!editorRef.current) return;
     
     const newContent = editorRef.current.innerHTML;
-    // Only update if content has changed
-    if (newContent !== lastHtml) {
-      setLastHtml(newContent);
+    if (newContent !== internalContent) {
+      setInternalContent(newContent);
       onChange(newContent);
     }
   };
@@ -259,7 +257,7 @@ const RichTextEditor = memo(({
           '--tw-prose-counters': 'currentColor',
         } as React.CSSProperties}
         suppressContentEditableWarning={true}
-        dangerouslySetInnerHTML={{ __html: value || '' }}
+        dangerouslySetInnerHTML={{ __html: internalContent }}
       />
     </div>
   );

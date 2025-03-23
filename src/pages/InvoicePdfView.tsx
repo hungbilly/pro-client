@@ -5,7 +5,7 @@ import { getInvoiceByViewLink, updateInvoiceStatus, updateContractStatus } from 
 import { Invoice } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Check, FileCheck, Download, RefreshCw } from 'lucide-react';
+import { Check, FileCheck, Download, RefreshCw, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { supabase, logDebug, logError } from "@/integrations/supabase/client";
@@ -15,6 +15,7 @@ const InvoicePdfView = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [functionError, setFunctionError] = useState<string | null>(null);
   const { viewLink } = useParams<{ viewLink: string }>();
 
   useEffect(() => {
@@ -52,6 +53,7 @@ const InvoicePdfView = () => {
   const generateInvoicePdf = async (invoiceId: string) => {
     try {
       setGeneratingPdf(true);
+      setFunctionError(null);
       toast.info('Preparing invoice PDF...');
       
       logDebug('Calling generate-invoice-pdf function', { invoiceId });
@@ -62,7 +64,8 @@ const InvoicePdfView = () => {
       });
       
       if (error) {
-        logError('Error generating PDF', error);
+        logError('Error invoking generate-invoice-pdf function', error);
+        setFunctionError(`Error: ${error.message || 'Failed to generate PDF'}`);
         toast.error('Failed to generate invoice PDF. Please try again.');
         return;
       }
@@ -73,10 +76,12 @@ const InvoicePdfView = () => {
         toast.success('Invoice PDF ready');
       } else {
         logError('No PDF URL returned from function', data);
+        setFunctionError('No PDF URL returned from the server');
         toast.error('Failed to generate invoice PDF. Please try again.');
       }
     } catch (err) {
-      logError('Error calling generate-invoice-pdf function', err);
+      logError('Exception in generateInvoicePdf', err);
+      setFunctionError(`Exception: ${err instanceof Error ? err.message : 'Unknown error'}`);
       toast.error('Failed to generate invoice PDF. Please try again.');
     } finally {
       setGeneratingPdf(false);
@@ -184,7 +189,7 @@ const InvoicePdfView = () => {
                 {!invoice.pdfUrl && !generatingPdf && (
                   <Button variant="outline" size="sm" onClick={handleRetryGeneratePdf}>
                     <RefreshCw className="h-4 w-4 mr-2" />
-                    Retry Generate PDF
+                    Generate PDF
                   </Button>
                 )}
               </div>
@@ -203,18 +208,29 @@ const InvoicePdfView = () => {
                 />
               </div>
             ) : (
-              <div className="flex justify-center items-center h-64">
-                <div className="text-center">
-                  <p className="mb-2">{generatingPdf ? 'Preparing invoice PDF...' : 'Failed to generate PDF. Please try again.'}</p>
-                  {generatingPdf ? (
+              <div className="flex justify-center items-center h-64 flex-col">
+                {generatingPdf ? (
+                  <>
+                    <p className="mb-4">Preparing invoice PDF...</p>
                     <div className="w-10 h-10 border-4 border-t-blue-500 border-b-blue-500 border-l-blue-200 border-r-blue-200 rounded-full animate-spin mx-auto"></div>
-                  ) : (
+                  </>
+                ) : (
+                  <>
+                    {functionError ? (
+                      <div className="text-center max-w-md">
+                        <AlertCircle className="h-10 w-10 text-red-500 mx-auto mb-2" />
+                        <p className="mb-4 text-red-500">There was an error generating the PDF:</p>
+                        <p className="mb-4 p-2 bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300 rounded text-sm font-mono overflow-auto max-h-28">{functionError}</p>
+                      </div>
+                    ) : (
+                      <p className="mb-4">Click the button to generate the invoice PDF.</p>
+                    )}
                     <Button onClick={handleRetryGeneratePdf}>
                       <RefreshCw className="h-4 w-4 mr-2" />
-                      Retry
+                      Generate PDF
                     </Button>
-                  )}
-                </div>
+                  </>
+                )}
               </div>
             )}
           </CardContent>

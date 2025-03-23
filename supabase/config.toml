@@ -19,10 +19,6 @@ port = 54322
 # server_version;` on the remote database to check.
 major_version = 15
 
-# Use a PSQL port to connect.
-[db.psql]
-port = 54323
-
 [studio]
 enabled = true
 # Port to use for Supabase Studio.
@@ -110,9 +106,5 @@ orioledb_version = ""
 
 # Configure storage
 [storage]
-file_size_limit = "50MiB"
-
-# For files
-[storage.file]
 enabled = true
-data_path = "/var/lib/storage"
+file_size_limit = "50MiB"

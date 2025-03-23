@@ -46,6 +46,28 @@ const RichTextEditor = memo(({
   }, [value, id]);
 
   useEffect(() => {
+    if (editorRef.current) {
+      const ulElements = editorRef.current.querySelectorAll('ul');
+      const olElements = editorRef.current.querySelectorAll('ol');
+      
+      if (ulElements.length > 0 || olElements.length > 0) {
+        console.log('List elements found:', { 
+          ulCount: ulElements.length, 
+          olCount: olElements.length 
+        });
+        
+        if (ulElements.length > 0) {
+          const ulStyle = window.getComputedStyle(ulElements[0]);
+          console.log('UL computed style:', {
+            listStyleType: ulStyle.listStyleType,
+            paddingLeft: ulStyle.paddingLeft,
+          });
+        }
+      }
+    }
+  }, [internalContent]);
+
+  useEffect(() => {
     if (editorRef.current && isFirstRender) {
       editorRef.current.innerHTML = value || '';
       setInternalContent(value || '');
@@ -133,12 +155,43 @@ const RichTextEditor = memo(({
     if (readOnly) return;
     if (!editorRef.current) return;
 
-    const cursorPosition = saveCursorPosition();
     editorRef.current.focus();
+    
     document.execCommand(listType, false, null);
+    
+    if (editorRef.current) {
+      const lists = editorRef.current.querySelectorAll(listType === 'insertUnorderedList' ? 'ul' : 'ol');
+      lists.forEach(list => {
+        if (list instanceof HTMLElement) {
+          list.style.listStylePosition = 'outside';
+          list.style.paddingLeft = '1.5em';
+          list.style.marginLeft = '0.5em';
+          
+          const items = list.querySelectorAll('li');
+          items.forEach(item => {
+            if (item instanceof HTMLElement) {
+              item.style.display = 'list-item';
+              if (listType === 'insertUnorderedList') {
+                item.style.listStyleType = 'disc';
+              } else {
+                item.style.listStyleType = 'decimal';
+              }
+            }
+          });
+        }
+      });
+    }
+    
     updateContent();
+    
     setTimeout(() => {
-      restoreCursorPosition(cursorPosition);
+      if (editorRef.current) {
+        const lists = editorRef.current.querySelectorAll(listType === 'insertUnorderedList' ? 'ul' : 'ol');
+        console.log(`${listType} result:`, {
+          listsFound: lists.length,
+          html: editorRef.current.innerHTML.substring(0, 200)
+        });
+      }
     }, 10);
   };
 
@@ -432,6 +485,7 @@ const RichTextEditor = memo(({
           "prose-li:marker:text-foreground",
           "prose-ol:list-decimal prose-ul:list-disc",
           "prose-p:my-1",
+          "prose-ul:list-outside prose-ol:list-outside",
           readOnly ? "bg-muted/20 cursor-default" : "",
           className
         )}
@@ -452,6 +506,31 @@ const RichTextEditor = memo(({
         } as React.CSSProperties}
         suppressContentEditableWarning={true}
       />
+      
+      <style jsx>{`
+        :global(.rich-text-editor ul) {
+          list-style-type: disc !important;
+          list-style-position: outside !important;
+          padding-left: 1.5em !important;
+          margin-left: 0.5em !important;
+        }
+        
+        :global(.rich-text-editor ol) {
+          list-style-type: decimal !important;
+          list-style-position: outside !important;
+          padding-left: 1.5em !important;
+          margin-left: 0.5em !important;
+        }
+        
+        :global(.rich-text-editor li) {
+          display: list-item !important;
+          margin: 0.25em 0 !important;
+        }
+        
+        :global(.rich-text-editor li::marker) {
+          color: currentColor !important;
+        }
+      `}</style>
     </div>
   );
 });

@@ -127,6 +127,24 @@
     @apply transition-all duration-200;
   }
 
+  /* Rich text editor list styles */
+  .rich-text-editor ul {
+    list-style-type: disc !important;
+    padding-left: 1.5em !important;
+    margin: 0.5em 0 !important;
+  }
+
+  .rich-text-editor ol {
+    list-style-type: decimal !important;
+    padding-left: 1.5em !important;
+    margin: 0.5em 0 !important;
+  }
+
+  .rich-text-editor li {
+    display: list-item !important;
+    margin: 0.25em 0 !important;
+  }
+
   .glass-card {
     @apply bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-white/20 dark:border-gray-800/30;
   }

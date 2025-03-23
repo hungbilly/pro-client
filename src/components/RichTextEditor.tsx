@@ -541,11 +541,11 @@ const RichTextEditor = memo(({
         suppressContentEditableWarning={true}
       />
 
-      <style jsx global>{`
-        .rich-text-editor button {
+      <style>
+        {`.rich-text-editor button {
           cursor: pointer !important;
-        }
-      `}</style>
+        }`}
+      </style>
     </div>
   );
 });

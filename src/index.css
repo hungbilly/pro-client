@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -132,17 +131,25 @@
     list-style-type: disc !important;
     padding-left: 1.5em !important;
     margin: 0.5em 0 !important;
+    list-style-position: outside !important;
+    margin-left: 0.5em !important;
   }
 
   .rich-text-editor ol {
     list-style-type: decimal !important;
     padding-left: 1.5em !important;
     margin: 0.5em 0 !important;
+    list-style-position: outside !important;
+    margin-left: 0.5em !important;
   }
 
   .rich-text-editor li {
     display: list-item !important;
     margin: 0.25em 0 !important;
+  }
+  
+  .rich-text-editor li::marker {
+    color: currentColor !important;
   }
 
   .glass-card {

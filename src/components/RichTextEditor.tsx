@@ -294,7 +294,7 @@ const RichTextEditor = memo(({
   };
 
   return (
-    <div className={cn("rounded-md border", className)}>
+    <div className={cn("rounded-md border rich-text-editor", className)}>
       {showToolbar && !readOnly && (
         <div className="flex flex-wrap gap-1 p-2 border-b bg-muted/30 justify-between">
           <div className="flex flex-wrap gap-1">
@@ -506,31 +506,6 @@ const RichTextEditor = memo(({
         } as React.CSSProperties}
         suppressContentEditableWarning={true}
       />
-      
-      <style jsx>{`
-        :global(.rich-text-editor ul) {
-          list-style-type: disc !important;
-          list-style-position: outside !important;
-          padding-left: 1.5em !important;
-          margin-left: 0.5em !important;
-        }
-        
-        :global(.rich-text-editor ol) {
-          list-style-type: decimal !important;
-          list-style-position: outside !important;
-          padding-left: 1.5em !important;
-          margin-left: 0.5em !important;
-        }
-        
-        :global(.rich-text-editor li) {
-          display: list-item !important;
-          margin: 0.25em 0 !important;
-        }
-        
-        :global(.rich-text-editor li::marker) {
-          color: currentColor !important;
-        }
-      `}</style>
     </div>
   );
 });

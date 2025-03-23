@@ -199,34 +199,35 @@ const RichTextEditor = memo(({
     if (readOnly) return;
     if (!editorRef.current) return;
 
+    console.log(`Attempting to apply font size: ${fontSize}px`);
+    
     editorRef.current.focus();
     
+    const size = parseInt(fontSize, 10);
+    
+    document.execCommand('fontSize', false, '7');
+    
+    const fontElements = editorRef.current.querySelectorAll('font[size="7"]');
+    
+    fontElements.forEach(element => {
+      element.removeAttribute('size');
+      element.style.fontSize = `${fontSize}px`;
+    });
+    
     const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) return;
-    
-    const range = selection.getRangeAt(0);
-    
-    if (range.collapsed) {
-      const span = document.createElement('span');
-      span.style.fontSize = `${fontSize}px`;
-      span.textContent = '\u200B';
-      
-      range.insertNode(span);
-      
-      range.setStartAfter(span);
-      selection.removeAllRanges();
-      selection.addRange(range);
-    } else {
-      const fragment = range.extractContents();
-      const span = document.createElement('span');
-      span.style.fontSize = `${fontSize}px`;
-      span.appendChild(fragment);
-      range.insertNode(span);
-      
-      range.setStartAfter(span);
-      range.collapse(true);
-      selection.removeAllRanges();
-      selection.addRange(range);
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      if (range.collapsed) {
+        const span = document.createElement('span');
+        span.style.fontSize = `${fontSize}px`;
+        const space = document.createTextNode('\u200B');
+        span.appendChild(space);
+        range.insertNode(span);
+        range.setStartAfter(span);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
     }
     
     updateContent();
@@ -374,51 +375,41 @@ const RichTextEditor = memo(({
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
                 <div className="flex flex-col">
-                  <Button
+                  <button
                     type="button" 
-                    variant="ghost" 
-                    size="sm"
-                    className="justify-start rounded-none h-8 text-xl cursor-pointer hover:bg-accent/10"
+                    className="px-4 py-2 text-left text-xl hover:bg-accent hover:text-accent-foreground cursor-pointer"
                     onClick={() => handleFontSize('24')}
                   >
                     24px
-                  </Button>
-                  <Button
+                  </button>
+                  <button
                     type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="justify-start rounded-none h-8 text-lg cursor-pointer hover:bg-accent/10"
+                    className="px-4 py-2 text-left text-lg hover:bg-accent hover:text-accent-foreground cursor-pointer"
                     onClick={() => handleFontSize('20')}
                   >
                     20px
-                  </Button>
-                  <Button
+                  </button>
+                  <button
                     type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="justify-start rounded-none h-8 cursor-pointer hover:bg-accent/10"
+                    className="px-4 py-2 text-left hover:bg-accent hover:text-accent-foreground cursor-pointer"
                     onClick={() => handleFontSize('16')}
                   >
                     16px
-                  </Button>
-                  <Button
+                  </button>
+                  <button
                     type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="justify-start rounded-none h-8 text-sm cursor-pointer hover:bg-accent/10"
+                    className="px-4 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
                     onClick={() => handleFontSize('14')}
                   >
                     14px
-                  </Button>
-                  <Button
+                  </button>
+                  <button
                     type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="justify-start rounded-none h-8 text-xs cursor-pointer hover:bg-accent/10"
+                    className="px-4 py-2 text-left text-xs hover:bg-accent hover:text-accent-foreground cursor-pointer"
                     onClick={() => handleFontSize('12')}
                   >
                     12px
-                  </Button>
+                  </button>
                 </div>
               </PopoverContent>
             </Popover>

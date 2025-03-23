@@ -267,8 +267,13 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   };
 
   const handleAddItem = () => {
-    const newItemId = Date.now().toString();
-    const newItem = { id: newItemId, description: '', quantity: 1, rate: 0, amount: 0 };
+    const newItem = { 
+      id: Date.now().toString(), 
+      description: '', 
+      quantity: 1, 
+      rate: 0, 
+      amount: 0 
+    };
     setEditingItem(newItem);
     setIsItemDialogOpen(true);
   };
@@ -288,9 +293,9 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   const handleSaveItem = () => {
     if (!editingItem) return;
     
-    const updatedItems = editingItem.id ? 
+    const updatedItems = editingItem.id && items.some(item => item.id === editingItem.id) ? 
       items.map(item => item.id === editingItem.id ? editingItem : item) :
-      [...items, { ...editingItem, id: Date.now().toString() }];
+      [...items, editingItem];
     
     setItems(updatedItems);
     setIsItemDialogOpen(false);
@@ -1214,7 +1219,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
       >
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>{editingItem?.id ? 'Edit Item' : 'Add New Item'}</DialogTitle>
+            <DialogTitle>{editingItem?.id && items.some(item => item.id === editingItem.id) ? 'Edit Item' : 'Add New Item'}</DialogTitle>
           </DialogHeader>
           {editingItem && (
             <div className="space-y-4 py-2">

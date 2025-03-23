@@ -32,7 +32,9 @@ const RichTextEditor = memo(({
   const editorRef = useRef<HTMLDivElement>(null);
   const [showToolbar, setShowToolbar] = useState(alwaysShowToolbar);
   const [internalContent, setInternalContent] = useState(value || '');
-  
+  const [isFirstRender, setIsFirstRender] = useState(true);
+  const isUpdatingRef = useRef(false);
+
   // Debug logging for contract content
   useEffect(() => {
     if (id === 'contract-terms-editor') {
@@ -43,52 +45,129 @@ const RichTextEditor = memo(({
       });
     }
   }, [value, id]);
-  
-  // Only update the editor content when the external value prop changes
-  // and is different from our internal state
+
+  // Initialize the editor content on first render
   useEffect(() => {
-    if (value !== internalContent) {
+    if (editorRef.current && isFirstRender) {
+      editorRef.current.innerHTML = value || '';
       setInternalContent(value || '');
+      setIsFirstRender(false);
+    }
+  }, [value, isFirstRender]);
+
+  // Sync internal content with external value prop when it changes
+  useEffect(() => {
+    if (value !== internalContent && !isUpdatingRef.current) {
+      setInternalContent(value || '');
+      if (editorRef.current) {
+        editorRef.current.innerHTML = value || '';
+      }
     }
   }, [value]);
 
+  // Function to save the cursor position
+  const saveCursorPosition = () => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0 || !editorRef.current) return null;
+
+    const range = selection.getRangeAt(0);
+    const preSelectionRange = range.cloneRange();
+    preSelectionRange.selectNodeContents(editorRef.current);
+    preSelectionRange.setEnd(range.startContainer, range.startOffset);
+    const start = preSelectionRange.toString().length;
+
+    return {
+      start,
+      end: start + range.toString().length
+    };
+  };
+
+  // Function to restore the cursor position
+  const restoreCursorPosition = (position: { start: number; end: number } | null) => {
+    if (!position || !editorRef.current) return;
+
+    const selection = window.getSelection();
+    if (!selection) return;
+
+    let charIndex = 0;
+    const range = document.createRange();
+    range.setStart(editorRef.current, 0);
+    range.collapse(true);
+
+    const nodeStack: Node[] = [editorRef.current];
+    let foundStart = false;
+    let foundEnd = false;
+
+    while (nodeStack.length > 0 && !(foundStart && foundEnd)) {
+      const node = nodeStack.pop()!;
+      if (node.nodeType === Node.TEXT_NODE) {
+        const textLength = node.textContent?.length || 0;
+        if (!foundStart && charIndex + textLength >= position.start) {
+          range.setStart(node, position.start - charIndex);
+          foundStart = true;
+        }
+        if (!foundEnd && charIndex + textLength >= position.end) {
+          range.setEnd(node, position.end - charIndex);
+          foundEnd = true;
+        }
+        charIndex += textLength;
+      } else {
+        for (let i = node.childNodes.length - 1; i >= 0; i--) {
+          nodeStack.push(node.childNodes[i]);
+        }
+      }
+    }
+
+    selection.removeAllRanges();
+    selection.addRange(range);
+  };
+
   const handleCommand = (command: string, value: string | null = null) => {
     if (readOnly) return;
-    
+
     if (editorRef.current) {
+      const cursorPosition = saveCursorPosition();
       editorRef.current.focus();
       document.execCommand(command, false, value);
       updateContent();
+      restoreCursorPosition(cursorPosition);
     }
   };
 
   const handleList = (listType: 'insertUnorderedList' | 'insertOrderedList') => {
     if (readOnly) return;
     if (!editorRef.current) return;
-    
+
+    const cursorPosition = saveCursorPosition();
     editorRef.current.focus();
     document.execCommand(listType, false, null);
     updateContent();
+    restoreCursorPosition(cursorPosition);
   };
 
   const updateContent = () => {
     if (!editorRef.current) return;
-    
+
     const newContent = editorRef.current.innerHTML;
     if (newContent !== internalContent) {
+      isUpdatingRef.current = true;
       setInternalContent(newContent);
       onChange(newContent);
+      isUpdatingRef.current = false;
     }
   };
 
   const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
     if (readOnly) return;
+
+    const cursorPosition = saveCursorPosition();
     updateContent();
+    restoreCursorPosition(cursorPosition);
   };
 
   const handleFocus = () => {
     if (readOnly) return;
-    
+
     setShowToolbar(true);
     if (onFocus) {
       onFocus();
@@ -97,7 +176,7 @@ const RichTextEditor = memo(({
 
   const handleBlur = () => {
     if (readOnly) return;
-    
+
     if (!alwaysShowToolbar) {
       setTimeout(() => {
         setShowToolbar(false);
@@ -127,7 +206,7 @@ const RichTextEditor = memo(({
             >
               <Bold className="h-4 w-4" />
             </Button>
-            
+
             <Button
               type="button"
               variant="ghost"
@@ -138,7 +217,7 @@ const RichTextEditor = memo(({
             >
               <Italic className="h-4 w-4" />
             </Button>
-            
+
             <Button
               type="button"
               variant="ghost"
@@ -149,7 +228,7 @@ const RichTextEditor = memo(({
             >
               <Underline className="h-4 w-4" />
             </Button>
-            
+
             <Button
               type="button"
               variant="ghost"
@@ -163,7 +242,7 @@ const RichTextEditor = memo(({
             >
               <List className="h-4 w-4" />
             </Button>
-            
+
             <Button
               type="button"
               variant="ghost"
@@ -177,9 +256,9 @@ const RichTextEditor = memo(({
             >
               <ListOrdered className="h-4 w-4" />
             </Button>
-            
+
             <span className="border-r mx-1 h-8"></span>
-            
+
             <Button
               type="button"
               variant="ghost"
@@ -190,7 +269,7 @@ const RichTextEditor = memo(({
             >
               <AlignLeft className="h-4 w-4" />
             </Button>
-            
+
             <Button
               type="button"
               variant="ghost"
@@ -201,7 +280,7 @@ const RichTextEditor = memo(({
             >
               <AlignCenter className="h-4 w-4" />
             </Button>
-            
+
             <Button
               type="button"
               variant="ghost"
@@ -213,7 +292,7 @@ const RichTextEditor = memo(({
               <AlignRight className="h-4 w-4" />
             </Button>
           </div>
-          
+
           {showDoneButton && (
             <Button
               type="button"
@@ -229,7 +308,7 @@ const RichTextEditor = memo(({
           )}
         </div>
       )}
-      
+
       <div
         ref={editorRef}
         id={id}
@@ -245,19 +324,18 @@ const RichTextEditor = memo(({
         contentEditable={!readOnly}
         onInput={handleInput}
         onFocus={handleFocus}
-        onBlur={handleBlur}  
+        onBlur={handleBlur}
         data-placeholder={placeholder}
         dir="ltr"
-        style={{ 
+        style={{
           textAlign: 'left',
-          direction: 'ltr',
+          direction: 'ltr !important',
           unicodeBidi: 'isolate',
           writingMode: 'horizontal-tb',
           '--tw-prose-bullets': 'currentColor',
           '--tw-prose-counters': 'currentColor',
         } as React.CSSProperties}
         suppressContentEditableWarning={true}
-        dangerouslySetInnerHTML={{ __html: internalContent }}
       />
     </div>
   );

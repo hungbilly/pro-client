@@ -378,7 +378,7 @@ const RichTextEditor = memo(({
                     type="button" 
                     variant="ghost" 
                     size="sm"
-                    className="justify-start rounded-none h-8 text-xl"
+                    className="justify-start rounded-none h-8 text-xl cursor-pointer hover:bg-accent/10"
                     onClick={() => handleFontSize('24')}
                   >
                     24px
@@ -387,7 +387,7 @@ const RichTextEditor = memo(({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="justify-start rounded-none h-8 text-lg"
+                    className="justify-start rounded-none h-8 text-lg cursor-pointer hover:bg-accent/10"
                     onClick={() => handleFontSize('20')}
                   >
                     20px
@@ -396,7 +396,7 @@ const RichTextEditor = memo(({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="justify-start rounded-none h-8"
+                    className="justify-start rounded-none h-8 cursor-pointer hover:bg-accent/10"
                     onClick={() => handleFontSize('16')}
                   >
                     16px
@@ -405,7 +405,7 @@ const RichTextEditor = memo(({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="justify-start rounded-none h-8 text-sm"
+                    className="justify-start rounded-none h-8 text-sm cursor-pointer hover:bg-accent/10"
                     onClick={() => handleFontSize('14')}
                   >
                     14px
@@ -414,7 +414,7 @@ const RichTextEditor = memo(({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="justify-start rounded-none h-8 text-xs"
+                    className="justify-start rounded-none h-8 text-xs cursor-pointer hover:bg-accent/10"
                     onClick={() => handleFontSize('12')}
                   >
                     12px

@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -210,8 +211,11 @@ const RichTextEditor = memo(({
     const fontElements = editorRef.current.querySelectorAll('font[size="7"]');
     
     fontElements.forEach(element => {
-      element.removeAttribute('size');
-      element.style.fontSize = `${fontSize}px`;
+      // Properly cast the element to HTMLElement to access style property
+      if (element instanceof HTMLElement) {
+        element.removeAttribute('size');
+        element.style.fontSize = `${fontSize}px`;
+      }
     });
     
     const selection = window.getSelection();

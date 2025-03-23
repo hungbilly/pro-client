@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2, Calendar as CalendarIcon, CalendarPlus, GripVertical, Pencil, Copy, Package as PackageIcon, AlertCircle, Briefcase, Mail, User } from 'lucide-react';
+import { Plus, Trash2, Calendar as CalendarIcon, CalendarPlus, Pencil, Copy, Package as PackageIcon, AlertCircle, Briefcase, Mail, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { getClient, saveInvoice, updateInvoice, getJob, getInvoice, getInvoicesByDate } from '@/lib/storage';
 import { format } from 'date-fns';
@@ -918,7 +918,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                     <TableHead className="w-28 text-right hidden md:table-cell">Unit Price</TableHead>
                     <TableHead className="w-24 text-right hidden md:table-cell">Quantity</TableHead>
                     <TableHead className="w-32 text-right hidden md:table-cell">Amount</TableHead>
-                    <TableHead className="w-24 text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -952,20 +951,32 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                             </div>
                           </div>
                           
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            type="button"
-                            className="text-xs text-muted-foreground hover:text-foreground"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              handleEditItem(item);
-                            }}
-                          >
-                            <Pencil className="mr-1 h-3 w-3" />
-                            Edit details
-                          </Button>
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              type="button"
+                              className="text-xs text-muted-foreground hover:text-foreground"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleEditItem(item);
+                              }}
+                            >
+                              <Pencil className="mr-1 h-3 w-3" />
+                              Edit details
+                            </Button>
+                            
+                            <Button variant="ghost" size="sm" type="button" onClick={() => handleDuplicateItem(item.id)}>
+                              <Copy className="mr-1 h-3 w-3" />
+                              Duplicate
+                            </Button>
+                            
+                            <Button variant="ghost" size="sm" type="button" onClick={() => handleRemoveItem(item.id)}>
+                              <Trash2 className="mr-1 h-3 w-3 text-destructive" />
+                              Remove
+                            </Button>
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell className="text-right hidden md:table-cell">
@@ -977,21 +988,11 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                       <TableCell className="text-right font-medium hidden md:table-cell">
                         {formatCurrency(item.amount)}
                       </TableCell>
-                      <TableCell>
-                        <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => handleDuplicateItem(item.id)}>
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.id)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </TableCell>
                     </TableRow>
                   ))}
                   {items.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={5} className="h-24 text-center">
+                      <TableCell colSpan={4} className="h-24 text-center">
                         No items added yet. Click "Add Line Item" to get started.
                       </TableCell>
                     </TableRow>

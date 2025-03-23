@@ -19,8 +19,7 @@ port = 54322
 # server_version;` on the remote database to check.
 major_version = 15
 
-# Use an PSQL port to connect.
-# For port:
+# Use a PSQL port to connect.
 [db.psql]
 port = 54323
 

@@ -5,15 +5,16 @@ import { getInvoiceByViewLink, updateInvoiceStatus, updateContractStatus } from 
 import { Invoice } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Check, FileCheck, Download } from 'lucide-react';
+import { Check, FileCheck, Download, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, logDebug, logError } from "@/integrations/supabase/client";
 
 const InvoicePdfView = () => {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
   const { viewLink } = useParams<{ viewLink: string }>();
 
   useEffect(() => {
@@ -35,8 +36,7 @@ const InvoicePdfView = () => {
         
         // If the PDF doesn't exist yet, generate it
         if (!fetchedInvoice.pdfUrl) {
-          toast.info('Preparing invoice PDF...');
-          await generateInvoicePdf(fetchedInvoice.id);
+          generateInvoicePdf(fetchedInvoice.id);
         }
       } catch (err) {
         console.error('Failed to load invoice:', err);
@@ -51,14 +51,19 @@ const InvoicePdfView = () => {
 
   const generateInvoicePdf = async (invoiceId: string) => {
     try {
+      setGeneratingPdf(true);
+      toast.info('Preparing invoice PDF...');
+      
+      logDebug('Calling generate-invoice-pdf function', { invoiceId });
+      
       // Call our serverless function to generate the PDF
       const { data, error } = await supabase.functions.invoke('generate-invoice-pdf', {
         body: { invoiceId }
       });
       
       if (error) {
-        console.error('Error generating PDF:', error);
-        toast.error('Failed to generate invoice PDF');
+        logError('Error generating PDF', error);
+        toast.error('Failed to generate invoice PDF. Please try again.');
         return;
       }
       
@@ -66,11 +71,21 @@ const InvoicePdfView = () => {
         // Update our local state with the new PDF URL
         setInvoice(prev => prev ? { ...prev, pdfUrl: data.pdfUrl } : null);
         toast.success('Invoice PDF ready');
+      } else {
+        logError('No PDF URL returned from function', data);
+        toast.error('Failed to generate invoice PDF. Please try again.');
       }
     } catch (err) {
-      console.error('Error calling generate-invoice-pdf function:', err);
-      toast.error('Failed to generate invoice PDF');
+      logError('Error calling generate-invoice-pdf function', err);
+      toast.error('Failed to generate invoice PDF. Please try again.');
+    } finally {
+      setGeneratingPdf(false);
     }
+  };
+
+  const handleRetryGeneratePdf = () => {
+    if (!invoice) return;
+    generateInvoicePdf(invoice.id);
   };
 
   const handleAcceptInvoice = async () => {
@@ -159,12 +174,20 @@ const InvoicePdfView = () => {
           <CardHeader>
             <CardTitle className="flex justify-between items-center">
               <span>Invoice #{invoice.number}</span>
-              {invoice.pdfUrl && (
-                <Button variant="outline" size="sm" onClick={handleDownloadPdf}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Download PDF
-                </Button>
-              )}
+              <div className="flex gap-2">
+                {invoice.pdfUrl && (
+                  <Button variant="outline" size="sm" onClick={handleDownloadPdf}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Download PDF
+                  </Button>
+                )}
+                {!invoice.pdfUrl && !generatingPdf && (
+                  <Button variant="outline" size="sm" onClick={handleRetryGeneratePdf}>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Retry Generate PDF
+                  </Button>
+                )}
+              </div>
             </CardTitle>
           </CardHeader>
           
@@ -182,8 +205,15 @@ const InvoicePdfView = () => {
             ) : (
               <div className="flex justify-center items-center h-64">
                 <div className="text-center">
-                  <p className="mb-2">Preparing invoice PDF...</p>
-                  <div className="w-10 h-10 border-4 border-t-blue-500 border-b-blue-500 border-l-blue-200 border-r-blue-200 rounded-full animate-spin mx-auto"></div>
+                  <p className="mb-2">{generatingPdf ? 'Preparing invoice PDF...' : 'Failed to generate PDF. Please try again.'}</p>
+                  {generatingPdf ? (
+                    <div className="w-10 h-10 border-4 border-t-blue-500 border-b-blue-500 border-l-blue-200 border-r-blue-200 rounded-full animate-spin mx-auto"></div>
+                  ) : (
+                    <Button onClick={handleRetryGeneratePdf}>
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Retry
+                    </Button>
+                  )}
                 </div>
               </div>
             )}

@@ -3,9 +3,12 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import jspdf from 'https://esm.sh/jspdf@2.5.1';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
+// Define proper CORS headers - CRITICAL for browser requests
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Max-Age': '86400',
 };
 
 // Get environment variables
@@ -337,11 +340,54 @@ async function uploadPDF(pdfBuffer: Uint8Array, invoiceId: string): Promise<stri
       return null;
     }
     
+    console.log('Available buckets:', buckets.map(b => b.name).join(', '));
+    
     const bucketExists = buckets.some(bucket => bucket.name === 'invoice-pdfs');
     
     if (!bucketExists) {
-      console.error('Bucket invoice-pdfs does not exist');
-      return null;
+      console.error('Bucket invoice-pdfs does not exist, falling back to default public bucket');
+      // Try to use a default bucket instead
+      const defaultBucket = 'public';
+      const { data, error } = await supabase.storage
+        .from(defaultBucket)
+        .upload(fileName, pdfBuffer, {
+          contentType: 'application/pdf',
+          upsert: true,
+        });
+      
+      if (error) {
+        console.error(`Error uploading PDF to ${defaultBucket} bucket:`, error);
+        return null;
+      }
+      
+      console.log(`PDF uploaded successfully to ${defaultBucket} bucket:`, data?.path);
+      
+      // Get public URL
+      const { data: publicUrlData } = supabase.storage
+        .from(defaultBucket)
+        .getPublicUrl(fileName);
+      
+      if (!publicUrlData || !publicUrlData.publicUrl) {
+        console.error('Failed to get public URL for PDF');
+        return null;
+      }
+      
+      console.log('PDF public URL:', publicUrlData.publicUrl);
+      
+      // Update invoice with PDF URL
+      const { error: updateError } = await supabase
+        .from('invoices')
+        .update({ pdf_url: publicUrlData.publicUrl })
+        .eq('id', invoiceId);
+      
+      if (updateError) {
+        console.error('Error updating invoice with PDF URL:', updateError);
+        return null;
+      }
+      
+      console.log('Invoice updated with PDF URL using default bucket');
+      
+      return publicUrlData.publicUrl;
     }
     
     console.log('Uploading PDF to bucket: invoice-pdfs');
@@ -395,7 +441,7 @@ async function uploadPDF(pdfBuffer: Uint8Array, invoiceId: string): Promise<stri
 serve(async (req) => {
   console.log('Received request:', req.method, req.url);
   
-  // Handle CORS preflight requests
+  // Handle CORS preflight requests - THIS IS CRITICAL
   if (req.method === 'OPTIONS') {
     console.log('Handling CORS preflight request');
     return new Response(null, { 

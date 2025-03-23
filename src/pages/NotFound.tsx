@@ -1,3 +1,4 @@
+
 import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -99,12 +100,6 @@ const NotFound = () => {
       return fixedDuplicateUrl;
     }
     
-    // Then try fixing PDF view URL issues
-    const fixedPdfUrl = fixPdfUrl();
-    if (fixedPdfUrl) {
-      return fixedPdfUrl;
-    }
-    
     if (isClientEditRouteWithIssue && editClientId) {
       return `/client/${editClientId}/edit`;
     }
@@ -138,7 +133,7 @@ const NotFound = () => {
         <p className="text-gray-500 mb-6">
           {hasDuplicateUrl
             ? "It looks like the URL contains duplicate domain information. We can fix this for you."
-            : isPdfViewWithFullUrl
+            : isInvoiceWithFullUrl
               ? "It looks like you're trying to access an invoice with a malformed URL. We can try to fix this."
               : isInvoiceRoute 
                 ? "The invoice you're looking for could not be found. It may have been deleted or the link is incorrect."
@@ -150,9 +145,9 @@ const NotFound = () => {
           }
           {correctRoute && (
             <span className="block mt-2 text-blue-500">
-              {hasDuplicateUrl || isPdfViewWithFullUrl
+              {hasDuplicateUrl || isInvoiceWithFullUrl
                 ? "We can redirect you to the correct URL."
-                : isPdfViewWithFullUrl 
+                : isInvoiceWithFullUrl 
                   ? "Go to Invoice"
                   : "Go to Correct Page"}
             </span>
@@ -161,9 +156,9 @@ const NotFound = () => {
         <div className="flex flex-col space-y-2">
           {correctRoute && (
             <Button onClick={() => navigate(correctRoute)} className="px-6 w-full bg-blue-500 hover:bg-blue-600">
-              {hasDuplicateUrl || isPdfViewWithFullUrl 
+              {hasDuplicateUrl || isInvoiceWithFullUrl 
                 ? "Go to Correct URL" 
-                : isPdfViewWithFullUrl 
+                : isInvoiceWithFullUrl 
                   ? "Go to Invoice"
                   : "Go to Correct Page"}
             </Button>

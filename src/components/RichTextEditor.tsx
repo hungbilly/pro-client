@@ -2,7 +2,8 @@
 import React, { useState, useRef, useEffect, memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Check } from 'lucide-react';
+import { Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Check, Type } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface RichTextEditorProps {
   value: string;
@@ -63,7 +64,7 @@ const RichTextEditor = memo(({
         editorRef.current.innerHTML = value || '';
       }
     }
-  }, [value]);
+  }, [value, internalContent]);
 
   // Function to save the cursor position
   const saveCursorPosition = () => {
@@ -142,6 +143,19 @@ const RichTextEditor = memo(({
     editorRef.current.focus();
     document.execCommand(listType, false, null);
     updateContent();
+    setTimeout(() => {
+      restoreCursorPosition(cursorPosition);
+    }, 10);
+  };
+
+  const handleFontSize = (fontSize: string) => {
+    if (readOnly) return;
+    if (!editorRef.current) return;
+
+    const cursorPosition = saveCursorPosition();
+    editorRef.current.focus();
+    document.execCommand('fontSize', false, fontSize);
+    updateContent();
     restoreCursorPosition(cursorPosition);
   };
 
@@ -163,6 +177,17 @@ const RichTextEditor = memo(({
     const cursorPosition = saveCursorPosition();
     updateContent();
     restoreCursorPosition(cursorPosition);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (readOnly) return;
+
+    // Handle Enter key
+    if (e.key === 'Enter' && !e.shiftKey) {
+      document.execCommand('insertLineBreak');
+      e.preventDefault();
+      updateContent();
+    }
   };
 
   const handleFocus = () => {
@@ -228,6 +253,70 @@ const RichTextEditor = memo(({
             >
               <Underline className="h-4 w-4" />
             </Button>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 p-0 px-2 flex items-center gap-1"
+                  title="Font Size"
+                >
+                  <Type className="h-4 w-4" />
+                  <span className="text-xs">Size</span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <div className="flex flex-col">
+                  <Button
+                    type="button" 
+                    variant="ghost" 
+                    size="sm"
+                    className="justify-start rounded-none h-8 text-xl"
+                    onClick={() => handleFontSize('5')}
+                  >
+                    Heading
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="justify-start rounded-none h-8 text-lg"
+                    onClick={() => handleFontSize('4')}
+                  >
+                    Subheading
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="justify-start rounded-none h-8"
+                    onClick={() => handleFontSize('3')}
+                  >
+                    Normal
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="justify-start rounded-none h-8 text-sm"
+                    onClick={() => handleFontSize('2')}
+                  >
+                    Small
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="justify-start rounded-none h-8 text-xs"
+                    onClick={() => handleFontSize('1')}
+                  >
+                    Tiny
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
 
             <Button
               type="button"
@@ -323,6 +412,7 @@ const RichTextEditor = memo(({
         )}
         contentEditable={!readOnly}
         onInput={handleInput}
+        onKeyDown={handleKeyDown}
         onFocus={handleFocus}
         onBlur={handleBlur}
         data-placeholder={placeholder}

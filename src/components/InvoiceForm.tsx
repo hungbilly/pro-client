@@ -19,6 +19,7 @@ import { supabase } from '@/integrations/supabase/client';
 import PackageSelector from './PackageSelector';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import RichTextEditor from './RichTextEditor';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 
 interface ContractTemplate {
   id: string;
@@ -89,6 +90,8 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   const [isEditMode, setIsEditMode] = useState(!!invoiceId);
   const [invoiceNumberError, setInvoiceNumberError] = useState<string | null>(null);
   const [checkingInvoiceNumber, setCheckingInvoiceNumber] = useState(false);
+  const [editingItem, setEditingItem] = useState<InvoiceItem | null>(null);
+  const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
 
   const generateInvoiceNumber = useCallback(async () => {
     if (isEditMode || generatingInvoiceNumber) return;
@@ -265,8 +268,14 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
   const handleAddItem = () => {
     const newItemId = Date.now().toString();
-    setItems([...items, { id: newItemId, description: '', quantity: 1, rate: 0, amount: 0 }]);
-    setActiveRowId(newItemId);
+    const newItem = { id: newItemId, description: '', quantity: 1, rate: 0, amount: 0 };
+    setEditingItem(newItem);
+    setIsItemDialogOpen(true);
+  };
+
+  const handleEditItem = (item: InvoiceItem) => {
+    setEditingItem({...item});
+    setIsItemDialogOpen(true);
   };
 
   const handleRemoveItem = (id: string) => {
@@ -276,21 +285,30 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     }
   };
 
-  const handleItemChange = (id: string, field: string, value: any) => {
-    setItems(items.map(item => {
-      if (item.id === id) {
-        const updatedItem = { ...item, [field]: value };
-        
-        if (field === 'quantity' || field === 'rate') {
-          const quantity = field === 'quantity' ? value : item.quantity;
-          const rate = field === 'rate' ? value : item.rate;
-          updatedItem.amount = quantity * rate;
-        }
-        
-        return updatedItem;
-      }
-      return item;
-    }));
+  const handleSaveItem = () => {
+    if (!editingItem) return;
+    
+    const updatedItems = editingItem.id ? 
+      items.map(item => item.id === editingItem.id ? editingItem : item) :
+      [...items, { ...editingItem, id: Date.now().toString() }];
+    
+    setItems(updatedItems);
+    setIsItemDialogOpen(false);
+    setEditingItem(null);
+  };
+
+  const handleItemChange = (field: string, value: any) => {
+    if (!editingItem) return;
+    
+    const updatedItem = { ...editingItem, [field]: value };
+    
+    if (field === 'quantity' || field === 'rate') {
+      const quantity = field === 'quantity' ? value : editingItem.quantity;
+      const rate = field === 'rate' ? value : editingItem.rate;
+      updatedItem.amount = quantity * rate;
+    }
+    
+    setEditingItem(updatedItem);
   };
   
   const handleDuplicateItem = (id: string) => {
@@ -913,79 +931,39 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                         <GripVertical className="h-4 w-4 mx-auto text-muted-foreground" />
                       </TableCell>
                       <TableCell>
-                        {activeRowId === item.id ? (
-                          <RichTextEditor
-                            value={item.description}
-                            onChange={(value) => handleItemChange(item.id, 'description', value)}
-                            className="border-none min-h-0 p-0"
-                            placeholder="Add description..."
-                            alwaysShowToolbar={true}
-                            showDoneButton={true}
-                            onDone={handleDoneEditing}
-                          />
-                        ) : (
-                          item.description ? (
-                            <RichTextEditor
-                              value={item.description}
-                              onChange={(value) => handleItemChange(item.id, 'description', value)}
-                              className="border-none min-h-0 p-0"
-                              placeholder="Add description..."
-                              onFocus={() => setActiveRowId(item.id)}
+                        <div className="space-y-1">
+                          {item.description ? (
+                            <div 
+                              className="prose prose-sm max-w-none"
+                              dangerouslySetInnerHTML={{ __html: item.description }}
                             />
                           ) : (
-                            <div className="space-y-1">
-                              <PackageSelector 
-                                onPackageSelect={handlePackageSelect} 
-                                variant="inline" 
-                                placeholder="Select an existing package..." 
-                              />
-                              <Button 
-                                variant="ghost" 
-                                className="w-full justify-start text-left text-muted-foreground hover:text-foreground"
-                                onClick={() => handleManualPackageEntry(item.id)}
-                              >
-                                <Pencil className="mr-2 h-4 w-4" />
-                                Add your own product/package...
-                              </Button>
-                            </div>
-                          )
-                        )}
+                            <span className="text-sm text-muted-foreground">
+                              No description provided
+                            </span>
+                          )}
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            className="text-xs text-muted-foreground hover:text-foreground"
+                            onClick={() => handleEditItem(item)}
+                          >
+                            <Pencil className="mr-1 h-3 w-3" />
+                            Edit details
+                          </Button>
+                        </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Input
-                          type="number"
-                          placeholder="0.00"
-                          value={item.rate}
-                          onChange={(e) => handleItemChange(item.id, 'rate', parseFloat(e.target.value) || 0)}
-                          className="max-w-24 text-right ml-auto"
-                        />
+                        {formatCurrency(item.rate)}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Input
-                          type="number"
-                          placeholder="1"
-                          value={item.quantity}
-                          onChange={(e) => handleItemChange(item.id, 'quantity', parseFloat(e.target.value) || 0)}
-                          className="max-w-16 text-right ml-auto"
-                        />
+                        {item.quantity}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Input
-                          type="text"
-                          placeholder="0%"
-                          defaultValue="0%"
-                          className="max-w-16 text-right ml-auto"
-                          disabled
-                        />
+                        0%
                       </TableCell>
                       <TableCell className="text-right">
-                        <Input
-                          type="text"
-                          placeholder="No Tax"
-                          defaultValue="No Tax"
-                          className="max-w-16 text-right ml-auto"
-                          disabled
-                        />
+                        No Tax
                       </TableCell>
                       <TableCell className="text-right font-medium">
                         {formatCurrency(item.amount)}
@@ -1002,6 +980,13 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                       </TableCell>
                     </TableRow>
                   ))}
+                  {items.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={8} className="h-24 text-center">
+                        No items added yet. Click "Add Line Item" to get started.
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </div>
@@ -1201,6 +1186,59 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
           {isEditMode ? 'Update Invoice' : 'Create Invoice'}
         </Button>
       </CardFooter>
+
+      {/* Item Edit Dialog */}
+      <Dialog open={isItemDialogOpen} onOpenChange={setIsItemDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>{editingItem?.id ? 'Edit Item' : 'Add New Item'}</DialogTitle>
+          </DialogHeader>
+          {editingItem && (
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <RichTextEditor
+                  value={editingItem.description}
+                  onChange={(value) => handleItemChange('description', value)}
+                  className="min-h-[150px]"
+                  placeholder="Enter item description..."
+                  alwaysShowToolbar={true}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="rate">Unit Price</Label>
+                  <Input
+                    id="rate"
+                    type="number"
+                    value={editingItem.rate}
+                    onChange={(e) => handleItemChange('rate', parseFloat(e.target.value) || 0)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="quantity">Quantity</Label>
+                  <Input
+                    id="quantity"
+                    type="number"
+                    value={editingItem.quantity}
+                    onChange={(e) => handleItemChange('quantity', parseFloat(e.target.value) || 0)}
+                  />
+                </div>
+              </div>
+              <div className="pt-4 border-t flex justify-between items-center">
+                <div>
+                  <span className="font-medium">Total: </span>
+                  <span>{formatCurrency(editingItem.amount)}</span>
+                </div>
+                <div className="space-x-2">
+                  <Button variant="outline" onClick={() => setIsItemDialogOpen(false)}>Cancel</Button>
+                  <Button onClick={handleSaveItem}>Save Item</Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };

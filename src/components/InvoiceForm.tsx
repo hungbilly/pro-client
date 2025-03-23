@@ -274,6 +274,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   };
 
   const handleEditItem = (item: InvoiceItem) => {
+    // Prevent the event from bubbling up and potentially causing form submission
     setEditingItem({...item});
     setIsItemDialogOpen(true);
   };
@@ -945,8 +946,13 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                           <Button 
                             variant="ghost" 
                             size="sm"
+                            type="button" // Make sure this is set to type="button"
                             className="text-xs text-muted-foreground hover:text-foreground"
-                            onClick={() => handleEditItem(item)}
+                            onClick={(e) => {
+                              e.preventDefault(); // Prevent form submission
+                              e.stopPropagation(); // Stop event propagation
+                              handleEditItem(item);
+                            }}
                           >
                             <Pencil className="mr-1 h-3 w-3" />
                             Edit details
@@ -1188,7 +1194,15 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
       </CardFooter>
 
       {/* Item Edit Dialog */}
-      <Dialog open={isItemDialogOpen} onOpenChange={setIsItemDialogOpen}>
+      <Dialog 
+        open={isItemDialogOpen} 
+        onOpenChange={(open) => {
+          if (!open) {
+            setIsItemDialogOpen(false);
+            setEditingItem(null);
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>{editingItem?.id ? 'Edit Item' : 'Add New Item'}</DialogTitle>
@@ -1231,8 +1245,26 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                   <span>{formatCurrency(editingItem.amount)}</span>
                 </div>
                 <div className="space-x-2">
-                  <Button variant="outline" onClick={() => setIsItemDialogOpen(false)}>Cancel</Button>
-                  <Button onClick={handleSaveItem}>Save Item</Button>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setIsItemDialogOpen(false);
+                      setEditingItem(null);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleSaveItem();
+                    }}
+                  >
+                    Save Item
+                  </Button>
                 </div>
               </div>
             </div>

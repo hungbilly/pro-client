@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -179,25 +178,39 @@ const RichTextEditor = memo(({
 
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      document.execCommand('insertLineBreak');
-      
+
+      document.execCommand('insertParagraph');
+
       if (editorRef.current) {
         const selection = window.getSelection();
         if (selection) {
-          const range = selection.getRangeAt(0);
-          range.collapse(false);
-          selection.removeAllRanges();
-          selection.addRange(range);
-          
-          // Fix: Check if lastNode is an HTMLElement before calling scrollIntoView
-          const lastNode = editorRef.current.lastChild;
-          if (lastNode instanceof HTMLElement) {
-            lastNode.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          const paragraphs = editorRef.current.querySelectorAll('p');
+          const lastParagraph = paragraphs[paragraphs.length - 1] || editorRef.current.lastChild;
+
+          if (lastParagraph) {
+            const range = document.createRange();
+            
+            if (lastParagraph.nodeType === Node.ELEMENT_NODE) {
+              range.setStart(lastParagraph, 0);
+              range.collapse(true);
+            } else {
+              range.selectNodeContents(editorRef.current);
+              range.collapse(false);
+            }
+
+            selection.removeAllRanges();
+            selection.addRange(range);
+
+            if (lastParagraph instanceof HTMLElement) {
+              lastParagraph.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
           }
         }
       }
-      
-      updateContent();
+
+      setTimeout(() => {
+        updateContent();
+      }, 0);
     }
   };
 
@@ -418,6 +431,7 @@ const RichTextEditor = memo(({
           "prose-li:my-1",
           "prose-li:marker:text-foreground",
           "prose-ol:list-decimal prose-ul:list-disc",
+          "prose-p:my-1",
           readOnly ? "bg-muted/20 cursor-default" : "",
           className
         )}

@@ -910,7 +910,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                 </Popover>
                 <Button type="button" onClick={handleAddItem} variant="outline">
                   <Plus className="h-4 w-4 mr-2" />
-                  Add New Item
+                  Add Line Item
                 </Button>
               </div>
             </div>
@@ -1005,7 +1005,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                   {items.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={4} className="h-24 text-center">
-                        No items added yet. Click "Add New Item" to get started.
+                        No items added yet. Click "Add Line Item" to get started.
                       </TableCell>
                     </TableRow>
                   )}

@@ -116,5 +116,4 @@ file_size_limit = "50MiB"
 # For files
 [storage.file]
 enabled = true
-```data_path = "/var/lib/storage"
-```
+data_path = "/var/lib/storage"

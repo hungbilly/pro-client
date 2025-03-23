@@ -17,9 +17,11 @@ export const generateId = (): string => {
   return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
 };
 
-// Generate a unique viewLink for invoices
+// Generate a unique viewLink for invoices - now just returns the ID instead of a full URL
 export const generateViewLink = (): string => {
-  return `${window.location.origin}/invoice/${generateId()}`;
+  // Only generate the random ID part, not a full URL
+  // This prevents issues with duplicate domains in URLs
+  return generateId();
 };
 
 // Company operations

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useCallback, memo, useRef } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { 
@@ -271,12 +270,16 @@ const InvoiceView = () => {
   const handleCopyInvoiceLink = () => {
     if (!invoice) return;
     
-    // Generate a clean URL with just the origin and viewLink path
-    // This ensures we don't accidentally duplicate domains in the URL
     const baseUrl = window.location.origin;
-    const cleanUrl = `${baseUrl}/invoice/${invoice.viewLink}`;
     
-    // Log the URL being copied for debugging purposes
+    let cleanViewLink = invoice.viewLink;
+    if (cleanViewLink.includes('http') || cleanViewLink.includes('/invoice/')) {
+      const parts = cleanViewLink.split('/');
+      cleanViewLink = parts[parts.length - 1];
+    }
+    
+    const cleanUrl = `${baseUrl}/invoice/${cleanViewLink}`;
+    
     console.log('Copying invoice link:', cleanUrl);
     
     navigator.clipboard.writeText(cleanUrl)

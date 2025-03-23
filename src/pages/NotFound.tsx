@@ -65,33 +65,43 @@ const NotFound = () => {
       
       // If we have an invoice path with embedded URL
       if (isInvoiceRoute) {
-        // Extract the viewLink ID which should be at the end
-        // This regex looks for anything that doesn't look like a URL at the end of the string
-        const viewLinkPattern = /\/([^\/]+)$/;
-        const viewLinkMatch = location.pathname.match(viewLinkPattern);
+        // First, try to extract the last segment after any 'invoice/' part
+        const segments = location.pathname.split('/');
+        const lastSegment = segments[segments.length - 1];
         
-        // If we found something that might be a viewLink
-        if (viewLinkMatch && viewLinkMatch[1]) {
-          const possibleViewLink = viewLinkMatch[1];
-          
-          // Make sure it's not part of a URL
-          if (!possibleViewLink.includes('http') && !possibleViewLink.includes(window.location.host)) {
-            console.log("Found potential viewLink:", possibleViewLink);
-            return `/invoice/${possibleViewLink}`;
-          }
+        // Check if the last segment looks like a potential viewLink ID (not a URL or domain)
+        if (lastSegment && !lastSegment.includes('http') && !lastSegment.includes('.')) {
+          console.log("Found potential viewLink from last segment:", lastSegment);
+          return `/invoice/${lastSegment}`;
         }
         
-        // Look for viewLink after any 'invoice/' part
-        const invoiceLinkPattern = /\/invoice\/([^\/\?]+)/g;
+        // If that didn't work, try more aggressive extraction methods
+        // Look for all 'invoice/' patterns and take what follows the last one
+        const invoiceLinkPattern = /\/invoice\/([^\/\?\s]+)/g;
         const matches = Array.from(location.pathname.matchAll(invoiceLinkPattern));
         
         // If we found matches, the last one is likely the actual viewLink
         if (matches.length > 0) {
           const lastMatch = matches[matches.length - 1];
           if (lastMatch && lastMatch[1]) {
-            console.log("Found invoice viewLink from pattern:", lastMatch[1]);
-            return `/invoice/${lastMatch[1]}`;
+            // Further clean up the viewLink ID if it has a domain in it
+            let viewLinkId = lastMatch[1];
+            if (viewLinkId.includes('http') || viewLinkId.includes('.')) {
+              // Try to extract just the ID part after the last slash
+              const idParts = viewLinkId.split('/');
+              viewLinkId = idParts[idParts.length - 1];
+            }
+            
+            console.log("Found invoice viewLink from pattern:", viewLinkId);
+            return `/invoice/${viewLinkId}`;
           }
+        }
+        
+        // Last resort - look for any random string at the end that could be an ID
+        const randomIdMatch = location.pathname.match(/([a-zA-Z0-9]{6,})[^\/]*$/);
+        if (randomIdMatch && randomIdMatch[1]) {
+          console.log("Found potential viewLink from random ID pattern:", randomIdMatch[1]);
+          return `/invoice/${randomIdMatch[1]}`;
         }
       }
     }

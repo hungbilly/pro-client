@@ -329,7 +329,7 @@ const RichTextEditor = memo(({
         dir="ltr"
         style={{
           textAlign: 'left',
-          direction: 'ltr !important',
+          direction: 'ltr',
           unicodeBidi: 'isolate',
           writingMode: 'horizontal-tb',
           '--tw-prose-bullets': 'currentColor',

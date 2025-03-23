@@ -604,6 +604,15 @@ const InvoiceView = () => {
                   </div>
                   
                   <div className="border rounded-md p-4 bg-gray-50 dark:bg-gray-900/50">
+                    <div className="hidden md:flex justify-between mb-3 text-sm font-medium text-muted-foreground border-b pb-2">
+                      <div className="flex-1 pr-4">Package Description</div>
+                      <div className="flex items-center space-x-6 min-w-[260px] justify-end">
+                        <div className="text-right w-16">Quantity</div>
+                        <div className="text-right w-24">Unit Price</div>
+                        <div className="text-right w-24">Amount</div>
+                      </div>
+                    </div>
+                    
                     {invoice.items && invoice.items.length > 0 ? (
                       invoice.items.map((item) => (
                         <div key={item.id} className="mb-4 pb-4 border-b last:mb-0 last:pb-0 last:border-b-0">
@@ -615,15 +624,15 @@ const InvoiceView = () => {
                               )}
                             </div>
                             <div className="mt-2 md:mt-0 flex flex-col md:flex-row md:items-center md:space-x-6 md:min-w-[260px] md:justify-end">
-                              <div className="text-sm text-muted-foreground md:text-right">
+                              <div className="text-sm text-muted-foreground md:text-right w-16">
                                 <span className="md:hidden">Quantity: </span>
                                 <span>{item.quantity}</span>
                               </div>
-                              <div className="text-sm text-muted-foreground md:text-right">
+                              <div className="text-sm text-muted-foreground md:text-right w-24">
                                 <span className="md:hidden">Unit Price: </span>
                                 <span>{formatCurrency(item.rate)}</span>
                               </div>
-                              <div className="font-medium md:text-right">
+                              <div className="font-medium md:text-right w-24">
                                 <span className="md:hidden">Total: </span>
                                 <span>{formatCurrency(item.amount)}</span>
                               </div>

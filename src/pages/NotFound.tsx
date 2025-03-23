@@ -1,4 +1,3 @@
-
 import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -48,61 +47,50 @@ const NotFound = () => {
   const jobIdMatch = location.pathname.match(/\/job\/([^\/]+)/);
   const jobId = jobIdMatch ? jobIdMatch[1] : null;
 
-  // Check if this is a malformed URL with duplicate domain
-  const hasDuplicateUrl = location.pathname.includes('https://') && 
-    location.pathname.includes(window.location.host);
+  // Enhanced check for malformed URL with duplicate domain or protocol
+  const hasDuplicateUrl = (
+    location.pathname.includes('https://') || 
+    location.pathname.includes('http://') || 
+    location.pathname.includes(window.location.host)
+  );
   
-  // Check if this is a PDF view route with an incorrect URL format
-  const isPdfViewWithFullUrl = isInvoiceRoute && 
-    (location.pathname.includes('/pdf/') || location.pathname.includes('/view/')) && 
-    (location.pathname.includes('https://') || hasDuplicateUrl);
+  // Improved check for malformed invoice routes
+  const isInvoiceWithFullUrl = isInvoiceRoute && hasDuplicateUrl;
   
-  // Fix for malformed URL with duplicate domain
+  // Fix for malformed URL with duplicate domain - enhanced to handle more cases
   const fixDuplicateUrl = () => {
     if (hasDuplicateUrl) {
-      // Extract the path after the duplicate domain
-      const domainPattern = new RegExp(`https?://${window.location.host}`);
       const fullPath = location.pathname;
-      const parts = fullPath.split(domainPattern);
       
-      if (parts.length > 1) {
-        // Return the last part which should be the actual path
-        return parts[parts.length - 1];
+      // Extract any viewLink IDs that might be at the end of the path
+      const viewLinkMatch = fullPath.match(/\/([^\/]+)$/);
+      const possibleViewLink = viewLinkMatch ? viewLinkMatch[1] : null;
+      
+      // Check if it's a UUID-like string (simple check)
+      const looksLikeViewLink = possibleViewLink && !possibleViewLink.includes('http');
+      
+      if (looksLikeViewLink) {
+        return `/invoice/${possibleViewLink}`;
       }
-    }
-    return null;
-  };
-  
-  // Fix for malformed PDF URL (containing full URL instead of just the view link ID)
-  const fixPdfUrl = () => {
-    if (isPdfViewWithFullUrl) {
-      const fullPath = location.pathname;
       
-      // Try to extract the view link ID which should be the last part of the URL
-      const segments = fullPath.split('/');
-      const lastSegment = segments[segments.length - 1];
-      
-      if (lastSegment && !lastSegment.includes('https://')) {
-        // If the last segment is a valid ID (not another URL), use it
-        return `/invoice/${lastSegment}`;
-      } else if (lastSegment && lastSegment.includes('https://')) {
-        // If the last segment contains a URL, try to extract the ID from it
-        const urlParts = lastSegment.split('/');
-        const viewLinkId = urlParts[urlParts.length - 1];
-        if (viewLinkId) {
-          return `/invoice/${viewLinkId}`;
+      // If we find a duplicate domain pattern, extract what comes after it
+      const domainPattern = new RegExp(`https?://[^/]+/invoice/`);
+      if (domainPattern.test(fullPath)) {
+        const parts = fullPath.split(domainPattern);
+        if (parts.length > 1) {
+          return `/invoice/${parts[parts.length - 1]}`;
         }
       }
       
-      // Handle case where the full URL is part of the path
-      const fixedPath = fixDuplicateUrl();
-      if (fixedPath) {
-        return fixedPath;
+      // Look for a viewlink ID after '/invoice/' anywhere in the URL
+      const invoiceLinkMatch = fullPath.match(/\/invoice\/([^\/]+)$/);
+      if (invoiceLinkMatch && invoiceLinkMatch[1]) {
+        return `/invoice/${invoiceLinkMatch[1]}`;
       }
     }
     return null;
   };
-
+  
   // Determine correct route for common mistakes
   const getCorrectRoute = () => {
     // First try fixing duplicate URL issues
@@ -164,9 +152,9 @@ const NotFound = () => {
             <span className="block mt-2 text-blue-500">
               {hasDuplicateUrl || isPdfViewWithFullUrl
                 ? "We can redirect you to the correct URL."
-                : isClientEditRouteWithIssue 
-                  ? "The correct URL format is /client/[id]/edit"
-                  : "Did you mean to go to the new page instead of create?"}
+                : isPdfViewWithFullUrl 
+                  ? "Go to Invoice"
+                  : "Go to Correct Page"}
             </span>
           )}
         </p>

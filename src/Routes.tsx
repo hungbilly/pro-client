@@ -53,6 +53,7 @@ const Routes = () => {
         
         {/* Invoice routes */}
         <Route path="/invoices" element={<Invoices />} />
+        <Route path="/invoice/:id/edit" element={<InvoiceCreate />} />
         <Route path="/client/:clientId/invoice/new" element={<InvoiceCreate />} />
         <Route path="/client/:clientId/invoice/create" element={<InvoiceCreate />} />
         <Route path="/client/:clientId/invoice/:invoiceId/edit" element={<InvoiceCreate />} />

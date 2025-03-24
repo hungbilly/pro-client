@@ -1,10 +1,11 @@
+
 import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getInvoices, deleteInvoice } from '@/lib/storage';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, MoreHorizontal, Receipt, Trash2 } from 'lucide-react';
+import { FileText, MoreHorizontal, Receipt } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { formatCurrency } from '@/lib/utils';

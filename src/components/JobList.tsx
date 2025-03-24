@@ -66,10 +66,7 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
 
   const renderJobCard = (job: Job) => (
     <div key={job.id} className="group relative">
-      <Link 
-        to={`/job/${job.id}`}
-        className="block transition-all duration-200 hover:shadow-soft rounded-lg"
-      >
+      <div className="block transition-all duration-200 hover:shadow-soft rounded-lg">
         <Card className="overflow-hidden h-full border-transparent hover:border-border transition-all duration-200">
           <CardHeader className="pb-3">
             <div className="flex justify-between items-start">
@@ -121,21 +118,25 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
                 variant="ghost"
                 size="icon"
                 className="h-7 w-7"
-                asChild
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  window.location.href = `/job/${job.id}/edit`;
+                }}
               >
-                <Link to={`/job/${job.id}/edit`} onClick={(e) => e.stopPropagation()}>
-                  <FileEdit className="h-4 w-4" />
-                </Link>
+                <FileEdit className="h-4 w-4" />
               </Button>
               <Button
                 variant="ghost"
                 size="icon"
                 className="h-7 w-7"
-                asChild
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  window.location.href = `/job/${job.id}`;
+                }}
               >
-                <Link to={`/job/${job.id}`} onClick={(e) => e.stopPropagation()}>
-                  <Eye className="h-4 w-4" />
-                </Link>
+                <Eye className="h-4 w-4" />
               </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -143,12 +144,15 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7"
-                    onClick={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                    }}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </AlertDialogTrigger>
-                <AlertDialogContent>
+                <AlertDialogContent onClick={(e) => e.stopPropagation()}>
                   <AlertDialogHeader>
                     <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                     <AlertDialogDescription>
@@ -156,7 +160,7 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancel</AlertDialogCancel>
                     <AlertDialogAction onClick={(e) => {
                       e.stopPropagation();
                       e.preventDefault();
@@ -168,7 +172,7 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
             </div>
           </CardContent>
         </Card>
-      </Link>
+      </div>
     </div>
   );
 

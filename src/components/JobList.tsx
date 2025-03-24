@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Job, Client } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,7 +9,7 @@ import { BriefcaseBusiness, CalendarDays, MapPin, Plus, Eye, FileEdit, Trash2, C
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { deleteJob } from '@/lib/storage';
 import { toast } from 'sonner';
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 
 interface JobListProps {
   jobs: Job[];
@@ -68,152 +68,166 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
   };
 
   const renderJobCard = (job: Job) => {
-    // Add console log here outside of JSX
+    const [isOpen, setIsOpen] = useState(false);
+    
     console.log('Rendering job card for job:', job.id);
     
     return (
-    <div key={job.id} className="group relative">
-      <div className="block transition-all duration-200 hover:shadow-soft rounded-lg">
-        <Card className="overflow-hidden h-full border-transparent hover:border-border transition-all duration-200">
-          <CardHeader className="pb-3">
-            <div className="flex justify-between items-start">
-              <div>
-                <CardTitle className="text-base">{job.title}</CardTitle>
-                <CardDescription className="text-xs mt-1">
-                  {job.createdAt && `Created: ${new Date(job.createdAt).toLocaleDateString()}`}
-                </CardDescription>
+      <div key={job.id} className="group relative">
+        <div className="block transition-all duration-200 hover:shadow-soft rounded-lg">
+          <Card className="overflow-hidden h-full border-transparent hover:border-border transition-all duration-200">
+            <CardHeader className="pb-3">
+              <div className="flex justify-between items-start">
+                <div>
+                  <CardTitle className="text-base">{job.title}</CardTitle>
+                  <CardDescription className="text-xs mt-1">
+                    {job.createdAt && `Created: ${new Date(job.createdAt).toLocaleDateString()}`}
+                  </CardDescription>
+                </div>
+                <Badge className={getStatusColor(job.status)}>
+                  {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
+                </Badge>
               </div>
-              <Badge className={getStatusColor(job.status)}>
-                {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="pb-12 relative">
-            {job.description && (
-              <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{job.description}</p>
-            )}
-            <div className="space-y-2">
-              {job.date && (
-                <div className="flex justify-between items-center">
-                  <div className="text-sm text-muted-foreground">Date:</div>
-                  <div className="text-sm font-medium">
-                    <div className="flex items-center">
-                      <CalendarDays className="h-3 w-3 mr-1 text-muted-foreground" />
-                      {new Date(job.date).toLocaleDateString()}
-                    </div>
-                    {(job.startTime || job.isFullDay) && (
-                      <div className="flex items-center mt-1 justify-end">
-                        <Clock className="h-3 w-3 mr-1 text-muted-foreground" />
-                        <span className="text-muted-foreground">{formatTimeDisplay(job)}</span>
+            </CardHeader>
+            <CardContent className="pb-12 relative">
+              {job.description && (
+                <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{job.description}</p>
+              )}
+              <div className="space-y-2">
+                {job.date && (
+                  <div className="flex justify-between items-center">
+                    <div className="text-sm text-muted-foreground">Date:</div>
+                    <div className="text-sm font-medium">
+                      <div className="flex items-center">
+                        <CalendarDays className="h-3 w-3 mr-1 text-muted-foreground" />
+                        {new Date(job.date).toLocaleDateString()}
                       </div>
-                    )}
+                      {(job.startTime || job.isFullDay) && (
+                        <div className="flex items-center mt-1 justify-end">
+                          <Clock className="h-3 w-3 mr-1 text-muted-foreground" />
+                          <span className="text-muted-foreground">{formatTimeDisplay(job)}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
-              {job.location && (
-                <div className="flex justify-between items-center">
-                  <div className="text-sm text-muted-foreground">Location:</div>
-                  <div className="text-sm font-medium flex items-center">
-                    <MapPin className="h-3 w-3 mr-1 text-muted-foreground" />
-                    {job.location}
+                )}
+                {job.location && (
+                  <div className="flex justify-between items-center">
+                    <div className="text-sm text-muted-foreground">Location:</div>
+                    <div className="text-sm font-medium flex items-center">
+                      <MapPin className="h-3 w-3 mr-1 text-muted-foreground" />
+                      {job.location}
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-            <div className="absolute bottom-2 right-0 flex gap-1 transition-opacity duration-200 opacity-0 group-hover:opacity-100">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={(e) => {
-                  console.log('Edit button clicked');
-                  e.stopPropagation();
-                  e.preventDefault();
-                  window.location.href = `/job/${job.id}/edit`;
-                }}
-              >
-                <FileEdit className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={(e) => {
-                  console.log('View button clicked');
-                  e.stopPropagation();
-                  e.preventDefault();
-                  window.location.href = `/job/${job.id}`;
-                }}
-              >
-                <Eye className="h-4 w-4" />
-              </Button>
-              
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
+                )}
+              </div>
+              <div className="absolute bottom-2 right-0 flex gap-1 transition-opacity duration-200 opacity-0 group-hover:opacity-100">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={(e) => {
+                    console.log('Edit button clicked');
+                    e.stopPropagation();
+                    e.preventDefault();
+                    window.location.href = `/job/${job.id}/edit`;
+                  }}
+                >
+                  <FileEdit className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={(e) => {
+                    console.log('View button clicked');
+                    e.stopPropagation();
+                    e.preventDefault();
+                    window.location.href = `/job/${job.id}`;
+                  }}
+                >
+                  <Eye className="h-4 w-4" />
+                </Button>
+                
+                <Dialog 
+                  open={isOpen} 
+                  onOpenChange={(open) => {
+                    console.log('Dialog open state changed to:', open, 'for job:', job.id);
+                    setIsOpen(open);
+                  }}
+                >
+                  <DialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={(e) => {
+                        console.log('Delete trigger button clicked for job:', job.id);
+                        e.stopPropagation();
+                        e.preventDefault();
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent 
+                    className="sm:max-w-md"
                     onClick={(e) => {
-                      console.log('Delete trigger button clicked');
+                      console.log('Dialog content clicked, stopping propagation');
                       e.stopPropagation();
+                    }}
+                    onPointerDownOutside={(e) => {
+                      console.log('Pointer down outside dialog');
                       e.preventDefault();
                     }}
                   >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </DialogTrigger>
-                <DialogContent 
-                  className="sm:max-w-md"
-                  onClick={(e) => {
-                    console.log('Dialog content clicked, stopping propagation');
-                    e.stopPropagation();
-                  }}
-                  onPointerDownOutside={(e) => {
-                    console.log('Pointer down outside dialog');
-                    e.preventDefault();
-                  }}
-                >
-                  
-                  <div className="text-center sm:text-left space-y-2">
-                    <h2 className="text-lg font-semibold">Are you absolutely sure?</h2>
-                    <p className="text-sm text-muted-foreground">
-                      This action cannot be undone. This will permanently delete the job and all related data.
-                    </p>
-                  </div>
-                  
-                  <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 mt-4">
-                    <Button
-                      variant="outline"
-                      onClick={(e) => {
-                        console.log('Cancel button clicked');
-                        e.stopPropagation();
-                      }}
-                      type="button"
+                    <div 
+                      onLoad={() => console.log('DialogContent rendered for job:', job.id)} 
+                      className="text-center sm:text-left space-y-2"
                     >
-                      Cancel
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      onClick={(e) => {
-                        console.log('Delete confirmation button clicked for job:', job.id);
-                        e.stopPropagation();
-                        e.preventDefault();
-                        handleDeleteJob(job.id);
-                      }}
-                      type="button"
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </CardContent>
-        </Card>
+                      <h2 className="text-lg font-semibold">Are you absolutely sure?</h2>
+                      <p className="text-sm text-muted-foreground">
+                        This action cannot be undone. This will permanently delete the job and all related data.
+                      </p>
+                    </div>
+                    
+                    <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 mt-4">
+                      <DialogClose asChild>
+                        <Button
+                          variant="outline"
+                          onClick={(e) => {
+                            console.log('Cancel button clicked for job:', job.id);
+                            e.stopPropagation();
+                          }}
+                          type="button"
+                        >
+                          Cancel
+                        </Button>
+                      </DialogClose>
+                      <DialogClose asChild>
+                        <Button
+                          variant="destructive"
+                          onClick={(e) => {
+                            console.log('Delete confirmation button clicked for job:', job.id);
+                            e.stopPropagation();
+                            e.preventDefault();
+                            handleDeleteJob(job.id);
+                          }}
+                          type="button"
+                        >
+                          Delete
+                        </Button>
+                      </DialogClose>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
-    </div>
-  )};
+    );
+  };
 
   const renderJobSection = (title: string, icon: React.ReactNode, jobList: Job[], emptyMessage: string) => (
     <div className="space-y-3">

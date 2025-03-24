@@ -161,11 +161,15 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={(e) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      handleDeleteJob(job.id);
-                    }}>Delete</AlertDialogAction>
+                    <AlertDialogAction 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        handleDeleteJob(job.id);
+                      }}
+                    >
+                      Delete
+                    </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>

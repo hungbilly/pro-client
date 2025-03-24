@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Job, Client } from '@/types';
@@ -9,6 +10,7 @@ import { BriefcaseBusiness, CalendarDays, MapPin, Plus, Eye, FileEdit, Trash2, C
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { deleteJob } from '@/lib/storage';
 import { toast } from 'sonner';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 
 interface JobListProps {
   jobs: Job[];
@@ -142,8 +144,10 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
               >
                 <Eye className="h-4 w-4" />
               </Button>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
+              
+              {/* Replace AlertDialog with Dialog component */}
+              <Dialog>
+                <DialogTrigger asChild>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -156,37 +160,51 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent onClick={(e) => {
-                  console.log('Alert dialog content clicked, stopping propagation');
-                  e.stopPropagation();
-                }}>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                    <AlertDialogDescription>
+                </DialogTrigger>
+                <DialogContent 
+                  className="sm:max-w-md"
+                  onClick={(e) => {
+                    console.log('Dialog content clicked, stopping propagation');
+                    e.stopPropagation();
+                  }}
+                  onPointerDownOutside={(e) => {
+                    console.log('Pointer down outside dialog');
+                    e.preventDefault();
+                  }}
+                >
+                  <div className="text-center sm:text-left space-y-2">
+                    <h2 className="text-lg font-semibold">Are you absolutely sure?</h2>
+                    <p className="text-sm text-muted-foreground">
                       This action cannot be undone. This will permanently delete the job and all related data.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel onClick={(e) => {
-                      console.log('Cancel button clicked');
-                      e.stopPropagation();
-                    }}>
+                    </p>
+                  </div>
+                  
+                  <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 mt-4">
+                    <Button
+                      variant="outline"
+                      onClick={(e) => {
+                        console.log('Cancel button clicked');
+                        e.stopPropagation();
+                      }}
+                      type="button"
+                    >
                       Cancel
-                    </AlertDialogCancel>
-                    <AlertDialogAction 
+                    </Button>
+                    <Button
+                      variant="destructive"
                       onClick={(e) => {
                         console.log('Delete confirmation button clicked for job:', job.id);
                         e.stopPropagation();
                         e.preventDefault();
                         handleDeleteJob(job.id);
                       }}
+                      type="button"
                     >
                       Delete
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
           </CardContent>
         </Card>

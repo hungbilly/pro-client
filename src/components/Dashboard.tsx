@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getClients, getInvoices, getJobs, deleteClient } from '@/lib/storage';
@@ -61,10 +60,8 @@ const Dashboard: React.FC = () => {
     enabled: !!selectedCompanyId
   });
 
-  // Custom fetch function to get invoices with payment schedules
   const fetchInvoicesWithSchedules = async (companyId: string) => {
     try {
-      // Get invoices first
       const { data: invoicesData, error: invoicesError } = await supabase
         .from('invoices')
         .select('*')
@@ -75,7 +72,6 @@ const Dashboard: React.FC = () => {
         return [];
       }
       
-      // Get all payment schedules including payment_date field
       const { data: schedulesData, error: schedulesError } = await supabase
         .from('payment_schedules')
         .select('*');
@@ -87,7 +83,6 @@ const Dashboard: React.FC = () => {
       
       logDebug(`Fetched ${invoicesData.length} invoices and ${schedulesData.length} payment schedules`);
       
-      // Map invoices and attach their payment schedules
       const invoicesWithSchedules = invoicesData.map(invoice => {
         const invoiceSchedules = schedulesData
           .filter(schedule => schedule.invoice_id === invoice.id)
@@ -97,7 +92,7 @@ const Dashboard: React.FC = () => {
             percentage: schedule.percentage,
             description: schedule.description || '',
             status: schedule.status || 'unpaid',
-            paymentDate: schedule.payment_date // Include the payment_date field
+            paymentDate: schedule.payment_date
           }));
         
         if (invoiceSchedules.length > 0) {
@@ -395,18 +390,11 @@ const Dashboard: React.FC = () => {
                                       <span>Add Job</span>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem 
-                                      onClick={() => navigate(`/client/edit/${client.id}`)}
+                                      onClick={() => navigate(`/client/${client.id}/edit`)}
                                       className="cursor-pointer"
                                     >
                                       <FileEdit className="mr-2 h-4 w-4" />
                                       <span>Edit</span>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem 
-                                      onClick={(e) => confirmDeleteClient(e, client.id)}
-                                      className="cursor-pointer text-destructive focus:text-destructive"
-                                    >
-                                      <Trash2 className="mr-2 h-4 w-4" />
-                                      <span>Delete</span>
                                     </DropdownMenuItem>
                                   </DropdownMenuContent>
                                 </DropdownMenu>
@@ -487,8 +475,8 @@ const Dashboard: React.FC = () => {
                               <TableCell className="text-right">
                                 <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
                                   <Button variant="outline" size="sm" asChild>
-                                    <Link to={`/client/${job.clientId}/job/edit/${job.id}`}>
-                                      <FileEdit className="h-4 w-4" />
+                                    <Link to={`/job/${job.id}`}>
+                                      <MoreHorizontal className="h-4 w-4" />
                                     </Link>
                                   </Button>
                                 </div>

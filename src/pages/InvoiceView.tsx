@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useCallback, memo, useRef } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { 
@@ -606,7 +605,10 @@ const InvoiceView = () => {
                   
                   <div className="border rounded-md p-4 bg-gray-50 dark:bg-gray-900/50">
                     <div className="hidden md:flex justify-between mb-3 text-sm font-medium text-muted-foreground border-b pb-2">
-                      <div className="flex-1 pr-4">Package Description</div>
+                      <div className="flex-1">
+                        <div className="mb-1">Package Name</div>
+                      </div>
+                      <div className="flex-1 pr-4">Description</div>
                       <div className="flex items-center space-x-6 min-w-[260px] justify-end">
                         <div className="text-right w-16">Quantity</div>
                         <div className="text-right w-24">Unit Price</div>
@@ -618,8 +620,10 @@ const InvoiceView = () => {
                       invoice.items.map((item) => (
                         <div key={item.id} className="mb-4 pb-4 border-b last:mb-0 last:pb-0 last:border-b-0">
                           <div className="md:flex md:justify-between md:items-start">
+                            <div className="md:flex-1">
+                              <h5 className="font-medium">{item.name || 'Unnamed Package'}</h5>
+                            </div>
                             <div className="md:flex-1 md:pr-4">
-                              <h5 className="font-medium">{item.description ? item.description.split('<')[0] : 'Product'}</h5>
                               {item.description && (
                                 <div className="mt-2 text-sm" dangerouslySetInnerHTML={{ __html: item.description }} />
                               )}

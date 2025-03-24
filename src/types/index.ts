@@ -89,7 +89,8 @@ export interface Invoice {
 
 export interface InvoiceItem {
   id: string;
-  productName?: string;
+  name?: string;
+  productName?: string; // Keep for backward compatibility
   description: string;
   quantity: number;
   rate: number;

@@ -84,7 +84,7 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
     
     const newItem: InvoiceItem = {
       id: Date.now().toString(),
-      productName: selectedPackage.name,
+      name: selectedPackage.name, // Set the name property from the package
       description: selectedPackage.description || '',
       quantity: 1,
       rate: selectedPackage.price,

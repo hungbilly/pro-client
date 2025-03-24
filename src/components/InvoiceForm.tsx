@@ -1235,6 +1235,15 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
           {editingItem && (
             <div className="space-y-4 py-2">
               <div className="space-y-2">
+                <Label htmlFor="name">Item Name</Label>
+                <Input
+                  id="name"
+                  value={editingItem.name || ''}
+                  onChange={(e) => handleItemChange('name', e.target.value)}
+                  placeholder="Enter item name..."
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
                 <RichTextEditor
                   value={editingItem.description}
@@ -1301,3 +1310,4 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 };
 
 export default InvoiceForm;
+

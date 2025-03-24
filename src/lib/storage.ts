@@ -1312,4 +1312,3 @@ export const updatePaymentScheduleStatus = async (
     throw error;
   }
 };
-

@@ -232,6 +232,7 @@ export type Database = {
           description: string
           id: string
           invoice_id: string
+          name: string | null
           quantity: number
           rate: number
         }
@@ -241,6 +242,7 @@ export type Database = {
           description: string
           id?: string
           invoice_id: string
+          name?: string | null
           quantity: number
           rate: number
         }
@@ -250,6 +252,7 @@ export type Database = {
           description?: string
           id?: string
           invoice_id?: string
+          name?: string | null
           quantity?: number
           rate?: number
         }

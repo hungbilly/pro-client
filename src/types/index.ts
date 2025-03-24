@@ -89,6 +89,7 @@ export interface Invoice {
 
 export interface InvoiceItem {
   id: string;
+  productName?: string;
   description: string;
   quantity: number;
   rate: number;

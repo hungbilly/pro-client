@@ -628,6 +628,7 @@ export const getInvoices = async (companyId?: string | null) => {
     const invoices = (data || []).map(invoice => {
       const items = invoice.invoice_items.map((item: any) => ({
         id: item.id,
+        productName: item.product_name,
         description: item.description,
         quantity: item.quantity,
         rate: item.rate,
@@ -680,6 +681,7 @@ export const getInvoicesByDate = async (date?: string): Promise<Invoice[]> => {
     const invoices = (data || []).map(invoice => {
       const items = invoice.invoice_items.map((item: any) => ({
         id: item.id,
+        productName: item.product_name,
         description: item.description,
         quantity: item.quantity,
         rate: item.rate,
@@ -758,6 +760,7 @@ export const getInvoice = async (id: string): Promise<Invoice | null> => {
       undefined,
     items: data.invoice_items?.map((item: any) => ({
       id: item.id,
+      productName: item.product_name,
       description: item.description,
       quantity: item.quantity,
       rate: item.rate,
@@ -824,6 +827,7 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
       undefined,
     items: invoice.invoice_items?.map((item: any) => ({
       id: item.id,
+      productName: item.product_name,
       description: item.description,
       quantity: item.quantity,
       rate: item.rate,
@@ -876,6 +880,7 @@ export const getClientInvoices = async (clientId: string): Promise<Invoice[]> =>
         .filter(item => item.invoice_id === invoice.id)
         .map(item => ({
           id: item.id,
+          productName: item.product_name,
           description: item.description,
           quantity: item.quantity,
           rate: item.rate,
@@ -968,6 +973,7 @@ export const saveInvoice = async (invoice: Omit<Invoice, 'id' | 'viewLink'>): Pr
       console.log('[saveInvoice] Saving invoice items:', invoice.items.length);
       const itemsToInsert = invoice.items.map(item => ({
         invoice_id: newInvoice.id,
+        product_name: item.productName,
         description: item.description,
         quantity: item.quantity,
         rate: item.rate,
@@ -1093,6 +1099,7 @@ export const updateInvoice = async (invoice: Invoice): Promise<Invoice> => {
       console.log('[updateInvoice] Adding new invoice items:', invoice.items.length);
       const itemsToInsert = invoice.items.map(item => ({
         invoice_id: invoice.id,
+        product_name: item.productName,
         description: item.description,
         quantity: item.quantity,
         rate: item.rate,

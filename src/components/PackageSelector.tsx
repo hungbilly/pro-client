@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Package, InvoiceItem } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -83,7 +84,8 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
     
     const newItem: InvoiceItem = {
       id: Date.now().toString(),
-      description: `${selectedPackage.name}${selectedPackage.description ? ` - ${selectedPackage.description}` : ''}`,
+      productName: selectedPackage.name,
+      description: selectedPackage.description || '',
       quantity: 1,
       rate: selectedPackage.price,
       amount: selectedPackage.price

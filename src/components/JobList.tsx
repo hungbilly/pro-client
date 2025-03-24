@@ -145,7 +145,6 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
                 <Eye className="h-4 w-4" />
               </Button>
               
-              {/* Replace AlertDialog with Dialog component */}
               <Dialog>
                 <DialogTrigger asChild>
                   <Button
@@ -172,6 +171,7 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
                     e.preventDefault();
                   }}
                 >
+                  {console.log('DialogContent rendered for job:', job.id)}
                   <div className="text-center sm:text-left space-y-2">
                     <h2 className="text-lg font-semibold">Are you absolutely sure?</h2>
                     <p className="text-sm text-muted-foreground">

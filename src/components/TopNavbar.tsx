@@ -108,8 +108,8 @@ const TopNavbar = () => {
   return <div className="w-full">
       <div className="bg-slate-900 w-full">
         <div className="max-w-screen-2xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between w-full">
-            <div className="flex items-center flex-1">
+          <div className="flex items-center justify-between w-full relative">
+            <div className="flex items-center z-10">
               {isMobile && <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
                   <DrawerTrigger asChild>
                     <Button variant="ghost" size="icon" className="mr-2 text-white hover:bg-slate-800">
@@ -154,18 +154,22 @@ const TopNavbar = () => {
               <Link to="/" className="flex items-center mr-8">
                 <img src="/lovable-uploads/5f353837-9102-43b7-ab18-7950b403147a.png" alt="PRO CLIENT" className="h-12" />
               </Link>
-              
-              <nav className="hidden md:flex items-center justify-center space-x-1 flex-1">
-                {menuItems.map(item => <Button key={item.path} variant="ghost" size="sm" asChild={!item.disabled} disabled={item.disabled} className={cn("flex items-center gap-2 px-4 py-2 text-sm rounded-md transition-colors", isActive(item.path) ? "bg-slate-800 text-white" : "text-slate-300 hover:text-white hover:bg-slate-800", item.disabled && "opacity-50 cursor-not-allowed")}>
-                    {!item.disabled ? <Link to={item.path} className="flex items-center gap-2">
-                        {item.icon}
-                        <span>{item.label}</span>
-                      </Link> : <div className="flex items-center gap-2">
-                        {item.icon}
-                        <span>{item.label}</span>
-                      </div>}
-                  </Button>)}
-              </nav>
+            </div>
+            
+            <nav className="hidden md:flex items-center justify-center absolute left-1/2 transform -translate-x-1/2 space-x-1">
+              {menuItems.map(item => <Button key={item.path} variant="ghost" size="sm" asChild={!item.disabled} disabled={item.disabled} className={cn("flex items-center gap-2 px-4 py-2 text-sm rounded-md transition-colors", isActive(item.path) ? "bg-slate-800 text-white" : "text-slate-300 hover:text-white hover:bg-slate-800", item.disabled && "opacity-50 cursor-not-allowed")}>
+                  {!item.disabled ? <Link to={item.path} className="flex items-center gap-2">
+                      {item.icon}
+                      <span>{item.label}</span>
+                    </Link> : <div className="flex items-center gap-2">
+                      {item.icon}
+                      <span>{item.label}</span>
+                    </div>}
+                </Button>)}
+            </nav>
+            
+            <div className="flex items-center z-10">
+              {/* Right-side empty div to balance the layout */}
             </div>
           </div>
         </div>

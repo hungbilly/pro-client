@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback, memo, useRef } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { 
@@ -415,7 +416,7 @@ const InvoiceView = () => {
 
   return (
     <PageTransition>
-      <div className="container py-8">
+      <div className="container-fluid px-4 py-8 max-w-[95%] mx-auto">
         {!isClientView && (
           <div className="flex gap-2 mb-4">
             <Button asChild variant="ghost">
@@ -454,7 +455,7 @@ const InvoiceView = () => {
           </div>
         )}
         
-        <Card className="max-w-4xl mx-auto bg-white dark:bg-gray-900 shadow-sm" ref={invoiceRef}>
+        <Card className="w-full mx-auto bg-white dark:bg-gray-900 shadow-sm" ref={invoiceRef}>
           <CardHeader className="pb-0">
             {!isClientView && (
               <div className="flex justify-end mb-2">

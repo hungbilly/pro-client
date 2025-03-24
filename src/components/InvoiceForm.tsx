@@ -335,6 +335,17 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
       return;
     }
     
+    newItems.forEach(item => {
+      console.log('Package item being added:', {
+        id: item.id,
+        name: item.name,
+        description: item.description,
+        quantity: item.quantity,
+        rate: item.rate,
+        amount: item.amount
+      });
+    });
+    
     const updatedItems = [...items, ...newItems];
     console.log('Updated items after package selection:', updatedItems);
     setItems(updatedItems);

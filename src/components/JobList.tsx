@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Job, Client } from '@/types';
@@ -68,7 +67,11 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
     }
   };
 
-  const renderJobCard = (job: Job) => (
+  const renderJobCard = (job: Job) => {
+    // Add console log here outside of JSX
+    console.log('Rendering job card for job:', job.id);
+    
+    return (
     <div key={job.id} className="group relative">
       <div className="block transition-all duration-200 hover:shadow-soft rounded-lg">
         <Card className="overflow-hidden h-full border-transparent hover:border-border transition-all duration-200">
@@ -171,7 +174,7 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
                     e.preventDefault();
                   }}
                 >
-                  {console.log('DialogContent rendered for job:', job.id)}
+                  
                   <div className="text-center sm:text-left space-y-2">
                     <h2 className="text-lg font-semibold">Are you absolutely sure?</h2>
                     <p className="text-sm text-muted-foreground">
@@ -210,7 +213,7 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
         </Card>
       </div>
     </div>
-  );
+  )};
 
   const renderJobSection = (title: string, icon: React.ReactNode, jobList: Job[], emptyMessage: string) => (
     <div className="space-y-3">

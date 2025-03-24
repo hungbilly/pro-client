@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getInvoices, deleteInvoice } from '@/lib/storage';
@@ -223,7 +222,6 @@ const Invoices = () => {
                       <TableHead className="hidden md:table-cell">Date</TableHead>
                       <TableHead className="hidden md:table-cell">Amount</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -231,11 +229,7 @@ const Invoices = () => {
                       <TableRow 
                         key={invoice.id} 
                         className="cursor-pointer"
-                        onClick={(e) => {
-                          if (!(e.target as HTMLElement).closest('.dropdown-actions')) {
-                            handleRowClick(invoice.id);
-                          }
-                        }}
+                        onClick={() => handleRowClick(invoice.id)}
                       >
                         <TableCell className="font-medium">{invoice.number || '-'}</TableCell>
                         <TableCell>{getClientName(invoice.clientId)}</TableCell>
@@ -250,33 +244,6 @@ const Invoices = () => {
                           <Badge className={getStatusColor(invoice.status)}>
                             {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
                           </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="dropdown-actions" onClick={(e) => e.stopPropagation()}>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem asChild>
-                                  <Link to={`/invoice/${invoice.id}`}>
-                                    <FileText className="mr-2 h-4 w-4" />
-                                    <span>View</span>
-                                  </Link>
-                                </DropdownMenuItem>
-                                {invoice.status === 'draft' && (
-                                  <DropdownMenuItem asChild>
-                                    <Link to={`/invoice/${invoice.id}/edit`}>
-                                      <FileText className="mr-2 h-4 w-4" />
-                                      <span>Edit</span>
-                                    </Link>
-                                  </DropdownMenuItem>
-                                )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
                         </TableCell>
                       </TableRow>
                     ))}

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Home, Users, Briefcase, Settings, CreditCard, LogOut, Building, Menu, User, UserCog, FileText } from 'lucide-react';
@@ -118,7 +119,7 @@ const TopNavbar = () => {
                   <DrawerContent className="h-[80vh] bg-slate-900 border-t border-slate-800">
                     <div className="px-4 py-6 flex flex-col h-full">
                       <div className="flex justify-center mb-4">
-                        <img src="/lovable-uploads/87810067-94b8-4b1b-b428-54cf32dfd901.png" alt="PRO CLIENT" className="h-10" />
+                        <img src="/lovable-uploads/5f353837-9102-43b7-ab18-7950b403147a.png" alt="PRO CLIENT" className="h-10" />
                       </div>
                       <div className="space-y-1 flex-1">
                         {renderMenuItems()}
@@ -151,7 +152,7 @@ const TopNavbar = () => {
                   </DrawerContent>
                 </Drawer>}
               <Link to="/" className="flex items-center mr-8">
-                <img src="/lovable-uploads/87810067-94b8-4b1b-b428-54cf32dfd901.png" alt="PRO CLIENT" className="h-8" />
+                <img src="/lovable-uploads/5f353837-9102-43b7-ab18-7950b403147a.png" alt="PRO CLIENT" className="h-8" />
               </Link>
               
               <nav className="hidden md:flex space-x-1">

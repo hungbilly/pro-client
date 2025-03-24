@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Job, Client } from '@/types';
@@ -83,7 +84,7 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
               </Badge>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pb-12 relative">
             {job.description && (
               <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{job.description}</p>
             )}
@@ -115,24 +116,24 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
                 </div>
               )}
             </div>
-            <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            <div className="absolute bottom-2 right-0 flex gap-1 transition-opacity duration-200 opacity-0 group-hover:opacity-100">
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 mr-1"
+                className="h-7 w-7"
                 asChild
               >
-                <Link to={`/job/${job.id}/edit`}>
+                <Link to={`/job/${job.id}/edit`} onClick={(e) => e.stopPropagation()}>
                   <FileEdit className="h-4 w-4" />
                 </Link>
               </Button>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 mr-1"
+                className="h-7 w-7"
                 asChild
               >
-                <Link to={`/job/${job.id}`}>
+                <Link to={`/job/${job.id}`} onClick={(e) => e.stopPropagation()}>
                   <Eye className="h-4 w-4" />
                 </Link>
               </Button>
@@ -141,7 +142,8 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8"
+                    className="h-7 w-7"
+                    onClick={(e) => e.stopPropagation()}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>

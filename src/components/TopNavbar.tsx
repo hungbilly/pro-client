@@ -10,12 +10,14 @@ import CompanySelector from './CompanySelector';
 import { useIsMobile } from '@/hooks/use-mobile';
 import UserProfileModal from './ui-custom/UserProfileModal';
 import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
+
 interface MenuItem {
   path: string;
   label: string;
   icon: React.ReactNode;
   disabled?: boolean;
 }
+
 const TopNavbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -29,12 +31,14 @@ const TopNavbar = () => {
   const isMobile = useIsMobile();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+
   const isActive = (path: string) => {
     if (path === '/') {
       return location.pathname === '/';
     }
     return location.pathname.startsWith(path);
   };
+
   const handleLogout = async () => {
     try {
       console.log('TopNavbar: Initiating logout');
@@ -54,31 +58,40 @@ const TopNavbar = () => {
       }, 500);
     }
   };
-  const menuItems: MenuItem[] = [{
-    path: '/',
-    label: 'Dashboard',
-    icon: <Home className="w-5 h-5" />
-  }, {
-    path: '/clients',
-    label: 'Clients',
-    icon: <Users className="w-5 h-5" />
-  }, {
-    path: '/jobs',
-    label: 'Jobs',
-    icon: <Briefcase className="w-5 h-5" />
-  }, {
-    path: '/invoices',
-    label: 'Invoices',
-    icon: <FileText className="w-5 h-5" />
-  }, {
-    path: '/account',
-    label: 'Account',
-    icon: <CreditCard className="w-5 h-5" />
-  }, {
-    path: '/settings',
-    label: 'Settings',
-    icon: <Settings className="w-5 h-5" />
-  }];
+
+  const menuItems: MenuItem[] = [
+    {
+      path: '/',
+      label: 'Dashboard',
+      icon: <Home className="w-5 h-5" />
+    },
+    {
+      path: '/clients',
+      label: 'Clients',
+      icon: <Users className="w-5 h-5" />
+    },
+    {
+      path: '/jobs',
+      label: 'Jobs',
+      icon: <Briefcase className="w-5 h-5" />
+    },
+    {
+      path: '/invoices',
+      label: 'Invoices',
+      icon: <FileText className="w-5 h-5" />
+    },
+    {
+      path: '/account',
+      label: 'Account',
+      icon: <CreditCard className="w-5 h-5" />
+    },
+    {
+      path: '/settings',
+      label: 'Settings',
+      icon: <Settings className="w-5 h-5" />
+    }
+  ];
+
   const renderMenuItems = () => {
     return menuItems.map(item => <Button key={item.path} variant="ghost" size="sm" asChild={!item.disabled} disabled={item.disabled} className={cn("flex items-center gap-2 px-4 py-2 text-sm rounded-md transition-colors w-full justify-start", isActive(item.path) ? "bg-slate-800 text-white" : "text-slate-300 hover:text-white hover:bg-slate-800", item.disabled && "opacity-50 cursor-not-allowed")}>
         {!item.disabled ? <Link to={item.path} className="flex items-center gap-2 w-full" onClick={() => isMobile && setIsDrawerOpen(false)}>
@@ -90,6 +103,7 @@ const TopNavbar = () => {
           </div>}
       </Button>);
   };
+
   return <div className="w-full">
       <div className="bg-slate-900 w-full">
         <div className="max-w-screen-2xl mx-auto px-4 py-3">
@@ -103,7 +117,9 @@ const TopNavbar = () => {
                   </DrawerTrigger>
                   <DrawerContent className="h-[80vh] bg-slate-900 border-t border-slate-800">
                     <div className="px-4 py-6 flex flex-col h-full">
-                      <div className="text-xl font-bold text-white mb-4">Wedding Studio Manager</div>
+                      <div className="flex justify-center mb-4">
+                        <img src="/lovable-uploads/4a6798af-c78b-4c22-ae54-fb11a57b139e.png" alt="PRO CLIENT" className="h-10" />
+                      </div>
                       <div className="space-y-1 flex-1">
                         {renderMenuItems()}
                       </div>
@@ -134,8 +150,8 @@ const TopNavbar = () => {
                     </div>
                   </DrawerContent>
                 </Drawer>}
-              <Link to="/" className="flex items-center text-xl font-bold text-white mr-8">
-                <span>Pro Client</span>
+              <Link to="/" className="flex items-center mr-8">
+                <img src="/lovable-uploads/4a6798af-c78b-4c22-ae54-fb11a57b139e.png" alt="PRO CLIENT" className="h-8" />
               </Link>
               
               <nav className="hidden md:flex space-x-1">
@@ -181,4 +197,5 @@ const TopNavbar = () => {
       {isProfileModalOpen && <UserProfileModal isOpen={isProfileModalOpen} onClose={() => setIsProfileModalOpen(false)} />}
     </div>;
 };
+
 export default TopNavbar;

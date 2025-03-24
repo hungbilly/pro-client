@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { BriefcaseBusiness, CalendarDays, MapPin, Plus, Eye, FileEdit, Trash2, Clock } from 'lucide-react';
+import { BriefcaseBusiness, CalendarDays, MapPin, Plus, Eye, FileEdit, Clock } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { deleteJob } from '@/lib/storage';
 import { toast } from 'sonner';
@@ -145,49 +145,6 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
                 >
                   <Eye className="h-4 w-4" />
                 </Button>
-                
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={(e) => {
-                        console.log('Delete trigger button clicked for job:', job.id);
-                        e.stopPropagation();
-                        e.preventDefault();
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This action cannot be undone. This will permanently delete the job and all related data.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel onClick={(e) => {
-                        console.log('Cancel button clicked for job:', job.id);
-                        e.stopPropagation();
-                      }}>
-                        Cancel
-                      </AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={(e) => {
-                          console.log('Delete confirmation button clicked for job:', job.id);
-                          e.stopPropagation();
-                          e.preventDefault();
-                          handleDeleteJob(job.id);
-                        }}
-                      >
-                        Delete
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
               </div>
             </CardContent>
           </Card>

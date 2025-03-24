@@ -139,41 +139,41 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
                 {new Date(invoice.dueDate).toLocaleDateString()}
               </div>
             </div>
-            <div className="flex justify-between items-center relative">
+            <div className="flex justify-between items-center mb-6 relative">
               <div className="text-sm text-muted-foreground">Amount:</div>
               <div className="text-base font-bold">${invoice.amount.toFixed(2)}</div>
-              <div className="absolute bottom-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center">
-                {invoice.status !== 'draft' && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 mr-1"
-                    title="Copy client link"
-                    onClick={(e) => copyInvoiceLink(invoice, e)}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                )}
+            </div>
+            <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-1">
+              {invoice.status !== 'draft' && (
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 mr-1"
-                  asChild
+                  className="h-7 w-7"
+                  title="Copy client link"
+                  onClick={(e) => copyInvoiceLink(invoice, e)}
                 >
-                  <Link to={`/invoice/${invoice.id}`}>
-                    <Eye className="h-4 w-4" />
-                  </Link>
+                  <Copy className="h-3.5 w-3.5" />
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  title="Delete invoice"
-                  onClick={(e) => confirmDeleteInvoice(e, invoice.id)}
-                >
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
-              </div>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                asChild
+              >
+                <Link to={`/invoice/${invoice.id}`}>
+                  <Eye className="h-3.5 w-3.5" />
+                </Link>
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                title="Delete invoice"
+                onClick={(e) => confirmDeleteInvoice(e, invoice.id)}
+              >
+                <Trash2 className="h-3.5 w-3.5 text-destructive" />
+              </Button>
             </div>
           </CardContent>
         </Card>

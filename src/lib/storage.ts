@@ -882,8 +882,8 @@ export const getClientInvoices = async (clientId: string): Promise<Invoice[]> =>
         .filter(item => item.invoice_id === invoice.id)
         .map(item => ({
           id: item.id,
-          productName: item.name || item.productName || item.description?.substring(0, 50) || 'Unnamed Item', // Use name or productName
-          name: item.name || item.productName || item.description?.substring(0, 50) || 'Unnamed Item', // Also store in name for backwards compatibility
+          productName: item.name || 'Unnamed Item', // Use name only as productName
+          name: item.name || 'Unnamed Item', // Use name directly
           description: item.description,
           quantity: item.quantity,
           rate: item.rate,
@@ -1326,4 +1326,3 @@ export const updatePaymentScheduleStatus = async (
     throw error;
   }
 };
-

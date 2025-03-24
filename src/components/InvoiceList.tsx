@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Invoice, Client } from '@/types';
@@ -138,41 +139,41 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
                 {new Date(invoice.dueDate).toLocaleDateString()}
               </div>
             </div>
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center relative">
               <div className="text-sm text-muted-foreground">Amount:</div>
               <div className="text-base font-bold">${invoice.amount.toFixed(2)}</div>
-            </div>
-            <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-              {invoice.status !== 'draft' && (
+              <div className="absolute bottom-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center">
+                {invoice.status !== 'draft' && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 mr-1"
+                    title="Copy client link"
+                    onClick={(e) => copyInvoiceLink(invoice, e)}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8 mr-1"
-                  title="Copy client link"
-                  onClick={(e) => copyInvoiceLink(invoice, e)}
+                  asChild
                 >
-                  <Copy className="h-4 w-4" />
+                  <Link to={`/invoice/${invoice.id}`}>
+                    <Eye className="h-4 w-4" />
+                  </Link>
                 </Button>
-              )}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 mr-1"
-                asChild
-              >
-                <Link to={`/invoice/${invoice.id}`}>
-                  <Eye className="h-4 w-4" />
-                </Link>
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                title="Delete invoice"
-                onClick={(e) => confirmDeleteInvoice(e, invoice.id)}
-              >
-                <Trash2 className="h-4 w-4 text-destructive" />
-              </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  title="Delete invoice"
+                  onClick={(e) => confirmDeleteInvoice(e, invoice.id)}
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>

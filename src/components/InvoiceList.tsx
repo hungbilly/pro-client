@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Invoice, Client } from '@/types';
@@ -130,7 +131,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
               </div>
             </div>
           </CardHeader>
-          <CardContent className="relative pb-12">
+          <CardContent>
             <div className="flex justify-between items-center mb-2">
               <div className="text-sm text-muted-foreground">Due Date:</div>
               <div className="text-sm font-medium flex items-center">
@@ -138,12 +139,11 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
                 {new Date(invoice.dueDate).toLocaleDateString()}
               </div>
             </div>
-            <div className="flex justify-between items-center mb-2">
+            <div className="flex justify-between items-center mb-6 relative">
               <div className="text-sm text-muted-foreground">Amount:</div>
               <div className="text-base font-bold">${invoice.amount.toFixed(2)}</div>
             </div>
-            
-            <div className="absolute bottom-0 right-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-1">
               {invoice.status !== 'draft' && (
                 <Button
                   variant="ghost"

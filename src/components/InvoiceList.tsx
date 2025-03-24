@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { Invoice, Client } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -56,6 +55,7 @@ const getContractStatusColor = (status?: 'pending' | 'accepted') => {
 const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateButton = true }) => {
   const [invoiceToDelete, setInvoiceToDelete] = React.useState<string | null>(null);
   const queryClient = useQueryClient();
+  const { id: jobId } = useParams();
   
   const sortedInvoices = [...invoices].sort((a, b) => 
     new Date(b.date).getTime() - new Date(a.date).getTime()
@@ -80,8 +80,15 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
     try {
       await deleteInvoice(invoiceToDelete);
       toast.success("Invoice deleted successfully");
+      
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['client', client.id] });
+      
+      if (jobId) {
+        queryClient.invalidateQueries({ queryKey: ['job', jobId] });
+        queryClient.invalidateQueries({ queryKey: ['job-invoices', jobId] });
+      }
+      
       setInvoiceToDelete(null);
     } catch (error) {
       console.error('Error deleting invoice:', error);

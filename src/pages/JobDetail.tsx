@@ -12,14 +12,24 @@ import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import InvoiceList from '@/components/InvoiceList';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 const JobDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [job, setJob] = useState<Job | undefined>(undefined);
   const [client, setClient] = useState<Client | undefined>(undefined);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const { data: invoices = [] } = useQuery({
+    queryKey: ['job-invoices', id],
+    queryFn: async () => {
+      if (!id) return [];
+      return await getJobInvoices(id);
+    },
+    enabled: !!id,
+  });
 
   useEffect(() => {
     if (!id) {
@@ -41,9 +51,6 @@ const JobDetail = () => {
           } else {
             toast.error('Client not found.');
           }
-          
-          const fetchedInvoices = await getJobInvoices(id);
-          setInvoices(fetchedInvoices);
         } else {
           toast.error('Job not found.');
           navigate('/');

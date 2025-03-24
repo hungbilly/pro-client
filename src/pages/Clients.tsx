@@ -59,6 +59,7 @@ const Clients = () => {
 const ClientsTable = () => {
   const navigate = useNavigate();
   const [clientToDelete, setClientToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { selectedCompany } = useCompanyContext();
   const selectedCompanyId = selectedCompany?.id;
   const queryClient = useQueryClient();
@@ -72,15 +73,20 @@ const ClientsTable = () => {
 
   const deleteClientMutation = useMutation({
     mutationFn: deleteClient,
+    onMutate: () => {
+      setIsDeleting(true);
+    },
     onSuccess: () => {
       toast.success("Client deleted successfully");
       setClientToDelete(null);
       // Invalidate the clients query to refetch the updated list
       queryClient.invalidateQueries({ queryKey: ['clients', selectedCompanyId] });
+      setIsDeleting(false);
     },
     onError: (error) => {
       console.error("Error deleting client:", error);
       toast.error("Failed to delete client");
+      setIsDeleting(false);
     }
   });
 
@@ -90,7 +96,7 @@ const ClientsTable = () => {
   };
 
   const handleDeleteClient = async () => {
-    if (!clientToDelete) return;
+    if (!clientToDelete || isDeleting) return;
     deleteClientMutation.mutate(clientToDelete);
   };
 
@@ -114,7 +120,7 @@ const ClientsTable = () => {
 
   return (
     <>
-      <AlertDialog open={!!clientToDelete} onOpenChange={(open) => !open && setClientToDelete(null)}>
+      <AlertDialog open={!!clientToDelete} onOpenChange={(open) => !open && !isDeleting && setClientToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure you want to delete this client?</AlertDialogTitle>
@@ -124,9 +130,13 @@ const ClientsTable = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={cancelDeleteClient}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteClient} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete
+            <AlertDialogCancel onClick={cancelDeleteClient} disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteClient} 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -198,9 +208,10 @@ const ClientsTable = () => {
                               <DropdownMenuItem 
                                 onClick={(e) => confirmDeleteClient(e, client.id)}
                                 className="cursor-pointer text-destructive focus:text-destructive"
+                                disabled={isDeleting}
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
-                                <span>Delete</span>
+                                <span>{clientToDelete === client.id && isDeleting ? "Deleting..." : "Delete"}</span>
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>

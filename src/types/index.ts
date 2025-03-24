@@ -1,4 +1,3 @@
-
 export interface Client {
   id: string;
   name: string;
@@ -45,6 +44,7 @@ export interface Job {
 export interface Package {
   id: string;
   name: string;
+  product_name?: string;
   description?: string;
   price: number;
   tax_rate?: number;
@@ -84,7 +84,7 @@ export interface Invoice {
   viewLink: string;
   paymentSchedules?: PaymentSchedule[];
   shootingDate?: string;
-  pdfUrl?: string; // Added pdfUrl property
+  pdfUrl?: string;
 }
 
 export interface InvoiceItem {
@@ -97,7 +97,6 @@ export interface InvoiceItem {
   tax?: string;
 }
 
-// Local storage keys
 export const STORAGE_KEYS = {
   CLIENTS: 'wedding-clients',
   INVOICES: 'wedding-invoices',

@@ -21,6 +21,7 @@ const PackageSettings = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState<Omit<Package, 'id' | 'user_id' | 'created_at' | 'updated_at'>>({
     name: '',
+    product_name: '',
     description: '',
     price: 0,
     tax_rate: 0,
@@ -67,6 +68,7 @@ const PackageSettings = () => {
   const resetForm = () => {
     setFormData({
       name: '',
+      product_name: '',
       description: '',
       price: 0,
       tax_rate: 0,
@@ -79,6 +81,7 @@ const PackageSettings = () => {
     if (pkg) {
       setFormData({
         name: pkg.name,
+        product_name: pkg.product_name || '',
         description: pkg.description || '',
         price: pkg.price,
         tax_rate: pkg.tax_rate || 0,
@@ -134,6 +137,7 @@ const PackageSettings = () => {
           .from('packages')
           .update({
             name: formData.name,
+            product_name: formData.product_name,
             description: formData.description,
             price: formData.price,
             tax_rate: formData.tax_rate,
@@ -152,6 +156,7 @@ const PackageSettings = () => {
           .from('packages')
           .insert({
             name: formData.name,
+            product_name: formData.product_name,
             description: formData.description,
             price: formData.price,
             tax_rate: formData.tax_rate,
@@ -253,7 +258,8 @@ const PackageSettings = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
+                  <TableHead>Product Name</TableHead>
+                  <TableHead>Package Name</TableHead>
                   <TableHead>Description</TableHead>
                   <TableHead>Price</TableHead>
                   <TableHead>Tax</TableHead>
@@ -263,7 +269,8 @@ const PackageSettings = () => {
               <TableBody>
                 {packages.map((pkg) => (
                   <TableRow key={pkg.id}>
-                    <TableCell className="font-medium">{pkg.name}</TableCell>
+                    <TableCell className="font-medium">{pkg.product_name || pkg.name}</TableCell>
+                    <TableCell>{pkg.name}</TableCell>
                     <TableCell className="max-w-[300px] truncate">
                       <div className="line-clamp-2" dangerouslySetInnerHTML={{ __html: pkg.description || '' }} />
                     </TableCell>
@@ -304,13 +311,25 @@ const PackageSettings = () => {
           
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
+              <Label htmlFor="product_name">Product Name *</Label>
+              <Input
+                id="product_name"
+                name="product_name"
+                value={formData.product_name}
+                onChange={handleInputChange}
+                placeholder="e.g., Wedding Photography"
+                required
+              />
+            </div>
+            
+            <div>
               <Label htmlFor="name">Package Name *</Label>
               <Input
                 id="name"
                 name="name"
                 value={formData.name}
                 onChange={handleInputChange}
-                placeholder="e.g., Wedding Premium Package"
+                placeholder="e.g., Premium Package"
                 required
               />
             </div>

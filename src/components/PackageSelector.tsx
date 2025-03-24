@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Package, InvoiceItem } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -43,7 +42,6 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
         
         console.log('Fetched packages:', data?.length || 0);
         
-        // Always ensure packages is an array
         if (Array.isArray(data)) {
           setPackages(data);
           console.log('Package state set to array with length:', data.length);
@@ -64,7 +62,6 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
   }, [user, selectedCompany]);
 
   const handlePackageSelection = (packageName: string) => {
-    // Safety check to ensure packages is defined and is an array
     if (!Array.isArray(packages) || packages.length === 0) {
       console.error('Packages array is undefined or empty');
       toast.error('Unable to select package');
@@ -74,7 +71,6 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
     console.log('Selected package name:', packageName);
     console.log('Available packages:', packages);
     
-    // Find the selected package by name
     const selectedPackage = packages.find(pkg => pkg.name === packageName);
     
     if (!selectedPackage) {
@@ -85,10 +81,9 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
     
     console.log('Found selected package:', selectedPackage);
     
-    // Convert the package to an invoice item
     const newItem: InvoiceItem = {
       id: Date.now().toString(),
-      description: `${selectedPackage.name}${selectedPackage.description ? ` - ${selectedPackage.description}` : ''}`,
+      description: `${selectedPackage.product_name || selectedPackage.name}${selectedPackage.description ? ` - ${selectedPackage.description}` : ''}`,
       quantity: 1,
       rate: selectedPackage.price,
       amount: selectedPackage.price
@@ -96,13 +91,11 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
     
     console.log('Created invoice item from package:', newItem);
     
-    // Close popover and add the item
     setOpen(false);
     onPackageSelect([newItem]);
-    toast.success(`Added "${selectedPackage.name}" to invoice`);
+    toast.success(`Added "${selectedPackage.product_name || selectedPackage.name}" to invoice`);
   };
 
-  // Early return for empty or undefined packages
   if (!Array.isArray(packages) || packages.length === 0) {
     const content = (
       <div className="p-2 text-center text-sm text-muted-foreground">
@@ -123,7 +116,6 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
       );
     }
 
-    // For both default and direct-list variants
     return (
       <div className="p-4 text-center text-sm text-muted-foreground">
         {loading ? "Loading packages..." : "No packages available. Create some in Settings."}
@@ -131,12 +123,10 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
     );
   }
 
-  // Create the package items before rendering to add additional debugging
   console.log('Creating CommandItems from packages:', packages);
   const packageItems = packages.map((pkg) => {
     console.log('Individual package being mapped:', pkg);
     
-    // Check if pkg has the expected structure
     if (!pkg || typeof pkg !== 'object') {
       console.error('Invalid package object:', pkg);
       return null;
@@ -147,7 +137,6 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
       return null;
     }
     
-    // For direct-list variant, use a simplified item layout
     if (variant === 'direct-list') {
       return (
         <CommandItem
@@ -159,7 +148,10 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
           }}
         >
           <div className="flex items-center justify-between w-full">
-            <span>{pkg.name}</span>
+            <div className="flex flex-col">
+              <span className="font-medium">{pkg.product_name || pkg.name}</span>
+              <span className="text-xs text-muted-foreground">{pkg.name}</span>
+            </div>
             <span className="font-medium">
               {new Intl.NumberFormat('en-US', {
                 style: 'currency',
@@ -171,7 +163,6 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
       );
     }
     
-    // For other variants, use the original layout with description
     return (
       <CommandItem
         key={pkg.id}
@@ -199,11 +190,10 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
         </div>
       </CommandItem>
     );
-  }).filter(Boolean); // Filter out any null items
-  
+  }).filter(Boolean);
+
   console.log('packageItems array created with length:', packageItems.length);
 
-  // Direct list variant (new) - just shows the Command component with the list
   if (variant === 'direct-list') {
     return (
       <Command>
@@ -218,7 +208,6 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
     );
   }
 
-  // For inline variant
   if (variant === 'inline') {
     console.log('Rendering inline variant with', packageItems.length, 'items');
     return (
@@ -254,7 +243,6 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
     );
   }
 
-  // For default variant
   console.log('Rendering default variant with', packageItems.length, 'items');
   return (
     <Popover open={open} onOpenChange={setOpen}>

@@ -89,7 +89,7 @@ export interface Invoice {
 
 export interface InvoiceItem {
   id: string;
-  name?: string;
+  name?: string;      // Added name field
   productName?: string; // Keep for backward compatibility
   description: string;
   quantity: number;

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Package, InvoiceItem } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -68,29 +69,30 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
       return;
     }
     
-    console.log('Selected package name:', packageName);
-    console.log('Available packages:', packages);
+    console.log('[PackageSelector] Selected package name:', packageName);
+    console.log('[PackageSelector] Available packages:', packages);
     
     const selectedPackage = packages.find(pkg => pkg.name === packageName);
     
     if (!selectedPackage) {
-      console.error('Selected package not found:', packageName);
+      console.error('[PackageSelector] Selected package not found:', packageName);
       toast.error('Selected package not found');
       return;
     }
     
-    console.log('Found selected package:', selectedPackage);
+    console.log('[PackageSelector] Found selected package:', selectedPackage);
     
     const newItem: InvoiceItem = {
       id: Date.now().toString(),
-      name: selectedPackage.name,
+      name: selectedPackage.name, // Set name from package
       description: selectedPackage.description || '',
       quantity: 1,
       rate: selectedPackage.price,
       amount: selectedPackage.price
     };
     
-    console.log('Created invoice item from package:', newItem);
+    console.log('[PackageSelector] Created invoice item from package:', newItem);
+    console.log('[PackageSelector] InvoiceItem name property:', newItem.name);
     
     setOpen(false);
     onPackageSelect([newItem]);

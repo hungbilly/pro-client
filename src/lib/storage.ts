@@ -1052,6 +1052,8 @@ export const updateInvoice = async (invoice: Invoice): Promise<Invoice> => {
     hasPaymentSchedules: !!invoice.paymentSchedules && invoice.paymentSchedules.length > 0
   });
   
+  console.log('[updateInvoice] Invoice items to be saved:', invoice.items);
+  
   try {
     // Start a transaction by using the Supabase client
     console.log('[updateInvoice] Updating invoice in database');
@@ -1097,24 +1099,33 @@ export const updateInvoice = async (invoice: Invoice): Promise<Invoice> => {
     // Add new invoice items
     if (invoice.items && invoice.items.length > 0) {
       console.log('[updateInvoice] Adding new invoice items:', invoice.items.length);
-      const itemsToInsert = invoice.items.map(item => ({
-        invoice_id: invoice.id,
-        name: item.productName, // Using name instead of product_name
-        description: item.description,
-        quantity: item.quantity,
-        rate: item.rate,
-        amount: item.amount
-      }));
       
-      const { error: itemsError } = await supabase
+      const itemsToInsert = invoice.items.map(item => {
+        const newItem = {
+          invoice_id: invoice.id,
+          name: item.name || item.productName, // Ensure name is set
+          description: item.description,
+          quantity: item.quantity,
+          rate: item.rate,
+          amount: item.amount
+        };
+        
+        console.log('[updateInvoice] Prepared item for insertion:', newItem);
+        return newItem;
+      });
+      
+      console.log('[updateInvoice] All items to insert:', itemsToInsert);
+      
+      const { data: insertedItems, error: itemsError } = await supabase
         .from('invoice_items')
-        .insert(itemsToInsert);
+        .insert(itemsToInsert)
+        .select();
       
       if (itemsError) {
         console.error('[updateInvoice] Error adding new invoice items:', itemsError);
         throw new Error(itemsError.message);
       }
-      console.log('[updateInvoice] New invoice items added successfully');
+      console.log('[updateInvoice] New invoice items added successfully:', insertedItems);
     } else {
       console.log('[updateInvoice] No invoice items to add');
     }

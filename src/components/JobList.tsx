@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Job, Client } from '@/types';
@@ -54,8 +53,11 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
   const cancelledJobs = sortedJobs.filter(job => job.status === 'cancelled');
 
   const handleDeleteJob = async (jobId: string) => {
+    console.log('handleDeleteJob called with jobId:', jobId);
     try {
+      console.log('Attempting to delete job with ID:', jobId);
       await deleteJob(jobId);
+      console.log('Job deleted successfully, calling onJobDelete callback');
       toast.success('Job deleted successfully.');
       onJobDelete(jobId);
     } catch (error) {
@@ -119,6 +121,7 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
                 size="icon"
                 className="h-7 w-7"
                 onClick={(e) => {
+                  console.log('Edit button clicked');
                   e.stopPropagation();
                   e.preventDefault();
                   window.location.href = `/job/${job.id}/edit`;
@@ -131,6 +134,7 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
                 size="icon"
                 className="h-7 w-7"
                 onClick={(e) => {
+                  console.log('View button clicked');
                   e.stopPropagation();
                   e.preventDefault();
                   window.location.href = `/job/${job.id}`;
@@ -145,6 +149,7 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
                     size="icon"
                     className="h-7 w-7"
                     onClick={(e) => {
+                      console.log('Delete trigger button clicked');
                       e.stopPropagation();
                       e.preventDefault();
                     }}
@@ -152,7 +157,10 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </AlertDialogTrigger>
-                <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                <AlertDialogContent onClick={(e) => {
+                  console.log('Alert dialog content clicked, stopping propagation');
+                  e.stopPropagation();
+                }}>
                   <AlertDialogHeader>
                     <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                     <AlertDialogDescription>
@@ -160,9 +168,15 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel onClick={(e) => {
+                      console.log('Cancel button clicked');
+                      e.stopPropagation();
+                    }}>
+                      Cancel
+                    </AlertDialogCancel>
                     <AlertDialogAction 
                       onClick={(e) => {
+                        console.log('Delete confirmation button clicked for job:', job.id);
                         e.stopPropagation();
                         e.preventDefault();
                         handleDeleteJob(job.id);

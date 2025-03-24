@@ -199,7 +199,7 @@ const ClientsTable = () => {
                                 <span>Add Job</span>
                               </DropdownMenuItem>
                               <DropdownMenuItem 
-                                onClick={() => navigate(`/client/edit/${client.id}`)}
+                                onClick={() => navigate(`/client/${client.id}/edit`)}
                                 className="cursor-pointer"
                               >
                                 <FileEdit className="mr-2 h-4 w-4" />

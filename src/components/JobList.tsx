@@ -9,7 +9,6 @@ import { BriefcaseBusiness, CalendarDays, MapPin, Plus, Eye, FileEdit, Trash2, C
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { deleteJob } from '@/lib/storage';
 import { toast } from 'sonner';
-import { Dialog, DialogContent, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 
 interface JobListProps {
   jobs: Job[];
@@ -68,8 +67,6 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
   };
 
   const renderJobCard = (job: Job) => {
-    const [isOpen, setIsOpen] = useState(false);
-    
     console.log('Rendering job card for job:', job.id);
     
     return (
@@ -149,14 +146,8 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
                   <Eye className="h-4 w-4" />
                 </Button>
                 
-                <Dialog 
-                  open={isOpen} 
-                  onOpenChange={(open) => {
-                    console.log('Dialog open state changed to:', open, 'for job:', job.id);
-                    setIsOpen(open);
-                  }}
-                >
-                  <DialogTrigger asChild>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -169,58 +160,34 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
-                  </DialogTrigger>
-                  <DialogContent 
-                    className="sm:max-w-md"
-                    onClick={(e) => {
-                      console.log('Dialog content clicked, stopping propagation');
-                      e.stopPropagation();
-                    }}
-                    onPointerDownOutside={(e) => {
-                      console.log('Pointer down outside dialog');
-                      e.preventDefault();
-                    }}
-                  >
-                    <div 
-                      onLoad={() => console.log('DialogContent rendered for job:', job.id)} 
-                      className="text-center sm:text-left space-y-2"
-                    >
-                      <h2 className="text-lg font-semibold">Are you absolutely sure?</h2>
-                      <p className="text-sm text-muted-foreground">
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
                         This action cannot be undone. This will permanently delete the job and all related data.
-                      </p>
-                    </div>
-                    
-                    <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 mt-4">
-                      <DialogClose asChild>
-                        <Button
-                          variant="outline"
-                          onClick={(e) => {
-                            console.log('Cancel button clicked for job:', job.id);
-                            e.stopPropagation();
-                          }}
-                          type="button"
-                        >
-                          Cancel
-                        </Button>
-                      </DialogClose>
-                      <DialogClose asChild>
-                        <Button
-                          variant="destructive"
-                          onClick={(e) => {
-                            console.log('Delete confirmation button clicked for job:', job.id);
-                            e.stopPropagation();
-                            e.preventDefault();
-                            handleDeleteJob(job.id);
-                          }}
-                          type="button"
-                        >
-                          Delete
-                        </Button>
-                      </DialogClose>
-                    </div>
-                  </DialogContent>
-                </Dialog>
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel onClick={(e) => {
+                        console.log('Cancel button clicked for job:', job.id);
+                        e.stopPropagation();
+                      }}>
+                        Cancel
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={(e) => {
+                          console.log('Delete confirmation button clicked for job:', job.id);
+                          e.stopPropagation();
+                          e.preventDefault();
+                          handleDeleteJob(job.id);
+                        }}
+                      >
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             </CardContent>
           </Card>

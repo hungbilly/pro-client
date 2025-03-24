@@ -760,7 +760,8 @@ export const getInvoice = async (id: string): Promise<Invoice | null> => {
       undefined,
     items: data.invoice_items?.map((item: any) => ({
       id: item.id,
-      productName: item.name, // Using name instead of product_name
+      productName: item.name || item.productName || item.description?.substring(0, 50) || 'Unnamed Item', // Use name or productName
+      name: item.name || item.productName || item.description?.substring(0, 50) || 'Unnamed Item', // Also store in name for backwards compatibility
       description: item.description,
       quantity: item.quantity,
       rate: item.rate,
@@ -827,7 +828,8 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
       undefined,
     items: invoice.invoice_items?.map((item: any) => ({
       id: item.id,
-      productName: item.name, // Using name instead of product_name
+      productName: item.name || item.productName || item.description?.substring(0, 50) || 'Unnamed Item', // Use name or productName
+      name: item.name || item.productName || item.description?.substring(0, 50) || 'Unnamed Item', // Also store in name for backwards compatibility
       description: item.description,
       quantity: item.quantity,
       rate: item.rate,
@@ -880,7 +882,8 @@ export const getClientInvoices = async (clientId: string): Promise<Invoice[]> =>
         .filter(item => item.invoice_id === invoice.id)
         .map(item => ({
           id: item.id,
-          productName: item.name, // Using name instead of product_name
+          productName: item.name || item.productName || item.description?.substring(0, 50) || 'Unnamed Item', // Use name or productName
+          name: item.name || item.productName || item.description?.substring(0, 50) || 'Unnamed Item', // Also store in name for backwards compatibility
           description: item.description,
           quantity: item.quantity,
           rate: item.rate,
@@ -973,7 +976,7 @@ export const saveInvoice = async (invoice: Omit<Invoice, 'id' | 'viewLink'>): Pr
       console.log('[saveInvoice] Saving invoice items:', invoice.items.length);
       const itemsToInsert = invoice.items.map(item => ({
         invoice_id: newInvoice.id,
-        name: item.productName, // Using name instead of product_name
+        name: item.name || item.productName || item.description?.substring(0, 50) || 'Unnamed Item', // Use name or productName
         description: item.description,
         quantity: item.quantity,
         rate: item.rate,
@@ -1103,7 +1106,7 @@ export const updateInvoice = async (invoice: Invoice): Promise<Invoice> => {
       const itemsToInsert = invoice.items.map(item => {
         const newItem = {
           invoice_id: invoice.id,
-          name: item.name || item.productName, // Ensure name is set
+          name: item.name || item.productName || item.description?.substring(0, 50) || 'Unnamed Item', // Use name or productName
           description: item.description,
           quantity: item.quantity,
           rate: item.rate,
@@ -1323,3 +1326,4 @@ export const updatePaymentScheduleStatus = async (
     throw error;
   }
 };
+

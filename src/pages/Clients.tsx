@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getClients, deleteClient } from '@/lib/storage';
@@ -11,6 +11,7 @@ import PageTransition from '@/components/ui-custom/PageTransition';
 import { useAuth } from '@/context/AuthContext';
 import AddClientButton from '@/components/ui-custom/AddClientButton';
 import { toast } from 'sonner';
+import SearchBox from '@/components/ui-custom/SearchBox';
 
 import {
   DropdownMenu,
@@ -30,7 +31,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useState } from 'react';
 
 const Clients = () => {
   console.log("Clients page rendering");
@@ -62,6 +62,7 @@ const ClientsTable = () => {
   const { selectedCompany } = useCompanyContext();
   const selectedCompanyId = selectedCompany?.id;
   const queryClient = useQueryClient();
+  const [searchQuery, setSearchQuery] = useState('');
   
   const { data: clients = [], isLoading, error, refetch } = useQuery({
     queryKey: ['clients', selectedCompanyId],
@@ -101,6 +102,13 @@ const ClientsTable = () => {
     navigate(`/client/${clientId}`);
   };
 
+  // Filter clients based on search query
+  const filteredClients = clients.filter(client => 
+    client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    client.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    client.phone.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   if (isLoading) return <div>Loading clients...</div>;
   if (error) return <div>Error: {error.message}</div>;
 
@@ -123,69 +131,89 @@ const ClientsTable = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead className="hidden md:table-cell">Added On</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {clients.map((client) => (
-              <TableRow 
-                key={client.id}
-                onClick={() => handleClientRowClick(client.id)}
-                className="cursor-pointer"
-              >
-                <TableCell className="font-medium">{client.name}</TableCell>
-                <TableCell>{client.email}</TableCell>
-                <TableCell>{client.phone}</TableCell>
-                <TableCell className="hidden md:table-cell">
-                  {new Date(client.createdAt).toLocaleDateString()}
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="bg-popover">
-                        <DropdownMenuItem 
-                          onClick={() => navigate(`/client/${client.id}/job/create`)}
-                          className="cursor-pointer"
-                        >
-                          <FileText className="mr-2 h-4 w-4" />
-                          <span>Add Job</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={() => navigate(`/client/edit/${client.id}`)}
-                          className="cursor-pointer"
-                        >
-                          <FileEdit className="mr-2 h-4 w-4" />
-                          <span>Edit</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={(e) => confirmDeleteClient(e, client.id)}
-                          className="cursor-pointer text-destructive focus:text-destructive"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          <span>Delete</span>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+
+      <Card className="backdrop-blur-sm bg-white/80 border-transparent shadow-soft">
+        <CardContent className="pt-6">
+          <SearchBox 
+            placeholder="Search clients by name, email, or phone..." 
+            value={searchQuery} 
+            onChange={(e) => setSearchQuery(e.target.value)} 
+            className="mb-4"
+          />
+          
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead className="hidden md:table-cell">Added On</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredClients.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      No clients match your search
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredClients.map((client) => (
+                    <TableRow 
+                      key={client.id}
+                      onClick={() => handleClientRowClick(client.id)}
+                      className="cursor-pointer"
+                    >
+                      <TableCell className="font-medium">{client.name}</TableCell>
+                      <TableCell>{client.email}</TableCell>
+                      <TableCell>{client.phone}</TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {new Date(client.createdAt).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="bg-popover">
+                              <DropdownMenuItem 
+                                onClick={() => navigate(`/client/${client.id}/job/create`)}
+                                className="cursor-pointer"
+                              >
+                                <FileText className="mr-2 h-4 w-4" />
+                                <span>Add Job</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => navigate(`/client/edit/${client.id}`)}
+                                className="cursor-pointer"
+                              >
+                                <FileEdit className="mr-2 h-4 w-4" />
+                                <span>Edit</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={(e) => confirmDeleteClient(e, client.id)}
+                                className="cursor-pointer text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                <span>Delete</span>
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
     </>
   );
 };

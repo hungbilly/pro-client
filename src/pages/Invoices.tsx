@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { formatCurrency } from '@/lib/utils';
 import CreateInvoiceModal from '@/components/ui-custom/CreateInvoiceModal';
+import SearchBox from '@/components/ui-custom/SearchBox';
 
 import {
   Table,
@@ -34,6 +35,7 @@ const Invoices = () => {
   const selectedCompanyId = selectedCompany?.id;
   const navigate = useNavigate();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   
   const { data: invoices = [], isLoading, error } = useQuery({
     queryKey: ['invoices', selectedCompanyId],
@@ -105,6 +107,14 @@ const Invoices = () => {
     }
   };
 
+  // Filter invoices based on search query
+  const filteredInvoices = invoices.filter(invoice => 
+    invoice.number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    getClientName(invoice.clientId).toLowerCase().includes(searchQuery.toLowerCase()) ||
+    invoice.status.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (getJobName(invoice.jobId) && getJobName(invoice.jobId).toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
   return (
     <PageTransition>
       <div className="container mx-auto py-6 px-4">
@@ -121,6 +131,13 @@ const Invoices = () => {
             <CardTitle>All Invoices</CardTitle>
           </CardHeader>
           <CardContent>
+            <SearchBox
+              placeholder="Search invoices by number, client name, job, or status..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="mb-4"
+            />
+            
             {isLoading ? (
               <div className="text-center py-4">Loading invoices...</div>
             ) : error ? (
@@ -139,6 +156,10 @@ const Invoices = () => {
                   </Link>
                 </Button>
               </div>
+            ) : filteredInvoices.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">No invoices match your search</p>
+              </div>
             ) : (
               <div className="rounded-md border">
                 <Table>
@@ -154,7 +175,7 @@ const Invoices = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {invoices.map((invoice) => (
+                    {filteredInvoices.map((invoice) => (
                       <TableRow 
                         key={invoice.id} 
                         className="cursor-pointer"

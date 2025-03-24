@@ -83,7 +83,7 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
     
     const newItem: InvoiceItem = {
       id: Date.now().toString(),
-      description: `${selectedPackage.product_name || selectedPackage.name}${selectedPackage.description ? ` - ${selectedPackage.description}` : ''}`,
+      description: `${selectedPackage.name}${selectedPackage.description ? ` - ${selectedPackage.description}` : ''}`,
       quantity: 1,
       rate: selectedPackage.price,
       amount: selectedPackage.price
@@ -93,7 +93,7 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
     
     setOpen(false);
     onPackageSelect([newItem]);
-    toast.success(`Added "${selectedPackage.product_name || selectedPackage.name}" to invoice`);
+    toast.success(`Added "${selectedPackage.name}" to invoice`);
   };
 
   if (!Array.isArray(packages) || packages.length === 0) {
@@ -149,8 +149,7 @@ const PackageSelector: React.FC<PackageSelectorProps> = ({
         >
           <div className="flex items-center justify-between w-full">
             <div className="flex flex-col">
-              <span className="font-medium">{pkg.product_name || pkg.name}</span>
-              <span className="text-xs text-muted-foreground">{pkg.name}</span>
+              <span className="font-medium">{pkg.name}</span>
             </div>
             <span className="font-medium">
               {new Intl.NumberFormat('en-US', {

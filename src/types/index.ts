@@ -1,3 +1,4 @@
+
 export interface Client {
   id: string;
   name: string;
@@ -44,7 +45,6 @@ export interface Job {
 export interface Package {
   id: string;
   name: string;
-  product_name?: string;
   description?: string;
   price: number;
   tax_rate?: number;

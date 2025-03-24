@@ -1,16 +1,16 @@
-
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { getInvoices } from '@/lib/storage';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { getInvoices, deleteInvoice } from '@/lib/storage';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, MoreHorizontal, Receipt } from 'lucide-react';
+import { FileText, MoreHorizontal, Receipt, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { formatCurrency } from '@/lib/utils';
 import CreateInvoiceModal from '@/components/ui-custom/CreateInvoiceModal';
 import SearchBox from '@/components/ui-custom/SearchBox';
+import { toast } from 'sonner';
 
 import {
   Table,
@@ -27,6 +27,18 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
 import { useCompanyContext } from '@/context/CompanyContext';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -36,6 +48,8 @@ const Invoices = () => {
   const navigate = useNavigate();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [invoiceToDelete, setInvoiceToDelete] = useState<string | null>(null);
+  const queryClient = useQueryClient();
   
   const { data: invoices = [], isLoading, error } = useQuery({
     queryKey: ['invoices', selectedCompanyId],
@@ -43,7 +57,6 @@ const Invoices = () => {
     enabled: !!selectedCompanyId,
   });
 
-  // Fetch clients to display names instead of IDs
   const { data: clients = [] } = useQuery({
     queryKey: ['clients', selectedCompanyId],
     queryFn: async () => {
@@ -56,7 +69,6 @@ const Invoices = () => {
     enabled: !!selectedCompanyId,
   });
 
-  // Fetch jobs to display job names
   const { data: jobs = [] } = useQuery({
     queryKey: ['jobs', selectedCompanyId],
     queryFn: async () => {
@@ -92,6 +104,25 @@ const Invoices = () => {
     setIsCreateModalOpen(false);
   };
 
+  const handleDeleteInvoice = async () => {
+    if (!invoiceToDelete) return;
+
+    try {
+      await deleteInvoice(invoiceToDelete);
+      toast.success("Invoice deleted successfully");
+      queryClient.invalidateQueries({ queryKey: ['invoices', selectedCompanyId] });
+      setInvoiceToDelete(null);
+    } catch (error) {
+      console.error('Error deleting invoice:', error);
+      toast.error("Failed to delete invoice");
+    }
+  };
+
+  const confirmDeleteInvoice = (e: React.MouseEvent, invoiceId: string) => {
+    e.stopPropagation();
+    setInvoiceToDelete(invoiceId);
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'sent':
@@ -107,7 +138,6 @@ const Invoices = () => {
     }
   };
 
-  // Filter invoices based on search query
   const filteredInvoices = invoices.filter(invoice => 
     invoice.number.toLowerCase().includes(searchQuery.toLowerCase()) ||
     getClientName(invoice.clientId).toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -117,6 +147,27 @@ const Invoices = () => {
 
   return (
     <PageTransition>
+      <AlertDialog open={!!invoiceToDelete} onOpenChange={(open) => !open && setInvoiceToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete this invoice?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the invoice
+              and all associated data from our servers.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteInvoice} 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <div className="container mx-auto py-6 px-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
           <h1 className="text-3xl font-bold mb-4 sm:mb-0">Invoices</h1>
@@ -180,7 +231,6 @@ const Invoices = () => {
                         key={invoice.id} 
                         className="cursor-pointer"
                         onClick={(e) => {
-                          // Prevent row click if dropdown is being interacted with
                           if (!(e.target as HTMLElement).closest('.dropdown-actions')) {
                             handleRowClick(invoice.id);
                           }
@@ -223,6 +273,13 @@ const Invoices = () => {
                                     </Link>
                                   </DropdownMenuItem>
                                 )}
+                                <DropdownMenuItem 
+                                  className="text-destructive focus:text-destructive"
+                                  onClick={(e) => confirmDeleteInvoice(e, invoice.id)}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  <span>Delete</span>
+                                </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </div>

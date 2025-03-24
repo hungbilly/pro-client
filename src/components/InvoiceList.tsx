@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Invoice, Client } from '@/types';
@@ -5,8 +6,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { AreaChart, CalendarDays, ClipboardCheck, Copy, Eye, FileEdit, FileCheck, FileText } from 'lucide-react';
+import { AreaChart, CalendarDays, ClipboardCheck, Copy, Eye, FileEdit, FileCheck, FileText, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
+import { deleteInvoice } from '@/lib/storage';
+
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface InvoiceListProps {
   invoices: Invoice[];
@@ -40,6 +54,9 @@ const getContractStatusColor = (status?: 'pending' | 'accepted') => {
 };
 
 const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateButton = true }) => {
+  const [invoiceToDelete, setInvoiceToDelete] = React.useState<string | null>(null);
+  const queryClient = useQueryClient();
+  
   const sortedInvoices = [...invoices].sort((a, b) => 
     new Date(b.date).getTime() - new Date(a.date).getTime()
   );
@@ -55,6 +72,27 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
     navigator.clipboard.writeText(invoice.viewLink)
       .then(() => toast.success('Invoice link copied to clipboard!'))
       .catch(() => toast.error('Failed to copy link'));
+  };
+  
+  const handleDeleteInvoice = async () => {
+    if (!invoiceToDelete) return;
+
+    try {
+      await deleteInvoice(invoiceToDelete);
+      toast.success("Invoice deleted successfully");
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['client', client.id] });
+      setInvoiceToDelete(null);
+    } catch (error) {
+      console.error('Error deleting invoice:', error);
+      toast.error("Failed to delete invoice");
+    }
+  };
+
+  const confirmDeleteInvoice = (e: React.MouseEvent, invoiceId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setInvoiceToDelete(invoiceId);
   };
 
   const renderInvoiceCard = (invoice: Invoice) => (
@@ -112,12 +150,21 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8"
+                className="h-8 w-8 mr-1"
                 asChild
               >
                 <Link to={`/invoice/${invoice.id}`}>
                   <Eye className="h-4 w-4" />
                 </Link>
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                title="Delete invoice"
+                onClick={(e) => confirmDeleteInvoice(e, invoice.id)}
+              >
+                <Trash2 className="h-4 w-4 text-destructive" />
               </Button>
             </div>
           </CardContent>
@@ -145,6 +192,27 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
 
   return (
     <div className="space-y-8">
+      <AlertDialog open={!!invoiceToDelete} onOpenChange={(open) => !open && setInvoiceToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete this invoice?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the invoice
+              and all associated data from our servers.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteInvoice} 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-semibold">Invoices</h2>
         {showCreateButton && (

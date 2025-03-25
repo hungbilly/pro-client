@@ -15,6 +15,20 @@ import PaymentScheduleTable from '@/components/invoice/PaymentScheduleTable';
 
 const SUPABASE_URL = "https://htjvyzmuqsrjpesdurni.supabase.co";
 
+// Define an interface for the company_clientview table structure
+interface CompanyClientView {
+  id: string;
+  company_id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  website: string | null;
+  logo_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 const InvoiceView = () => {
   const { idOrViewLink } = useParams<{ idOrViewLink: string }>();
   const navigate = useNavigate();
@@ -162,40 +176,27 @@ const InvoiceView = () => {
           if (!companyError && companyData) {
             console.info(`[InvoiceView] Fetched company data from ${table}:`, companyData);
             
-            // If we're using company_clientview, it doesn't have all the fields that the Company type expects
-            // So we need to create a complete Company object with defaults for missing fields
+            // If we're using company_clientview, it has a different structure
             if (isClientView) {
+              const clientViewData = companyData as CompanyClientView;
               setCompany({
-                id: companyData.id,
-                name: companyData.name,
-                email: companyData.email || '',
-                phone: companyData.phone || '',
-                address: companyData.address || '',
-                website: companyData.website || '',
-                logo_url: companyData.logo_url || '',
+                id: clientViewData.id,
+                name: clientViewData.name,
+                email: clientViewData.email || '',
+                phone: clientViewData.phone || '',
+                address: clientViewData.address || '',
+                website: clientViewData.website || '',
+                logo_url: clientViewData.logo_url || '',
                 is_default: false,
                 user_id: '',
-                created_at: companyData.created_at || '',
-                updated_at: companyData.updated_at || '',
+                created_at: clientViewData.created_at || '',
+                updated_at: clientViewData.updated_at || '',
                 country: '',
                 currency: ''
-              } as Company);
+              });
             } else {
-              setCompany({
-                id: companyData.id,
-                name: companyData.name,
-                email: companyData.email,
-                phone: companyData.phone,
-                address: companyData.address,
-                website: companyData.website,
-                logo_url: companyData.logo_url,
-                is_default: companyData.is_default || false,
-                user_id: companyData.user_id || '',
-                created_at: companyData.created_at || '',
-                updated_at: companyData.updated_at || '',
-                country: companyData.country,
-                currency: companyData.currency
-              } as Company);
+              // Regular companies table
+              setCompany(companyData as Company);
             }
           }
         }

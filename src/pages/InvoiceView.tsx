@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/utils';
-import { ArrowLeft, FileText, Mail, Printer, RefreshCw, Download, Globe } from 'lucide-react';
+import { ArrowLeft, FileText, Mail, Printer, RefreshCw, Download, Globe, Copy, Link } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import PaymentDateDialog from '@/components/invoice/PaymentDateDialog';
 import PaymentScheduleTable from '@/components/invoice/PaymentScheduleTable';
@@ -350,6 +350,15 @@ const InvoiceView = () => {
     }
   };
 
+  const handleCopyClientLink = () => {
+    if (!invoice) return;
+    
+    const clientViewUrl = `${window.location.origin}/invoice/${invoice.viewLink}`;
+    navigator.clipboard.writeText(clientViewUrl)
+      .then(() => toast.success('Client view link copied to clipboard!'))
+      .catch(() => toast.error('Failed to copy link'));
+  };
+
   const getStatusBadgeClass = (status: string) => {
     switch (status.toLowerCase()) {
       case 'draft':
@@ -419,6 +428,10 @@ const InvoiceView = () => {
                 <Button variant="outline" size="sm" onClick={() => window.print()}>
                   <Printer className="mr-2 h-4 w-4" />
                   Print
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleCopyClientLink}>
+                  <Link className="mr-2 h-4 w-4" />
+                  Copy Link
                 </Button>
                 {invoice.pdfUrl && (
                   <Button variant="outline" size="sm" asChild>

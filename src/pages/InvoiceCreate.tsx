@@ -127,6 +127,26 @@ const InvoiceCreate = () => {
     fetchContractTemplates();
   }, [invoiceId, clientId, jobId, navigate, loading]);
 
+  // Generate static HTML for invoice after successful save
+  const handleInvoiceSaved = async (savedInvoiceId: string) => {
+    logDebug('Invoice saved, generating static HTML version:', savedInvoiceId);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-invoice-pdf', {
+        body: { invoiceId: savedInvoiceId }
+      });
+      
+      if (error) {
+        logError('Error generating invoice PDF and static HTML:', error);
+        // Don't show error to user as this is a background task
+      } else {
+        logDebug('Successfully generated invoice PDF and static HTML', data);
+      }
+    } catch (err) {
+      logError('Failed to generate static invoice content:', err);
+    }
+  };
+
   if (loading || loadingTemplates) {
     return (
       <PageTransition>
@@ -214,6 +234,7 @@ const InvoiceCreate = () => {
           invoiceId={invoiceId}
           contractTemplates={contractTemplates}
           checkDuplicateInvoiceNumber={checkDuplicateInvoiceNumber}
+          onInvoiceSaved={handleInvoiceSaved}
         />
       </div>
     </PageTransition>

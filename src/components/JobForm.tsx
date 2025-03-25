@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Client, Job } from '@/types';
@@ -21,11 +20,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 interface JobFormProps {
   job?: Job;
   clientId?: string;
-  companyId?: string | null;
   onSuccess?: () => void;
 }
 
-const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefinedClientId, companyId: predefinedCompanyId, onSuccess }) => {
+const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefinedClientId, onSuccess }) => {
   const { clientId: clientIdParam } = useParams<{ clientId: string }>();
   const navigate = useNavigate();
 
@@ -40,16 +38,7 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
   const [isFullDay, setIsFullDay] = useState(existingJob?.isFullDay || false);
 
   const clientId = predefinedClientId || clientIdParam || existingJob?.clientId || '';
-  const { selectedCompanyId, setSelectedCompanyId } = useCompany();
-
-  useEffect(() => {
-    // If company ID is provided as a prop, use it
-    if (predefinedCompanyId) {
-      setSelectedCompanyId(predefinedCompanyId);
-    } else if (existingJob?.companyId) {
-      setSelectedCompanyId(existingJob.companyId);
-    }
-  }, [predefinedCompanyId, existingJob?.companyId, setSelectedCompanyId]);
+  const { selectedCompany } = useCompany();
 
   useEffect(() => {
     const fetchClient = async () => {
@@ -80,8 +69,8 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
       return;
     }
 
-    if (!selectedCompanyId) {
-      toast.error('Please select a company.');
+    if (!selectedCompany) {
+      toast.error('No company selected. Please select a company from the top navigation.');
       return;
     }
 
@@ -92,7 +81,7 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
         const updatedJob: Job = {
           id: existingJob.id,
           clientId: client.id,
-          companyId: selectedCompanyId,
+          companyId: selectedCompany.id,
           title,
           description,
           status,
@@ -110,7 +99,7 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
       } else {
         const newJob = {
           clientId: client.id,
-          companyId: selectedCompanyId,
+          companyId: selectedCompany.id,
           title,
           description,
           status,

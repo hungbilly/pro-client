@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Trash2, FileEdit } from 'lucide-react';
+import { ArrowLeft, Trash2, FileEdit, CalendarDays, MapPin, FileText, User, Building2, Mail, Phone, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import InvoiceList from '@/components/InvoiceList';
@@ -170,18 +170,21 @@ const JobDetail = () => {
               </div>
             </div>
             <div className="space-x-2">
-              <Button variant="outline" size="icon" onClick={() => navigate(`/client/${client.id}`)}>
-                <ArrowLeft className="h-4 w-4" />
+              <Button variant="outline" size="sm" onClick={() => navigate(`/client/${client.id}`)}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Client
               </Button>
-              <Button size="icon" asChild>
+              <Button size="sm" asChild>
                 <Link to={`/job/${job.id}/edit`}>
-                  <FileEdit className="h-4 w-4" />
+                  <FileEdit className="h-4 w-4 mr-2" />
+                  Edit Job
                 </Link>
               </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="destructive" size="icon">
-                    <Trash2 className="h-4 w-4" />
+                  <Button variant="destructive" size="sm">
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Job
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>

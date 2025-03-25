@@ -9,7 +9,7 @@ import {
   updatePaymentScheduleStatus,
   getJob
 } from '@/lib/storage';
-import { Invoice, Client, Job } from '@/types';
+import { Invoice, Client, Job, CompanyClientView } from '@/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -53,19 +53,7 @@ const InvoiceView = () => {
     }).format(amount);
   }, []);
 
-  const [selectedCompanyState, setSelectedCompanyState] = useState<{ 
-    id: string; 
-    name: string; 
-    logo_url?: string;
-    address?: string;
-    email?: string;
-    phone?: string;
-    website?: string;
-    country?: string;
-    currency?: string;
-    is_default: boolean;
-    user_id: string;
-  } | null>(null);
+  const [clientViewCompany, setClientViewCompany] = useState<CompanyClientView | null>(null);
 
   useEffect(() => {
     const fetchInvoice = async () => {
@@ -152,30 +140,18 @@ const InvoiceView = () => {
         
         if (isClientView && fetchedInvoice.companyId) {
           try {
-            console.log('[InvoiceView] Client view - fetching company info for:', fetchedInvoice.companyId);
+            console.log('[InvoiceView] Client view - fetching company info from company_clientview for:', fetchedInvoice.companyId);
             const { data: companyData, error: companyError } = await supabase
-              .from('companies')
+              .from('company_clientview')
               .select('*')
-              .eq('id', fetchedInvoice.companyId)
+              .eq('company_id', fetchedInvoice.companyId)
               .single();
             
             if (companyError) {
-              console.error('[InvoiceView] Error fetching company:', companyError);
+              console.error('[InvoiceView] Error fetching company from clientview:', companyError);
             } else if (companyData) {
               console.log('[InvoiceView] Fetched company data for client view:', companyData);
-              setSelectedCompanyState({
-                id: companyData.id,
-                name: companyData.name,
-                logo_url: companyData.logo_url,
-                address: companyData.address,
-                email: companyData.email,
-                phone: companyData.phone,
-                website: companyData.website,
-                country: companyData.country,
-                currency: companyData.currency,
-                is_default: companyData.is_default,
-                user_id: companyData.user_id
-              });
+              setClientViewCompany(companyData as CompanyClientView);
             }
           } catch (err) {
             console.error('[InvoiceView] Failed to fetch company data:', err);
@@ -359,7 +335,23 @@ const InvoiceView = () => {
     }
   };
 
-  const displayCompany = isClientView ? selectedCompanyState : selectedCompany;
+  const getDisplayCompany = () => {
+    if (isClientView) {
+      return clientViewCompany ? {
+        id: clientViewCompany.id,
+        name: clientViewCompany.name,
+        logo_url: clientViewCompany.logo_url,
+        email: clientViewCompany.email,
+        phone: clientViewCompany.phone,
+        address: clientViewCompany.address,
+        website: clientViewCompany.website
+      } : null;
+    } else {
+      return selectedCompany;
+    }
+  };
+
+  const displayCompany = getDisplayCompany();
 
   useEffect(() => {
     if (invoice) {
@@ -760,3 +752,4 @@ const InvoiceView = () => {
 };
 
 export default InvoiceView;
+

@@ -26,6 +26,19 @@ export interface Company {
   updated_at: string;
 }
 
+export interface CompanyClientView {
+  id: string;
+  company_id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  website?: string;
+  logo_url?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Job {
   id: string;
   clientId: string;

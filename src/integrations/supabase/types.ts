@@ -50,6 +50,41 @@ export type Database = {
           },
         ]
       }
+      clientview_invoice: {
+        Row: {
+          created_at: string
+          html_content: string
+          id: string
+          invoice_id: string
+          updated_at: string
+          view_link: string
+        }
+        Insert: {
+          created_at?: string
+          html_content: string
+          id?: string
+          invoice_id: string
+          updated_at?: string
+          view_link: string
+        }
+        Update: {
+          created_at?: string
+          html_content?: string
+          id?: string
+          invoice_id?: string
+          updated_at?: string
+          view_link?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clientview_invoice_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       companies: {
         Row: {
           address: string | null
@@ -97,6 +132,53 @@ export type Database = {
           website?: string | null
         }
         Relationships: []
+      }
+      company_clientview: {
+        Row: {
+          address: string | null
+          company_id: string
+          created_at: string
+          email: string | null
+          id: string
+          logo_url: string | null
+          name: string
+          phone: string | null
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          address?: string | null
+          company_id: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          logo_url?: string | null
+          name: string
+          phone?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          address?: string | null
+          company_id?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          logo_url?: string | null
+          name?: string
+          phone?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_clientview_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       contract_templates: {
         Row: {
@@ -317,6 +399,8 @@ export type Database = {
           created_at: string
           date: string
           due_date: string
+          html_content: string | null
+          html_generated_at: string | null
           id: string
           job_id: string | null
           notes: string | null
@@ -335,6 +419,8 @@ export type Database = {
           created_at?: string
           date: string
           due_date: string
+          html_content?: string | null
+          html_generated_at?: string | null
           id?: string
           job_id?: string | null
           notes?: string | null
@@ -353,6 +439,8 @@ export type Database = {
           created_at?: string
           date?: string
           due_date?: string
+          html_content?: string | null
+          html_generated_at?: string | null
           id?: string
           job_id?: string | null
           notes?: string | null

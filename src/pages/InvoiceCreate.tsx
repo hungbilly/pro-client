@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import InvoiceForm from '@/components/InvoiceForm';
@@ -7,6 +6,7 @@ import { Invoice } from '@/types';
 import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { supabase, logDebug, logError, logDataTransformation, formatDate, parseDate } from '@/integrations/supabase/client';
+import { storeInvoiceHtml } from '@/utils/generateInvoiceHtml';
 
 interface ContractTemplate {
   id: string;
@@ -127,6 +127,40 @@ const InvoiceCreate = () => {
     fetchContractTemplates();
   }, [invoiceId, clientId, jobId, navigate, loading]);
 
+  const handleInvoiceSuccess = async (savedInvoice: Invoice) => {
+    logDebug('Invoice saved successfully, generating static HTML', { invoiceId: savedInvoice.id });
+    
+    // Generate and store HTML version of the invoice
+    try {
+      toast.info('Generating invoice preview...', { id: 'generating-html' });
+      
+      await storeInvoiceHtml(savedInvoice.id);
+      
+      toast.success('Invoice saved and preview generated', { id: 'generating-html' });
+      
+      // Navigate to the appropriate page after successful save
+      if (savedInvoice.jobId) {
+        navigate(`/job/${savedInvoice.jobId}`);
+      } else if (savedInvoice.clientId) {
+        navigate(`/client/${savedInvoice.clientId}`);
+      } else {
+        navigate('/invoices');
+      }
+    } catch (error) {
+      logError('Error generating static HTML for invoice', { invoiceId: savedInvoice.id, error });
+      toast.error('Invoice saved but failed to generate preview', { id: 'generating-html' });
+      
+      // Still navigate even if HTML generation fails
+      if (savedInvoice.jobId) {
+        navigate(`/job/${savedInvoice.jobId}`);
+      } else if (savedInvoice.clientId) {
+        navigate(`/client/${savedInvoice.clientId}`);
+      } else {
+        navigate('/invoices');
+      }
+    }
+  };
+
   if (loading || loadingTemplates) {
     return (
       <PageTransition>
@@ -214,6 +248,7 @@ const InvoiceCreate = () => {
           invoiceId={invoiceId}
           contractTemplates={contractTemplates}
           checkDuplicateInvoiceNumber={checkDuplicateInvoiceNumber}
+          onSuccess={handleInvoiceSuccess}
         />
       </div>
     </PageTransition>

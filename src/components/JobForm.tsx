@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Client, Job } from '@/types';
@@ -143,50 +144,51 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
 
   return (
     <Card className="w-full max-w-4xl mx-auto">
-      <CardHeader>
-        <CardTitle>{existingJob ? 'Edit Job' : 'Create Job'}</CardTitle>
-        <CardDescription>
-          <Card className="mt-4 bg-slate-50 border-slate-200">
-            <CardContent className="p-4">
-              <div className="text-lg font-medium mb-3 border-b pb-2">Client Information</div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex items-center gap-2">
-                  <User className="h-5 w-5 text-primary" />
-                  <div>
-                    <div className="font-medium">{client.name}</div>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <Mail className="h-5 w-5 text-primary" />
-                  <div>
-                    <div className="text-sm text-gray-600">Email</div>
-                    <div>{client.email}</div>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <Phone className="h-5 w-5 text-primary" />
-                  <div>
-                    <div className="text-sm text-gray-600">Phone</div>
-                    <div>{client.phone}</div>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-5 w-5 text-primary" />
-                  <div>
-                    <div className="text-sm text-gray-600">Address</div>
-                    <div className="text-sm">{client.address}</div>
-                  </div>
+      {existingJob && (
+        <CardHeader>
+          <CardTitle>Edit Job</CardTitle>
+        </CardHeader>
+      )}
+      <CardContent className={existingJob ? "pt-0" : "pt-6"}>
+        <Card className="mt-4 bg-slate-50 border-slate-200">
+          <CardContent className="p-4">
+            <div className="text-lg font-medium mb-3 border-b pb-2">Client Information</div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center gap-2">
+                <User className="h-5 w-5 text-primary" />
+                <div>
+                  <div className="font-medium">{client.name}</div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+              
+              <div className="flex items-center gap-2">
+                <Mail className="h-5 w-5 text-primary" />
+                <div>
+                  <div className="text-sm text-gray-600">Email</div>
+                  <div>{client.email}</div>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <Phone className="h-5 w-5 text-primary" />
+                <div>
+                  <div className="text-sm text-gray-600">Phone</div>
+                  <div>{client.phone}</div>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-primary" />
+                <div>
+                  <div className="text-sm text-gray-600">Address</div>
+                  <div className="text-sm">{client.address}</div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <form onSubmit={handleSubmit} className="space-y-4 mt-6">
           <div>
             <Label htmlFor="title">Job Title</Label>
             <Input

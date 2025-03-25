@@ -632,4 +632,3 @@ const InvoiceView = () => {
 };
 
 export default InvoiceView;
-

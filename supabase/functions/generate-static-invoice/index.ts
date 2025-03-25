@@ -90,15 +90,21 @@ serve(async (req) => {
     }
     
     // Fetch company data
-    const { data: company, error: companyError } = await supabase
-      .from('companies')
-      .select('*')
-      .eq('id', invoice.company_id)
-      .maybeSingle();
-    
-    if (companyError) {
-      console.error(`Error fetching company: ${JSON.stringify(companyError)}`);
-      // Continue without company data
+    let company = null;
+    if (invoice.company_id) {
+      const { data: companyData, error: companyError } = await supabase
+        .from('companies')
+        .select('*')
+        .eq('id', invoice.company_id)
+        .maybeSingle();
+      
+      if (companyError) {
+        console.error(`Error fetching company: ${JSON.stringify(companyError)}`);
+        // Log but continue without company data
+      } else if (companyData) {
+        company = companyData;
+        console.log(`Successfully fetched company data: ${company.name}, Logo URL: ${company.logo_url || 'No logo'}`);
+      }
     }
     
     // Fetch job data if available
@@ -323,6 +329,13 @@ function generateInvoiceHtml(invoice: any, client: any, company: any, job: any) 
       </div>
     `;
   }
+
+  // Ensure company data exists to avoid undefined errors  
+  const companyName = company?.name || 'Your Company';
+  const companyEmail = company?.email || '';
+  const companyPhone = company?.phone || '';
+  const companyAddress = company?.address || '';
+  const companyLogo = company?.logo_url || '';
   
   // Build the full HTML
   return `
@@ -359,8 +372,8 @@ function generateInvoiceHtml(invoice: any, client: any, company: any, job: any) 
               <!-- Company/Sender Info -->
               <div class="flex flex-col justify-between">
                 <div class="flex items-start mb-6">
-                  ${company?.logo_url ? `
-                    <img src="${company.logo_url}" alt="${company.name} Logo" class="h-24 w-auto object-contain" />
+                  ${companyLogo ? `
+                    <img src="${companyLogo}" alt="${companyName} Logo" class="h-24 w-auto object-contain" />
                   ` : `
                     <div class="h-24 w-24 bg-gray-100 rounded flex items-center justify-center text-gray-400">
                       <svg xmlns="http://www.w3.org/2000/svg" class="h-14 w-14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -395,10 +408,10 @@ function generateInvoiceHtml(invoice: any, client: any, company: any, job: any) 
               <div class="space-y-4">
                 <div>
                   <h4 class="text-sm font-medium text-gray-500 mb-1">FROM</h4>
-                  <div class="font-medium">${company?.name || 'Company'}</div>
-                  ${company?.email ? `<div class="text-sm">${company.email}</div>` : ''}
-                  ${company?.phone ? `<div class="text-sm">${company.phone}</div>` : ''}
-                  ${company?.address ? `<div class="text-sm">${company.address}</div>` : ''}
+                  <div class="font-medium">${companyName}</div>
+                  ${companyEmail ? `<div class="text-sm">${companyEmail}</div>` : ''}
+                  ${companyPhone ? `<div class="text-sm">${companyPhone}</div>` : ''}
+                  ${companyAddress ? `<div class="text-sm">${companyAddress}</div>` : ''}
                 </div>
                 
                 <div>
@@ -523,7 +536,7 @@ function generateInvoiceHtml(invoice: any, client: any, company: any, job: any) 
             <!-- Footer -->
             <div class="mt-8 pt-4 border-t text-center text-gray-500 text-sm">
               <p>This invoice was generated on ${new Date().toLocaleDateString()}</p>
-              ${company?.name ? `<p>${company.name}</p>` : ''}
+              <p>${companyName}</p>
             </div>
           </div>
         </div>

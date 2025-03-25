@@ -23,11 +23,23 @@ serve(async (req) => {
     const viewLink = url.pathname.split('/').pop();
     
     if (!viewLink) {
+      console.error('Invalid invoice link - no view link provided');
       return new Response(
         JSON.stringify({ error: 'Invalid invoice link' }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
           status: 400 
+        }
+      );
+    }
+    
+    if (!supabaseUrl || !supabaseKey) {
+      console.error('Missing Supabase configuration. URL:', !!supabaseUrl, 'Key:', !!supabaseKey);
+      return new Response(
+        JSON.stringify({ error: 'Server configuration error' }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
+          status: 500 
         }
       );
     }
@@ -44,7 +56,7 @@ serve(async (req) => {
     if (invoiceError || !invoice) {
       console.error('Error finding invoice:', invoiceError);
       return new Response(
-        JSON.stringify({ error: 'Invoice not found' }),
+        JSON.stringify({ error: 'Invoice not found', details: invoiceError }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
           status: 404 
@@ -66,7 +78,7 @@ serve(async (req) => {
     if (htmlError || !staticHtml) {
       console.error('Error retrieving static HTML:', htmlError);
       return new Response(
-        JSON.stringify({ error: 'Static invoice content not found' }),
+        JSON.stringify({ error: 'Static invoice content not found', details: htmlError }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
           status: 404 
@@ -87,7 +99,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error serving static invoice:', error);
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({ error: 'Internal server error', details: error.message }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
         status: 500 

@@ -77,6 +77,13 @@ const InvoiceView = () => {
         if (isClientView && !isUUID) {
           // For client view with a view link, redirect to the static HTML edge function
           const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+          if (!supabaseUrl) {
+            console.error('[InvoiceView] Missing VITE_SUPABASE_URL environment variable');
+            setError('Configuration error. Please contact support.');
+            setLoading(false);
+            return;
+          }
+          
           const staticInvoiceUrl = `${supabaseUrl}/functions/v1/serve-static-invoice/${identifier}`;
           console.log('[InvoiceView] Redirecting to static HTML view:', staticInvoiceUrl);
           window.location.href = staticInvoiceUrl;

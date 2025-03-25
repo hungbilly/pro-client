@@ -317,6 +317,8 @@ export type Database = {
           created_at: string
           date: string
           due_date: string
+          html_content: string | null
+          html_generated_at: string | null
           id: string
           job_id: string | null
           notes: string | null
@@ -335,6 +337,8 @@ export type Database = {
           created_at?: string
           date: string
           due_date: string
+          html_content?: string | null
+          html_generated_at?: string | null
           id?: string
           job_id?: string | null
           notes?: string | null
@@ -353,6 +357,8 @@ export type Database = {
           created_at?: string
           date?: string
           due_date?: string
+          html_content?: string | null
+          html_generated_at?: string | null
           id?: string
           job_id?: string | null
           notes?: string | null

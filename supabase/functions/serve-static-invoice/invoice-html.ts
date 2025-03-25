@@ -1,10 +1,6 @@
 
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
+// This is a copy of the necessary functions from src/lib/utils.ts
+// We need to duplicate it here because Edge Functions don't have access to the frontend code
 
 export function formatCurrency(amount: number, currency: string = 'USD'): string {
   return new Intl.NumberFormat('en-US', {

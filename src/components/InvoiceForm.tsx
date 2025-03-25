@@ -1,3 +1,4 @@
+
 import React, { Component } from 'react';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
@@ -22,6 +23,8 @@ interface Props {
   checkDuplicateInvoiceNumber: (number: string, currentInvoiceId?: string) => Promise<boolean>;
   onInvoiceSaved?: (savedInvoiceId: string) => Promise<void>;
   navigate: (path: string) => void;
+  params?: Record<string, string>;
+  location?: { pathname: string; search: string; state: any; key: string };
 }
 
 interface State {
@@ -174,7 +177,7 @@ class InvoiceForm extends Component<Props, State> {
 
 // This component wrapper allows us to handle the onInvoiceSaved callback 
 // without modifying the original InvoiceForm component
-const InvoiceFormWithCallback = (props: Props) => {
+const InvoiceFormWithCallback = (props: Omit<Props, 'navigate' | 'params' | 'location'>) => {
   const { onInvoiceSaved, ...restProps } = props;
   
   // Clone the original handleSubmit to add our callback

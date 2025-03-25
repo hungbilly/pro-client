@@ -14,16 +14,6 @@ interface ContractTemplate {
   description?: string;
 }
 
-interface InvoiceFormProps {
-  invoice?: Invoice;
-  clientId?: string;
-  jobId?: string;
-  invoiceId?: string;
-  contractTemplates: ContractTemplate[];
-  checkDuplicateInvoiceNumber: (number: string, currentInvoiceId?: string) => Promise<boolean>;
-  onInvoiceSaved?: (savedInvoiceId: string) => Promise<void>;
-}
-
 const InvoiceCreate = () => {
   const { clientId, jobId, invoiceId } = useParams();
   const navigate = useNavigate();

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Invoice, Client } from '@/types';
@@ -25,7 +26,6 @@ interface InvoiceListProps {
   invoices: Invoice[];
   client: Client;
   showCreateButton?: boolean;
-  extraActions?: (props: { invoice: Invoice }) => React.ReactNode;
 }
 
 const getStatusColor = (status: Invoice['status']) => {
@@ -53,7 +53,7 @@ const getContractStatusColor = (status?: 'pending' | 'accepted') => {
   }
 };
 
-const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateButton = true, extraActions }) => {
+const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateButton = true }) => {
   const [invoiceToDelete, setInvoiceToDelete] = React.useState<string | null>(null);
   const queryClient = useQueryClient();
   const { id: jobId } = useParams();
@@ -174,9 +174,6 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
               >
                 <Trash2 className="h-3.5 w-3.5 text-destructive" />
               </Button>
-              {extraActions && (
-                extraActions({ invoice })
-              )}
             </div>
           </CardContent>
         </Card>

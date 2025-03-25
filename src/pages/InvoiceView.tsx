@@ -1,648 +1,761 @@
-
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { Invoice, InvoiceItem, PaymentSchedule, Client, Company, Job, CompanyClientView } from '@/types';
-import { Button } from '@/components/ui/button';
+import React, { useState, useEffect, useMemo, useCallback, memo, useRef } from 'react';
+import { useParams, Link, useLocation } from 'react-router-dom';
+import { 
+  getInvoiceByViewLink, 
+  getClient, 
+  updateInvoiceStatus, 
+  getInvoice, 
+  updateContractStatus,
+  updatePaymentScheduleStatus,
+  getJob
+} from '@/lib/storage';
+import { Invoice, Client, Job } from '@/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+import { ArrowLeft, Check, Calendar, FileText, DollarSign, Send, MailCheck, FileCheck, Edit, CalendarDays, Package, Building, User, Phone, Mail, MapPin, Download, Copy, Link as LinkIcon } from 'lucide-react';
 import { toast } from 'sonner';
-import { formatCurrency } from '@/lib/utils';
-import { ArrowLeft, FileText, Mail, Printer, RefreshCw, Download, Globe, Copy, Link, Edit } from 'lucide-react';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import PaymentDateDialog from '@/components/invoice/PaymentDateDialog';
+import PageTransition from '@/components/ui-custom/PageTransition';
+import { useAuth } from '@/context/AuthContext';
+import { useCompanyContext } from '@/context/CompanyContext';
+import { format } from 'date-fns';
+import { supabase } from "@/integrations/supabase/client";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import RichTextEditor from '@/components/RichTextEditor';
 import PaymentScheduleTable from '@/components/invoice/PaymentScheduleTable';
-
-const SUPABASE_URL = "https://htjvyzmuqsrjpesdurni.supabase.co";
+import isEqual from 'lodash/isEqual';
 
 const InvoiceView = () => {
-  const { idOrViewLink } = useParams<{ idOrViewLink: string }>();
-  const navigate = useNavigate();
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [client, setClient] = useState<Client | null>(null);
-  const [company, setCompany] = useState<Company | null>(null);
   const [job, setJob] = useState<Job | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [isGeneratingStatic, setIsGeneratingStatic] = useState(false);
-  const [hasStaticVersion, setHasStaticVersion] = useState(false);
-  const [isContractAccepted, setIsContractAccepted] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null);
+  const invoiceRef = useRef<HTMLDivElement>(null);
 
-  const isClientView = idOrViewLink && (!idOrViewLink.includes('-') || idOrViewLink.length < 36);
+  const { isAdmin } = useAuth();
+  const { selectedCompanyId, selectedCompany } = useCompanyContext();
+  const { idOrViewLink } = useParams<{ idOrViewLink: string }>();
+  const location = useLocation();
 
-  useEffect(() => {
-    const checkAdmin = async () => {
-      setIsAdmin(true);
-    };
-    
-    checkAdmin();
+  const isClientView = useMemo(() => 
+    !location.pathname.includes('/admin') && !isAdmin, 
+    [location.pathname, isAdmin]
+  );
+
+  const formatCurrency = useCallback((amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    }).format(amount);
   }, []);
+
+  const [selectedCompanyState, setSelectedCompanyState] = useState<{ 
+    id: string; 
+    name: string; 
+    logo_url?: string;
+    address?: string;
+    email?: string;
+    phone?: string;
+    website?: string;
+    country?: string;
+    currency?: string;
+    is_default: boolean;
+    user_id: string;
+  } | null>(null);
 
   useEffect(() => {
     const fetchInvoice = async () => {
-      setIsLoading(true);
-      
       try {
-        let fetchedInvoice;
-        let viewLink;
+        setLoading(true);
+        let fetchedInvoice: Invoice | null = null;
         
-        if (isClientView) {
-          viewLink = idOrViewLink;
-          const { data, error } = await supabase
-            .from('invoices')
-            .select('*')
-            .eq('view_link', viewLink)
-            .single();
-          
-          if (error) throw error;
-          fetchedInvoice = data;
+        const identifier = idOrViewLink;
+        if (!identifier) {
+          console.log('[InvoiceView] No identifier provided in URL');
+          setError('Invalid URL. Please provide an invoice ID or view link.');
+          return;
+        }
+        
+        console.log('[InvoiceView] Fetching invoice with identifier:', identifier);
+        
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
+        
+        if (isUUID) {
+          console.log('[InvoiceView] Identifier looks like a UUID, using getInvoice');
+          fetchedInvoice = await getInvoice(identifier);
         } else {
-          const { data, error } = await supabase
-            .from('invoices')
-            .select('*')
-            .eq('id', idOrViewLink)
-            .single();
+          console.log('[InvoiceView] Identifier does not look like a UUID, using getInvoiceByViewLink');
+          fetchedInvoice = await getInvoiceByViewLink(identifier);
+        }
+        
+        if (!fetchedInvoice) {
+          const urlPath = location.pathname;
+          const lastPartOfUrl = urlPath.split('/').pop() || '';
           
-          if (error) throw error;
-          fetchedInvoice = data;
-          viewLink = fetchedInvoice.view_link;
+          if (lastPartOfUrl && lastPartOfUrl !== identifier) {
+            console.log('[InvoiceView] Trying alternative identifier from URL path:', lastPartOfUrl);
+            
+            const isLastPartUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(lastPartOfUrl);
+            
+            if (isLastPartUUID) {
+              fetchedInvoice = await getInvoice(lastPartOfUrl);
+            } else {
+              fetchedInvoice = await getInvoiceByViewLink(lastPartOfUrl);
+            }
+          }
         }
         
-        const { data: staticCheck } = await supabase
-          .from('clientview_invoice')
-          .select('id')
-          .eq('invoice_id', fetchedInvoice.id)
-          .maybeSingle();
+        if (!fetchedInvoice) {
+          console.log('[InvoiceView] No invoice found for identifier:', identifier);
+          setError('Invoice not found. Please check the URL or contact support.');
+          return;
+        }
         
-        setHasStaticVersion(!!staticCheck);
-        
-        const mappedInvoice: Invoice = {
+        console.log('[InvoiceView] Fetched invoice with contract terms:', {
           id: fetchedInvoice.id,
-          clientId: fetchedInvoice.client_id,
-          companyId: fetchedInvoice.company_id,
-          jobId: fetchedInvoice.job_id,
-          number: fetchedInvoice.number,
-          amount: fetchedInvoice.amount,
-          date: fetchedInvoice.date,
-          dueDate: fetchedInvoice.due_date,
-          status: fetchedInvoice.status,
-          contractStatus: fetchedInvoice.contract_status,
-          notes: fetchedInvoice.notes,
-          contractTerms: fetchedInvoice.contract_terms,
-          viewLink: fetchedInvoice.view_link,
-          items: [],
-          shootingDate: fetchedInvoice.shooting_date,
-          pdfUrl: fetchedInvoice.pdf_url
-        };
-        
-        setIsContractAccepted(fetchedInvoice.contract_status === 'accepted');
-        
-        const { data: items, error: itemsError } = await supabase
-          .from('invoice_items')
-          .select('*')
-          .eq('invoice_id', fetchedInvoice.id);
-        
-        if (itemsError) throw itemsError;
-        
-        mappedInvoice.items = items.map(item => ({
-          id: item.id,
-          name: item.name,
-          description: item.description,
-          quantity: item.quantity,
-          rate: item.rate,
-          amount: item.amount
-        }));
-        
-        const { data: schedules, error: schedulesError } = await supabase
-          .from('payment_schedules')
-          .select('*')
-          .eq('invoice_id', fetchedInvoice.id)
-          .order('due_date', { ascending: true });
-        
-        if (!schedulesError && schedules && schedules.length > 0) {
-          mappedInvoice.paymentSchedules = schedules.map(schedule => ({
-            id: schedule.id,
-            description: schedule.description || '',
-            dueDate: schedule.due_date,
-            percentage: schedule.percentage,
-            status: schedule.status as PaymentSchedule['status'],
-            paymentDate: schedule.payment_date
-          }));
-        }
-        
-        const { data: clientData, error: clientError } = await supabase
-          .from('clients')
-          .select('*')
-          .eq('id', fetchedInvoice.client_id)
-          .single();
-        
-        if (clientError) throw clientError;
-        
-        setClient({
-          id: clientData.id,
-          name: clientData.name,
-          email: clientData.email,
-          phone: clientData.phone,
-          address: clientData.address,
-          createdAt: clientData.created_at,
-          notes: clientData.notes
+          hasContractTerms: !!fetchedInvoice.contractTerms,
+          contractTermsLength: fetchedInvoice.contractTerms?.length || 0,
+          contractStatus: fetchedInvoice.contractStatus,
+          contractTermsPreview: fetchedInvoice.contractTerms?.substring(0, 100)
         });
         
-        if (fetchedInvoice.company_id) {
-          // Define type-safe handlers for different company data structures
-          const handleCompanyData = (data: any) => {
-            if (isClientView) {
-              // For client view, we're getting data from company_clientview
-              return {
-                id: data.id,
-                name: data.name,
-                email: data.email || '',
-                phone: data.phone || '',
-                address: data.address || '',
-                website: data.website || '',
-                logo_url: data.logo_url || '',
-                is_default: false,
-                user_id: '',
-                created_at: data.created_at || '',
-                updated_at: data.updated_at || '',
-                country: '',
-                currency: ''
-              } as Company;
-            } else {
-              // For admin view, we're getting data directly from companies table
-              return data as Company;
+        if (selectedCompanyId && fetchedInvoice.companyId !== selectedCompanyId && !isClientView) {
+          console.log('[InvoiceView] Invoice company mismatch. Expected:', selectedCompanyId, 'Got:', fetchedInvoice.companyId);
+          toast.error("This invoice belongs to a different company");
+          setError('This invoice belongs to a different company.');
+          return;
+        }
+        
+        setInvoice(fetchedInvoice);
+        
+        if (fetchedInvoice.clientId) {
+          const fetchedClient = await getClient(fetchedInvoice.clientId);
+          if (!fetchedClient) {
+            console.log('[InvoiceView] No client found for clientId:', fetchedInvoice.clientId);
+            setError('Client information not found.');
+            return;
+          }
+          
+          setClient(fetchedClient);
+        }
+
+        if (fetchedInvoice.jobId) {
+          const fetchedJob = await getJob(fetchedInvoice.jobId);
+          if (fetchedJob) {
+            setJob(fetchedJob);
+          }
+        }
+        
+        if (isClientView && fetchedInvoice.companyId) {
+          try {
+            console.log('[InvoiceView] Client view - fetching company info for:', fetchedInvoice.companyId);
+            const { data: companyData, error: companyError } = await supabase
+              .from('companies')
+              .select('*')
+              .eq('id', fetchedInvoice.companyId)
+              .single();
+            
+            if (companyError) {
+              console.error('[InvoiceView] Error fetching company:', companyError);
+            } else if (companyData) {
+              console.log('[InvoiceView] Fetched company data for client view:', companyData);
+              setSelectedCompanyState({
+                id: companyData.id,
+                name: companyData.name,
+                logo_url: companyData.logo_url,
+                address: companyData.address,
+                email: companyData.email,
+                phone: companyData.phone,
+                website: companyData.website,
+                country: companyData.country,
+                currency: companyData.currency,
+                is_default: companyData.is_default,
+                user_id: companyData.user_id
+              });
             }
-          };
-          
-          const table = isClientView ? 'company_clientview' : 'companies';
-          const idField = isClientView ? 'company_id' : 'id';
-          
-          const { data: companyData, error: companyError } = await supabase
-            .from(table)
-            .select('*')
-            .eq(idField, fetchedInvoice.company_id)
-            .single();
-          
-          if (!companyError && companyData) {
-            console.info(`[InvoiceView] Fetched company data from ${table}:`, companyData);
-            setCompany(handleCompanyData(companyData));
+          } catch (err) {
+            console.error('[InvoiceView] Failed to fetch company data:', err);
           }
         }
-        
-        if (fetchedInvoice.job_id) {
-          const { data: jobData, error: jobError } = await supabase
-            .from('jobs')
-            .select('*')
-            .eq('id', fetchedInvoice.job_id)
-            .single();
-          
-          if (!jobError && jobData) {
-            setJob({
-              id: jobData.id,
-              clientId: jobData.client_id,
-              companyId: jobData.company_id,
-              title: jobData.title,
-              description: jobData.description || '',
-              status: jobData.status as "active" | "completed" | "cancelled",
-              date: jobData.date,
-              location: jobData.location,
-              startTime: jobData.start_time,
-              endTime: jobData.end_time,
-              isFullDay: jobData.is_full_day,
-              createdAt: jobData.created_at,
-              updatedAt: jobData.updated_at
-            });
-          }
-        }
-        
-        if (fetchedInvoice.contract_terms) {
-          console.info('[InvoiceView] Fetched invoice with contract terms:', {
-            id: fetchedInvoice.id,
-            hasContractTerms: !!fetchedInvoice.contract_terms,
-            contractTermsLength: fetchedInvoice.contract_terms?.length,
-            contractStatus: fetchedInvoice.contract_status,
-            contractTermsPreview: fetchedInvoice.contract_terms?.substring(0, 100)
-          });
-          
-          console.info('[InvoiceView] Current invoice contract terms:', {
-            hasContractTerms: !!mappedInvoice.contractTerms,
-            contractTermsLength: mappedInvoice.contractTerms?.length,
-            contractStatus: mappedInvoice.contractStatus,
-            contractPreview: mappedInvoice.contractTerms?.substring(0, 100)
-          });
-        }
-        
-        setInvoice(mappedInvoice);
-      } catch (error) {
-        console.error('Error fetching invoice:', error);
-        toast.error('Failed to load invoice data.');
+      } catch (err) {
+        console.error('[InvoiceView] Failed to load invoice:', err);
+        setError('Failed to load invoice. Please try again later.');
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
     
-    if (idOrViewLink) {
-      fetchInvoice();
-    }
-  }, [idOrViewLink, isClientView]);
+    fetchInvoice();
+  }, [idOrViewLink, location.pathname, selectedCompanyId, isClientView]);
 
-  const handleGenerateStaticHTML = async () => {
+  const handlePaymentStatusUpdate = useCallback(async (paymentId: string, newStatus: 'paid' | 'unpaid' | 'write-off') => {
+    if (!invoice || !paymentId) return;
+    
+    setUpdatingPaymentId(paymentId);
+    try {
+      let updatedSchedule;
+      if (newStatus === 'paid') {
+        const today = new Date();
+        const formattedDate = format(today, 'yyyy-MM-dd');
+        updatedSchedule = await updatePaymentScheduleStatus(paymentId, newStatus, formattedDate);
+      } else {
+        updatedSchedule = await updatePaymentScheduleStatus(paymentId, newStatus);
+      }
+      
+      if (!updatedSchedule) {
+        toast.error('Failed to update payment status');
+        return;
+      }
+      
+      if (invoice.paymentSchedules) {
+        const updatedSchedules = invoice.paymentSchedules.map(schedule => 
+          schedule.id === paymentId ? updatedSchedule : schedule
+        );
+        
+        setInvoice(prev => {
+          if (!prev) return prev;
+          if (isEqual(prev.paymentSchedules, updatedSchedules)) {
+            return prev;
+          }
+          return {
+            ...prev,
+            paymentSchedules: updatedSchedules
+          };
+        });
+      }
+    } catch (err) {
+      console.error('Failed to update payment status:', err);
+      toast.error('Error updating payment status');
+    } finally {
+      setUpdatingPaymentId(null);
+    }
+  }, [invoice]);
+
+  const handlePaymentDateUpdate = useCallback(async (paymentId: string, paymentDate: string) => {
+    if (!invoice || !paymentId) return;
+    
+    setUpdatingPaymentId(paymentId);
+    try {
+      const updatedSchedule = await updatePaymentScheduleStatus(
+        paymentId, 
+        'paid',
+        paymentDate
+      );
+      
+      if (!updatedSchedule) {
+        toast.error('Failed to update payment date');
+        return;
+      }
+      
+      if (invoice.paymentSchedules) {
+        const updatedSchedules = invoice.paymentSchedules.map(schedule => 
+          schedule.id === paymentId ? updatedSchedule : schedule
+        );
+        
+        setInvoice(prev => {
+          if (!prev) return prev;
+          if (isEqual(prev.paymentSchedules, updatedSchedules)) {
+            return prev;
+          }
+          return {
+            ...prev,
+            paymentSchedules: updatedSchedules
+          };
+        });
+      }
+    } catch (err) {
+      console.error('Failed to update payment date:', err);
+      toast.error('Error updating payment date');
+    } finally {
+      setUpdatingPaymentId(null);
+    }
+  }, [invoice]);
+
+  const handleCopyInvoiceLink = () => {
     if (!invoice) return;
     
-    setIsGeneratingStatic(true);
+    const baseUrl = window.location.origin;
+    
+    let cleanViewLink = invoice.viewLink;
+    if (cleanViewLink.includes('http') || cleanViewLink.includes('/invoice/')) {
+      const parts = cleanViewLink.split('/');
+      cleanViewLink = parts[parts.length - 1];
+    }
+    
+    const cleanUrl = `${baseUrl}/invoice/${cleanViewLink}`;
+    
+    console.log('Copying invoice link:', cleanUrl);
+    
+    navigator.clipboard.writeText(cleanUrl)
+      .then(() => {
+        toast.success('Invoice link copied to clipboard');
+      })
+      .catch((err) => {
+        console.error('Failed to copy invoice link:', err);
+        toast.error('Failed to copy link to clipboard');
+      });
+  };
+
+  const handleDownloadInvoice = async () => {
+    if (!invoice) return;
+    
+    if (invoice.pdfUrl) {
+      window.open(invoice.pdfUrl, '_blank');
+      return;
+    }
     
     try {
-      const { data, error } = await supabase.functions.invoke('generate-static-invoice', {
+      toast.info('Preparing PDF for download...');
+      
+      const { data, error } = await supabase.functions.invoke('generate-invoice-pdf', {
         body: { invoiceId: invoice.id }
       });
       
-      if (error) throw error;
-      
-      if (data.success) {
-        toast.success('Static HTML version of invoice generated successfully');
-        setHasStaticVersion(true);
-      } else {
-        throw new Error(data.message || 'Unknown error');
+      if (error) {
+        console.error('Error generating PDF:', error);
+        toast.error('Failed to generate invoice PDF');
+        return;
       }
-    } catch (error) {
-      console.error('Error generating static invoice:', error);
-      toast.error('Failed to generate static HTML version of invoice');
-    } finally {
-      setIsGeneratingStatic(false);
+      
+      if (data?.pdfUrl) {
+        setInvoice(prev => prev ? { ...prev, pdfUrl: data.pdfUrl } : null);
+        
+        window.open(data.pdfUrl, '_blank');
+        toast.success('Invoice downloaded successfully');
+      }
+    } catch (err) {
+      console.error('Error downloading invoice:', err);
+      toast.error('Failed to download invoice');
     }
   };
 
-  const handleViewStaticHTML = () => {
+  const handleAcceptInvoice = async () => {
     if (!invoice) return;
     
-    window.open(`${SUPABASE_URL}/functions/v1/serve-static-invoice/${invoice.viewLink}`, '_blank');
+    try {
+      await updateInvoiceStatus(invoice.id, 'accepted');
+      toast.success('Invoice accepted successfully');
+      setInvoice(prev => prev ? { ...prev, status: 'accepted' } : null);
+    } catch (err) {
+      console.error('Failed to accept invoice:', err);
+      toast.error('Error accepting invoice');
+    }
   };
 
   const handleAcceptContract = async () => {
     if (!invoice) return;
     
     try {
-      const { error } = await supabase
-        .from('invoices')
-        .update({ contract_status: 'accepted' })
-        .eq('id', invoice.id);
-      
-      if (error) throw error;
-      
-      setIsContractAccepted(true);
+      await updateContractStatus(invoice.id, 'accepted');
+      toast.success('Contract terms accepted successfully');
       setInvoice(prev => prev ? { ...prev, contractStatus: 'accepted' } : null);
-      toast.success('Contract accepted successfully');
-      
-      handleGenerateStaticHTML();
-    } catch (error) {
-      console.error('Error accepting contract:', error);
-      toast.error('Failed to accept contract');
+    } catch (err) {
+      console.error('Failed to accept contract:', err);
+      toast.error('Error accepting contract terms');
     }
   };
 
-  const handleMarkAsPaid = async (scheduleId: string, paymentDate: string) => {
-    if (!invoice) return;
-    
-    try {
-      const { error: updateError } = await supabase
-        .from('payment_schedules')
-        .update({ 
-          status: 'paid',
-          payment_date: paymentDate
-        })
-        .eq('id', scheduleId);
-      
-      if (updateError) throw updateError;
-      
-      setInvoice(prev => {
-        if (!prev || !prev.paymentSchedules) return prev;
-        
-        const updatedSchedules = prev.paymentSchedules.map(schedule => 
-          schedule.id === scheduleId 
-            ? { ...schedule, status: 'paid' as PaymentSchedule['status'], paymentDate } 
-            : schedule
-        );
-        
-        return { ...prev, paymentSchedules: updatedSchedules };
+  const displayCompany = isClientView ? selectedCompanyState : selectedCompany;
+
+  useEffect(() => {
+    if (invoice) {
+      console.log('[InvoiceView] Current invoice contract terms:', {
+        hasContractTerms: !!invoice.contractTerms,
+        contractTermsLength: invoice.contractTerms?.length || 0,
+        contractStatus: invoice.contractStatus,
+        contractPreview: invoice.contractTerms?.substring(0, 100)
       });
-      
-      const { data: schedules, error: schedulesError } = await supabase
-        .from('payment_schedules')
-        .select('status')
-        .eq('invoice_id', invoice.id);
-      
-      if (schedulesError) throw schedulesError;
-      
-      const allPaid = schedules.every(s => s.status === 'paid');
-      
-      if (allPaid) {
-        const { error: invoiceUpdateError } = await supabase
-          .from('invoices')
-          .update({ status: 'paid' })
-          .eq('id', invoice.id);
-        
-        if (invoiceUpdateError) throw invoiceUpdateError;
-        
-        setInvoice(prev => prev ? { ...prev, status: 'paid' } : null);
-        toast.success('All payments received. Invoice marked as paid.');
-      } else {
-        toast.success('Payment recorded successfully.');
-      }
-      
-      handleGenerateStaticHTML();
-    } catch (error) {
-      console.error('Error marking payment as paid:', error);
-      toast.error('Failed to update payment status.');
     }
-  };
+  }, [invoice]);
 
-  const handleCopyClientLink = () => {
-    if (!invoice) return;
-    
-    const clientViewUrl = `${window.location.origin}/invoice/${invoice.viewLink}`;
-    navigator.clipboard.writeText(clientViewUrl)
-      .then(() => toast.success('Client view link copied to clipboard!'))
-      .catch(() => toast.error('Failed to copy link'));
-  };
-
-  const handleEditInvoice = () => {
-    if (!invoice) return;
-    navigate(`/invoice/${invoice.id}/edit`);
-  };
-
-  const getStatusBadgeClass = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'draft':
-        return 'bg-gray-100 text-gray-800';
-      case 'sent':
-        return 'bg-blue-100 text-blue-800';
-      case 'accepted':
-        return 'bg-green-100 text-green-800';
-      case 'paid':
-        return 'bg-purple-100 text-purple-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getContractStatusBadgeClass = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'accepted':
-        return 'bg-green-100 text-green-800';
-      case 'pending':
-      default:
-        return 'bg-yellow-100 text-yellow-800';
-    }
-  };
-
-  const renderHtmlContent = (htmlContent: string) => {
-    return { __html: htmlContent };
-  };
-
-  if (isLoading) {
+  if (loading) {
     return (
-      <div className="container mx-auto py-8 px-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center p-8">Loading invoice...</div>
-          </CardContent>
-        </Card>
-      </div>
+      <PageTransition>
+        <div className="flex justify-center items-center h-screen">
+          Loading invoice...
+        </div>
+      </PageTransition>
+    );
+  }
+
+  if (error) {
+    return (
+      <PageTransition>
+        <div className="flex justify-center items-center h-screen">
+          Error: {error}
+        </div>
+      </PageTransition>
     );
   }
 
   if (!invoice || !client) {
     return (
-      <div className="container mx-auto py-8 px-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center p-8">Invoice not found.</div>
-          </CardContent>
-        </Card>
-      </div>
+      <PageTransition>
+        <div className="flex justify-center items-center h-screen">
+          Invoice or client not found.
+        </div>
+      </PageTransition>
     );
   }
 
+  const statusColors = {
+    draft: 'bg-muted text-muted-foreground',
+    sent: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+    accepted: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+    paid: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+  };
+
+  const contractStatusColor = invoice.contractStatus === 'accepted' 
+    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+    : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+
   return (
-    <div className="container mx-auto py-8 px-4">
-      <Card className="shadow-md">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <div>
-            <CardTitle className="text-2xl font-bold">Invoice #{invoice.number}</CardTitle>
-            <CardDescription>
-              Issued on {new Date(invoice.date).toLocaleDateString()}
-            </CardDescription>
+    <PageTransition>
+      <div className="container-fluid px-4 py-8 max-w-[95%] mx-auto">
+        {!isClientView && (
+          <div className="flex gap-2 mb-4">
+            <Button asChild variant="ghost">
+              <Link to="/">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Dashboard
+              </Link>
+            </Button>
+            
+            {invoice?.jobId && (
+              <Button asChild variant="ghost">
+                <Link to={`/job/${invoice.jobId}`}>
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Job
+                </Link>
+              </Button>
+            )}
+            
+            {invoice?.clientId && (
+              <Button asChild variant="ghost">
+                <Link to={`/client/${invoice.clientId}`}>
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Client
+                </Link>
+              </Button>
+            )}
           </div>
-          <div className="flex space-x-2">
-            {isAdmin && (
-              <>
-                <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back
+        )}
+        
+        {isClientView && (
+          <div className="text-center mb-6">
+            <h1 className="text-2xl font-bold mb-2">Invoice #{invoice.number}</h1>
+            <p className="text-muted-foreground">
+              Please review and accept this invoice and contract terms.
+            </p>
+          </div>
+        )}
+        
+        <Card className="w-full mx-auto bg-white dark:bg-gray-900 shadow-sm" ref={invoiceRef}>
+          <CardHeader className="pb-0">
+            {!isClientView && (
+              <div className="flex justify-end mb-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    if (invoice.jobId) {
+                      window.location.href = `/job/${invoice.jobId}/invoice/${invoice.id}/edit`;
+                    } else {
+                      window.location.href = `/client/${client.id}/invoice/${invoice.id}/edit`;
+                    }
+                  }}
+                  className="flex items-center gap-1"
+                >
+                  <Edit className="h-3 w-3" />
+                  Edit Invoice
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => window.print()}>
-                  <Printer className="mr-2 h-4 w-4" />
-                  Print
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleCopyClientLink}>
-                  <Link className="mr-2 h-4 w-4" />
-                  Copy Link
-                </Button>
-                {invoice.pdfUrl && (
-                  <Button variant="outline" size="sm" asChild>
-                    <a href={invoice.pdfUrl} target="_blank" rel="noopener noreferrer">
-                      <Download className="mr-2 h-4 w-4" />
-                      Download PDF
-                    </a>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-4">
+              <div className="flex flex-col justify-between">
+                <div className="flex items-start mb-6 h-80">
+                  {displayCompany?.logo_url ? (
+                    <img 
+                      src={displayCompany.logo_url} 
+                      alt={`${displayCompany.name} Logo`}
+                      className="h-full max-h-80 w-auto object-contain" 
+                    />
+                  ) : (
+                    <div className="h-24 w-24 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center text-gray-400">
+                      <Building className="h-14 w-14" />
+                    </div>
+                  )}
+                </div>
+                
+                <div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400">INVOICE</div>
+                  <div className="text-2xl font-bold"># {invoice.number}</div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">INVOICE ISSUE DATE</div>
+                  <div className="text-sm">{new Date(invoice.date).toLocaleDateString()}</div>
+                  <div className="mt-1 flex items-center">
+                    <Badge className={statusColors[invoice.status] || 'bg-gray-100 text-gray-800'}>
+                      {invoice.status.toUpperCase()}
+                    </Badge>
+                    {invoice.contractStatus === 'accepted' && (
+                      <Badge variant="outline" className={`ml-2 flex items-center gap-1 ${contractStatusColor}`}>
+                        <FileCheck className="h-3 w-3" />
+                        Contract Accepted
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">FROM</h4>
+                  <div className="font-medium">{displayCompany?.name || 'Company'}</div>
+                  {displayCompany?.email && <div className="text-sm">{displayCompany.email}</div>}
+                  {displayCompany?.phone && <div className="text-sm">{displayCompany.phone}</div>}
+                  {displayCompany?.address && <div className="text-sm">{displayCompany.address}</div>}
+                </div>
+                
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">INVOICE FOR</h4>
+                  {job && <div className="font-medium">{job.title}</div>}
+                  <div className="text-sm font-medium mt-1">Client: {client.name}</div>
+                  <div className="text-sm grid grid-cols-1 gap-1 mt-1">
+                    {client.email && (
+                      <div className="flex items-center text-gray-600 dark:text-gray-400">
+                        <Mail className="h-3 w-3 mr-1" />
+                        {client.email}
+                      </div>
+                    )}
+                    {client.phone && (
+                      <div className="flex items-center text-gray-600 dark:text-gray-400">
+                        <Phone className="h-3 w-3 mr-1" />
+                        {client.phone}
+                      </div>
+                    )}
+                    {client.address && (
+                      <div className="flex items-center text-gray-600 dark:text-gray-400">
+                        <MapPin className="h-3 w-3 mr-1" />
+                        {client.address}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-4">
+                  {job?.date && (
+                    <div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">JOB DATE</div>
+                      <div className="text-sm">{job.date}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            <Separator className="mt-6" />
+          </CardHeader>
+          
+          <CardContent className="pt-6">
+            <Tabs defaultValue="invoice" className="w-full">
+              <TabsList className="w-full">
+                <TabsTrigger value="invoice" className="flex-1">
+                  Invoice Details
+                  {invoice.status === 'accepted' && (
+                    <span className="ml-2">
+                      <FileCheck className="h-3 w-3 inline text-green-600" />
+                    </span>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="contract" className="flex-1">
+                  Contract Terms
+                  {invoice.contractStatus === 'accepted' && (
+                    <span className="ml-2">
+                      <FileCheck className="h-3 w-3 inline text-green-600" />
+                    </span>
+                  )}
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="invoice" className="mt-6">
+                {isClientView && ['draft', 'sent'].includes(invoice.status) && (
+                  <Button onClick={handleAcceptInvoice} className="mb-4">
+                    <Check className="h-4 w-4 mr-2" />
+                    Accept Invoice
                   </Button>
                 )}
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={handleEditInvoice}
-                >
-                  <Edit className="mr-2 h-4 w-4" />
-                  Edit
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={handleGenerateStaticHTML}
-                  disabled={isGeneratingStatic}
-                >
-                  {isGeneratingStatic ? (
-                    <>
-                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                      Generating...
-                    </>
+                
+                {invoice.status === 'accepted' && (
+                  <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-md flex items-center gap-2">
+                    <FileCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    <span className="text-green-800 dark:text-green-400">
+                      This invoice has been accepted
+                    </span>
+                  </div>
+                )}
+                
+                <div className="mb-6">
+                  <div className="flex items-center mb-3">
+                    <Package className="h-5 w-5 mr-2" />
+                    <h4 className="text-lg font-semibold">Products / Packages</h4>
+                  </div>
+                  
+                  <div className="border rounded-md p-4 bg-gray-50 dark:bg-gray-900/50">
+                    <div className="hidden md:flex justify-between mb-3 text-sm font-medium text-muted-foreground border-b pb-2">
+                      <div className="flex-1">
+                        <div className="mb-1">Package Name</div>
+                      </div>
+                      <div className="flex-1 pr-4">Description</div>
+                      <div className="flex items-center space-x-6 min-w-[260px] justify-end">
+                        <div className="text-right w-16">Quantity</div>
+                        <div className="text-right w-24">Unit Price</div>
+                        <div className="text-right w-24">Amount</div>
+                      </div>
+                    </div>
+                    
+                    {invoice.items && invoice.items.length > 0 ? (
+                      invoice.items.map((item) => (
+                        <div key={item.id} className="mb-4 pb-4 border-b last:mb-0 last:pb-0 last:border-b-0">
+                          <div className="md:flex md:justify-between md:items-start">
+                            <div className="md:flex-1">
+                              <h5 className="font-medium">{item.name || 'Unnamed Package'}</h5>
+                            </div>
+                            <div className="md:flex-1 md:pr-4">
+                              {item.description && (
+                                <div className="mt-2 text-sm" dangerouslySetInnerHTML={{ __html: item.description }} />
+                              )}
+                            </div>
+                            <div className="mt-2 md:mt-0 flex flex-col md:flex-row md:items-center md:space-x-6 md:min-w-[260px] md:justify-end">
+                              <div className="text-sm text-muted-foreground md:text-right w-16">
+                                <span className="md:hidden">Quantity: </span>
+                                <span>{item.quantity}</span>
+                              </div>
+                              <div className="text-sm text-muted-foreground md:text-right w-24">
+                                <span className="md:hidden">Unit Price: </span>
+                                <span>{formatCurrency(item.rate)}</span>
+                              </div>
+                              <div className="font-medium md:text-right w-24">
+                                <span className="md:hidden">Total: </span>
+                                <span>{formatCurrency(item.amount)}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-muted-foreground">No items in this invoice.</p>
+                    )}
+                    
+                    <div className="mt-4 pt-4 border-t">
+                      <div className="flex justify-between font-medium">
+                        <span>Total</span>
+                        <span>{formatCurrency(invoice.amount)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <h4 className="text-lg font-semibold mb-2">Notes</h4>
+                  <div className="border rounded-md">
+                    <RichTextEditor
+                      value={invoice.notes || 'No notes provided.'}
+                      onChange={() => {}}
+                      readOnly={true}
+                    />
+                  </div>
+                </div>
+                
+                <Separator className="my-6" />
+                
+                <div className="mt-6">
+                  <div className="flex items-center mb-3">
+                    <CalendarDays className="h-5 w-5 mr-2" />
+                    <h4 className="text-lg font-semibold">Payment Schedule</h4>
+                  </div>
+                  
+                  {Array.isArray(invoice.paymentSchedules) && invoice.paymentSchedules.length > 0 ? (
+                    <PaymentScheduleTable
+                      paymentSchedules={invoice.paymentSchedules}
+                      amount={invoice.amount}
+                      isClientView={isClientView}
+                      updatingPaymentId={updatingPaymentId}
+                      onUpdateStatus={handlePaymentStatusUpdate}
+                      formatCurrency={formatCurrency}
+                      onUpdatePaymentDate={handlePaymentDateUpdate}
+                    />
                   ) : (
-                    <>
-                      <FileText className="mr-2 h-4 w-4" />
-                      {hasStaticVersion ? 'Regenerate Static HTML' : 'Generate Static HTML'}
-                    </>
+                    <div className="text-muted-foreground border rounded-md p-4 bg-gray-50 dark:bg-gray-900/50">
+                      Full payment of {formatCurrency(invoice.amount)} due on {new Date(invoice.dueDate).toLocaleDateString()}
+                    </div>
                   )}
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="contract" className="mt-6">
+                {isClientView && invoice.contractStatus !== 'accepted' && (
+                  <Button onClick={handleAcceptContract} className="mb-4">
+                    <Check className="h-4 w-4 mr-2" />
+                    Accept Contract Terms
+                  </Button>
+                )}
+                  
+                {invoice.contractStatus === 'accepted' && (
+                  <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-md flex items-center gap-2">
+                    <FileCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    <span className="text-green-800 dark:text-green-400">
+                      This contract has been accepted
+                    </span>
+                  </div>
+                )}
+                  
+                <div className="flex items-center mb-3">
+                  <FileText className="h-5 w-5 mr-2" />
+                  <h4 className="text-lg font-semibold">Contract Terms</h4>
+                </div>
+                <div className="border rounded-md">
+                  {invoice.contractTerms ? (
+                    <RichTextEditor
+                      value={invoice.contractTerms}
+                      onChange={() => {}}
+                      readOnly={true}
+                    />
+                  ) : (
+                    <div className="p-4 text-muted-foreground">
+                      No contract terms provided.
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+          
+          <CardFooter className="justify-end gap-2 flex-wrap pt-4 border-t">
+            {!isClientView && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={handleCopyInvoiceLink}
+                >
+                  <LinkIcon className="h-4 w-4 mr-2" />
+                  Copy Invoice Link
+                </Button>
+                <Button
+                  variant="default"
+                  onClick={handleDownloadInvoice}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download Invoice
                 </Button>
               </>
             )}
-          </div>
-        </CardHeader>
-        
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div>
-              <h3 className="text-sm font-medium text-gray-500 mb-1">STATUS</h3>
-              <div className="flex flex-wrap gap-2">
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(invoice.status)}`}>
-                  {invoice.status.toUpperCase()}
-                </span>
-                {invoice.contractStatus && (
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getContractStatusBadgeClass(invoice.contractStatus)}`}>
-                    CONTRACT {invoice.contractStatus.toUpperCase()}
-                  </span>
-                )}
-              </div>
-              
-              <h3 className="text-sm font-medium text-gray-500 mt-4 mb-1">FROM</h3>
-              <div className="text-sm">
-                {company?.logo_url && (
-                  <div className="mb-2">
-                    <img 
-                      src={company.logo_url} 
-                      alt={`${company.name} logo`} 
-                      className="max-h-16 object-contain"
-                    />
-                  </div>
-                )}
-                <div className="font-medium">{company?.name || 'Your Company'}</div>
-                {company?.email && <div>{company.email}</div>}
-                {company?.phone && <div>{company.phone}</div>}
-                {company?.address && <div>{company.address}</div>}
-              </div>
-            </div>
-            
-            <div>
-              <h3 className="text-sm font-medium text-gray-500 mb-1">INVOICE FOR</h3>
-              <div className="text-sm">
-                <div className="font-medium">{client.name}</div>
-                {client.email && <div>{client.email}</div>}
-                {client.phone && <div>{client.phone}</div>}
-                {client.address && <div>{client.address}</div>}
-              </div>
-              
-              {job && (
-                <>
-                  <h3 className="text-sm font-medium text-gray-500 mt-4 mb-1">JOB</h3>
-                  <div className="text-sm">
-                    <div className="font-medium">{job.title}</div>
-                    {job.date && <div>Date: {new Date(job.date).toLocaleDateString()}</div>}
-                    {job.location && <div>Location: {job.location}</div>}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-          
-          <Separator className="my-6" />
-          
-          <div className="mb-6">
-            <h3 className="text-lg font-medium mb-4">Invoice Items</h3>
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-2 px-4">Item</th>
-                    <th className="text-left py-2 px-4">Description</th>
-                    <th className="text-right py-2 px-4">Quantity</th>
-                    <th className="text-right py-2 px-4">Rate</th>
-                    <th className="text-right py-2 px-4">Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {invoice.items.map((item) => (
-                    <tr key={item.id} className="border-b">
-                      <td className="py-2 px-4">{item.name || item.productName || 'Unnamed Item'}</td>
-                      <td className="py-2 px-4" dangerouslySetInnerHTML={renderHtmlContent(item.description)}></td>
-                      <td className="py-2 px-4 text-right">{item.quantity}</td>
-                      <td className="py-2 px-4 text-right">{formatCurrency(item.rate)}</td>
-                      <td className="py-2 px-4 text-right">{formatCurrency(item.amount)}</td>
-                    </tr>
-                  ))}
-                  <tr className="font-medium">
-                    <td colSpan={4} className="py-2 px-4 text-right">Total:</td>
-                    <td className="py-2 px-4 text-right">{formatCurrency(invoice.amount)}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-          
-          {invoice.paymentSchedules && invoice.paymentSchedules.length > 0 && (
-            <div className="mb-6">
-              <h3 className="text-lg font-medium mb-4">Payment Schedule</h3>
-              <PaymentScheduleTable 
-                schedules={invoice.paymentSchedules} 
-                totalAmount={invoice.amount}
-                onMarkAsPaid={isAdmin ? handleMarkAsPaid : undefined}
-              />
-            </div>
-          )}
-          
-          {invoice.notes && (
-            <div className="mb-6">
-              <h3 className="text-lg font-medium mb-2">Notes</h3>
-              <div className="bg-gray-50 p-4 rounded-md whitespace-pre-wrap">
-                {invoice.notes}
-              </div>
-            </div>
-          )}
-          
-          {invoice.contractTerms && (
-            <div className="mb-6">
-              <h3 className="text-lg font-medium mb-2">Contract Terms</h3>
-              <div className="bg-gray-50 p-4 rounded-md whitespace-pre-wrap" 
-                   dangerouslySetInnerHTML={renderHtmlContent(invoice.contractTerms)}>
-              </div>
-            </div>
-          )}
-        </CardContent>
-        
-        {isClientView && invoice.contractTerms && !isContractAccepted && (
-          <CardFooter className="flex flex-col items-start pt-6 mt-4 border-t">
-            <h3 className="text-lg font-semibold mb-2">Contract Acceptance</h3>
-            <p className="mb-4">Please review the contract terms above and accept if you agree.</p>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button>Accept Contract</Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Accept Contract</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    By accepting this contract, you agree to all the terms and conditions outlined above.
-                    This acceptance is legally binding.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleAcceptContract}>Accept</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
           </CardFooter>
-        )}
-        
-        {isClientView && invoice.contractTerms && isContractAccepted && (
-          <CardFooter className="flex flex-col items-start pt-6 mt-4 border-t">
-            <div className="flex items-center text-green-600">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              <p>Contract accepted</p>
-            </div>
-          </CardFooter>
-        )}
-      </Card>
-    </div>
+        </Card>
+      </div>
+    </PageTransition>
   );
 };
 

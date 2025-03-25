@@ -1,3 +1,4 @@
+
 export interface Client {
   id: string;
   name: string;
@@ -96,19 +97,6 @@ export interface InvoiceItem {
   amount: number;
   discount?: string;
   tax?: string;
-}
-
-export interface CompanyClientView {
-  id: string;
-  company_id: string;
-  name: string;
-  email: string | null;
-  phone: string | null;
-  address: string | null;
-  website: string | null;
-  logo_url: string | null;
-  created_at: string;
-  updated_at: string;
 }
 
 export const STORAGE_KEYS = {

@@ -13,34 +13,37 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 interface PaymentScheduleTableProps {
-  schedules: PaymentSchedule[];
-  totalAmount: number;
-  onMarkAsPaid?: (scheduleId: string, paymentDate: string) => void;
+  paymentSchedules: PaymentSchedule[];
+  amount: number;
+  isClientView: boolean;
+  updatingPaymentId: string | null;
+  onUpdateStatus: (paymentId: string, status: 'paid' | 'unpaid' | 'write-off') => void;
+  formatCurrency: (amount: number) => string;
+  onUpdatePaymentDate?: (paymentId: string, paymentDate: string) => void;
 }
 
-const PaymentScheduleTable = ({ schedules, totalAmount, onMarkAsPaid }: PaymentScheduleTableProps) => {
-  const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null);
-  const [editingDateId, setEditingDateId] = useState<string | null>(null);
-  const isClientView = !onMarkAsPaid;
-
+const PaymentScheduleTable = memo(({
+  paymentSchedules,
+  amount,
+  isClientView,
+  updatingPaymentId,
+  onUpdateStatus,
+  formatCurrency,
+  onUpdatePaymentDate
+}: PaymentScheduleTableProps) => {
   const paymentStatusColors: { [key: string]: string } = {
     paid: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
     unpaid: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
     'write-off': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
-  };
+  const [editingDateId, setEditingDateId] = useState<string | null>(null);
 
   const handleDateSelect = (paymentId: string, date: Date | undefined) => {
-    if (!date || !onMarkAsPaid) return;
+    if (!date || !onUpdatePaymentDate) return;
 
     const formattedDate = format(date, 'yyyy-MM-dd');
-    onMarkAsPaid(paymentId, formattedDate);
+    onUpdatePaymentDate(paymentId, formattedDate);
     
     // Format the date for display in the toast notification
     const displayDate = format(date, 'dd-MMM-yyyy');
@@ -50,21 +53,6 @@ const PaymentScheduleTable = ({ schedules, totalAmount, onMarkAsPaid }: PaymentS
     });
     
     setEditingDateId(null);
-  };
-
-  const onUpdateStatus = (paymentId: string, status: PaymentSchedule['status']) => {
-    if (!onMarkAsPaid) return;
-    
-    setUpdatingPaymentId(paymentId);
-    
-    if (status === 'paid') {
-      // Use today's date
-      const today = new Date();
-      const formattedDate = format(today, 'yyyy-MM-dd');
-      onMarkAsPaid(paymentId, formattedDate);
-    }
-    
-    setUpdatingPaymentId(null);
   };
 
   return (
@@ -82,7 +70,7 @@ const PaymentScheduleTable = ({ schedules, totalAmount, onMarkAsPaid }: PaymentS
           </TableRow>
         </TableHeader>
         <TableBody>
-          {schedules.map((schedule) => (
+          {paymentSchedules.map((schedule) => (
             <TableRow key={schedule.id}>
               <TableCell>{schedule.description}</TableCell>
               <TableCell>
@@ -92,7 +80,7 @@ const PaymentScheduleTable = ({ schedules, totalAmount, onMarkAsPaid }: PaymentS
                 {schedule.percentage}%
               </TableCell>
               <TableCell className="text-right font-medium">
-                {formatCurrency((totalAmount * schedule.percentage) / 100)}
+                {formatCurrency((amount * schedule.percentage) / 100)}
               </TableCell>
               <TableCell>
                 <Badge className={paymentStatusColors[schedule.status] || paymentStatusColors.unpaid}>
@@ -187,6 +175,8 @@ const PaymentScheduleTable = ({ schedules, totalAmount, onMarkAsPaid }: PaymentS
       </Table>
     </div>
   );
-};
+});
+
+PaymentScheduleTable.displayName = 'PaymentScheduleTable';
 
 export default PaymentScheduleTable;

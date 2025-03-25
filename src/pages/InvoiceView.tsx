@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -148,29 +149,54 @@ const InvoiceView = () => {
         });
         
         if (fetchedInvoice.company_id) {
+          // Use the appropriate table based on whether we're in client view or admin view
+          const table = isClientView ? 'company_clientview' : 'companies';
+          const idField = isClientView ? 'company_id' : 'id';
+          
           const { data: companyData, error: companyError } = await supabase
-            .from('companies')
+            .from(table)
             .select('*')
-            .eq('id', fetchedInvoice.company_id)
+            .eq(idField, fetchedInvoice.company_id)
             .single();
           
           if (!companyError && companyData) {
-            console.info('[InvoiceView] Fetched company data for client view:', companyData);
-            setCompany({
-              id: companyData.id,
-              name: companyData.name,
-              email: companyData.email,
-              phone: companyData.phone,
-              address: companyData.address,
-              website: companyData.website,
-              logo_url: companyData.logo_url,
-              is_default: companyData.is_default || false,
-              user_id: companyData.user_id || '',
-              created_at: companyData.created_at || '',
-              updated_at: companyData.updated_at || '',
-              country: companyData.country,
-              currency: companyData.currency
-            } as Company);
+            console.info(`[InvoiceView] Fetched company data from ${table}:`, companyData);
+            
+            // If we're using company_clientview, it doesn't have all the fields that the Company type expects
+            // So we need to create a complete Company object with defaults for missing fields
+            if (isClientView) {
+              setCompany({
+                id: companyData.id,
+                name: companyData.name,
+                email: companyData.email || '',
+                phone: companyData.phone || '',
+                address: companyData.address || '',
+                website: companyData.website || '',
+                logo_url: companyData.logo_url || '',
+                is_default: false,
+                user_id: '',
+                created_at: companyData.created_at || '',
+                updated_at: companyData.updated_at || '',
+                country: '',
+                currency: ''
+              } as Company);
+            } else {
+              setCompany({
+                id: companyData.id,
+                name: companyData.name,
+                email: companyData.email,
+                phone: companyData.phone,
+                address: companyData.address,
+                website: companyData.website,
+                logo_url: companyData.logo_url,
+                is_default: companyData.is_default || false,
+                user_id: companyData.user_id || '',
+                created_at: companyData.created_at || '',
+                updated_at: companyData.updated_at || '',
+                country: companyData.country,
+                currency: companyData.currency
+              } as Company);
+            }
           }
         }
         

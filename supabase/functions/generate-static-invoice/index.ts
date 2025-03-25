@@ -89,21 +89,23 @@ serve(async (req) => {
       });
     }
     
-    // Fetch company data
+    // Fetch company data from the publicly accessible company_clientview table
     let company = null;
     if (invoice.company_id) {
       const { data: companyData, error: companyError } = await supabase
-        .from('companies')
+        .from('company_clientview')  // Use the new table
         .select('*')
-        .eq('id', invoice.company_id)
+        .eq('company_id', invoice.company_id)  // Note the changed column name
         .maybeSingle();
       
       if (companyError) {
-        console.error(`Error fetching company: ${JSON.stringify(companyError)}`);
+        console.error(`Error fetching company from clientview: ${JSON.stringify(companyError)}`);
         // Log but continue without company data
       } else if (companyData) {
         company = companyData;
-        console.log(`Successfully fetched company data: ${company.name}, Logo URL: ${company.logo_url || 'No logo'}`);
+        console.log(`Successfully fetched company data from clientview: ${company.name}, Logo URL: ${company.logo_url || 'No logo'}`);
+      } else {
+        console.log(`No company found in clientview for company_id: ${invoice.company_id}`);
       }
     }
     

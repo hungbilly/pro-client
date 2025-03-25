@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Invoice, InvoiceItem, PaymentSchedule, Client, Company, Job } from '@/types';
+import { Invoice, InvoiceItem, PaymentSchedule, Client, Company, Job, CompanyClientView } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -14,20 +13,6 @@ import PaymentDateDialog from '@/components/invoice/PaymentDateDialog';
 import PaymentScheduleTable from '@/components/invoice/PaymentScheduleTable';
 
 const SUPABASE_URL = "https://htjvyzmuqsrjpesdurni.supabase.co";
-
-// Define an interface for the company_clientview table structure
-interface CompanyClientView {
-  id: string;
-  company_id: string;
-  name: string;
-  email: string | null;
-  phone: string | null;
-  address: string | null;
-  website: string | null;
-  logo_url: string | null;
-  created_at: string;
-  updated_at: string;
-}
 
 const InvoiceView = () => {
   const { idOrViewLink } = useParams<{ idOrViewLink: string }>();
@@ -163,7 +148,6 @@ const InvoiceView = () => {
         });
         
         if (fetchedInvoice.company_id) {
-          // Use the appropriate table based on whether we're in client view or admin view
           const table = isClientView ? 'company_clientview' : 'companies';
           const idField = isClientView ? 'company_id' : 'id';
           
@@ -176,7 +160,6 @@ const InvoiceView = () => {
           if (!companyError && companyData) {
             console.info(`[InvoiceView] Fetched company data from ${table}:`, companyData);
             
-            // If we're using company_clientview, it has a different structure
             if (isClientView) {
               const clientViewData = companyData as CompanyClientView;
               setCompany({
@@ -195,7 +178,6 @@ const InvoiceView = () => {
                 currency: ''
               });
             } else {
-              // Regular companies table
               setCompany(companyData as Company);
             }
           }

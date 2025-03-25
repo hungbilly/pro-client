@@ -18,6 +18,7 @@ serve(async (req) => {
     const { invoiceId } = await req.json();
     
     if (!invoiceId) {
+      console.error("No invoice ID provided");
       return new Response(JSON.stringify({ error: 'Invoice ID is required' }), { 
         status: 400, 
         headers: corsHeaders 
@@ -49,8 +50,16 @@ serve(async (req) => {
       .eq('id', invoiceId)
       .single();
     
-    if (invoiceError || !invoice) {
-      console.error(`Error fetching invoice:`, invoiceError);
+    if (invoiceError) {
+      console.error(`Error fetching invoice: ${JSON.stringify(invoiceError)}`);
+      return new Response(JSON.stringify({ error: 'Invoice not found', details: invoiceError }), { 
+        status: 404, 
+        headers: corsHeaders 
+      });
+    }
+    
+    if (!invoice) {
+      console.error(`No invoice found with ID: ${invoiceId}`);
       return new Response(JSON.stringify({ error: 'Invoice not found' }), { 
         status: 404, 
         headers: corsHeaders 
@@ -62,10 +71,18 @@ serve(async (req) => {
       .from('clients')
       .select('*')
       .eq('id', invoice.client_id)
-      .single();
+      .maybeSingle();
     
-    if (clientError || !client) {
-      console.error(`Error fetching client:`, clientError);
+    if (clientError) {
+      console.error(`Error fetching client: ${JSON.stringify(clientError)}`);
+      return new Response(JSON.stringify({ error: 'Client not found', details: clientError }), { 
+        status: 404, 
+        headers: corsHeaders 
+      });
+    }
+    
+    if (!client) {
+      console.error(`No client found with ID: ${invoice.client_id}`);
       return new Response(JSON.stringify({ error: 'Client not found' }), { 
         status: 404, 
         headers: corsHeaders 
@@ -77,10 +94,10 @@ serve(async (req) => {
       .from('companies')
       .select('*')
       .eq('id', invoice.company_id)
-      .single();
+      .maybeSingle();
     
     if (companyError) {
-      console.error(`Error fetching company:`, companyError);
+      console.error(`Error fetching company: ${JSON.stringify(companyError)}`);
       // Continue without company data
     }
     
@@ -91,13 +108,13 @@ serve(async (req) => {
         .from('jobs')
         .select('*')
         .eq('id', invoice.job_id)
-        .single();
+        .maybeSingle();
       
-      if (!jobError && jobData) {
-        job = jobData;
-      } else {
-        console.error(`Error fetching job:`, jobError);
+      if (jobError) {
+        console.error(`Error fetching job: ${JSON.stringify(jobError)}`);
         // Continue without job data
+      } else {
+        job = jobData;
       }
     }
     
@@ -105,11 +122,15 @@ serve(async (req) => {
     const htmlContent = generateInvoiceHtml(invoice, client, company, job);
     
     // Check if there's already a static version for this invoice
-    const { data: existingStatic } = await supabase
+    const { data: existingStatic, error: existingStaticError } = await supabase
       .from('clientview_invoice')
       .select('id')
       .eq('invoice_id', invoiceId)
       .maybeSingle();
+    
+    if (existingStaticError) {
+      console.error(`Error checking for existing static invoice: ${JSON.stringify(existingStaticError)}`);
+    }
     
     let result;
     
@@ -126,8 +147,11 @@ serve(async (req) => {
         .single();
       
       if (error) {
-        console.error(`Error updating static invoice:`, error);
-        throw error;
+        console.error(`Error updating static invoice: ${JSON.stringify(error)}`);
+        return new Response(JSON.stringify({ error: 'Failed to update static invoice', details: error }), { 
+          status: 500, 
+          headers: corsHeaders 
+        });
       }
       
       result = data;
@@ -145,8 +169,11 @@ serve(async (req) => {
         .single();
       
       if (error) {
-        console.error(`Error creating static invoice:`, error);
-        throw error;
+        console.error(`Error creating static invoice: ${JSON.stringify(error)}`);
+        return new Response(JSON.stringify({ error: 'Failed to create static invoice', details: error }), { 
+          status: 500, 
+          headers: corsHeaders 
+        });
       }
       
       result = data;
@@ -161,9 +188,11 @@ serve(async (req) => {
       headers: corsHeaders 
     });
   } catch (error) {
-    console.error(`Error in generate-static-invoice:`, error);
+    console.error(`Error in generate-static-invoice: ${error.message}`);
+    console.error(`Stack trace: ${error.stack}`);
     return new Response(JSON.stringify({ 
-      error: `Server Error: ${error.message}` 
+      error: `Server Error: ${error.message}`,
+      stack: error.stack
     }), { 
       status: 500, 
       headers: corsHeaders 

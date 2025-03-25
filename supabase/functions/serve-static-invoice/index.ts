@@ -43,6 +43,20 @@ serve(async (req) => {
     // Initialize Supabase client
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      console.error("Missing Supabase environment variables");
+      return new Response(
+        JSON.stringify({ error: "Server configuration error" }),
+        { 
+          status: 500, 
+          headers: { 
+            "Content-Type": "application/json",
+            ...corsHeaders
+          } 
+        }
+      );
+    }
+
     // Get invoice by view link
     const { data: invoice, error: invoiceError } = await supabase
       .from("invoices")
@@ -50,10 +64,24 @@ serve(async (req) => {
       .eq("view_link", viewLink)
       .maybeSingle();
 
-    if (invoiceError || !invoice) {
+    if (invoiceError) {
       console.error("Error retrieving invoice:", invoiceError);
       return new Response(
-        JSON.stringify({ error: "Invoice not found", details: invoiceError }),
+        JSON.stringify({ error: "Error retrieving invoice", details: invoiceError }),
+        { 
+          status: 500, 
+          headers: { 
+            "Content-Type": "application/json",
+            ...corsHeaders
+          } 
+        }
+      );
+    }
+
+    if (!invoice) {
+      console.error("Invoice not found with view link:", viewLink);
+      return new Response(
+        JSON.stringify({ error: "Invoice not found" }),
         { 
           status: 404, 
           headers: { 

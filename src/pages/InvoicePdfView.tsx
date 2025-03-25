@@ -3,6 +3,9 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 
+// Define the Supabase URL from the same source used in client.ts
+const SUPABASE_URL = "https://htjvyzmuqsrjpesdurni.supabase.co";
+
 const InvoicePdfView = () => {
   const { viewLink } = useParams<{ viewLink: string }>();
   const [loading, setLoading] = useState(true);
@@ -21,7 +24,7 @@ const InvoicePdfView = () => {
           ? viewLink.split('/').pop() 
           : viewLink;
           
-        const staticUrl = `${supabase.supabaseUrl}/functions/v1/serve-static-invoice/${cleanViewLink}`;
+        const staticUrl = `${SUPABASE_URL}/functions/v1/serve-static-invoice/${cleanViewLink}`;
         console.log("Redirecting to static invoice URL:", staticUrl);
         window.location.href = staticUrl;
       } catch (err) {

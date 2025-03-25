@@ -51,6 +51,7 @@ const InvoiceView = () => {
         try {
           console.log("[InvoiceView] Client view detected, preparing to redirect to static HTML");
           
+          const SUPABASE_URL = "https://htjvyzmuqsrjpesdurni.supabase.co";
           const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrViewLink);
           
           if (isUUID) {
@@ -60,7 +61,7 @@ const InvoiceView = () => {
                 ? invoiceData.viewLink.split('/').pop() 
                 : invoiceData.viewLink;
                 
-              const staticUrl = `${supabase.supabaseUrl}/functions/v1/serve-static-invoice/${cleanViewLink}`;
+              const staticUrl = `${SUPABASE_URL}/functions/v1/serve-static-invoice/${cleanViewLink}`;
               console.log("[InvoiceView] Redirecting to static invoice URL:", staticUrl);
               window.location.href = staticUrl;
               return;
@@ -70,7 +71,7 @@ const InvoiceView = () => {
               ? idOrViewLink.split('/').pop() 
               : idOrViewLink;
               
-            const staticUrl = `${supabase.supabaseUrl}/functions/v1/serve-static-invoice/${cleanViewLink}`;
+            const staticUrl = `${SUPABASE_URL}/functions/v1/serve-static-invoice/${cleanViewLink}`;
             console.log("[InvoiceView] Redirecting to static invoice URL:", staticUrl);
             window.location.href = staticUrl;
             return;
@@ -660,7 +661,7 @@ const InvoiceView = () => {
                     {invoice.items && invoice.items.length > 0 ? (
                       invoice.items.map((item) => (
                         <div key={item.id} className="mb-4 pb-4 border-b last:mb-0 last:pb-0 last:border-b-0">
-                          <div className="md:flex md:justify-between md:items-start">
+                          <div className="md:flex md-justify-between md:items-start">
                             <div className="md:flex-1">
                               <h5 className="font-medium">{item.name || 'Unnamed Package'}</h5>
                             </div>
@@ -801,4 +802,3 @@ const InvoiceView = () => {
 };
 
 export default InvoiceView;
-

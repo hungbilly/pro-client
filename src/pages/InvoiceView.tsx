@@ -7,7 +7,8 @@ import {
   getInvoice, 
   updateContractStatus,
   updatePaymentScheduleStatus,
-  getJob
+  getJob,
+  verifyInvoiceToken
 } from '@/lib/storage';
 import { Invoice, Client, Job } from '@/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -36,9 +37,10 @@ const InvoiceView = () => {
   const invoiceRef = useRef<HTMLDivElement>(null);
 
   const { isAdmin } = useAuth();
-  const { selectedCompanyId, selectedCompany } = useCompanyContext();
+  const { selectedCompanyId, selectedCompany, setSelectedCompany: setSelectedCompanyState } = useCompanyContext();
   const { idOrViewLink } = useParams<{ idOrViewLink: string }>();
   const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
 
   const isClientView = useMemo(() => 
     !location.pathname.includes('/admin') && !isAdmin, 
@@ -72,6 +74,8 @@ const InvoiceView = () => {
       try {
         setLoading(true);
         let fetchedInvoice: Invoice | null = null;
+        let fetchedClient: Client | null = null;
+        let companyData: any = null;
         
         const identifier = idOrViewLink;
         if (!identifier) {
@@ -81,6 +85,46 @@ const InvoiceView = () => {
         }
         
         console.log('[InvoiceView] Fetching invoice with identifier:', identifier);
+
+        const token = searchParams.get('token');
+        if (isClientView && token) {
+          const decoded = verifyInvoiceToken(token);
+          if (!decoded) {
+            setError('Invalid or expired token. Please request a new link.');
+            return;
+          }
+
+          fetchedInvoice = decoded.invoice;
+          fetchedClient = decoded.client;
+          companyData = decoded.company;
+
+          console.log('[InvoiceView] Decoded company from JWT:', companyData);
+
+          if (companyData.logo_url && !companyData.logo_url.startsWith('http')) {
+            const bucketName = 'your-bucket-name';
+            const baseUrl = 'https://htjvyzmuqsrjpesdurni.supabase.co/storage/v1/object/public';
+            companyData.logo_url = `${baseUrl}/${bucketName}/${companyData.logo_url}`;
+            console.log('[InvoiceView] Transformed logo_url:', companyData.logo_url);
+          }
+
+          setInvoice(fetchedInvoice);
+          setClient(fetchedClient);
+          setSelectedCompanyState(companyData);
+
+          if (fetchedInvoice.jobId) {
+            try {
+              const fetchedJob = await getJob(fetchedInvoice.jobId);
+              if (fetchedJob) {
+                setJob(fetchedJob);
+              }
+            } catch (err) {
+              console.error('[InvoiceView] Failed to fetch job:', err);
+            }
+          }
+
+          setLoading(false);
+          return;
+        }
         
         const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
         
@@ -190,7 +234,7 @@ const InvoiceView = () => {
     };
     
     fetchInvoice();
-  }, [idOrViewLink, location.pathname, selectedCompanyId, isClientView]);
+  }, [idOrViewLink, location.pathname, location.search, selectedCompanyId, isClientView]);
 
   const handlePaymentStatusUpdate = useCallback(async (paymentId: string, newStatus: 'paid' | 'unpaid' | 'write-off') => {
     if (!invoice || !paymentId) return;
@@ -484,6 +528,9 @@ const InvoiceView = () => {
                       src={displayCompany.logo_url} 
                       alt={`${displayCompany.name} Logo`}
                       className="h-full max-h-80 w-auto object-contain" 
+                      onError={(e) => {
+                        e.currentTarget.src = '/placeholder.svg';
+                      }}
                     />
                   ) : (
                     <div className="h-24 w-24 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center text-gray-400">

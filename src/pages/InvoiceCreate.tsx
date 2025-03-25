@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import InvoiceForm from '@/components/InvoiceForm';
@@ -13,6 +12,16 @@ interface ContractTemplate {
   name: string;
   content?: string;
   description?: string;
+}
+
+interface InvoiceFormProps {
+  invoice?: Invoice;
+  clientId?: string;
+  jobId?: string;
+  invoiceId?: string;
+  contractTemplates: ContractTemplate[];
+  checkDuplicateInvoiceNumber: (number: string, currentInvoiceId?: string) => Promise<boolean>;
+  onInvoiceSaved?: (savedInvoiceId: string) => Promise<void>;
 }
 
 const InvoiceCreate = () => {
@@ -127,7 +136,6 @@ const InvoiceCreate = () => {
     fetchContractTemplates();
   }, [invoiceId, clientId, jobId, navigate, loading]);
 
-  // Generate static HTML for invoice after successful save
   const handleInvoiceSaved = async (savedInvoiceId: string) => {
     logDebug('Invoice saved, generating static HTML version:', savedInvoiceId);
     
@@ -157,7 +165,6 @@ const InvoiceCreate = () => {
     );
   }
 
-  // Log more details about the invoice before rendering
   if (invoice) {
     logDebug('Rendering InvoiceForm with invoice data:', { 
       id: invoice.id,
@@ -188,7 +195,6 @@ const InvoiceCreate = () => {
     invoiceStatus: invoice?.status
   });
 
-  // Pass down a function to check for duplicate invoice numbers
   const checkDuplicateInvoiceNumber = async (number: string, currentInvoiceId?: string) => {
     try {
       logDebug('Checking for duplicate invoice number:', number);
@@ -204,7 +210,6 @@ const InvoiceCreate = () => {
       }
       
       if (data && data.length > 0) {
-        // If we're editing an existing invoice, it's okay if the number matches the current invoice
         if (currentInvoiceId && data.length === 1 && data[0].id === currentInvoiceId) {
           return false;
         }

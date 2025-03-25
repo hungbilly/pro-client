@@ -188,9 +188,9 @@ const JobDetail = () => {
               </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="destructive" size="sm">
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete Job
+                  <Button variant="destructive" size="icon" title="Delete Job">
+                    <Trash2 className="h-4 w-4" />
+                    <span className="sr-only">Delete Job</span>
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>

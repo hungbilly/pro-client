@@ -11,6 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { ArrowLeft, Trash2, UserCog } from 'lucide-react';
 import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
+
 const ClientDetail = () => {
   const {
     id
@@ -22,6 +23,7 @@ const ClientDetail = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
   useEffect(() => {
     if (!id) {
       toast.error('Client ID is missing.');
@@ -51,6 +53,7 @@ const ClientDetail = () => {
     };
     fetchClientData();
   }, [id, navigate]);
+
   const handleDeleteClient = async () => {
     try {
       if (id) {
@@ -65,9 +68,11 @@ const ClientDetail = () => {
       toast.error('Failed to delete client.');
     }
   };
+
   const handleJobDelete = (jobId: string) => {
     setJobs(jobs.filter(job => job.id !== jobId));
   };
+
   if (isLoading) {
     return <PageTransition>
         <Card className="w-full max-w-4xl mx-auto">
@@ -77,6 +82,7 @@ const ClientDetail = () => {
         </Card>
       </PageTransition>;
   }
+
   if (!client) {
     return <PageTransition>
         <Card className="w-full max-w-4xl mx-auto">
@@ -86,6 +92,7 @@ const ClientDetail = () => {
         </Card>
       </PageTransition>;
   }
+
   return <PageTransition>
       <Card className="w-full max-w-4xl mx-auto">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -102,9 +109,8 @@ const ClientDetail = () => {
             </Button>
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="sm" className="make this buton icon only\n">
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete Client
+                <Button variant="destructive" size="icon" aria-label="Delete Client">
+                  <Trash2 className="h-4 w-4" />
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
@@ -162,4 +168,5 @@ const ClientDetail = () => {
       </Card>
     </PageTransition>;
 };
+
 export default ClientDetail;

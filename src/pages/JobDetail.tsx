@@ -174,10 +174,16 @@ const JobDetail = () => {
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Client
               </Button>
-              <Button size="sm" asChild>
+              <Button 
+                variant="outline" 
+                size="icon" 
+                asChild 
+                className="tooltip" 
+                title="Edit Job"
+              >
                 <Link to={`/job/${job.id}/edit`}>
-                  <FileEdit className="h-4 w-4 mr-2" />
-                  Edit Job
+                  <FileEdit className="h-4 w-4" />
+                  <span className="sr-only">Edit Job</span>
                 </Link>
               </Button>
               <AlertDialog>

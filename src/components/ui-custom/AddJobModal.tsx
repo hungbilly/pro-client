@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import JobForm from '@/components/JobForm';
 import ClientSelector from '@/components/ClientSelector';
-import CompanySelector from '@/components/CompanySelector';
 import { Card, CardContent } from '@/components/ui/card';
 
 interface AddJobModalProps {
@@ -14,11 +13,6 @@ interface AddJobModalProps {
 
 const AddJobModal: React.FC<AddJobModalProps> = ({ isOpen, onClose, clientId: initialClientId }) => {
   const [selectedClientId, setSelectedClientId] = useState<string | null>(initialClientId || null);
-  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
-
-  const handleCompanySelect = (company: {id: string, name: string}) => {
-    setSelectedCompanyId(company.id);
-  };
 
   const handleClientSelect = (clientId: string) => {
     setSelectedClientId(clientId);
@@ -40,14 +34,9 @@ const AddJobModal: React.FC<AddJobModalProps> = ({ isOpen, onClose, clientId: in
             />
           )}
           
-          <CompanySelector 
-            onCompanySelect={handleCompanySelect} 
-          />
-          
           {selectedClientId ? (
             <JobForm 
               clientId={selectedClientId} 
-              companyId={selectedCompanyId || undefined}
               onSuccess={onClose}
             />
           ) : (

@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { BriefcaseBusiness, CalendarDays, MapPin, Plus, Eye, FileEdit, Clock } from 'lucide-react';
+import { BriefcaseBusiness, CalendarDays, MapPin, Plus, Clock } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { deleteJob } from '@/lib/storage';
 import { toast } from 'sonner';
@@ -95,7 +95,7 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
                 </Badge>
               </div>
             </CardHeader>
-            <CardContent className="pb-12 relative">
+            <CardContent className="pb-6 relative">
               {job.description && (
                 <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{job.description}</p>
               )}
@@ -126,34 +126,6 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
                     </div>
                   </div>
                 )}
-              </div>
-              <div className="absolute bottom-2 right-0 flex gap-1 transition-opacity duration-200 opacity-0 group-hover:opacity-100">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={(e) => {
-                    console.log('Edit button clicked');
-                    e.stopPropagation();
-                    e.preventDefault();
-                    window.location.href = `/job/${job.id}/edit`;
-                  }}
-                >
-                  <FileEdit className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={(e) => {
-                    console.log('View button clicked');
-                    e.stopPropagation();
-                    e.preventDefault();
-                    window.location.href = `/job/${job.id}`;
-                  }}
-                >
-                  <Eye className="h-4 w-4" />
-                </Button>
               </div>
             </CardContent>
           </Card>

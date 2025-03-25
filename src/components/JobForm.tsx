@@ -292,7 +292,6 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
                       selected={date}
                       onSelect={setDate}
                       initialFocus
-                      className="pointer-events-auto"
                     />
                   </PopoverContent>
                 </Popover>

@@ -12,7 +12,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import PaymentDateDialog from '@/components/invoice/PaymentDateDialog';
 import PaymentScheduleTable from '@/components/invoice/PaymentScheduleTable';
 
-// Constants for Supabase URL
 const SUPABASE_URL = "https://htjvyzmuqsrjpesdurni.supabase.co";
 
 const InvoiceView = () => {
@@ -28,15 +27,10 @@ const InvoiceView = () => {
   const [hasStaticVersion, setHasStaticVersion] = useState(false);
   const [isContractAccepted, setIsContractAccepted] = useState(false);
 
-  // Determine if we're in client view mode (using a view link) or admin mode (using an ID)
   const isClientView = idOrViewLink && (!idOrViewLink.includes('-') || idOrViewLink.length < 36);
-  
-  // Logging for troubleshooting
-  console.log('InvoiceView params:', { idOrViewLink, isClientView });
 
   useEffect(() => {
     const checkAdmin = async () => {
-      // For now just set as true since we don't have the isAdmin function
       setIsAdmin(true);
     };
     
@@ -51,7 +45,6 @@ const InvoiceView = () => {
         let fetchedInvoice;
         let viewLink;
         
-        // If we're in client view mode, fetch using the view link
         if (isClientView) {
           viewLink = idOrViewLink;
           const { data, error } = await supabase
@@ -63,7 +56,6 @@ const InvoiceView = () => {
           if (error) throw error;
           fetchedInvoice = data;
         } else {
-          // Otherwise fetch using the invoice ID
           const { data, error } = await supabase
             .from('invoices')
             .select('*')
@@ -75,7 +67,6 @@ const InvoiceView = () => {
           viewLink = fetchedInvoice.view_link;
         }
         
-        // Check if there's a static version
         const { data: staticCheck } = await supabase
           .from('clientview_invoice')
           .select('id')
@@ -84,7 +75,6 @@ const InvoiceView = () => {
         
         setHasStaticVersion(!!staticCheck);
         
-        // Map the database format to our frontend format
         const mappedInvoice: Invoice = {
           id: fetchedInvoice.id,
           clientId: fetchedInvoice.client_id,
@@ -106,7 +96,6 @@ const InvoiceView = () => {
         
         setIsContractAccepted(fetchedInvoice.contract_status === 'accepted');
         
-        // Fetch invoice items
         const { data: items, error: itemsError } = await supabase
           .from('invoice_items')
           .select('*')
@@ -123,7 +112,6 @@ const InvoiceView = () => {
           amount: item.amount
         }));
         
-        // Fetch payment schedules if they exist
         const { data: schedules, error: schedulesError } = await supabase
           .from('payment_schedules')
           .select('*')
@@ -141,7 +129,6 @@ const InvoiceView = () => {
           }));
         }
         
-        // Fetch client data
         const { data: clientData, error: clientError } = await supabase
           .from('clients')
           .select('*')
@@ -160,7 +147,6 @@ const InvoiceView = () => {
           notes: clientData.notes
         });
         
-        // Fetch company data if available
         if (fetchedInvoice.company_id) {
           const { data: companyData, error: companyError } = await supabase
             .from('companies')
@@ -182,7 +168,6 @@ const InvoiceView = () => {
           }
         }
         
-        // Fetch job data if available
         if (fetchedInvoice.job_id) {
           const { data: jobData, error: jobError } = await supabase
             .from('jobs')
@@ -209,7 +194,6 @@ const InvoiceView = () => {
           }
         }
         
-        // Log invoice details if contract terms are present
         if (fetchedInvoice.contract_terms) {
           console.info('[InvoiceView] Fetched invoice with contract terms:', {
             id: fetchedInvoice.id,
@@ -270,7 +254,6 @@ const InvoiceView = () => {
   const handleViewStaticHTML = () => {
     if (!invoice) return;
     
-    // Open in a new tab
     window.open(`${SUPABASE_URL}/functions/v1/serve-static-invoice/${invoice.viewLink}`, '_blank');
   };
 
@@ -289,7 +272,6 @@ const InvoiceView = () => {
       setInvoice(prev => prev ? { ...prev, contractStatus: 'accepted' } : null);
       toast.success('Contract accepted successfully');
       
-      // Regenerate static HTML after contract acceptance
       handleGenerateStaticHTML();
     } catch (error) {
       console.error('Error accepting contract:', error);
@@ -301,7 +283,6 @@ const InvoiceView = () => {
     if (!invoice) return;
     
     try {
-      // Update the payment schedule
       const { error: updateError } = await supabase
         .from('payment_schedules')
         .update({ 
@@ -312,7 +293,6 @@ const InvoiceView = () => {
       
       if (updateError) throw updateError;
       
-      // Update local state
       setInvoice(prev => {
         if (!prev || !prev.paymentSchedules) return prev;
         
@@ -325,7 +305,6 @@ const InvoiceView = () => {
         return { ...prev, paymentSchedules: updatedSchedules };
       });
       
-      // Check if all schedules are paid
       const { data: schedules, error: schedulesError } = await supabase
         .from('payment_schedules')
         .select('status')
@@ -335,7 +314,6 @@ const InvoiceView = () => {
       
       const allPaid = schedules.every(s => s.status === 'paid');
       
-      // If all schedules are paid, update invoice status
       if (allPaid) {
         const { error: invoiceUpdateError } = await supabase
           .from('invoices')
@@ -350,7 +328,6 @@ const InvoiceView = () => {
         toast.success('Payment recorded successfully.');
       }
       
-      // Regenerate static HTML after payment status change
       handleGenerateStaticHTML();
     } catch (error) {
       console.error('Error marking payment as paid:', error);
@@ -484,12 +461,6 @@ const InvoiceView = () => {
                     </>
                   )}
                 </Button>
-                {hasStaticVersion && (
-                  <Button variant="outline" size="sm" onClick={handleViewStaticHTML}>
-                    <Globe className="mr-2 h-4 w-4" />
-                    View Static HTML
-                  </Button>
-                )}
               </>
             )}
           </div>

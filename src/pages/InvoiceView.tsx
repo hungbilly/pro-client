@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -148,6 +149,31 @@ const InvoiceView = () => {
         });
         
         if (fetchedInvoice.company_id) {
+          // Define type-safe handlers for different company data structures
+          const handleCompanyData = (data: any) => {
+            if (isClientView) {
+              // For client view, we're getting data from company_clientview
+              return {
+                id: data.id,
+                name: data.name,
+                email: data.email || '',
+                phone: data.phone || '',
+                address: data.address || '',
+                website: data.website || '',
+                logo_url: data.logo_url || '',
+                is_default: false,
+                user_id: '',
+                created_at: data.created_at || '',
+                updated_at: data.updated_at || '',
+                country: '',
+                currency: ''
+              } as Company;
+            } else {
+              // For admin view, we're getting data directly from companies table
+              return data as Company;
+            }
+          };
+          
           const table = isClientView ? 'company_clientview' : 'companies';
           const idField = isClientView ? 'company_id' : 'id';
           
@@ -159,27 +185,7 @@ const InvoiceView = () => {
           
           if (!companyError && companyData) {
             console.info(`[InvoiceView] Fetched company data from ${table}:`, companyData);
-            
-            if (isClientView) {
-              const clientViewData = companyData as CompanyClientView;
-              setCompany({
-                id: clientViewData.id,
-                name: clientViewData.name,
-                email: clientViewData.email || '',
-                phone: clientViewData.phone || '',
-                address: clientViewData.address || '',
-                website: clientViewData.website || '',
-                logo_url: clientViewData.logo_url || '',
-                is_default: false,
-                user_id: '',
-                created_at: clientViewData.created_at || '',
-                updated_at: clientViewData.updated_at || '',
-                country: '',
-                currency: ''
-              });
-            } else {
-              setCompany(companyData as Company);
-            }
+            setCompany(handleCompanyData(companyData));
           }
         }
         

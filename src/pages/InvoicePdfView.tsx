@@ -49,7 +49,7 @@ const InvoicePdfView = () => {
           generateInvoicePdf(fetchedInvoice.id);
         }
         
-        // Also generate static HTML version if it doesn't exist
+        // Always generate static HTML version to ensure it's up to date
         generateStaticInvoiceHtml(fetchedInvoice.id);
       } catch (err) {
         console.error('Failed to load invoice:', err);

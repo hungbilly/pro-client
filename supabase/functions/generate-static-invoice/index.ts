@@ -95,7 +95,7 @@ serve(async (req) => {
       const { data: companyData, error: companyError } = await supabase
         .from('company_clientview')  // Use the new table
         .select('*')
-        .eq('company_id', invoice.company_id)  // Note the changed column name
+        .eq('company_id', invoice.company_id)  // Note the column name is company_id
         .maybeSingle();
       
       if (companyError) {

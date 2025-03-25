@@ -55,20 +55,6 @@ const InvoiceView = () => {
     }).format(amount);
   }, []);
 
-  const [selectedCompanyState, setSelectedCompanyState] = useState<{ 
-    id: string; 
-    name: string; 
-    logo_url?: string;
-    address?: string;
-    email?: string;
-    phone?: string;
-    website?: string;
-    country?: string;
-    currency?: string;
-    is_default: boolean;
-    user_id: string;
-  } | null>(null);
-
   useEffect(() => {
     const fetchInvoice = async () => {
       try {
@@ -81,6 +67,7 @@ const InvoiceView = () => {
         if (!identifier) {
           console.log('[InvoiceView] No identifier provided in URL');
           setError('Invalid URL. Please provide an invoice ID or view link.');
+          setLoading(false);
           return;
         }
         
@@ -91,6 +78,7 @@ const InvoiceView = () => {
           const decoded = verifyInvoiceToken(token);
           if (!decoded) {
             setError('Invalid or expired token. Please request a new link.');
+            setLoading(false);
             return;
           }
 
@@ -156,6 +144,7 @@ const InvoiceView = () => {
         if (!fetchedInvoice) {
           console.log('[InvoiceView] No invoice found for identifier:', identifier);
           setError('Invoice not found. Please check the URL or contact support.');
+          setLoading(false);
           return;
         }
         
@@ -171,16 +160,18 @@ const InvoiceView = () => {
           console.log('[InvoiceView] Invoice company mismatch. Expected:', selectedCompanyId, 'Got:', fetchedInvoice.companyId);
           toast.error("This invoice belongs to a different company");
           setError('This invoice belongs to a different company.');
+          setLoading(false);
           return;
         }
         
         setInvoice(fetchedInvoice);
         
         if (fetchedInvoice.clientId) {
-          const fetchedClient = await getClient(fetchedInvoice.clientId);
+          fetchedClient = await getClient(fetchedInvoice.clientId);
           if (!fetchedClient) {
             console.log('[InvoiceView] No client found for clientId:', fetchedInvoice.clientId);
             setError('Client information not found.');
+            setLoading(false);
             return;
           }
           
@@ -188,16 +179,22 @@ const InvoiceView = () => {
         }
 
         if (fetchedInvoice.jobId) {
-          const fetchedJob = await getJob(fetchedInvoice.jobId);
-          if (fetchedJob) {
-            setJob(fetchedJob);
+          try {
+            const fetchedJob = await getJob(fetchedInvoice.jobId);
+            if (fetchedJob) {
+              setJob(fetchedJob);
+            }
+          } catch (err) {
+            console.error('[InvoiceView] Failed to fetch job:', err);
           }
         }
         
         if (isClientView && fetchedInvoice.companyId) {
+          console.log('[InvoiceView] Client view - using company data from JWT:', companyData);
+        } else if (fetchedInvoice.companyId) {
           try {
-            console.log('[InvoiceView] Client view - fetching company info for:', fetchedInvoice.companyId);
-            const { data: companyData, error: companyError } = await supabase
+            console.log('[InvoiceView] Fetching company info for:', fetchedInvoice.companyId);
+            const { data: companyInfo, error: companyError } = await supabase
               .from('companies')
               .select('*')
               .eq('id', fetchedInvoice.companyId)
@@ -205,24 +202,26 @@ const InvoiceView = () => {
             
             if (companyError) {
               console.error('[InvoiceView] Error fetching company:', companyError);
-            } else if (companyData) {
-              console.log('[InvoiceView] Fetched company data for client view:', companyData);
+              toast.error('Failed to load company information');
+            } else if (companyInfo) {
+              console.log('[InvoiceView] Fetched company data:', companyInfo);
               setSelectedCompanyState({
-                id: companyData.id,
-                name: companyData.name,
-                logo_url: companyData.logo_url,
-                address: companyData.address,
-                email: companyData.email,
-                phone: companyData.phone,
-                website: companyData.website,
-                country: companyData.country,
-                currency: companyData.currency,
-                is_default: companyData.is_default,
-                user_id: companyData.user_id
+                id: companyInfo.id,
+                name: companyInfo.name,
+                logo_url: companyInfo.logo_url,
+                address: companyInfo.address,
+                email: companyInfo.email,
+                phone: companyInfo.phone,
+                website: companyInfo.website,
+                country: companyInfo.country,
+                currency: companyInfo.currency,
+                is_default: companyInfo.is_default,
+                user_id: companyInfo.user_id
               });
             }
           } catch (err) {
             console.error('[InvoiceView] Failed to fetch company data:', err);
+            toast.error('Failed to load company information');
           }
         }
       } catch (err) {
@@ -234,7 +233,7 @@ const InvoiceView = () => {
     };
     
     fetchInvoice();
-  }, [idOrViewLink, location.pathname, location.search, selectedCompanyId, isClientView]);
+  }, [idOrViewLink, location.pathname, location.search, selectedCompanyId, isClientView, setSelectedCompanyState]);
 
   const handlePaymentStatusUpdate = useCallback(async (paymentId: string, newStatus: 'paid' | 'unpaid' | 'write-off') => {
     if (!invoice || !paymentId) return;
@@ -403,7 +402,7 @@ const InvoiceView = () => {
     }
   };
 
-  const displayCompany = isClientView ? selectedCompanyState : selectedCompany;
+  const displayCompany = isClientView ? selectedCompany : selectedCompany;
 
   useEffect(() => {
     if (invoice) {

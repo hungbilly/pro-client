@@ -170,7 +170,15 @@ const InvoiceView = () => {
           
           if (!companyError && companyData) {
             console.info('[InvoiceView] Fetched company data for client view:', companyData);
-            setCompany(companyData);
+            setCompany({
+              id: companyData.id,
+              name: companyData.name,
+              email: companyData.email,
+              phone: companyData.phone,
+              address: companyData.address,
+              website: companyData.website,
+              logo_url: companyData.logo_url
+            });
           }
         }
         
@@ -504,6 +512,15 @@ const InvoiceView = () => {
               
               <h3 className="text-sm font-medium text-gray-500 mt-4 mb-1">FROM</h3>
               <div className="text-sm">
+                {company?.logo_url && (
+                  <div className="mb-2">
+                    <img 
+                      src={company.logo_url} 
+                      alt={`${company.name} logo`} 
+                      className="max-h-16 object-contain"
+                    />
+                  </div>
+                )}
                 <div className="font-medium">{company?.name || 'Your Company'}</div>
                 {company?.email && <div>{company.email}</div>}
                 {company?.phone && <div>{company.phone}</div>}

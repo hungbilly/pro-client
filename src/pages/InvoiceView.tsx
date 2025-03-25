@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -219,3 +220,6 @@ const InvoiceView = () => {
 
   // ... rest of the component remains unchanged
 };
+
+// Add the missing default export here
+export default InvoiceView;

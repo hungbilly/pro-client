@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/utils';
-import { ArrowLeft, FileText, Mail, Printer, RefreshCw, Download, Globe, Copy, Link } from 'lucide-react';
+import { ArrowLeft, FileText, Mail, Printer, RefreshCw, Download, Globe, Copy, Link, Edit } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import PaymentDateDialog from '@/components/invoice/PaymentDateDialog';
 import PaymentScheduleTable from '@/components/invoice/PaymentScheduleTable';
@@ -359,6 +359,11 @@ const InvoiceView = () => {
       .catch(() => toast.error('Failed to copy link'));
   };
 
+  const handleEditInvoice = () => {
+    if (!invoice) return;
+    navigate(`/invoice/${invoice.id}/edit`);
+  };
+
   const getStatusBadgeClass = (status: string) => {
     switch (status.toLowerCase()) {
       case 'draft':
@@ -382,6 +387,10 @@ const InvoiceView = () => {
       default:
         return 'bg-yellow-100 text-yellow-800';
     }
+  };
+
+  const renderHtmlContent = (htmlContent: string) => {
+    return { __html: htmlContent };
   };
 
   if (isLoading) {
@@ -441,6 +450,14 @@ const InvoiceView = () => {
                     </a>
                   </Button>
                 )}
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleEditInvoice}
+                >
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit
+                </Button>
                 <Button 
                   variant="outline" 
                   size="sm" 
@@ -535,7 +552,7 @@ const InvoiceView = () => {
                   {invoice.items.map((item) => (
                     <tr key={item.id} className="border-b">
                       <td className="py-2 px-4">{item.name || item.productName || 'Unnamed Item'}</td>
-                      <td className="py-2 px-4">{item.description}</td>
+                      <td className="py-2 px-4" dangerouslySetInnerHTML={renderHtmlContent(item.description)}></td>
                       <td className="py-2 px-4 text-right">{item.quantity}</td>
                       <td className="py-2 px-4 text-right">{formatCurrency(item.rate)}</td>
                       <td className="py-2 px-4 text-right">{formatCurrency(item.amount)}</td>
@@ -573,14 +590,13 @@ const InvoiceView = () => {
           {invoice.contractTerms && (
             <div className="mb-6">
               <h3 className="text-lg font-medium mb-2">Contract Terms</h3>
-              <div className="bg-gray-50 p-4 rounded-md whitespace-pre-wrap">
-                {invoice.contractTerms}
+              <div className="bg-gray-50 p-4 rounded-md whitespace-pre-wrap" 
+                   dangerouslySetInnerHTML={renderHtmlContent(invoice.contractTerms)}>
               </div>
             </div>
           )}
         </CardContent>
         
-        {/* Contract acceptance section for client view */}
         {isClientView && invoice.contractTerms && !isContractAccepted && (
           <CardFooter className="flex flex-col items-start pt-6 mt-4 border-t">
             <h3 className="text-lg font-semibold mb-2">Contract Acceptance</h3>

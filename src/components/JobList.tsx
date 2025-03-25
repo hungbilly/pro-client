@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Job, Client } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -42,6 +42,8 @@ const formatTimeDisplay = (job: Job) => {
 };
 
 const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
+  const navigate = useNavigate();
+  
   const sortedJobs = [...jobs].sort((a, b) => {
     if (!a.date) return 1;
     if (!b.date) return -1;
@@ -66,12 +68,19 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
     }
   };
 
+  const handleJobCardClick = (jobId: string) => {
+    navigate(`/job/${jobId}`);
+  };
+
   const renderJobCard = (job: Job) => {
     console.log('Rendering job card for job:', job.id);
     
     return (
       <div key={job.id} className="group relative">
-        <div className="block transition-all duration-200 hover:shadow-soft rounded-lg">
+        <div 
+          className="block transition-all duration-200 hover:shadow-soft rounded-lg cursor-pointer"
+          onClick={() => handleJobCardClick(job.id)}
+        >
           <Card className="overflow-hidden h-full border-transparent hover:border-border transition-all duration-200">
             <CardHeader className="pb-3">
               <div className="flex justify-between items-start">

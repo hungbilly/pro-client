@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { getInvoiceByViewLink, updateInvoiceStatus, updateContractStatus } from '@/lib/storage';
@@ -14,8 +15,12 @@ const InvoicePdfView = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [generatingHtml, setGeneratingHtml] = useState(false);
   const [functionError, setFunctionError] = useState<string | null>(null);
   const { viewLink } = useParams<{ viewLink: string }>();
+  
+  // Define constant for Supabase URL since we can't access it directly from the client
+  const SUPABASE_URL = "https://htjvyzmuqsrjpesdurni.supabase.co";
 
   useEffect(() => {
     const fetchInvoice = async () => {
@@ -43,6 +48,9 @@ const InvoicePdfView = () => {
         if (!fetchedInvoice.pdfUrl) {
           generateInvoicePdf(fetchedInvoice.id);
         }
+        
+        // Also generate static HTML version if it doesn't exist
+        generateStaticInvoiceHtml(fetchedInvoice.id);
       } catch (err) {
         console.error('Failed to load invoice:', err);
         setError('Failed to load invoice. Please try again later.');
@@ -89,10 +97,41 @@ const InvoicePdfView = () => {
       setGeneratingPdf(false);
     }
   };
+  
+  const generateStaticInvoiceHtml = async (invoiceId: string) => {
+    try {
+      setGeneratingHtml(true);
+      
+      logDebug('Calling generate-static-invoice function', { invoiceId });
+      
+      const { data, error } = await supabase.functions.invoke('generate-static-invoice', {
+        body: { invoiceId }
+      });
+      
+      if (error) {
+        logError('Error invoking generate-static-invoice function', error);
+        return;
+      }
+      
+      logDebug('Static invoice HTML generated', data);
+    } catch (err) {
+      logError('Exception in generateStaticInvoiceHtml', err);
+    } finally {
+      setGeneratingHtml(false);
+    }
+  };
 
   const handleRetryGeneratePdf = () => {
     if (!invoice) return;
     generateInvoicePdf(invoice.id);
+  };
+  
+  const handleViewStaticVersion = () => {
+    if (!invoice?.viewLink) return;
+    
+    // Open the static version in a new tab
+    const staticUrl = `${SUPABASE_URL}/functions/v1/serve-static-invoice/${invoice.viewLink}`;
+    window.open(staticUrl, '_blank');
   };
 
   const handleAcceptInvoice = async () => {
@@ -102,6 +141,9 @@ const InvoicePdfView = () => {
       await updateInvoiceStatus(invoice.id, 'accepted');
       setInvoice(prev => prev ? { ...prev, status: 'accepted' } : null);
       toast.success('Invoice accepted successfully');
+      
+      // Regenerate static HTML after status change
+      generateStaticInvoiceHtml(invoice.id);
     } catch (err) {
       console.error('Failed to accept invoice:', err);
       toast.error('Error accepting invoice');
@@ -115,6 +157,9 @@ const InvoicePdfView = () => {
       await updateContractStatus(invoice.id, 'accepted');
       setInvoice(prev => prev ? { ...prev, contractStatus: 'accepted' } : null);
       toast.success('Contract terms accepted successfully');
+      
+      // Regenerate static HTML after status change
+      generateStaticInvoiceHtml(invoice.id);
     } catch (err) {
       console.error('Failed to accept contract:', err);
       toast.error('Error accepting contract terms');
@@ -193,6 +238,10 @@ const InvoicePdfView = () => {
                     Generate PDF
                   </Button>
                 )}
+                <Button variant="secondary" size="sm" onClick={handleViewStaticVersion}>
+                  <FileCheck className="h-4 w-4 mr-2" />
+                  View Static Version
+                </Button>
               </div>
             </CardTitle>
           </CardHeader>

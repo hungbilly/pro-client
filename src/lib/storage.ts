@@ -753,7 +753,7 @@ export const getInvoice = async (id: string): Promise<Invoice | null> => {
     amount: data.amount,
     date: data.date,
     dueDate: data.due_date,
-    shootingDate: data.shooting_date || undefined,
+    shootingDate: data.shooting_date,
     status: parseEnum(data.status, ['draft', 'sent', 'accepted', 'paid'], 'draft') as InvoiceStatus,
     contractStatus: data.contract_status ? 
       parseEnum(data.contract_status, ['pending', 'accepted'], 'pending') as ContractStatus : 
@@ -1367,125 +1367,6 @@ export const verifyInvoiceToken = (token: string): {
   } catch (error) {
     console.error('Failed to verify invoice token:', error);
     return null;
-  }
-};
-
-export const createInvoice = async (invoice: Omit<Invoice, 'id' | 'viewLink'>): Promise<Invoice> => {
-  console.log('[createInvoice] Starting invoice creation process', { 
-    clientId: invoice.clientId,
-    companyId: invoice.companyId,
-    jobId: invoice.jobId,
-    number: invoice.number,
-    hasPaymentSchedules: !!invoice.paymentSchedules && invoice.paymentSchedules.length > 0
-  });
-  
-  try {
-    // Generate a view link
-    const viewLink = generateViewLink();
-    console.log('[createInvoice] Generated view link:', viewLink);
-    
-    // Start a transaction by using the Supabase client
-    console.log('[createInvoice] Inserting invoice into database');
-    const { data: newInvoice, error: invoiceError } = await supabase
-      .from('invoices')
-      .insert({
-        client_id: invoice.clientId,
-        company_id: invoice.companyId,
-        job_id: invoice.jobId,
-        number: invoice.number,
-        amount: invoice.amount,
-        date: invoice.date,
-        due_date: invoice.dueDate,
-        shooting_date: invoice.shootingDate,
-        status: invoice.status,
-        contract_status: invoice.contractStatus,
-        notes: invoice.notes,
-        contract_terms: invoice.contractTerms,
-        view_link: viewLink
-      })
-      .select()
-      .single();
-    
-    if (invoiceError || !newInvoice) {
-      console.error('[createInvoice] Error saving invoice:', invoiceError);
-      throw new Error(invoiceError?.message || 'Failed to save invoice');
-    }
-    
-    console.log('[createInvoice] Invoice created successfully with ID:', newInvoice.id);
-
-    // Save invoice items if they exist
-    if (invoice.items && invoice.items.length > 0) {
-      console.log('[createInvoice] Saving invoice items:', invoice.items.length);
-      const itemsToInsert = invoice.items.map(item => ({
-        invoice_id: newInvoice.id,
-        name: item.name || item.productName || item.description?.substring(0, 50) || 'Unnamed Item', // Use name or productName
-        description: item.description,
-        quantity: item.quantity,
-        rate: item.rate,
-        amount: item.amount
-      }));
-      
-      console.log('[createInvoice] Inserting invoice items');
-      const { error: itemsError } = await supabase
-        .from('invoice_items')
-        .insert(itemsToInsert);
-      
-      if (itemsError) {
-        console.error('[createInvoice] Error saving invoice items:', itemsError);
-        throw new Error(itemsError.message || 'Failed to save invoice items');
-      }
-      console.log('[createInvoice] Invoice items saved successfully');
-    } else {
-      console.log('[createInvoice] No invoice items to save');
-    }
-
-    // Save payment schedules if they exist
-    if (invoice.paymentSchedules && invoice.paymentSchedules.length > 0) {
-      console.log('[createInvoice] Saving payment schedules:', invoice.paymentSchedules.length);
-      const schedulesToInsert = invoice.paymentSchedules.map(schedule => ({
-        invoice_id: newInvoice.id,
-        description: schedule.description,
-        due_date: schedule.dueDate,
-        percentage: schedule.percentage,
-        status: schedule.status
-      }));
-      
-      console.log('[createInvoice] Inserting payment schedules');
-      const { error: schedulesError } = await supabase
-        .from('payment_schedules')
-        .insert(schedulesToInsert);
-      
-      if (schedulesError) {
-        console.error('[createInvoice] Error saving payment schedules:', schedulesError);
-        throw new Error(schedulesError.message || 'Failed to save payment schedules');
-      }
-      console.log('[createInvoice] Payment schedules saved successfully');
-    } else {
-      console.log('[createInvoice] No payment schedules to save');
-    }
-
-    console.log('[createInvoice] Invoice creation completed successfully');
-    return {
-      id: newInvoice.id,
-      clientId: newInvoice.client_id,
-      companyId: newInvoice.company_id,
-      jobId: newInvoice.job_id,
-      number: newInvoice.number,
-      amount: newInvoice.amount,
-      date: newInvoice.date,
-      dueDate: newInvoice.due_date,
-      shootingDate: newInvoice.shooting_date,
-      status: newInvoice.status as InvoiceStatus,
-      contractStatus: newInvoice.contract_status as ContractStatus,
-      items: invoice.items || [],
-      notes: newInvoice.notes,
-      contractTerms: newInvoice.contract_terms,
-      viewLink: newInvoice.view_link,
-      paymentSchedules: invoice.paymentSchedules
-    };
-  } catch (error) {
-    console.error('[createInvoice] Error saving invoice:', error);
-    throw error;
   }
 };
 

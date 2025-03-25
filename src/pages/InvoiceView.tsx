@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect, useMemo, useCallback, memo, useRef } from 'react';
-import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
+import { useParams, Link, useLocation } from 'react-router-dom';
 import { 
   getInvoiceByViewLink, 
   getClient, 
@@ -40,7 +41,6 @@ const InvoiceView = () => {
   const { selectedCompanyId, selectedCompany, setSelectedCompany: setSelectedCompanyState } = useCompanyContext();
   const { idOrViewLink } = useParams<{ idOrViewLink: string }>();
   const location = useLocation();
-  const navigate = useNavigate();
   const searchParams = new URLSearchParams(location.search);
 
   const isClientView = useMemo(() => 
@@ -60,8 +60,11 @@ const InvoiceView = () => {
     const fetchInvoice = async () => {
       try {
         setLoading(true);
-        const identifier = idOrViewLink;
+        let fetchedInvoice: Invoice | null = null;
+        let fetchedClient: Client | null = null;
+        let companyData: any = null;
         
+        const identifier = idOrViewLink;
         if (!identifier) {
           console.log('[InvoiceView] No identifier provided in URL');
           setError('Invalid URL. Please provide an invoice ID or view link.');
@@ -71,27 +74,59 @@ const InvoiceView = () => {
         
         console.log('[InvoiceView] Fetching invoice with identifier:', identifier);
 
-        // Check if this could be a view link and we're in client view
-        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
-        
-        if (isClientView && !isUUID) {
-          // For client view with a view link, redirect to the static HTML edge function
-          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-          if (!supabaseUrl) {
-            console.error('[InvoiceView] Missing VITE_SUPABASE_URL environment variable');
-            setError('Configuration error. Please contact support.');
+        // Check if we're in client view mode with a token
+        const token = searchParams.get('token');
+        if (isClientView && token) {
+          // Decode the JWT to get the invoice, client, and company data
+          const decoded = verifyInvoiceToken(token);
+          if (!decoded) {
+            setError('Invalid or expired token. Please request a new link.');
             setLoading(false);
             return;
           }
-          
-          const staticInvoiceUrl = `${supabaseUrl}/functions/v1/serve-static-invoice/${identifier}`;
-          console.log('[InvoiceView] Redirecting to static HTML view:', staticInvoiceUrl);
-          window.location.href = staticInvoiceUrl;
+
+          fetchedInvoice = decoded.invoice;
+          fetchedClient = decoded.client;
+          companyData = decoded.company;
+
+          console.log('[InvoiceView] Decoded company from JWT:', companyData);
+
+          // Transform logo_url if it's a relative path
+          if (companyData.logo_url && !companyData.logo_url.startsWith('http')) {
+            const bucketName = 'your-bucket-name'; // Replace with your Supabase Storage bucket name
+            const baseUrl = 'https://htjvyzmuqsrjpesdurni.supabase.co/storage/v1/object/public';
+            companyData.logo_url = `${baseUrl}/${bucketName}/${companyData.logo_url}`;
+            console.log('[InvoiceView] Transformed logo_url:', companyData.logo_url);
+          }
+
+          setInvoice(fetchedInvoice);
+          setClient(fetchedClient);
+
+          // Only update selectedCompany if it's different
+          if (!isEqual(selectedCompany, companyData)) {
+            console.log('[InvoiceView] Updating selectedCompany in client view');
+            setSelectedCompanyState(companyData);
+          } else {
+            console.log('[InvoiceView] selectedCompany is already up-to-date in client view');
+          }
+
+          // Fetch the job if it exists
+          if (fetchedInvoice.jobId) {
+            try {
+              const fetchedJob = await getJob(fetchedInvoice.jobId);
+              if (fetchedJob) {
+                setJob(fetchedJob);
+              }
+            } catch (err) {
+              console.error('[InvoiceView] Failed to fetch job:', err);
+            }
+          }
+
+          setLoading(false);
           return;
         }
         
-        // For authenticated users or UUID identifiers, proceed with normal flow
-        let fetchedInvoice: Invoice | null = null;
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
         
         if (isUUID) {
           console.log('[InvoiceView] Identifier looks like a UUID, using getInvoice');
@@ -144,7 +179,7 @@ const InvoiceView = () => {
         setInvoice(fetchedInvoice);
         
         if (fetchedInvoice.clientId) {
-          const fetchedClient = await getClient(fetchedInvoice.clientId);
+          fetchedClient = await getClient(fetchedInvoice.clientId);
           if (!fetchedClient) {
             console.log('[InvoiceView] No client found for clientId:', fetchedInvoice.clientId);
             setError('Client information not found.');
@@ -166,8 +201,10 @@ const InvoiceView = () => {
           }
         }
         
-        if (fetchedInvoice.companyId) {
-          // Fetch company data
+        if (isClientView && fetchedInvoice.companyId) {
+          console.log('[InvoiceView] Client view - using company data from JWT:', companyData);
+        } else if (fetchedInvoice.companyId) {
+          // Fetch company data only in non-client view mode (authenticated user)
           try {
             console.log('[InvoiceView] Fetching company info for:', fetchedInvoice.companyId);
             const { data: companyData, error: companyError } = await supabase
@@ -215,7 +252,7 @@ const InvoiceView = () => {
     };
     
     fetchInvoice();
-  }, [idOrViewLink, location.pathname, location.search, selectedCompanyId, isClientView, setSelectedCompanyState, selectedCompany, navigate]);
+  }, [idOrViewLink, location.pathname, location.search, selectedCompanyId, isClientView, setSelectedCompanyState, selectedCompany]);
 
   const handlePaymentStatusUpdate = useCallback(async (paymentId: string, newStatus: 'paid' | 'unpaid' | 'write-off') => {
     if (!invoice || !paymentId) return;

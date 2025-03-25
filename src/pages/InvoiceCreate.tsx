@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import InvoiceForm from '@/components/InvoiceForm';
@@ -126,25 +127,6 @@ const InvoiceCreate = () => {
     fetchContractTemplates();
   }, [invoiceId, clientId, jobId, navigate, loading]);
 
-  const handleInvoiceSaved = async (savedInvoiceId: string) => {
-    logDebug('Invoice saved, generating static HTML version:', savedInvoiceId);
-    
-    try {
-      const { data, error } = await supabase.functions.invoke('generate-invoice-pdf', {
-        body: { invoiceId: savedInvoiceId }
-      });
-      
-      if (error) {
-        logError('Error generating invoice PDF and static HTML:', error);
-        // Don't show error to user as this is a background task
-      } else {
-        logDebug('Successfully generated invoice PDF and static HTML', data);
-      }
-    } catch (err) {
-      logError('Failed to generate static invoice content:', err);
-    }
-  };
-
   if (loading || loadingTemplates) {
     return (
       <PageTransition>
@@ -155,6 +137,7 @@ const InvoiceCreate = () => {
     );
   }
 
+  // Log more details about the invoice before rendering
   if (invoice) {
     logDebug('Rendering InvoiceForm with invoice data:', { 
       id: invoice.id,
@@ -185,6 +168,7 @@ const InvoiceCreate = () => {
     invoiceStatus: invoice?.status
   });
 
+  // Pass down a function to check for duplicate invoice numbers
   const checkDuplicateInvoiceNumber = async (number: string, currentInvoiceId?: string) => {
     try {
       logDebug('Checking for duplicate invoice number:', number);
@@ -200,6 +184,7 @@ const InvoiceCreate = () => {
       }
       
       if (data && data.length > 0) {
+        // If we're editing an existing invoice, it's okay if the number matches the current invoice
         if (currentInvoiceId && data.length === 1 && data[0].id === currentInvoiceId) {
           return false;
         }
@@ -229,7 +214,6 @@ const InvoiceCreate = () => {
           invoiceId={invoiceId}
           contractTemplates={contractTemplates}
           checkDuplicateInvoiceNumber={checkDuplicateInvoiceNumber}
-          onInvoiceSaved={handleInvoiceSaved}
         />
       </div>
     </PageTransition>

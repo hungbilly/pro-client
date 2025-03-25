@@ -45,48 +45,6 @@ const InvoiceView = () => {
     [location.pathname, isAdmin]
   );
 
-  useEffect(() => {
-    const redirectToStaticHtml = async () => {
-      if (isClientView && idOrViewLink) {
-        try {
-          console.log("[InvoiceView] Client view detected, preparing to redirect to static HTML");
-          
-          const SUPABASE_URL = "https://htjvyzmuqsrjpesdurni.supabase.co";
-          const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrViewLink);
-          
-          if (isUUID) {
-            const invoiceData = await getInvoice(idOrViewLink);
-            if (invoiceData && invoiceData.viewLink) {
-              const cleanViewLink = invoiceData.viewLink.includes('/') 
-                ? invoiceData.viewLink.split('/').pop() 
-                : invoiceData.viewLink;
-                
-              const staticUrl = `${SUPABASE_URL}/functions/v1/serve-static-invoice/${cleanViewLink}`;
-              console.log("[InvoiceView] Redirecting to static invoice URL:", staticUrl);
-              window.location.href = staticUrl;
-              return;
-            }
-          } else {
-            const cleanViewLink = idOrViewLink.includes('/') 
-              ? idOrViewLink.split('/').pop() 
-              : idOrViewLink;
-              
-            const staticUrl = `${SUPABASE_URL}/functions/v1/serve-static-invoice/${cleanViewLink}`;
-            console.log("[InvoiceView] Redirecting to static invoice URL:", staticUrl);
-            window.location.href = staticUrl;
-            return;
-          }
-        } catch (err) {
-          console.error("[InvoiceView] Error redirecting to static HTML:", err);
-        }
-      }
-    };
-    
-    if (isClientView && idOrViewLink) {
-      redirectToStaticHtml();
-    }
-  }, [isClientView, idOrViewLink]);
-
   const formatCurrency = useCallback((amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -661,7 +619,7 @@ const InvoiceView = () => {
                     {invoice.items && invoice.items.length > 0 ? (
                       invoice.items.map((item) => (
                         <div key={item.id} className="mb-4 pb-4 border-b last:mb-0 last:pb-0 last:border-b-0">
-                          <div className="md:flex md-justify-between md:items-start">
+                          <div className="md:flex md:justify-between md:items-start">
                             <div className="md:flex-1">
                               <h5 className="font-medium">{item.name || 'Unnamed Package'}</h5>
                             </div>

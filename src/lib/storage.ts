@@ -1022,71 +1022,6 @@ export const saveInvoice = async (invoice: Omit<Invoice, 'id' | 'viewLink'>): Pr
       console.log('[saveInvoice] No payment schedules to save');
     }
 
-    // Generate and save HTML content for the invoice
-    try {
-      console.log('[saveInvoice] Generating HTML content for invoice');
-      
-      // Get client data
-      const { data: client } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('id', invoice.clientId)
-        .single();
-      
-      // Get company data if available
-      let company = null;
-      if (invoice.companyId) {
-        const { data: companyData } = await supabase
-          .from('companies')
-          .select('*')
-          .eq('id', invoice.companyId)
-          .single();
-        
-        company = companyData;
-      }
-      
-      // Get job data if available
-      let job = null;
-      if (invoice.jobId) {
-        const { data: jobData } = await supabase
-          .from('jobs')
-          .select('*')
-          .eq('id', invoice.jobId)
-          .single();
-        
-        job = jobData;
-      }
-      
-      // Generate HTML
-      const { generateInvoiceHTML } = await import('../lib/utils');
-      const invoiceWithItems = {
-        ...newInvoice,
-        items: invoice.items || [],
-        notes: invoice.notes,
-        contractTerms: invoice.contractTerms
-      };
-      
-      const html = generateInvoiceHTML(invoiceWithItems, client, company, job);
-      
-      // Update the invoice with the HTML content
-      const { error: htmlError } = await supabase
-        .from('invoices')
-        .update({
-          html_content: html,
-          html_generated_at: new Date().toISOString()
-        })
-        .eq('id', newInvoice.id);
-      
-      if (htmlError) {
-        console.error('[saveInvoice] Error saving HTML content:', htmlError);
-      } else {
-        console.log('[saveInvoice] HTML content saved successfully');
-      }
-    } catch (htmlError) {
-      console.error('[saveInvoice] Error generating HTML content:', htmlError);
-      // Don't throw here, since the invoice was already created successfully
-    }
-
     console.log('[saveInvoice] Invoice creation completed successfully');
     return {
       id: newInvoice.id,
@@ -1233,64 +1168,6 @@ export const updateInvoice = async (invoice: Invoice): Promise<Invoice> => {
       console.log('[updateInvoice] New payment schedules added successfully');
     } else {
       console.log('[updateInvoice] No payment schedules to add');
-    }
-    
-    // Generate and save HTML content for the invoice
-    try {
-      console.log('[updateInvoice] Generating HTML content for invoice');
-      
-      // Get client data
-      const { data: client } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('id', invoice.clientId)
-        .single();
-      
-      // Get company data if available
-      let company = null;
-      if (invoice.companyId) {
-        const { data: companyData } = await supabase
-          .from('companies')
-          .select('*')
-          .eq('id', invoice.companyId)
-          .single();
-        
-        company = companyData;
-      }
-      
-      // Get job data if available
-      let job = null;
-      if (invoice.jobId) {
-        const { data: jobData } = await supabase
-          .from('jobs')
-          .select('*')
-          .eq('id', invoice.jobId)
-          .single();
-        
-        job = jobData;
-      }
-      
-      // Generate HTML
-      const { generateInvoiceHTML } = await import('../lib/utils');
-      const html = generateInvoiceHTML(invoice, client, company, job);
-      
-      // Update the invoice with the HTML content
-      const { error: htmlError } = await supabase
-        .from('invoices')
-        .update({
-          html_content: html,
-          html_generated_at: new Date().toISOString()
-        })
-        .eq('id', invoice.id);
-      
-      if (htmlError) {
-        console.error('[updateInvoice] Error saving HTML content:', htmlError);
-      } else {
-        console.log('[updateInvoice] HTML content saved successfully');
-      }
-    } catch (htmlError) {
-      console.error('[updateInvoice] Error generating HTML content:', htmlError);
-      // Don't throw here, since the invoice was already updated successfully
     }
     
     console.log('[updateInvoice] Invoice update completed successfully');

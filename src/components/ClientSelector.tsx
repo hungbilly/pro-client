@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { getClients } from '@/lib/storage';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, UserSearch } from 'lucide-react';
 import AddClientModal from '@/components/ui-custom/AddClientModal';
 import { useCompany } from './CompanySelector';
 
@@ -85,17 +85,23 @@ const ClientSelector: React.FC<ClientSelectorProps> = ({
       <div className="flex items-center gap-3 mt-2">
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Input
-              id="client"
-              className="flex-1"
-              value={selectedClient ? `${selectedClient.name} (${selectedClient.email})` : ''}
-              placeholder="Select a client"
-              readOnly
-            />
+            <Button
+              variant="outline"
+              className="flex-1 justify-start text-left font-normal h-10 px-3 relative"
+            >
+              {selectedClient ? (
+                `${selectedClient.name} (${selectedClient.email})`
+              ) : (
+                <span className="flex items-center text-muted-foreground">
+                  <UserSearch className="mr-2 h-4 w-4" />
+                  Choose existing client
+                </span>
+              )}
+            </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Select a client</DialogTitle>
+              <DialogTitle>Choose existing client</DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               {loading ? (

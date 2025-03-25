@@ -177,8 +177,12 @@ class InvoiceForm extends Component<Props, State> {
 
 // This component wrapper allows us to handle the onInvoiceSaved callback 
 // without modifying the original InvoiceForm component
-const InvoiceFormWithCallback = (props: Omit<Props, 'navigate' | 'params' | 'location'>) => {
-  const { onInvoiceSaved, ...restProps } = props;
+const InvoiceFormWithCallback = (props: Omit<Props, 'navigate' | 'params' | 'location'> & {
+  navigate: Props['navigate'];
+  params: Props['params'];
+  location: Props['location'];
+}) => {
+  const { onInvoiceSaved, navigate, params, location, ...restProps } = props;
   
   // Clone the original handleSubmit to add our callback
   const originalHandleSubmit = InvoiceForm.prototype.handleSubmit;
@@ -194,7 +198,7 @@ const InvoiceFormWithCallback = (props: Omit<Props, 'navigate' | 'params' | 'loc
     return result;
   };
   
-  return <InvoiceForm {...restProps} />;
+  return <InvoiceForm {...restProps} navigate={navigate} params={params} location={location} />;
 };
 
 export default withRouter(InvoiceFormWithCallback);

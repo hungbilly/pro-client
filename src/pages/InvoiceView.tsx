@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback, memo, useRef } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { 
@@ -73,8 +74,10 @@ const InvoiceView = () => {
         
         console.log('[InvoiceView] Fetching invoice with identifier:', identifier);
 
+        // Check if we're in client view mode with a token
         const token = searchParams.get('token');
         if (isClientView && token) {
+          // Decode the JWT to get the invoice, client, and company data
           const decoded = verifyInvoiceToken(token);
           if (!decoded) {
             setError('Invalid or expired token. Please request a new link.');
@@ -88,8 +91,9 @@ const InvoiceView = () => {
 
           console.log('[InvoiceView] Decoded company from JWT:', companyData);
 
+          // Transform logo_url if it's a relative path
           if (companyData.logo_url && !companyData.logo_url.startsWith('http')) {
-            const bucketName = 'your-bucket-name';
+            const bucketName = 'your-bucket-name'; // Replace with your Supabase Storage bucket name
             const baseUrl = 'https://htjvyzmuqsrjpesdurni.supabase.co/storage/v1/object/public';
             companyData.logo_url = `${baseUrl}/${bucketName}/${companyData.logo_url}`;
             console.log('[InvoiceView] Transformed logo_url:', companyData.logo_url);
@@ -97,8 +101,16 @@ const InvoiceView = () => {
 
           setInvoice(fetchedInvoice);
           setClient(fetchedClient);
-          setSelectedCompanyState(companyData);
 
+          // Only update selectedCompany if it's different
+          if (!isEqual(selectedCompany, companyData)) {
+            console.log('[InvoiceView] Updating selectedCompany in client view');
+            setSelectedCompanyState(companyData);
+          } else {
+            console.log('[InvoiceView] selectedCompany is already up-to-date in client view');
+          }
+
+          // Fetch the job if it exists
           if (fetchedInvoice.jobId) {
             try {
               const fetchedJob = await getJob(fetchedInvoice.jobId);
@@ -192,9 +204,10 @@ const InvoiceView = () => {
         if (isClientView && fetchedInvoice.companyId) {
           console.log('[InvoiceView] Client view - using company data from JWT:', companyData);
         } else if (fetchedInvoice.companyId) {
+          // Fetch company data only in non-client view mode (authenticated user)
           try {
             console.log('[InvoiceView] Fetching company info for:', fetchedInvoice.companyId);
-            const { data: companyInfo, error: companyError } = await supabase
+            const { data: companyData, error: companyError } = await supabase
               .from('companies')
               .select('*')
               .eq('id', fetchedInvoice.companyId)
@@ -203,21 +216,27 @@ const InvoiceView = () => {
             if (companyError) {
               console.error('[InvoiceView] Error fetching company:', companyError);
               toast.error('Failed to load company information');
-            } else if (companyInfo) {
-              console.log('[InvoiceView] Fetched company data:', companyInfo);
-              setSelectedCompanyState({
-                id: companyInfo.id,
-                name: companyInfo.name,
-                logo_url: companyInfo.logo_url,
-                address: companyInfo.address,
-                email: companyInfo.email,
-                phone: companyInfo.phone,
-                website: companyInfo.website,
-                country: companyInfo.country,
-                currency: companyInfo.currency,
-                is_default: companyInfo.is_default,
-                user_id: companyInfo.user_id
-              });
+            } else if (companyData) {
+              console.log('[InvoiceView] Fetched company data:', companyData);
+              // Only update selectedCompany if it's different
+              if (!isEqual(selectedCompany, companyData)) {
+                console.log('[InvoiceView] Updating selectedCompany in non-client view');
+                setSelectedCompanyState({
+                  id: companyData.id,
+                  name: companyData.name,
+                  logo_url: companyData.logo_url,
+                  address: companyData.address,
+                  email: companyData.email,
+                  phone: companyData.phone,
+                  website: companyData.website,
+                  country: companyData.country,
+                  currency: companyData.currency,
+                  is_default: companyData.is_default,
+                  user_id: companyData.user_id
+                });
+              } else {
+                console.log('[InvoiceView] selectedCompany is already up-to-date in non-client view');
+              }
             }
           } catch (err) {
             console.error('[InvoiceView] Failed to fetch company data:', err);
@@ -233,7 +252,7 @@ const InvoiceView = () => {
     };
     
     fetchInvoice();
-  }, [idOrViewLink, location.pathname, location.search, selectedCompanyId, isClientView, setSelectedCompanyState]);
+  }, [idOrViewLink, location.pathname, location.search, selectedCompanyId, isClientView, setSelectedCompanyState, selectedCompany]);
 
   const handlePaymentStatusUpdate = useCallback(async (paymentId: string, newStatus: 'paid' | 'unpaid' | 'write-off') => {
     if (!invoice || !paymentId) return;
@@ -402,7 +421,7 @@ const InvoiceView = () => {
     }
   };
 
-  const displayCompany = isClientView ? selectedCompany : selectedCompany;
+  const displayCompany = selectedCompany;
 
   useEffect(() => {
     if (invoice) {
@@ -528,7 +547,7 @@ const InvoiceView = () => {
                       alt={`${displayCompany.name} Logo`}
                       className="h-full max-h-80 w-auto object-contain" 
                       onError={(e) => {
-                        e.currentTarget.src = '/placeholder.svg';
+                        e.currentTarget.src = '/placeholder.svg'; // Ensure this path exists
                       }}
                     />
                   ) : (

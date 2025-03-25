@@ -9,10 +9,13 @@ import { Separator } from '@/components/ui/separator';
 import InvoiceList from '@/components/InvoiceList';
 import JobList from '@/components/JobList';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Trash2, UserCog, FileText } from 'lucide-react';
+import { ArrowLeft, Trash2, UserCog, FileText, Globe } from 'lucide-react';
 import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, logDebug, logError } from '@/integrations/supabase/client';
+
+// Constants for Supabase URL
+const SUPABASE_URL = "https://htjvyzmuqsrjpesdurni.supabase.co";
 
 const ClientDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -22,6 +25,7 @@ const ClientDetail = () => {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isGeneratingStatic, setIsGeneratingStatic] = useState<Record<string, boolean>>({});
+  const [hasStaticVersions, setHasStaticVersions] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (!id) {
@@ -40,6 +44,11 @@ const ClientDetail = () => {
           const fetchedInvoices = await getClientInvoices(id);
           setInvoices(fetchedInvoices);
           
+          // Check which invoices have static versions
+          if (fetchedInvoices.length > 0) {
+            checkStaticVersions(fetchedInvoices);
+          }
+          
           const fetchedJobs = await getClientJobs(id);
           setJobs(fetchedJobs);
         } else {
@@ -56,6 +65,32 @@ const ClientDetail = () => {
 
     fetchClientData();
   }, [id, navigate]);
+
+  // Check which invoices already have static versions
+  const checkStaticVersions = async (invoices: Invoice[]) => {
+    try {
+      const results = await Promise.all(
+        invoices.map(async (invoice) => {
+          const { data } = await supabase
+            .from('clientview_invoice')
+            .select('id')
+            .eq('invoice_id', invoice.id)
+            .maybeSingle();
+          
+          return { invoiceId: invoice.id, hasStatic: !!data };
+        })
+      );
+
+      const staticVersionsMap = results.reduce((acc, { invoiceId, hasStatic }) => {
+        acc[invoiceId] = hasStatic;
+        return acc;
+      }, {} as Record<string, boolean>);
+
+      setHasStaticVersions(staticVersionsMap);
+    } catch (error) {
+      logError('Error checking static versions', error);
+    }
+  };
 
   const handleDeleteClient = async () => {
     try {
@@ -80,16 +115,24 @@ const ClientDetail = () => {
     setIsGeneratingStatic(prev => ({ ...prev, [invoiceId]: true }));
     
     try {
+      logDebug('Generating static HTML for invoice', { invoiceId });
+      
       const { data, error } = await supabase.functions.invoke('generate-static-invoice', {
         body: { invoiceId }
       });
       
-      if (error) throw error;
+      if (error) {
+        logError('Error calling generate-static-invoice function', error);
+        throw error;
+      }
       
       if (data.success) {
         toast.success('Static HTML version of invoice generated successfully');
+        // Update the state to show the invoice now has a static version
+        setHasStaticVersions(prev => ({ ...prev, [invoiceId]: true }));
       } else {
-        throw new Error(data.message || 'Unknown error');
+        logError('Error response from generate-static-invoice function', data);
+        throw new Error(data.message || 'Unknown error generating static HTML');
       }
     } catch (error) {
       console.error('Error generating static invoice:', error);
@@ -99,8 +142,17 @@ const ClientDetail = () => {
     }
   };
 
+  const handleViewStaticHTML = (invoiceViewLink: string) => {
+    if (!invoiceViewLink) return;
+    
+    // Open in a new tab
+    window.open(`${SUPABASE_URL}/functions/v1/serve-static-invoice/${invoiceViewLink}`, '_blank');
+  };
+
   // Custom InvoiceActions component with static HTML generation
   const InvoiceActions = ({ invoice }: { invoice: Invoice }) => {
+    const hasStaticVersion = hasStaticVersions[invoice.id] || false;
+    
     return (
       <div className="flex space-x-2">
         <Button 
@@ -120,10 +172,21 @@ const ClientDetail = () => {
           ) : (
             <>
               <FileText className="h-4 w-4 mr-2" />
-              Generate Static HTML
+              {hasStaticVersion ? 'Regenerate Static HTML' : 'Generate Static HTML'}
             </>
           )}
         </Button>
+        
+        {hasStaticVersion && (
+          <Button 
+            size="sm" 
+            variant="outline" 
+            onClick={() => handleViewStaticHTML(invoice.viewLink)}
+          >
+            <Globe className="h-4 w-4 mr-2" />
+            View Static HTML
+          </Button>
+        )}
       </div>
     );
   };
@@ -225,7 +288,7 @@ const ClientDetail = () => {
               invoices={invoices} 
               client={client} 
               showCreateButton={false} 
-              extraActions={InvoiceActions}  // Pass our custom actions component
+              extraActions={InvoiceActions}
             />
           </div>
         </CardContent>

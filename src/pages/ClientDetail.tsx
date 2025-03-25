@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getClient, getClientInvoices, deleteClient, getClientJobs } from '@/lib/storage';
@@ -108,10 +107,9 @@ const ClientDetail = () => {
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Clients
             </Button>
-            <Button size="sm" asChild>
-              <Link to={`/client/${client.id}/edit`}>
-                <UserCog className="h-4 w-4 mr-2" />
-                Edit Client
+            <Button size="sm" variant="outline" asChild>
+              <Link to={`/client/${client.id}/edit`} aria-label="Edit Client">
+                <UserCog className="h-4 w-4" />
               </Link>
             </Button>
             <AlertDialog>

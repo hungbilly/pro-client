@@ -174,17 +174,15 @@ const JobDetail = () => {
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Client
               </Button>
-              <Button size="sm" asChild>
-                <Link to={`/job/${job.id}/edit`}>
-                  <FileEdit className="h-4 w-4 mr-2" />
-                  Edit Job
+              <Button size="sm" variant="outline" asChild>
+                <Link to={`/job/${job.id}/edit`} aria-label="Edit Job">
+                  <FileEdit className="h-4 w-4" />
                 </Link>
               </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="destructive" size="sm">
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete Job
+                  <Button variant="destructive" size="sm" aria-label="Delete Job">
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>

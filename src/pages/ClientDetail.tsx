@@ -8,7 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import InvoiceList from '@/components/InvoiceList';
 import JobList from '@/components/JobList';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Trash2, UserCog } from 'lucide-react';
+import { ArrowLeft, Trash2, FileEdit } from 'lucide-react';
 import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
 
@@ -102,9 +102,9 @@ const ClientDetail = () => {
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Clients
             </Button>
-            <Button size="sm" variant="outline" asChild>
+            <Button size="icon" variant="outline" asChild>
               <Link to={`/client/${client.id}/edit`} aria-label="Edit Client">
-                <UserCog className="h-4 w-4" />
+                <FileEdit className="h-4 w-4 text-blue-500" />
               </Link>
             </Button>
             <AlertDialog>

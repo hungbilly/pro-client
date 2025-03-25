@@ -163,8 +163,14 @@ const InvoiceView = () => {
               phone: companyData.phone,
               address: companyData.address,
               website: companyData.website,
-              logo_url: companyData.logo_url
-            });
+              logo_url: companyData.logo_url,
+              is_default: companyData.is_default || false,
+              user_id: companyData.user_id || '',
+              created_at: companyData.created_at || '',
+              updated_at: companyData.updated_at || '',
+              country: companyData.country,
+              currency: companyData.currency
+            } as Company);
           }
         }
         
@@ -626,3 +632,4 @@ const InvoiceView = () => {
 };
 
 export default InvoiceView;
+

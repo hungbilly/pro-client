@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback, memo, useRef } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { 
@@ -34,7 +35,6 @@ const InvoiceView = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null);
-  const [htmlContent, setHtmlContent] = useState<string | null>(null);
   const invoiceRef = useRef<HTMLDivElement>(null);
 
   const { isAdmin } = useAuth();
@@ -61,6 +61,8 @@ const InvoiceView = () => {
       try {
         setLoading(true);
         let fetchedInvoice: Invoice | null = null;
+        let fetchedClient: Client | null = null;
+        let companyData: any = null;
         
         const identifier = idOrViewLink;
         if (!identifier) {
@@ -74,164 +76,110 @@ const InvoiceView = () => {
 
         // Check if we're in client view mode with a token
         const token = searchParams.get('token');
-        
-        // For client view, first try to fetch the prerendered HTML if available
-        if (isClientView) {
-          let invoiceId: string | null = null;
-          
-          // If we have a token, decode it to get invoice id
-          if (token) {
-            const decoded = verifyInvoiceToken(token);
-            if (!decoded) {
-              setError('Invalid or expired token. Please request a new link.');
-              setLoading(false);
-              return;
-            }
-            
-            fetchedInvoice = decoded.invoice;
-            invoiceId = fetchedInvoice.id;
-            
-            // Set basic data from token
-            setInvoice(fetchedInvoice);
-            setClient(decoded.client);
-            
-            // Only update selectedCompany if it's different
-            if (!isEqual(selectedCompany, decoded.company)) {
-              setSelectedCompanyState(decoded.company);
-            }
-            
-            // Try to fetch job data if needed
-            if (fetchedInvoice.jobId) {
-              try {
-                const fetchedJob = await getJob(fetchedInvoice.jobId);
-                if (fetchedJob) {
-                  setJob(fetchedJob);
-                }
-              } catch (err) {
-                console.error('[InvoiceView] Failed to fetch job:', err);
-              }
-            }
-          } else {
-            // If no token, check if identifier is a UUID or view link
-            const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
-            
-            if (isUUID) {
-              invoiceId = identifier;
-              fetchedInvoice = await getInvoice(identifier);
-            } else {
-              fetchedInvoice = await getInvoiceByViewLink(identifier);
-              invoiceId = fetchedInvoice?.id || null;
-            }
-            
-            if (!fetchedInvoice) {
-              console.log('[InvoiceView] No invoice found for identifier:', identifier);
-              setError('Invoice not found. Please check the URL or contact support.');
-              setLoading(false);
-              return;
-            }
-            
-            setInvoice(fetchedInvoice);
-            
-            if (fetchedInvoice.clientId) {
-              const fetchedClient = await getClient(fetchedInvoice.clientId);
-              if (fetchedClient) {
-                setClient(fetchedClient);
-              }
-            }
-            
-            if (fetchedInvoice.jobId) {
-              try {
-                const fetchedJob = await getJob(fetchedInvoice.jobId);
-                if (fetchedJob) {
-                  setJob(fetchedJob);
-                }
-              } catch (err) {
-                console.error('[InvoiceView] Failed to fetch job:', err);
-              }
-            }
+        if (isClientView && token) {
+          // Decode the JWT to get the invoice, client, and company data
+          const decoded = verifyInvoiceToken(token);
+          if (!decoded) {
+            setError('Invalid or expired token. Please request a new link.');
+            setLoading(false);
+            return;
           }
-          
-          // Try to fetch the HTML content if we have an invoice ID
-          if (invoiceId) {
+
+          fetchedInvoice = decoded.invoice;
+          fetchedClient = decoded.client;
+          companyData = decoded.company;
+
+          console.log('[InvoiceView] Decoded company from JWT:', companyData);
+
+          // Transform logo_url if it's a relative path
+          if (companyData.logo_url && !companyData.logo_url.startsWith('http')) {
+            const bucketName = 'your-bucket-name'; // Replace with your Supabase Storage bucket name
+            const baseUrl = 'https://htjvyzmuqsrjpesdurni.supabase.co/storage/v1/object/public';
+            companyData.logo_url = `${baseUrl}/${bucketName}/${companyData.logo_url}`;
+            console.log('[InvoiceView] Transformed logo_url:', companyData.logo_url);
+          }
+
+          setInvoice(fetchedInvoice);
+          setClient(fetchedClient);
+
+          // Only update selectedCompany if it's different
+          if (!isEqual(selectedCompany, companyData)) {
+            console.log('[InvoiceView] Updating selectedCompany in client view');
+            setSelectedCompanyState(companyData);
+          } else {
+            console.log('[InvoiceView] selectedCompany is already up-to-date in client view');
+          }
+
+          // Fetch the job if it exists
+          if (fetchedInvoice.jobId) {
             try {
-              const { data, error } = await supabase
-                .from('invoices')
-                .select('invoice_html')
-                .eq('id', invoiceId)
-                .single();
-                
-              if (!error && data && data.invoice_html) {
-                console.log('[InvoiceView] Found prerendered HTML for invoice');
-                setHtmlContent(data.invoice_html);
-                
-                // If we have HTML content, we can stop loading
-                setLoading(false);
-                return;
-              } else {
-                console.log('[InvoiceView] No prerendered HTML found, continuing with regular rendering');
+              const fetchedJob = await getJob(fetchedInvoice.jobId);
+              if (fetchedJob) {
+                setJob(fetchedJob);
               }
             } catch (err) {
-              console.error('[InvoiceView] Error fetching HTML content:', err);
-              // Continue with normal rendering if HTML fetch fails
+              console.error('[InvoiceView] Failed to fetch job:', err);
             }
           }
+
+          setLoading(false);
+          return;
         }
         
-        // If not client view or no HTML content was found, continue with regular data fetching
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
+        
+        if (isUUID) {
+          console.log('[InvoiceView] Identifier looks like a UUID, using getInvoice');
+          fetchedInvoice = await getInvoice(identifier);
+        } else {
+          console.log('[InvoiceView] Identifier does not look like a UUID, using getInvoiceByViewLink');
+          fetchedInvoice = await getInvoiceByViewLink(identifier);
+        }
+        
         if (!fetchedInvoice) {
-          const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
+          const urlPath = location.pathname;
+          const lastPartOfUrl = urlPath.split('/').pop() || '';
           
-          if (isUUID) {
-            console.log('[InvoiceView] Identifier looks like a UUID, using getInvoice');
-            fetchedInvoice = await getInvoice(identifier);
-          } else {
-            console.log('[InvoiceView] Identifier does not look like a UUID, using getInvoiceByViewLink');
-            fetchedInvoice = await getInvoiceByViewLink(identifier);
-          }
-          
-          if (!fetchedInvoice) {
-            const urlPath = location.pathname;
-            const lastPartOfUrl = urlPath.split('/').pop() || '';
+          if (lastPartOfUrl && lastPartOfUrl !== identifier) {
+            console.log('[InvoiceView] Trying alternative identifier from URL path:', lastPartOfUrl);
             
-            if (lastPartOfUrl && lastPartOfUrl !== identifier) {
-              console.log('[InvoiceView] Trying alternative identifier from URL path:', lastPartOfUrl);
-              
-              const isLastPartUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(lastPartOfUrl);
-              
-              if (isLastPartUUID) {
-                fetchedInvoice = await getInvoice(lastPartOfUrl);
-              } else {
-                fetchedInvoice = await getInvoiceByViewLink(lastPartOfUrl);
-              }
+            const isLastPartUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(lastPartOfUrl);
+            
+            if (isLastPartUUID) {
+              fetchedInvoice = await getInvoice(lastPartOfUrl);
+            } else {
+              fetchedInvoice = await getInvoiceByViewLink(lastPartOfUrl);
             }
           }
         }
         
-        if (!fetchedInvoice && !invoice) {
+        if (!fetchedInvoice) {
           console.log('[InvoiceView] No invoice found for identifier:', identifier);
           setError('Invoice not found. Please check the URL or contact support.');
           setLoading(false);
           return;
         }
         
-        // If we haven't set the invoice data yet, do it now
-        if (!invoice) {
-          console.log('[InvoiceView] Setting invoice data');
-          setInvoice(fetchedInvoice);
-        }
+        console.log('[InvoiceView] Fetched invoice with contract terms:', {
+          id: fetchedInvoice.id,
+          hasContractTerms: !!fetchedInvoice.contractTerms,
+          contractTermsLength: fetchedInvoice.contractTerms?.length || 0,
+          contractStatus: fetchedInvoice.contractStatus,
+          contractTermsPreview: fetchedInvoice.contractTerms?.substring(0, 100)
+        });
         
-        // Continue with company data fetching for admin view
-        if (selectedCompanyId && fetchedInvoice?.companyId !== selectedCompanyId && !isClientView) {
-          console.log('[InvoiceView] Invoice company mismatch. Expected:', selectedCompanyId, 'Got:', fetchedInvoice?.companyId);
+        if (selectedCompanyId && fetchedInvoice.companyId !== selectedCompanyId && !isClientView) {
+          console.log('[InvoiceView] Invoice company mismatch. Expected:', selectedCompanyId, 'Got:', fetchedInvoice.companyId);
           toast.error("This invoice belongs to a different company");
           setError('This invoice belongs to a different company.');
           setLoading(false);
           return;
         }
         
-        // If we haven't set the client, fetch and set it
-        if (!client && fetchedInvoice?.clientId) {
-          const fetchedClient = await getClient(fetchedInvoice.clientId);
+        setInvoice(fetchedInvoice);
+        
+        if (fetchedInvoice.clientId) {
+          fetchedClient = await getClient(fetchedInvoice.clientId);
           if (!fetchedClient) {
             console.log('[InvoiceView] No client found for clientId:', fetchedInvoice.clientId);
             setError('Client information not found.');
@@ -242,8 +190,7 @@ const InvoiceView = () => {
           setClient(fetchedClient);
         }
 
-        // If we need job data and haven't fetched it
-        if (!job && fetchedInvoice?.jobId) {
+        if (fetchedInvoice.jobId) {
           try {
             const fetchedJob = await getJob(fetchedInvoice.jobId);
             if (fetchedJob) {
@@ -254,8 +201,10 @@ const InvoiceView = () => {
           }
         }
         
-        // Fetch company data if needed for admin view
-        if (!isClientView && fetchedInvoice?.companyId && !selectedCompany) {
+        if (isClientView && fetchedInvoice.companyId) {
+          console.log('[InvoiceView] Client view - using company data from JWT:', companyData);
+        } else if (fetchedInvoice.companyId) {
+          // Fetch company data only in non-client view mode (authenticated user)
           try {
             console.log('[InvoiceView] Fetching company info for:', fetchedInvoice.companyId);
             const { data: companyData, error: companyError } = await supabase
@@ -285,6 +234,8 @@ const InvoiceView = () => {
                   is_default: companyData.is_default,
                   user_id: companyData.user_id
                 });
+              } else {
+                console.log('[InvoiceView] selectedCompany is already up-to-date in non-client view');
               }
             }
           } catch (err) {
@@ -301,7 +252,7 @@ const InvoiceView = () => {
     };
     
     fetchInvoice();
-  }, [idOrViewLink, location.pathname, location.search, selectedCompanyId, isClientView, setSelectedCompanyState, selectedCompany, invoice, client, job]);
+  }, [idOrViewLink, location.pathname, location.search, selectedCompanyId, isClientView, setSelectedCompanyState, selectedCompany]);
 
   const handlePaymentStatusUpdate = useCallback(async (paymentId: string, newStatus: 'paid' | 'unpaid' | 'write-off') => {
     if (!invoice || !paymentId) return;
@@ -500,15 +451,6 @@ const InvoiceView = () => {
           Error: {error}
         </div>
       </PageTransition>
-    );
-  }
-
-  if (isClientView && htmlContent) {
-    return (
-      <div
-        className="w-full"
-        dangerouslySetInnerHTML={{ __html: htmlContent }}
-      />
     );
   }
 
@@ -742,7 +684,7 @@ const InvoiceView = () => {
                     {invoice.items && invoice.items.length > 0 ? (
                       invoice.items.map((item) => (
                         <div key={item.id} className="mb-4 pb-4 border-b last:mb-0 last:pb-0 last:border-b-0">
-                          <div className="md:flex md-justify-between md:items-start">
+                          <div className="md:flex md:justify-between md:items-start">
                             <div className="md:flex-1">
                               <h5 className="font-medium">{item.name || 'Unnamed Package'}</h5>
                             </div>

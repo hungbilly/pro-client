@@ -14,24 +14,22 @@ import { toast } from 'sonner';
 
 interface PaymentScheduleTableProps {
   paymentSchedules: PaymentSchedule[];
-  amount: number; // Changed from 'total' to 'amount' to match how it's used in InvoiceView
-  onUpdateStatus?: (paymentId: string, status: 'paid' | 'unpaid' | 'write-off') => void;
+  amount: number;
+  isClientView: boolean;
+  updatingPaymentId: string | null;
+  onUpdateStatus: (paymentId: string, status: 'paid' | 'unpaid' | 'write-off') => void;
+  formatCurrency: (amount: number) => string;
   onUpdatePaymentDate?: (paymentId: string, paymentDate: string) => void;
-  isUpdating?: boolean;
-  updatingId?: string | null;
-  isClientView?: boolean;
-  className?: string;
 }
 
 const PaymentScheduleTable = memo(({
   paymentSchedules,
-  amount, // Changed from 'total' to 'amount'
-  isClientView = false,
-  updatingId,
+  amount,
+  isClientView,
+  updatingPaymentId,
   onUpdateStatus,
-  onUpdatePaymentDate,
-  isUpdating = false,
-  className
+  formatCurrency,
+  onUpdatePaymentDate
 }: PaymentScheduleTableProps) => {
   const paymentStatusColors: { [key: string]: string } = {
     paid: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
@@ -57,17 +55,8 @@ const PaymentScheduleTable = memo(({
     setEditingDateId(null);
   };
 
-  // Add a formatCurrency function here since it's not passed as a prop anymore
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-    }).format(amount);
-  };
-
   return (
-    <div className={cn("border rounded-md overflow-hidden", className)}>
+    <div className="border rounded-md overflow-hidden">
       <Table>
         <TableHeader>
           <TableRow className="bg-muted/50">
@@ -140,16 +129,16 @@ const PaymentScheduleTable = memo(({
                   <span className="text-muted-foreground">-</span>
                 )}
               </TableCell>
-              {!isClientView && onUpdateStatus && (
+              {!isClientView && (
                 <TableCell>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button 
                         variant="ghost" 
                         size="sm"
-                        disabled={updatingId === schedule.id}
+                        disabled={updatingPaymentId === schedule.id}
                       >
-                        {updatingId === schedule.id ? 'Updating...' : 'Set Status'}
+                        {updatingPaymentId === schedule.id ? 'Updating...' : 'Set Status'}
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">

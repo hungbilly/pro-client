@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useCallback, memo, useRef } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { 
@@ -26,9 +25,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import RichTextEditor from '@/components/RichTextEditor';
 import PaymentScheduleTable from '@/components/invoice/PaymentScheduleTable';
 import isEqual from 'lodash/isEqual';
-import html2pdf from 'html2pdf.js';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
 
 const InvoiceView = () => {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
@@ -37,7 +33,6 @@ const InvoiceView = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null);
-  const [generatingPdf, setGeneratingPdf] = useState(false);
   const invoiceRef = useRef<HTMLDivElement>(null);
 
   const { isAdmin } = useAuth();
@@ -281,538 +276,38 @@ const InvoiceView = () => {
       });
   };
 
-  const generateCustomPdf = useCallback(async () => {
-    if (!invoice || !client) {
-      toast.error('Cannot generate PDF: Missing invoice or client data');
-      return;
-    }
-
-    try {
-      setGeneratingPdf(true);
-      toast.info('Generating custom PDF...');
-
-      // Fetch data from Supabase function to get all necessary information
-      const { data, error } = await supabase.functions.invoke('generate-invoice-pdf', {
-        body: { invoiceId: invoice.id }
-      });
-
-      if (error) {
-        console.error('Error invoking Supabase function:', error);
-        toast.error('Failed to prepare PDF data');
-        setGeneratingPdf(false);
-        return;
-      }
-
-      const invoiceData = data?.invoiceData;
-      if (!invoiceData) {
-        toast.error('Failed to prepare PDF data');
-        setGeneratingPdf(false);
-        return;
-      }
-
-      console.log('PDF data received:', invoiceData);
-
-      // Create new PDF document
-      const doc = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
-
-      // Document constants
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
-      const margin = 15;
-      const contentWidth = pageWidth - (margin * 2);
-      
-      // Get company data
-      const company = invoiceData.company || clientViewCompany;
-      let currentY = margin;
-      
-      // Header - Company logo and information
-      if (company) {
-        // Try to add company logo if available
-        if (company.logo_url) {
-          try {
-            // We'll use a placeholder position for the logo, actual image loading would require more complex setup
-            doc.setFontSize(10);
-            doc.text('[Company Logo]', margin, currentY + 10);
-            currentY += 20;
-          } catch (logoErr) {
-            console.error('Error adding logo to PDF:', logoErr);
-          }
-        }
-        
-        // Company details on the right
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.text(company.name, pageWidth - margin - doc.getTextWidth(company.name), currentY);
-        currentY += 7;
-        
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        
-        if (company.email) {
-          doc.text(company.email, pageWidth - margin - doc.getTextWidth(company.email), currentY);
-          currentY += 5;
-        }
-        
-        if (company.phone) {
-          doc.text(company.phone, pageWidth - margin - doc.getTextWidth(company.phone), currentY);
-          currentY += 5;
-        }
-        
-        if (company.address) {
-          const addressLines = company.address.split('\n');
-          addressLines.forEach(line => {
-            doc.text(line, pageWidth - margin - doc.getTextWidth(line), currentY);
-            currentY += 5;
-          });
-        }
-      }
-      
-      currentY = Math.max(currentY, margin + 30); // Ensure minimum space after header
-      
-      // Invoice title and number
-      doc.setFontSize(18);
-      doc.setFont('helvetica', 'bold');
-      doc.text('INVOICE', margin, currentY);
-      currentY += 8;
-      
-      doc.setFontSize(14);
-      doc.text(`# ${invoice.number}`, margin, currentY);
-      currentY += 10;
-      
-      // Invoice details and client information in two columns
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      
-      // Left column - Invoice details
-      doc.setFont('helvetica', 'bold');
-      doc.text('Date:', margin, currentY);
-      doc.setFont('helvetica', 'normal');
-      doc.text(new Date(invoice.date).toLocaleDateString(), margin + 25, currentY);
-      currentY += 5;
-      
-      doc.setFont('helvetica', 'bold');
-      doc.text('Due Date:', margin, currentY);
-      doc.setFont('helvetica', 'normal');
-      doc.text(new Date(invoice.dueDate).toLocaleDateString(), margin + 25, currentY);
-      currentY += 5;
-      
-      doc.setFont('helvetica', 'bold');
-      doc.text('Status:', margin, currentY);
-      doc.setFont('helvetica', 'normal');
-      doc.text(invoice.status.toUpperCase(), margin + 25, currentY);
-      
-      // Right column - Client information
-      const clientStartY = currentY - 10;
-      doc.setFont('helvetica', 'bold');
-      doc.text('Client:', pageWidth / 2, clientStartY);
-      doc.setFont('helvetica', 'normal');
-      doc.text(client.name, pageWidth / 2 + 25, clientStartY);
-      
-      if (client.email) {
-        doc.text(client.email, pageWidth / 2 + 25, clientStartY + 5);
-      }
-      
-      if (client.phone) {
-        doc.text(client.phone, pageWidth / 2 + 25, clientStartY + 10);
-      }
-      
-      if (client.address) {
-        const addressLines = client.address.split('\n');
-        addressLines.forEach((line, i) => {
-          doc.text(line, pageWidth / 2 + 25, clientStartY + 15 + (i * 5));
-        });
-      }
-      
-      currentY += 20; // Space after client/invoice info
-      
-      // If we have a job, add job information
-      if (job) {
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Job Details:', margin, currentY);
-        currentY += 6;
-        
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`Title: ${job.title}`, margin + 5, currentY);
-        currentY += 5;
-        
-        if (job.date) {
-          doc.text(`Date: ${job.date}`, margin + 5, currentY);
-          currentY += 5;
-        }
-        
-        if (job.location) {
-          doc.text(`Location: ${job.location}`, margin + 5, currentY);
-          currentY += 5;
-        }
-        
-        currentY += 5; // Space after job details
-      }
-      
-      // Separator line
-      doc.setDrawColor(200, 200, 200);
-      doc.line(margin, currentY, pageWidth - margin, currentY);
-      currentY += 10;
-      
-      // Invoice Items section
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Items', margin, currentY);
-      currentY += 8;
-      
-      const items = invoiceData.items || invoice.items || [];
-      
-      if (items && items.length > 0) {
-        const columns = ['Item', 'Description', 'Quantity', 'Rate', 'Amount'];
-        
-        const rows = items.map(item => [
-          item.name || 'Unnamed Item',
-          item.description || '',
-          item.quantity.toString(),
-          formatCurrency(item.rate),
-          formatCurrency(item.amount)
-        ]);
-        
-        // @ts-ignore - jspdf-autotable typings
-        doc.autoTable({
-          head: [columns],
-          body: rows,
-          startY: currentY,
-          margin: { left: margin, right: margin },
-          styles: { overflow: 'linebreak', cellWidth: 'auto' },
-          columnStyles: {
-            0: { cellWidth: 40 }, // Item name
-            1: { cellWidth: 'auto' }, // Description (can wrap)
-            2: { cellWidth: 20, halign: 'center' }, // Quantity
-            3: { cellWidth: 30, halign: 'right' }, // Rate
-            4: { cellWidth: 30, halign: 'right' } // Amount
-          },
-          didDrawPage: (data) => {
-            // Add footer with page numbers on each page
-            // Fixed: Using internal.getNumberOfPages() instead of getNumberOfPages()
-            const pageCount = doc.internal.getNumberOfPages();
-            for (let i = 1; i <= pageCount; i++) {
-              doc.setPage(i);
-              const str = `Page ${i} of ${pageCount}`;
-              doc.setFontSize(10);
-              doc.text(str, pageWidth - margin - doc.getTextWidth(str), pageHeight - 10);
-              
-              // Add company name in footer
-              if (company) {
-                doc.text(company.name, margin, pageHeight - 10);
-              }
-            }
-          }
-        });
-        
-        // Update currentY to after the table
-        // @ts-ignore - jspdf-autotable typings
-        currentY = doc.lastAutoTable.finalY + 10;
-      } else {
-        doc.setFontSize(10);
-        doc.text('No items in this invoice.', margin, currentY);
-        currentY += 10;
-      }
-      
-      // Invoice Total
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
-      doc.text('TOTAL:', pageWidth - margin - 60, currentY);
-      doc.text(formatCurrency(invoice.amount), pageWidth - margin - doc.getTextWidth(formatCurrency(invoice.amount)), currentY);
-      currentY += 15;
-      
-      // Payment Schedule
-      const paymentSchedules = invoiceData.paymentSchedules || invoice.paymentSchedules || [];
-      
-      if (paymentSchedules && paymentSchedules.length > 0) {
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Payment Schedule', margin, currentY);
-        currentY += 8;
-        
-        const scheduleColumns = ['Description', 'Due Date', 'Percentage', 'Amount', 'Status', 'Payment Date'];
-        
-        const scheduleRows = paymentSchedules.map(schedule => [
-          schedule.description || '',
-          new Date(schedule.dueDate).toLocaleDateString(),
-          `${schedule.percentage}%`,
-          formatCurrency((invoice.amount * schedule.percentage) / 100),
-          schedule.status.toUpperCase(),
-          schedule.paymentDate ? new Date(schedule.paymentDate).toLocaleDateString() : '-'
-        ]);
-        
-        // @ts-ignore - jspdf-autotable typings
-        doc.autoTable({
-          head: [scheduleColumns],
-          body: scheduleRows,
-          startY: currentY,
-          margin: { left: margin, right: margin },
-          styles: { overflow: 'linebreak' },
-          columnStyles: {
-            0: { cellWidth: 'auto' }, // Description
-            1: { cellWidth: 30 }, // Due Date
-            2: { cellWidth: 25, halign: 'center' }, // Percentage
-            3: { cellWidth: 30, halign: 'right' }, // Amount
-            4: { cellWidth: 25, halign: 'center' }, // Status
-            5: { cellWidth: 30 } // Payment Date
-          }
-        });
-        
-        // @ts-ignore - jspdf-autotable typings
-        currentY = doc.lastAutoTable.finalY + 10;
-      }
-      
-      // Notes section if available
-      if (invoice.notes) {
-        // Check if we need to add a page break
-        if (currentY > pageHeight - 60) {
-          doc.addPage();
-          currentY = margin;
-        }
-        
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Notes', margin, currentY);
-        currentY += 8;
-        
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        
-        // This is a simplification - proper HTML parsing would be more complex
-        const notesText = invoice.notes.replace(/<[^>]*>/g, '');
-        const textLines = doc.splitTextToSize(notesText, contentWidth);
-        doc.text(textLines, margin, currentY);
-        currentY += textLines.length * 5 + 10;
-      }
-      
-      // Contract Terms on a new page if they exist
-      if (invoice.contractTerms) {
-        doc.addPage();
-        currentY = margin;
-        
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'bold');
-        doc.text('CONTRACT TERMS', margin, currentY);
-        currentY += 10;
-        
-        if (invoice.contractStatus === 'accepted') {
-          doc.setFontSize(10);
-          doc.setFont('helvetica', 'bold');
-          doc.setTextColor(0, 128, 0);
-          doc.text('Contract Accepted', margin, currentY);
-          doc.setTextColor(0, 0, 0);
-          currentY += 8;
-        }
-        
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        
-        // Strip HTML tags for simplicity
-        const contractText = invoice.contractTerms.replace(/<[^>]*>/g, '');
-        const contractLines = doc.splitTextToSize(contractText, contentWidth);
-        
-        // Check if we need multiple pages for the contract
-        let remainingLines = [...contractLines];
-        
-        while (remainingLines.length > 0) {
-          const maxLinesPerPage = Math.floor((pageHeight - currentY - margin) / 5);
-          const linesToAdd = remainingLines.slice(0, maxLinesPerPage);
-          remainingLines = remainingLines.slice(maxLinesPerPage);
-          
-          doc.text(linesToAdd, margin, currentY);
-          
-          if (remainingLines.length > 0) {
-            doc.addPage();
-            currentY = margin;
-          }
-        }
-      }
-      
-      // Save the PDF
-      doc.save(`invoice-${invoice.number}.pdf`);
-      toast.success('Custom PDF generated successfully');
-    } catch (err) {
-      console.error('Error generating custom PDF:', err);
-      toast.error('Failed to generate custom PDF');
-    } finally {
-      setGeneratingPdf(false);
-    }
-  }, [invoice, client, clientViewCompany, job, formatCurrency]);
-
-  const generateClientSidePdf = useCallback(() => {
-    if (!invoiceRef.current) {
-      toast.error('Unable to generate PDF: Invoice content not found');
-      return;
-    }
-
-    const element = invoiceRef.current;
-    const originalDisplay = element.style.display;
+  const handleDownloadInvoice = async () => {
+    if (!invoice) return;
     
-    const opt = {
-      margin: [10, 10, 10, 10],
-      filename: `invoice-${invoice?.number || 'download'}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { 
-        scale: 2, 
-        useCORS: true, 
-        width: 794, // A4 width in pixels at 96 DPI (210mm)
-        scrollY: 0,
-        windowWidth: 794,
-        logging: true,
-      },
-      jsPDF: { 
-        unit: 'px', 
-        format: [794, 1123], // A4 dimensions in pixels at 96 DPI
-        orientation: 'portrait' 
-      },
-      pagebreak: { mode: ['css', 'legacy'], avoid: ['.invoice-item', '.payment-schedule-table'] },
-    };
-
-    // Show both tab contents for the PDF
-    const tabsContent = element.querySelectorAll('[data-testid="invoice-tab"], [data-testid="contract-tab"]');
-    tabsContent.forEach((content, index) => {
-      (content as HTMLElement).style.setProperty('display', 'block', 'important');
-      // Add a page break before the Contract Terms tab (second tab, index 1)
-      if (index === 1) {
-        (content as HTMLElement).style.setProperty('page-break-before', 'always', 'important');
-      }
-    });
-
-    // Hide the TabsList
-    const tabsList = element.querySelector('[data-testid="tabs-list"]');
-    if (tabsList) {
-      (tabsList as HTMLElement).style.setProperty('display', 'none', 'important');
-    } else {
-      console.warn('TabsList not found with selector [data-testid="tabs-list"]');
-    }
-
-    const originalStyles: Record<string, string> = {};
-    const elementsToHide = element.querySelectorAll('button, a.button, .no-print');
-    
-    elementsToHide.forEach((el, i) => {
-      const element = el as HTMLElement;
-      originalStyles[i] = element.style.display;
-      element.style.setProperty('display', 'none', 'important');
-    });
-
-    console.log('Contract tab content:', element.querySelector('[data-testid="contract-tab"]')?.innerHTML.substring(0, 100));
-    console.log('Invoice has contract terms:', !!invoice?.contractTerms);
-    console.log('Contract terms length:', invoice?.contractTerms?.length);
-
-    // Ensure images are loaded
-    const images = element.querySelectorAll('img');
-    const imagePromises = Array.from(images).map((img: HTMLImageElement) => {
-      if (img.complete) return Promise.resolve();
-      return new Promise((resolve) => {
-        img.onload = resolve;
-        img.onerror = resolve;
-      });
-    });
-
-    // Wait for RichTextEditor content to render
-    const waitForRichText = new Promise((resolve) => {
-      const checkRichText = () => {
-        const richTextEditors = element.querySelectorAll('.rich-text-editor');
-        if (richTextEditors.length > 0 && Array.from(richTextEditors).every((editor) => editor.innerHTML.trim() !== '')) {
-          resolve(true);
-        } else {
-          setTimeout(checkRichText, 100); // Check every 100ms
-        }
-      };
-      checkRichText();
-    });
-
-    toast.info('Preparing PDF, please wait...');
-
-    Promise.all([...imagePromises, waitForRichText])
-      .then(() => {
-        html2pdf()
-          .set(opt)
-          .from(element)
-          .save()
-          .then(() => {
-            toast.success('Invoice PDF generated successfully');
-            
-            elementsToHide.forEach((el, i) => {
-              const element = el as HTMLElement;
-              element.style.display = originalStyles[i] || '';
-            });
-
-            tabsContent.forEach((content) => {
-              (content as HTMLElement).style.display = '';
-            });
-
-            if (tabsList) {
-              (tabsList as HTMLElement).style.display = '';
-            }
-          })
-          .catch((err: any) => {
-            console.error('Error generating PDF:', err);
-            toast.error('Failed to generate PDF');
-            
-            elementsToHide.forEach((el, i) => {
-              const element = el as HTMLElement;
-              element.style.display = originalStyles[i] || '';
-            });
-
-            tabsContent.forEach((content) => {
-              (content as HTMLElement).style.display = '';
-            });
-
-            if (tabsList) {
-              (tabsList as HTMLElement).style.display = '';
-            }
-          });
-      })
-      .catch((err) => {
-        console.error('Error loading content for PDF:', err);
-        toast.error('Failed to load content for PDF generation');
-        
-        elementsToHide.forEach((el, i) => {
-          const element = el as HTMLElement;
-          element.style.display = originalStyles[i] || '';
-        });
-
-        tabsContent.forEach((content) => {
-          (content as HTMLElement).style.display = '';
-        });
-
-        if (tabsList) {
-          (tabsList as HTMLElement).style.display = '';
-        }
-      });
-  }, [invoice, invoiceRef]);
-
-  const handleDownloadInvoice = useCallback(async () => {
-    if (invoice?.pdfUrl) {
+    if (invoice.pdfUrl) {
       window.open(invoice.pdfUrl, '_blank');
       return;
     }
     
-    if (!invoiceRef.current) {
-      toast.error('Unable to generate PDF: Invoice content not found');
-      return;
-    }
-
     try {
-      setGeneratingPdf(true);
       toast.info('Preparing PDF for download...');
       
-      // Use our custom PDF generation method
-      await generateCustomPdf();
+      const { data, error } = await supabase.functions.invoke('generate-invoice-pdf', {
+        body: { invoiceId: invoice.id }
+      });
+      
+      if (error) {
+        console.error('Error generating PDF:', error);
+        toast.error('Failed to generate invoice PDF');
+        return;
+      }
+      
+      if (data?.pdfUrl) {
+        setInvoice(prev => prev ? { ...prev, pdfUrl: data.pdfUrl } : null);
+        
+        window.open(data.pdfUrl, '_blank');
+        toast.success('Invoice downloaded successfully');
+      }
     } catch (err) {
       console.error('Error downloading invoice:', err);
-      toast.error('Error generating PDF, falling back to HTML method');
-      generateClientSidePdf();
-    } finally {
-      setGeneratingPdf(false);
+      toast.error('Failed to download invoice');
     }
-  }, [invoice, invoiceRef, generateCustomPdf, generateClientSidePdf]);
+  };
 
   const handleAcceptInvoice = async () => {
     if (!invoice) return;
@@ -871,423 +366,390 @@ const InvoiceView = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
-      </div>
+      <PageTransition>
+        <div className="flex justify-center items-center h-screen">
+          Loading invoice...
+        </div>
+      </PageTransition>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen">
-        <h2 className="text-2xl font-bold text-red-600 mb-4">Error</h2>
-        <p className="text-gray-700 mb-6">{error}</p>
-        <Link to="/" className="flex items-center text-blue-600 hover:text-blue-800">
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Go back to dashboard
-        </Link>
-      </div>
+      <PageTransition>
+        <div className="flex justify-center items-center h-screen">
+          Error: {error}
+        </div>
+      </PageTransition>
     );
   }
 
-  if (!invoice) {
+  if (!invoice || !client) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen">
-        <h2 className="text-2xl font-bold text-amber-600 mb-4">Invoice Not Found</h2>
-        <p className="text-gray-700 mb-6">The requested invoice could not be found.</p>
-        <Link to="/" className="flex items-center text-blue-600 hover:text-blue-800">
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Go back to dashboard
-        </Link>
-      </div>
+      <PageTransition>
+        <div className="flex justify-center items-center h-screen">
+          Invoice or client not found.
+        </div>
+      </PageTransition>
     );
   }
+
+  const statusColors = {
+    draft: 'bg-muted text-muted-foreground',
+    sent: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+    accepted: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+    paid: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+  };
+
+  const contractStatusColor = invoice.contractStatus === 'accepted' 
+    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+    : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
 
   return (
     <PageTransition>
-      <div className="container mx-auto px-4 py-8">
+      <div className="container-fluid px-4 py-8 max-w-[95%] mx-auto">
         {!isClientView && (
-          <div className="mb-6 flex items-center">
-            <Link
-              to={location.pathname.includes('/admin') ? '/invoices' : '/'}
-              className="flex items-center text-gray-600 hover:text-gray-900"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back
-            </Link>
+          <div className="flex gap-2 mb-4">
+            <Button asChild variant="ghost">
+              <Link to="/">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Dashboard
+              </Link>
+            </Button>
+            
+            {invoice?.jobId && (
+              <Button asChild variant="ghost">
+                <Link to={`/job/${invoice.jobId}`}>
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Job
+                </Link>
+              </Button>
+            )}
+            
+            {invoice?.clientId && (
+              <Button asChild variant="ghost">
+                <Link to={`/client/${invoice.clientId}`}>
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Client
+                </Link>
+              </Button>
+            )}
           </div>
         )}
-
-        <div className="flex flex-col" ref={invoiceRef}>
-          <div className="flex flex-col md:flex-row justify-between items-start mb-6">
-            {/* Company Logo/Info */}
-            <div className="flex flex-col mb-4 md:mb-0">
-              {displayCompany?.logo_url && (
-                <img
-                  src={displayCompany.logo_url}
-                  alt={`${displayCompany.name} logo`}
-                  className="h-16 object-contain mb-4"
-                />
-              )}
-              <h1 className="text-3xl font-bold text-gray-900">Invoice #{invoice.number}</h1>
-              <div className="flex items-center mt-2">
-                <Badge 
-                  variant={
-                    invoice.status === 'paid' ? 'default' : 
-                    invoice.status === 'accepted' ? 'outline' : 
-                    invoice.status === 'sent' ? 'secondary' : 'default'
-                  }
-                  className="uppercase mr-2"
+        
+        {isClientView && (
+          <div className="text-center mb-6">
+            <h1 className="text-2xl font-bold mb-2">Invoice #{invoice.number}</h1>
+            <p className="text-muted-foreground">
+              Please review and accept this invoice and contract terms.
+            </p>
+          </div>
+        )}
+        
+        <Card className="w-full mx-auto bg-white dark:bg-gray-900 shadow-sm" ref={invoiceRef}>
+          <CardHeader className="pb-0">
+            {!isClientView && (
+              <div className="flex justify-end mb-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    if (invoice.jobId) {
+                      window.location.href = `/job/${invoice.jobId}/invoice/${invoice.id}/edit`;
+                    } else {
+                      window.location.href = `/client/${client.id}/invoice/${invoice.id}/edit`;
+                    }
+                  }}
+                  className="flex items-center gap-1"
                 >
-                  {invoice.status}
-                </Badge>
-                <span className="text-sm text-gray-500">
-                  Created: {format(new Date(invoice.date), 'MMM d, yyyy')}
-                </span>
+                  <Edit className="h-3 w-3" />
+                  Edit Invoice
+                </Button>
               </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex flex-wrap gap-2 self-start">
-              {!isClientView && (
-                <>
-                  <Button variant="outline" size="sm" onClick={handleCopyInvoiceLink} className="flex items-center gap-2">
-                    <Copy className="h-4 w-4" />
-                    Copy Link
-                  </Button>
-                  <Link to={`/invoice/${invoice.id}/edit`}>
-                    <Button variant="outline" size="sm" className="flex items-center gap-2">
-                      <Edit className="h-4 w-4" />
-                      Edit
-                    </Button>
-                  </Link>
-                </>
-              )}
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleDownloadInvoice} 
-                disabled={generatingPdf}
-                className="flex items-center gap-2"
-              >
-                <Download className="h-4 w-4" />
-                {generatingPdf ? 'Generating...' : 'Download PDF'}
-              </Button>
-            </div>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-6 mb-8">
-            {/* Invoice Details */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <FileText className="w-5 h-5 mr-2" />
-                  Invoice Details
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <dl className="space-y-2">
-                  <div className="flex justify-between">
-                    <dt className="font-medium text-gray-500">Invoice #</dt>
-                    <dd>{invoice.number}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="font-medium text-gray-500">Date</dt>
-                    <dd>{format(new Date(invoice.date), 'MMM d, yyyy')}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="font-medium text-gray-500">Due Date</dt>
-                    <dd>{format(new Date(invoice.dueDate), 'MMM d, yyyy')}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="font-medium text-gray-500">Amount</dt>
-                    <dd className="font-bold">{formatCurrency(invoice.amount)}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="font-medium text-gray-500">Status</dt>
-                    <dd>
-                      <Badge 
-                        variant={
-                          invoice.status === 'paid' ? 'default' : 
-                          invoice.status === 'accepted' ? 'outline' : 
-                          invoice.status === 'sent' ? 'secondary' : 'default'
-                        }
-                        className="uppercase"
-                      >
-                        {invoice.status}
-                      </Badge>
-                    </dd>
-                  </div>
-                  {job && (
-                    <div className="pt-2">
-                      <div className="flex justify-between">
-                        <dt className="font-medium text-gray-500">Job</dt>
-                        <dd>{job.title}</dd>
-                      </div>
-                      {job.date && (
-                        <div className="flex justify-between">
-                          <dt className="font-medium text-gray-500">Job Date</dt>
-                          <dd>{format(new Date(job.date), 'MMM d, yyyy')}</dd>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </dl>
-              </CardContent>
-              {isClientView && invoice.status !== 'accepted' && (
-                <CardFooter>
-                  <Button 
-                    onClick={handleAcceptInvoice} 
-                    className="w-full"
-                  >
-                    <Check className="mr-2 h-4 w-4" />
-                    Accept Invoice
-                  </Button>
-                </CardFooter>
-              )}
-            </Card>
-
-            {/* Client Information */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <User className="w-5 h-5 mr-2" />
-                  Client Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {client ? (
-                  <div className="space-y-4">
-                    <div className="flex items-start gap-2">
-                      <User className="w-5 h-5 text-gray-500 mt-0.5" />
-                      <div>
-                        <h3 className="font-medium">{client.name}</h3>
-                      </div>
-                    </div>
-                    
-                    {client.email && (
-                      <div className="flex items-start gap-2">
-                        <Mail className="w-5 h-5 text-gray-500 mt-0.5" />
-                        <span>{client.email}</span>
-                      </div>
-                    )}
-                    
-                    {client.phone && (
-                      <div className="flex items-start gap-2">
-                        <Phone className="w-5 h-5 text-gray-500 mt-0.5" />
-                        <span>{client.phone}</span>
-                      </div>
-                    )}
-                    
-                    {client.address && (
-                      <div className="flex items-start gap-2">
-                        <MapPin className="w-5 h-5 text-gray-500 mt-0.5" />
-                        <span className="whitespace-pre-line">{client.address}</span>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-gray-500 italic">No client information available</p>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          <Tabs defaultValue="invoice" className="w-full mb-8">
-            <TabsList data-testid="tabs-list" className="mb-6">
-              <TabsTrigger value="invoice">Invoice Details</TabsTrigger>
-              {invoice.contractTerms && (
-                <TabsTrigger value="contract">Contract Terms</TabsTrigger>
-              )}
-            </TabsList>
-            
-            <TabsContent value="invoice" data-testid="invoice-tab">
-              {/* Items Section */}
-              {invoice.items && invoice.items.length > 0 && (
-                <Card className="mb-6">
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <Package className="w-5 h-5 mr-2" />
-                      Items
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="relative overflow-x-auto">
-                      <table className="w-full text-sm text-left text-gray-700">
-                        <thead className="text-xs uppercase bg-gray-50">
-                          <tr>
-                            <th scope="col" className="px-4 py-3 w-1/3">Item</th>
-                            <th scope="col" className="px-4 py-3 text-center">Quantity</th>
-                            <th scope="col" className="px-4 py-3 text-right">Rate</th>
-                            <th scope="col" className="px-4 py-3 text-right">Amount</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {invoice.items.map((item, index) => (
-                            <tr key={index} className="invoice-item bg-white border-b">
-                              <td className="px-4 py-3">
-                                <div className="font-medium">{item.name || item.productName}</div>
-                                {item.description && <div className="text-xs text-gray-500">{item.description}</div>}
-                              </td>
-                              <td className="px-4 py-3 text-center">{item.quantity}</td>
-                              <td className="px-4 py-3 text-right">{formatCurrency(item.rate)}</td>
-                              <td className="px-4 py-3 text-right">{formatCurrency(item.amount)}</td>
-                            </tr>
-                          ))}
-                          <tr className="bg-gray-50">
-                            <td colSpan={3} className="px-4 py-3 text-right font-bold">Total</td>
-                            <td className="px-4 py-3 text-right font-bold">{formatCurrency(invoice.amount)}</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Payment Schedules Section */}
-              {invoice.paymentSchedules && invoice.paymentSchedules.length > 0 && (
-                <Card className="mb-6">
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <Calendar className="w-5 h-5 mr-2" />
-                      Payment Schedule
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <PaymentScheduleTable 
-                      paymentSchedules={invoice.paymentSchedules} 
-                      amount={invoice.amount}
-                      onUpdateStatus={isClientView ? undefined : handlePaymentStatusUpdate}
-                      onUpdatePaymentDate={isClientView ? undefined : handlePaymentDateUpdate}
-                      isUpdating={!!updatingPaymentId}
-                      updatingId={updatingPaymentId}
-                      isClientView={isClientView}
-                    />
-                  </CardContent>
-                </Card>
-              )}
-              
-              {/* Notes Section */}
-              {invoice.notes && (
-                <Card className="mb-6">
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <FileText className="w-5 h-5 mr-2" />
-                      Notes
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="rich-text-editor prose max-w-none">
-                      <RichTextEditor
-                        value={invoice.notes}
-                        readOnly={true}
-                        onChange={() => {}} // Add noop onChange handler
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </TabsContent>
-
-            {invoice.contractTerms && (
-              <TabsContent value="contract" data-testid="contract-tab">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="flex items-center">
-                      <FileCheck className="w-5 h-5 mr-2" />
-                      Contract Terms
-                    </CardTitle>
-                    {invoice.contractStatus === 'accepted' && (
-                      <Badge variant="outline" className="ml-2 bg-green-100 text-green-800">
-                        <Check className="w-4 h-4 mr-1" />
-                        Accepted
-                      </Badge>
-                    )}
-                  </CardHeader>
-                  <CardContent>
-                    <div className="rich-text-editor prose max-w-none">
-                      <RichTextEditor
-                        value={invoice.contractTerms}
-                        readOnly={true}
-                        onChange={() => {}} // Add noop onChange handler
-                      />
-                    </div>
-                  </CardContent>
-                  {isClientView && invoice.contractStatus !== 'accepted' && (
-                    <CardFooter>
-                      <Button 
-                        onClick={handleAcceptContract} 
-                        className="w-full"
-                      >
-                        <Check className="mr-2 h-4 w-4" />
-                        Accept Contract Terms
-                      </Button>
-                    </CardFooter>
-                  )}
-                </Card>
-              </TabsContent>
             )}
-          </Tabs>
 
-          {/* Company Information (Client View only) */}
-          {isClientView && displayCompany && (
-            <Card className="mt-6">
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Building className="w-5 h-5 mr-2" />
-                  Company Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <Building className="w-5 h-5 text-gray-500" />
-                    <span className="font-medium">{displayCompany.name}</span>
-                  </div>
-                  
-                  {displayCompany.email && (
-                    <div className="flex items-center gap-2">
-                      <Mail className="w-5 h-5 text-gray-500" />
-                      <span>{displayCompany.email}</span>
-                    </div>
-                  )}
-                  
-                  {displayCompany.phone && (
-                    <div className="flex items-center gap-2">
-                      <Phone className="w-5 h-5 text-gray-500" />
-                      <span>{displayCompany.phone}</span>
-                    </div>
-                  )}
-                  
-                  {displayCompany.address && (
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-5 h-5 text-gray-500" />
-                      <span className="whitespace-pre-line">{displayCompany.address}</span>
-                    </div>
-                  )}
-                  
-                  {displayCompany.website && (
-                    <div className="flex items-center gap-2">
-                      <LinkIcon className="w-5 h-5 text-gray-500" />
-                      <a 
-                        href={displayCompany.website.startsWith('http') ? displayCompany.website : `https://${displayCompany.website}`} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline"
-                      >
-                        {displayCompany.website}
-                      </a>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-4">
+              <div className="flex flex-col justify-between">
+                <div className="flex items-start mb-6 h-80">
+                  {displayCompany?.logo_url ? (
+                    <img 
+                      src={displayCompany.logo_url} 
+                      alt={`${displayCompany.name} Logo`}
+                      className="h-full max-h-80 w-auto object-contain" 
+                    />
+                  ) : (
+                    <div className="h-24 w-24 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center text-gray-400">
+                      <Building className="h-14 w-14" />
                     </div>
                   )}
                 </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+                
+                <div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400">INVOICE</div>
+                  <div className="text-2xl font-bold"># {invoice.number}</div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">INVOICE ISSUE DATE</div>
+                  <div className="text-sm">{new Date(invoice.date).toLocaleDateString()}</div>
+                  <div className="mt-1 flex items-center">
+                    <Badge className={statusColors[invoice.status] || 'bg-gray-100 text-gray-800'}>
+                      {invoice.status.toUpperCase()}
+                    </Badge>
+                    {invoice.contractStatus === 'accepted' && (
+                      <Badge variant="outline" className={`ml-2 flex items-center gap-1 ${contractStatusColor}`}>
+                        <FileCheck className="h-3 w-3" />
+                        Contract Accepted
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">FROM</h4>
+                  <div className="font-medium">{displayCompany?.name || 'Company'}</div>
+                  {displayCompany?.email && <div className="text-sm">{displayCompany.email}</div>}
+                  {displayCompany?.phone && <div className="text-sm">{displayCompany.phone}</div>}
+                  {displayCompany?.address && <div className="text-sm">{displayCompany.address}</div>}
+                </div>
+                
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">INVOICE FOR</h4>
+                  {job && <div className="font-medium">{job.title}</div>}
+                  <div className="text-sm font-medium mt-1">Client: {client.name}</div>
+                  <div className="text-sm grid grid-cols-1 gap-1 mt-1">
+                    {client.email && (
+                      <div className="flex items-center text-gray-600 dark:text-gray-400">
+                        <Mail className="h-3 w-3 mr-1" />
+                        {client.email}
+                      </div>
+                    )}
+                    {client.phone && (
+                      <div className="flex items-center text-gray-600 dark:text-gray-400">
+                        <Phone className="h-3 w-3 mr-1" />
+                        {client.phone}
+                      </div>
+                    )}
+                    {client.address && (
+                      <div className="flex items-center text-gray-600 dark:text-gray-400">
+                        <MapPin className="h-3 w-3 mr-1" />
+                        {client.address}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-4">
+                  {job?.date && (
+                    <div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">JOB DATE</div>
+                      <div className="text-sm">{job.date}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            <Separator className="mt-6" />
+          </CardHeader>
+          
+          <CardContent className="pt-6">
+            <Tabs defaultValue="invoice" className="w-full">
+              <TabsList className="w-full">
+                <TabsTrigger value="invoice" className="flex-1">
+                  Invoice Details
+                  {invoice.status === 'accepted' && (
+                    <span className="ml-2">
+                      <FileCheck className="h-3 w-3 inline text-green-600" />
+                    </span>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="contract" className="flex-1">
+                  Contract Terms
+                  {invoice.contractStatus === 'accepted' && (
+                    <span className="ml-2">
+                      <FileCheck className="h-3 w-3 inline text-green-600" />
+                    </span>
+                  )}
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="invoice" className="mt-6">
+                {isClientView && ['draft', 'sent'].includes(invoice.status) && (
+                  <Button onClick={handleAcceptInvoice} className="mb-4">
+                    <Check className="h-4 w-4 mr-2" />
+                    Accept Invoice
+                  </Button>
+                )}
+                
+                {invoice.status === 'accepted' && (
+                  <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-md flex items-center gap-2">
+                    <FileCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    <span className="text-green-800 dark:text-green-400">
+                      This invoice has been accepted
+                    </span>
+                  </div>
+                )}
+                
+                <div className="mb-6">
+                  <div className="flex items-center mb-3">
+                    <Package className="h-5 w-5 mr-2" />
+                    <h4 className="text-lg font-semibold">Products / Packages</h4>
+                  </div>
+                  
+                  <div className="border rounded-md p-4 bg-gray-50 dark:bg-gray-900/50">
+                    <div className="hidden md:flex justify-between mb-3 text-sm font-medium text-muted-foreground border-b pb-2">
+                      <div className="flex-1">
+                        <div className="mb-1">Package Name</div>
+                      </div>
+                      <div className="flex-1 pr-4">Description</div>
+                      <div className="flex items-center space-x-6 min-w-[260px] justify-end">
+                        <div className="text-right w-16">Quantity</div>
+                        <div className="text-right w-24">Unit Price</div>
+                        <div className="text-right w-24">Amount</div>
+                      </div>
+                    </div>
+                    
+                    {invoice.items && invoice.items.length > 0 ? (
+                      invoice.items.map((item) => (
+                        <div key={item.id} className="mb-4 pb-4 border-b last:mb-0 last:pb-0 last:border-b-0">
+                          <div className="md:flex md:justify-between md:items-start">
+                            <div className="md:flex-1">
+                              <h5 className="font-medium">{item.name || 'Unnamed Package'}</h5>
+                            </div>
+                            <div className="md:flex-1 md:pr-4">
+                              {item.description && (
+                                <div className="mt-2 text-sm" dangerouslySetInnerHTML={{ __html: item.description }} />
+                              )}
+                            </div>
+                            <div className="mt-2 md:mt-0 flex flex-col md:flex-row md:items-center md:space-x-6 md:min-w-[260px] md:justify-end">
+                              <div className="text-sm text-muted-foreground md:text-right w-16">
+                                <span className="md:hidden">Quantity: </span>
+                                <span>{item.quantity}</span>
+                              </div>
+                              <div className="text-sm text-muted-foreground md:text-right w-24">
+                                <span className="md:hidden">Unit Price: </span>
+                                <span>{formatCurrency(item.rate)}</span>
+                              </div>
+                              <div className="font-medium md:text-right w-24">
+                                <span className="md:hidden">Total: </span>
+                                <span>{formatCurrency(item.amount)}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-muted-foreground">No items in this invoice.</p>
+                    )}
+                    
+                    <div className="mt-4 pt-4 border-t">
+                      <div className="flex justify-between font-medium">
+                        <span>Total</span>
+                        <span>{formatCurrency(invoice.amount)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <h4 className="text-lg font-semibold mb-2">Notes</h4>
+                  <div className="border rounded-md">
+                    <RichTextEditor
+                      value={invoice.notes || 'No notes provided.'}
+                      onChange={() => {}}
+                      readOnly={true}
+                    />
+                  </div>
+                </div>
+                
+                <Separator className="my-6" />
+                
+                <div className="mt-6">
+                  <div className="flex items-center mb-3">
+                    <CalendarDays className="h-5 w-5 mr-2" />
+                    <h4 className="text-lg font-semibold">Payment Schedule</h4>
+                  </div>
+                  
+                  {Array.isArray(invoice.paymentSchedules) && invoice.paymentSchedules.length > 0 ? (
+                    <PaymentScheduleTable
+                      paymentSchedules={invoice.paymentSchedules}
+                      amount={invoice.amount}
+                      isClientView={isClientView}
+                      updatingPaymentId={updatingPaymentId}
+                      onUpdateStatus={handlePaymentStatusUpdate}
+                      formatCurrency={formatCurrency}
+                      onUpdatePaymentDate={handlePaymentDateUpdate}
+                    />
+                  ) : (
+                    <div className="text-muted-foreground border rounded-md p-4 bg-gray-50 dark:bg-gray-900/50">
+                      Full payment of {formatCurrency(invoice.amount)} due on {new Date(invoice.dueDate).toLocaleDateString()}
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="contract" className="mt-6">
+                {isClientView && invoice.contractStatus !== 'accepted' && (
+                  <Button onClick={handleAcceptContract} className="mb-4">
+                    <Check className="h-4 w-4 mr-2" />
+                    Accept Contract Terms
+                  </Button>
+                )}
+                  
+                {invoice.contractStatus === 'accepted' && (
+                  <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-md flex items-center gap-2">
+                    <FileCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    <span className="text-green-800 dark:text-green-400">
+                      This contract has been accepted
+                    </span>
+                  </div>
+                )}
+                  
+                <div className="flex items-center mb-3">
+                  <FileText className="h-5 w-5 mr-2" />
+                  <h4 className="text-lg font-semibold">Contract Terms</h4>
+                </div>
+                <div className="border rounded-md">
+                  {invoice.contractTerms ? (
+                    <RichTextEditor
+                      value={invoice.contractTerms}
+                      onChange={() => {}}
+                      readOnly={true}
+                    />
+                  ) : (
+                    <div className="p-4 text-muted-foreground">
+                      No contract terms provided.
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+          
+          <CardFooter className="justify-end gap-2 flex-wrap pt-4 border-t">
+            {!isClientView && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={handleCopyInvoiceLink}
+                >
+                  <LinkIcon className="h-4 w-4 mr-2" />
+                  Copy Invoice Link
+                </Button>
+                <Button
+                  variant="default"
+                  onClick={handleDownloadInvoice}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download Invoice
+                </Button>
+              </>
+            )}
+          </CardFooter>
+        </Card>
       </div>
     </PageTransition>
   );
 };
 
 export default InvoiceView;
+

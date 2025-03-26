@@ -38,7 +38,9 @@ TabsTrigger.displayName = TabsPrimitive.Trigger.displayName
 
 const TabsContent = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content>
+  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content> & {
+    'data-testid'?: string;  // Add data-testid prop
+  }
 >(({ className, ...props }, ref) => (
   <TabsPrimitive.Content
     ref={ref}

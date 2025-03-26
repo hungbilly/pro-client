@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useCallback, memo, useRef } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { 
@@ -836,89 +835,84 @@ const InvoiceView = () => {
         </Card>
       </div>
 
-      <style jsx>{`
-        @media print {
-          .container-fluid {
-            max-width: 794px !important;
-            padding: 0 !important;
-            margin: 0 !important;
+      <style>
+        {`
+          @media print {
+            .container-fluid {
+              max-width: 794px !important;
+              padding: 0 !important;
+              margin: 0 !important;
+            }
+            .card {
+              box-shadow: none !important;
+              border: none !important;
+              width: 100% !important;
+              max-width: 794px !important;
+            }
+            [data-testid="tabs-list"] {
+              display: none !important;
+            }
+            [data-testid="invoice-tab"],
+            [data-testid="contract-tab"] {
+              display: block !important;
+            }
+            [data-testid="contract-tab"] {
+              page-break-before: always !important;
+              margin-top: 0 !important;
+              padding-top: 16px !important;
+            }
+            .grid {
+              display: block !important;
+            }
+            .md\\:grid-cols-2 {
+              display: flex !important;
+              flex-direction: row !important;
+              gap: 24px !important;
+              flex-wrap: nowrap !important;
+            }
+            .md\\:grid-cols-2 > div {
+              flex: 1 !important;
+              max-width: 50% !important;
+            }
+            .md\\:flex.justify-between {
+              display: flex !important;
+              flex-direction: row !important;
+              align-items: start !important;
+              flex-wrap: nowrap !important;
+            }
+            .md\\:flex-1 {
+              flex: 1 !important;
+            }
+            .md\\:pr-4 {
+              padding-right: 16px !important;
+            }
+            .md\\:min-w-\\[260px\\] {
+              min-width: 260px !important;
+            }
+            .md\\:justify-end {
+              justify-content: flex-end !important;
+            }
+            .rich-text-editor {
+              max-width: 100% !important;
+              overflow: hidden !important;
+              word-wrap: break-word !important;
+            }
+            .rich-text-editor * {
+              max-width: 100% !important;
+              word-wrap: break-word !important;
+            }
+            .mt-6 {
+              page-break-before: auto !important;
+            }
+            .invoice-item {
+              page-break-inside: avoid !important;
+            }
+            .payment-schedule-table {
+              page-break-inside: avoid !important;
+            }
           }
-          .card {
-            box-shadow: none !important;
-            border: none !important;
-            width: 100% !important;
-            max-width: 794px !important;
-          }
-          /* Hide the TabsList */
-          [data-testid="tabs-list"] {
-            display: none !important;
-          }
-          /* Show all tab content */
-          [data-testid="invoice-tab"],
-          [data-testid="contract-tab"] {
-            display: block !important;
-          }
-          /* Add page break before Contract Terms tab */
-          [data-testid="contract-tab"] {
-            page-break-before: always !important;
-            margin-top: 0 !important;
-            padding-top: 16px !important;
-          }
-          /* Ensure layout matches A4 */
-          .grid {
-            display: block !important;
-          }
-          .md\\:grid-cols-2 {
-            display: flex !important;
-            flex-direction: row !important;
-            gap: 24px !important;
-            flex-wrap: nowrap !important;
-          }
-          .md\\:grid-cols-2 > div {
-            flex: 1 !important;
-            max-width: 50% !important;
-          }
-          /* Adjust layout for invoice items */
-          .md\\:flex.justify-between {
-            display: flex !important;
-            flex-direction: row !important;
-            align-items: start !important;
-            flex-wrap: nowrap !important;
-          }
-          .md\\:flex-1 {
-            flex: 1 !important;
-          }
-          .md\\:pr-4 {
-            padding-right: 16px !important;
-          }
-          .md\\:min-w-\\[260px\\] {
-            min-width: 260px !important;
-          }
-          .md\\:justify-end {
-            justify-content: flex-end !important;
-          }
-          /* Ensure rich text content fits */
-          .rich-text-editor {
-            max-width: 100% !important;
-            overflow: hidden !important;
-            word-wrap: break-word !important;
-          }
-          .rich-text-editor * {
-            max-width: 100% !important;
-            word-wrap: break-word !important;
-          }
-          /* Page breaks */
-          .mt-6 {
-            page-break-before: auto !important;
-          }
-          .invoice-item {
-            page-break-inside: avoid !important;
-          }
-          .payment-schedule-table {
-            page-break-inside: avoid !important;
-          }
-        }
-      `}</style>
+        `}
+      </style>
     </PageTransition>
   );
 };

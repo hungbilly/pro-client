@@ -20,6 +20,7 @@ interface PaymentScheduleTableProps {
   onUpdateStatus: (paymentId: string, status: 'paid' | 'unpaid' | 'write-off') => void;
   formatCurrency: (amount: number) => string;
   onUpdatePaymentDate?: (paymentId: string, paymentDate: string) => void;
+  className?: string; // Add className prop to interface
 }
 
 const PaymentScheduleTable = memo(({
@@ -29,7 +30,8 @@ const PaymentScheduleTable = memo(({
   updatingPaymentId,
   onUpdateStatus,
   formatCurrency,
-  onUpdatePaymentDate
+  onUpdatePaymentDate,
+  className
 }: PaymentScheduleTableProps) => {
   const paymentStatusColors: { [key: string]: string } = {
     paid: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
@@ -56,7 +58,7 @@ const PaymentScheduleTable = memo(({
   };
 
   return (
-    <div className="border rounded-md overflow-hidden">
+    <div className={cn("border rounded-md overflow-hidden", className)}>
       <Table>
         <TableHeader>
           <TableRow className="bg-muted/50">

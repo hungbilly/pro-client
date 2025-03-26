@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback, memo, useRef } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { 
@@ -867,4 +868,422 @@ const InvoiceView = () => {
     }
   }, [invoice]);
 
-  if (
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <h2 className="text-2xl font-bold text-red-600 mb-4">Error</h2>
+        <p className="text-gray-700 mb-6">{error}</p>
+        <Link to="/" className="flex items-center text-blue-600 hover:text-blue-800">
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Go back to dashboard
+        </Link>
+      </div>
+    );
+  }
+
+  if (!invoice) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <h2 className="text-2xl font-bold text-amber-600 mb-4">Invoice Not Found</h2>
+        <p className="text-gray-700 mb-6">The requested invoice could not be found.</p>
+        <Link to="/" className="flex items-center text-blue-600 hover:text-blue-800">
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Go back to dashboard
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <PageTransition>
+      <div className="container mx-auto px-4 py-8">
+        {!isClientView && (
+          <div className="mb-6 flex items-center">
+            <Link
+              to={location.pathname.includes('/admin') ? '/invoices' : '/'}
+              className="flex items-center text-gray-600 hover:text-gray-900"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back
+            </Link>
+          </div>
+        )}
+
+        <div className="flex flex-col" ref={invoiceRef}>
+          <div className="flex flex-col md:flex-row justify-between items-start mb-6">
+            {/* Company Logo/Info */}
+            <div className="flex flex-col mb-4 md:mb-0">
+              {displayCompany?.logo_url && (
+                <img
+                  src={displayCompany.logo_url}
+                  alt={`${displayCompany.name} logo`}
+                  className="h-16 object-contain mb-4"
+                />
+              )}
+              <h1 className="text-3xl font-bold text-gray-900">Invoice #{invoice.number}</h1>
+              <div className="flex items-center mt-2">
+                <Badge 
+                  variant={
+                    invoice.status === 'paid' ? 'success' : 
+                    invoice.status === 'accepted' ? 'outline' : 
+                    invoice.status === 'sent' ? 'secondary' : 'default'
+                  }
+                  className="uppercase mr-2"
+                >
+                  {invoice.status}
+                </Badge>
+                <span className="text-sm text-gray-500">
+                  Created: {format(new Date(invoice.date), 'MMM d, yyyy')}
+                </span>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-wrap gap-2 self-start">
+              {!isClientView && (
+                <>
+                  <Button variant="outline" size="sm" onClick={handleCopyInvoiceLink} className="flex items-center gap-2">
+                    <Copy className="h-4 w-4" />
+                    Copy Link
+                  </Button>
+                  <Link to={`/invoice/${invoice.id}/edit`}>
+                    <Button variant="outline" size="sm" className="flex items-center gap-2">
+                      <Edit className="h-4 w-4" />
+                      Edit
+                    </Button>
+                  </Link>
+                </>
+              )}
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleDownloadInvoice} 
+                disabled={generatingPdf}
+                className="flex items-center gap-2"
+              >
+                <Download className="h-4 w-4" />
+                {generatingPdf ? 'Generating...' : 'Download PDF'}
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6 mb-8">
+            {/* Invoice Details */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <FileText className="w-5 h-5 mr-2" />
+                  Invoice Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <dl className="space-y-2">
+                  <div className="flex justify-between">
+                    <dt className="font-medium text-gray-500">Invoice #</dt>
+                    <dd>{invoice.number}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="font-medium text-gray-500">Date</dt>
+                    <dd>{format(new Date(invoice.date), 'MMM d, yyyy')}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="font-medium text-gray-500">Due Date</dt>
+                    <dd>{format(new Date(invoice.dueDate), 'MMM d, yyyy')}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="font-medium text-gray-500">Amount</dt>
+                    <dd className="font-bold">{formatCurrency(invoice.amount)}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="font-medium text-gray-500">Status</dt>
+                    <dd>
+                      <Badge 
+                        variant={
+                          invoice.status === 'paid' ? 'success' : 
+                          invoice.status === 'accepted' ? 'outline' : 
+                          invoice.status === 'sent' ? 'secondary' : 'default'
+                        }
+                        className="uppercase"
+                      >
+                        {invoice.status}
+                      </Badge>
+                    </dd>
+                  </div>
+                  {job && (
+                    <div className="pt-2">
+                      <div className="flex justify-between">
+                        <dt className="font-medium text-gray-500">Job</dt>
+                        <dd>{job.title}</dd>
+                      </div>
+                      {job.date && (
+                        <div className="flex justify-between">
+                          <dt className="font-medium text-gray-500">Job Date</dt>
+                          <dd>{format(new Date(job.date), 'MMM d, yyyy')}</dd>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </dl>
+              </CardContent>
+              {isClientView && invoice.status !== 'accepted' && (
+                <CardFooter>
+                  <Button 
+                    onClick={handleAcceptInvoice} 
+                    className="w-full"
+                  >
+                    <Check className="mr-2 h-4 w-4" />
+                    Accept Invoice
+                  </Button>
+                </CardFooter>
+              )}
+            </Card>
+
+            {/* Client Information */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <User className="w-5 h-5 mr-2" />
+                  Client Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {client ? (
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-2">
+                      <User className="w-5 h-5 text-gray-500 mt-0.5" />
+                      <div>
+                        <h3 className="font-medium">{client.name}</h3>
+                      </div>
+                    </div>
+                    
+                    {client.email && (
+                      <div className="flex items-start gap-2">
+                        <Mail className="w-5 h-5 text-gray-500 mt-0.5" />
+                        <span>{client.email}</span>
+                      </div>
+                    )}
+                    
+                    {client.phone && (
+                      <div className="flex items-start gap-2">
+                        <Phone className="w-5 h-5 text-gray-500 mt-0.5" />
+                        <span>{client.phone}</span>
+                      </div>
+                    )}
+                    
+                    {client.address && (
+                      <div className="flex items-start gap-2">
+                        <MapPin className="w-5 h-5 text-gray-500 mt-0.5" />
+                        <span className="whitespace-pre-line">{client.address}</span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 italic">No client information available</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <Tabs defaultValue="invoice" className="w-full mb-8">
+            <TabsList data-testid="tabs-list" className="mb-6">
+              <TabsTrigger value="invoice">Invoice Details</TabsTrigger>
+              {invoice.contractTerms && (
+                <TabsTrigger value="contract">Contract Terms</TabsTrigger>
+              )}
+            </TabsList>
+            
+            <TabsContent value="invoice" data-testid="invoice-tab">
+              {/* Items Section */}
+              {invoice.items && invoice.items.length > 0 && (
+                <Card className="mb-6">
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <Package className="w-5 h-5 mr-2" />
+                      Items
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="relative overflow-x-auto">
+                      <table className="w-full text-sm text-left text-gray-700">
+                        <thead className="text-xs uppercase bg-gray-50">
+                          <tr>
+                            <th scope="col" className="px-4 py-3 w-1/3">Item</th>
+                            <th scope="col" className="px-4 py-3 text-center">Quantity</th>
+                            <th scope="col" className="px-4 py-3 text-right">Rate</th>
+                            <th scope="col" className="px-4 py-3 text-right">Amount</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {invoice.items.map((item, index) => (
+                            <tr key={index} className="invoice-item bg-white border-b">
+                              <td className="px-4 py-3">
+                                <div className="font-medium">{item.name || item.productName}</div>
+                                {item.description && <div className="text-xs text-gray-500">{item.description}</div>}
+                              </td>
+                              <td className="px-4 py-3 text-center">{item.quantity}</td>
+                              <td className="px-4 py-3 text-right">{formatCurrency(item.rate)}</td>
+                              <td className="px-4 py-3 text-right">{formatCurrency(item.amount)}</td>
+                            </tr>
+                          ))}
+                          <tr className="bg-gray-50">
+                            <td colSpan={3} className="px-4 py-3 text-right font-bold">Total</td>
+                            <td className="px-4 py-3 text-right font-bold">{formatCurrency(invoice.amount)}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Payment Schedules Section */}
+              {invoice.paymentSchedules && invoice.paymentSchedules.length > 0 && (
+                <Card className="mb-6">
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <Calendar className="w-5 h-5 mr-2" />
+                      Payment Schedule
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <PaymentScheduleTable 
+                      paymentSchedules={invoice.paymentSchedules} 
+                      total={invoice.amount}
+                      onUpdateStatus={isClientView ? undefined : handlePaymentStatusUpdate}
+                      onUpdatePaymentDate={isClientView ? undefined : handlePaymentDateUpdate}
+                      isUpdating={!!updatingPaymentId}
+                      updatingId={updatingPaymentId}
+                    />
+                  </CardContent>
+                </Card>
+              )}
+              
+              {/* Notes Section */}
+              {invoice.notes && (
+                <Card className="mb-6">
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <FileText className="w-5 h-5 mr-2" />
+                      Notes
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="rich-text-editor prose max-w-none">
+                      <RichTextEditor
+                        value={invoice.notes}
+                        readOnly={true}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+
+            {invoice.contractTerms && (
+              <TabsContent value="contract" data-testid="contract-tab">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="flex items-center">
+                      <FileCheck className="w-5 h-5 mr-2" />
+                      Contract Terms
+                    </CardTitle>
+                    {invoice.contractStatus === 'accepted' && (
+                      <Badge variant="success" className="ml-2">
+                        <Check className="w-4 h-4 mr-1" />
+                        Accepted
+                      </Badge>
+                    )}
+                  </CardHeader>
+                  <CardContent>
+                    <div className="rich-text-editor prose max-w-none">
+                      <RichTextEditor
+                        value={invoice.contractTerms}
+                        readOnly={true}
+                      />
+                    </div>
+                  </CardContent>
+                  {isClientView && invoice.contractStatus !== 'accepted' && (
+                    <CardFooter>
+                      <Button 
+                        onClick={handleAcceptContract} 
+                        className="w-full"
+                      >
+                        <Check className="mr-2 h-4 w-4" />
+                        Accept Contract Terms
+                      </Button>
+                    </CardFooter>
+                  )}
+                </Card>
+              </TabsContent>
+            )}
+          </Tabs>
+
+          {/* Company Information (Client View only) */}
+          {isClientView && displayCompany && (
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Building className="w-5 h-5 mr-2" />
+                  Company Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Building className="w-5 h-5 text-gray-500" />
+                    <span className="font-medium">{displayCompany.name}</span>
+                  </div>
+                  
+                  {displayCompany.email && (
+                    <div className="flex items-center gap-2">
+                      <Mail className="w-5 h-5 text-gray-500" />
+                      <span>{displayCompany.email}</span>
+                    </div>
+                  )}
+                  
+                  {displayCompany.phone && (
+                    <div className="flex items-center gap-2">
+                      <Phone className="w-5 h-5 text-gray-500" />
+                      <span>{displayCompany.phone}</span>
+                    </div>
+                  )}
+                  
+                  {displayCompany.address && (
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-5 h-5 text-gray-500" />
+                      <span className="whitespace-pre-line">{displayCompany.address}</span>
+                    </div>
+                  )}
+                  
+                  {displayCompany.website && (
+                    <div className="flex items-center gap-2">
+                      <LinkIcon className="w-5 h-5 text-gray-500" />
+                      <a 
+                        href={displayCompany.website.startsWith('http') ? displayCompany.website : `https://${displayCompany.website}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline"
+                      >
+                        {displayCompany.website}
+                      </a>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
+    </PageTransition>
+  );
+};
+
+export default InvoiceView;

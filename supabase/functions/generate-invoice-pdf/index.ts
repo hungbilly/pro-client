@@ -406,7 +406,7 @@ async function generateDebugPDF(invoiceData: FormattedInvoice): Promise<Uint8Arr
           y: y
         });
         
-        doc.addImage(logo, 'PNG', margin, y, logoWidth, logoHeight);
+        doc.addImage(logo, 'JPEG', margin, y, logoWidth, logoHeight);
         y += logoHeight + 5;
         console.log('Logo added successfully, new y position:', y);
       } catch (logoError) {
@@ -429,8 +429,15 @@ async function generateDebugPDF(invoiceData: FormattedInvoice): Promise<Uint8Arr
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     
+    // Process address with proper line breaks
     const companyInfo = [];
-    if (invoiceData.company.address) companyInfo.push(invoiceData.company.address);
+    if (invoiceData.company.address) {
+      // Split address by \n if present
+      const addressLines = invoiceData.company.address.split('\n');
+      for (const line of addressLines) {
+        companyInfo.push(line);
+      }
+    }
     if (invoiceData.company.phone) companyInfo.push(`Phone: ${invoiceData.company.phone}`);
     if (invoiceData.company.email) companyInfo.push(`Email: ${invoiceData.company.email}`);
     if (invoiceData.company.website) companyInfo.push(`Website: ${invoiceData.company.website}`);

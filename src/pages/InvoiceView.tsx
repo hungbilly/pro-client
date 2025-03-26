@@ -360,7 +360,10 @@ const InvoiceView = () => {
       toast.info('Generating simplified debug PDF with only company info...');
       
       const { data, error } = await supabase.functions.invoke('generate-invoice-pdf', {
-        body: { invoiceId: invoice.id, debugMode: true }
+        body: { 
+          invoiceId: invoice.id, 
+          debugMode: true 
+        }
       });
       
       if (error) {
@@ -811,3 +814,4 @@ const InvoiceView = () => {
 };
 
 export default InvoiceView;
+

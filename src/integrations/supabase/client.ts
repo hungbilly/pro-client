@@ -56,6 +56,17 @@ export const logPaymentProcessing = (context: string, paymentInfo: any) => {
 export const logCompanyData = (context: string, companyInfo: any) => {
   const timestamp = new Date().toISOString();
   console.log(`[${timestamp}] [Company Data] ${context}`, companyInfo);
+  
+  // Add specific logging for logo URL issues
+  if (companyInfo && typeof companyInfo === 'object') {
+    if (companyInfo.logo_url) {
+      console.log(`[${timestamp}] [Company Logo] Found logo_url:`, companyInfo.logo_url);
+    } else if (companyInfo.logoUrl) {
+      console.log(`[${timestamp}] [Company Logo] Found logoUrl:`, companyInfo.logoUrl);
+    } else {
+      console.log(`[${timestamp}] [Company Logo] No logo URL found in company data`);
+    }
+  }
 };
 
 // Helper function to format dates consistently

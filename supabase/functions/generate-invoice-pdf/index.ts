@@ -3,7 +3,6 @@ import jspdf from 'https://esm.sh/jspdf@2.5.1';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import autoTable from 'https://esm.sh/jspdf-autotable@3.8.0';
 
-// Define types based on your database schema
 interface Invoice {
   id: string;
   client_id: string;
@@ -128,19 +127,16 @@ interface FormattedInvoice {
   }[];
 }
 
-// Supabase client setup
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 serve(async (req) => {
-  // Set CORS headers for browser clients
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   };
 
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers, status: 204 });
   }
@@ -156,7 +152,6 @@ serve(async (req) => {
       );
     }
 
-    // Fetch invoice data
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
       .select('*, invoice_items(*), payment_schedules(*)')
@@ -171,25 +166,22 @@ serve(async (req) => {
       );
     }
 
-    // Log contract terms to verify it's being fetched
     console.log('Fetched invoice contract terms:', {
       hasContractTerms: !!invoice.contract_terms,
       contractTermsLength: invoice.contract_terms?.length || 0,
       preview: invoice.contract_terms?.substring(0, 100)
     });
 
-    // Fetch associated data
     const { data: client } = await supabase
       .from('clients')
       .select('*')
       .eq('id', invoice.client_id)
       .single();
 
-    // Fetch company data from company_clientview using company_id
     const { data: company, error: companyError } = await supabase
       .from('company_clientview')
       .select('*')
-      .eq('company_id', invoice.company_id) // Match on company_id, not id)
+      .eq('company_id', invoice.company_id)
       .single();
     
     console.log('Invoice company_id:', invoice.company_id);
@@ -208,7 +200,6 @@ serve(async (req) => {
       job = jobData;
     }
 
-    // Format invoice data for the PDF generation
     const formattedInvoice: FormattedInvoice = {
       id: invoice.id,
       number: invoice.number,
@@ -222,7 +213,15 @@ serve(async (req) => {
       viewLink: invoice.view_link,
       shootingDate: invoice.shooting_date,
       client: client || { id: 'unknown', name: 'Unknown Client' },
-      company: company || { id: 'unknown', name: 'Unknown Company' },
+      company: company ? {
+        id: company.id,
+        name: company.name,
+        address: company.address,
+        email: company.email,
+        phone: company.phone,
+        website: company.website,
+        logoUrl: company.logo_url
+      } : { id: 'unknown', name: 'Unknown Company' },
       job: job ? {
         id: job.id,
         title: job.title,
@@ -251,7 +250,6 @@ serve(async (req) => {
 
     console.log('Uploading PDF for invoice:', invoiceId, 'Debug mode:', debugMode);
     
-    // Generate PDF based on debug mode
     let pdfData;
     if (debugMode === true) {
       console.log('Using DEBUG PDF mode');
@@ -261,7 +259,6 @@ serve(async (req) => {
       pdfData = await generatePDF(formattedInvoice);
     }
 
-    // Upload PDF to Storage bucket
     const filePath = `invoices/${invoiceId}${debugMode ? '_debug' : ''}.pdf`;
     const { data: uploadData, error: uploadError } = await supabase
       .storage
@@ -279,13 +276,11 @@ serve(async (req) => {
       );
     }
 
-    // Get public URL for the PDF
     const { data: publicUrlData } = supabase
       .storage
       .from('invoice-pdfs')
       .getPublicUrl(filePath);
 
-    // Only update invoice with PDF URL if not in debug mode
     if (!debugMode) {
       await supabase
         .from('invoices')
@@ -306,11 +301,9 @@ serve(async (req) => {
   }
 });
 
-// Helper function to strip HTML tags and format text
 function stripHtml(html: string): string {
   if (!html) return '';
   
-  // Replace <br>, </p>, </div>, </li> with newlines
   let text = html
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/p>/gi, '\n')
@@ -318,10 +311,8 @@ function stripHtml(html: string): string {
     .replace(/<\/li>/gi, '\n')
     .replace(/<\/h[1-6]>/gi, '\n');
   
-  // Remove all other HTML tags
   text = text.replace(/<[^>]*>/g, '');
   
-  // Decode HTML entities
   text = text.replace(/&nbsp;/g, ' ')
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
@@ -329,13 +320,11 @@ function stripHtml(html: string): string {
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'");
   
-  // Normalize whitespace
   text = text.replace(/\n{3,}/g, '\n\n');
   
   return text.trim();
 }
 
-// Updated addWrappedText to handle page breaks
 function addWrappedText(doc: any, text: string, x: number, y: number, maxWidth: number, lineHeight: number = 7, pageHeight: number, margin: number): number {
   if (!text) return y;
   
@@ -355,7 +344,6 @@ function addWrappedText(doc: any, text: string, x: number, y: number, maxWidth: 
   return y;
 }
 
-// Simple debug PDF generation that only includes company logo and info
 async function generateDebugPDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
   console.log('Generating DEBUG PDF for invoice:', invoiceData.number);
   console.log('Company info:', {
@@ -364,6 +352,7 @@ async function generateDebugPDF(invoiceData: FormattedInvoice): Promise<Uint8Arr
     address: invoiceData.company.address,
     phone: invoiceData.company.phone,
     website: invoiceData.company.website,
+    email: invoiceData.company.email
   });
   
   try {
@@ -379,10 +368,8 @@ async function generateDebugPDF(invoiceData: FormattedInvoice): Promise<Uint8Arr
     
     let y = margin;
 
-    // DEBUG HEADER - Only company logo and info
     console.log('DEBUG: Rendering only header section with company logo and info');
     
-    // Add company logo if available
     if (invoiceData.company.logoUrl) {
       console.log('Attempting to add logo from URL:', invoiceData.company.logoUrl);
       try {
@@ -413,7 +400,7 @@ async function generateDebugPDF(invoiceData: FormattedInvoice): Promise<Uint8Arr
           y: y
         });
         
-        doc.addImage(logo, 'JPEG', margin, y, logoWidth, logoHeight);
+        doc.addImage(logo, 'PNG', margin, y, logoWidth, logoHeight);
         y += logoHeight + 5;
         console.log('Logo added successfully, new y position:', y);
       } catch (logoError) {
@@ -432,14 +419,11 @@ async function generateDebugPDF(invoiceData: FormattedInvoice): Promise<Uint8Arr
       y += 8;
     }
 
-    // Add company info
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     
-    // Process address with proper line breaks
     const companyInfo = [];
     if (invoiceData.company.address) {
-      // Split address by \n if present
       const addressLines = invoiceData.company.address.split('\n');
       for (const line of addressLines) {
         companyInfo.push(line);
@@ -457,7 +441,6 @@ async function generateDebugPDF(invoiceData: FormattedInvoice): Promise<Uint8Arr
       console.log('Added company info line, new y position:', y);
     });
 
-    // Add debug note
     y += 20;
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
@@ -482,7 +465,6 @@ async function generateDebugPDF(invoiceData: FormattedInvoice): Promise<Uint8Arr
   }
 }
 
-// Full PDF generation function
 async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
   console.log('Generating PDF for invoice:', invoiceData.number);
   console.log('Invoice data overview:', {
@@ -509,7 +491,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 15;
     const contentWidth = pageWidth - (margin * 2);
-    const columnWidth = (pageWidth - (margin * 3)) / 2; // Adjusted for two columns with margin between
+    const columnWidth = (pageWidth - (margin * 3)) / 2;
     
     let y = margin;
 
@@ -528,7 +510,6 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       }
     };
     
-    // HEADER SECTION
     console.log('Rendering header section');
     if (invoiceData.company.logoUrl) {
       console.log('Attempting to add logo from URL:', invoiceData.company.logoUrl);
@@ -604,7 +585,6 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
     
     y += 15;
     
-    // BILL TO & JOB SECTION (2-column layout with wrapping)
     console.log('Rendering BILL TO section');
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
@@ -672,7 +652,6 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       console.log('No job data available');
     }
     
-    // Use the maximum height of the two columns to set the next y position
     y = Math.max(clientY, jobDetailsY) + 10;
     
     if (invoiceData.items && invoiceData.items.length > 0) {
@@ -853,7 +832,6 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
     if (invoiceData.contractTerms) {
       console.log('Rendering CONTRACT TERMS section');
       
-      // Ensure we start on a new page
       doc.addPage();
       y = margin;
       console.log('Added new page for contract terms, new y position:', y);
@@ -907,7 +885,6 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
   }
 }
 
-// Helper function to convert Blob to base64
 async function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();

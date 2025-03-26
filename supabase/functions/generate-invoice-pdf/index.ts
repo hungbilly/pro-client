@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import jspdf from 'https://esm.sh/jspdf@2.5.1';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
@@ -513,34 +514,26 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
 
     // ===== Updated Header Layout =====
     // Left side - Logo
-    const rightColumnX = pageWidth * 0.55; // Move the right column start point
-    let rightColumnY = y;
-
-    // Logo positioning
     if (invoiceData.company.logoUrl) {
       console.log('Attempting to add logo from URL:', invoiceData.company.logoUrl);
       try {
         const response = await fetch(invoiceData.company.logoUrl);
         if (!response.ok) throw new Error(`Failed to fetch logo: ${response.statusText}`);
-      
+        
         const blob = await response.blob();
         const logo = await blobToBase64(blob);
-      
-        const maxLogoHeight = 40;
+        
+        const maxLogoHeight = 40; // Increased logo height
         const imgProps = doc.getImageProperties(logo);
-      
+        
         const aspectRatio = imgProps.width / imgProps.height;
         const logoHeight = Math.min(maxLogoHeight, imgProps.height);
         const logoWidth = logoHeight * aspectRatio;
-      
-        // Position logo more centrally
-        const logoX = margin + (rightColumnX - margin - logoWidth) / 2;
-      
-        doc.addImage(logo, 'PNG', logoX, y, logoWidth, logoHeight);
-        y += logoHeight + 10; // Add some extra space after logo
+        
+        doc.addImage(logo, 'PNG', margin, y, logoWidth, logoHeight);
       } catch (logoError) {
         console.error('Error adding logo:', logoError);
-        doc.setFontSize(24);
+        doc.setFontSize(24); // Larger font size for fallback company name
         doc.setFont('helvetica', 'bold');
         doc.text(invoiceData.company.name.toUpperCase(), margin, y + 15);
       }
@@ -551,18 +544,19 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
     }
 
     // Right side - Company Information
-    rightColumnY = y;
+    const rightColumnX = pageWidth / 2;
+    let rightColumnY = y;
 
-    // "FROM" heading and details
+    // "FROM" heading
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(100, 100, 100);
+    doc.setTextColor(100, 100, 100); // Gray color for headings
     doc.text('FROM', rightColumnX, rightColumnY);
     rightColumnY += 7;
 
-    // Company details
+    // Company name and details
     doc.setFontSize(14);
-    doc.setTextColor(0, 0, 0);
+    doc.setTextColor(0, 0, 0); // Reset to black
     doc.text(invoiceData.company.name, rightColumnX, rightColumnY);
     rightColumnY += 7;
 
@@ -580,10 +574,11 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
     }
     
     if (invoiceData.company.address) {
+      // Handle multiline address
       const addressLines = invoiceData.company.address.split('\n');
       const flattenedAddress = addressLines.join(' ');
       doc.text(flattenedAddress, rightColumnX, rightColumnY);
-      rightColumnY += 10;
+      rightColumnY += 10; // Add more space after address
     }
 
     // "INVOICE FOR" section
@@ -619,22 +614,22 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
 
     // Job date if available
     if (invoiceData.job && invoiceData.job.date) {
-      rightColumnY += 4;
+      rightColumnY += 4; // Add some space
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(100, 100, 100);
       doc.text('JOB DATE', rightColumnX, rightColumnY);
       rightColumnY += 7;
-    
+      
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(0, 0, 0);
       doc.text(invoiceData.job.date, rightColumnX, rightColumnY);
     }
 
-    // Move y position to the max of the header sections
+    // Move y position below the header section
     y = Math.max(y + 50, rightColumnY + 10);
-  
+    
     // Add separator line
     doc.setDrawColor(220, 220, 220);
     doc.line(margin, y, pageWidth - margin, y);
@@ -879,3 +874,37 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
           isHeading,
           yPosition: y,
         });
+        
+        if (isHeading) {
+          doc.setFont('helvetica', 'bold');
+          doc.text(trimmedParagraph, margin, y);
+          y += 7;
+        } else {
+          doc.setFont('helvetica', 'normal');
+          y = addWrappedText(doc, trimmedParagraph, margin, y, contentWidth, 5, pageHeight, margin);
+          y += 5;
+        }
+      });
+    } else {
+      console.log('No contract terms to render');
+    }
+    
+    addPageFooter();
+    
+    console.log('PDF generation completed');
+    return doc.output('arraybuffer');
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    throw error;
+  }
+}
+
+async function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+

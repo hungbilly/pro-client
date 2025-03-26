@@ -494,6 +494,7 @@ const InvoiceView = () => {
           },
           didDrawPage: (data) => {
             // Add footer with page numbers on each page
+            // Fixed: Using internal.getNumberOfPages() instead of getNumberOfPages()
             const pageCount = doc.internal.getNumberOfPages();
             for (let i = 1; i <= pageCount; i++) {
               doc.setPage(i);
@@ -932,7 +933,7 @@ const InvoiceView = () => {
               <div className="flex items-center mt-2">
                 <Badge 
                   variant={
-                    invoice.status === 'paid' ? 'success' : 
+                    invoice.status === 'paid' ? 'default' : 
                     invoice.status === 'accepted' ? 'outline' : 
                     invoice.status === 'sent' ? 'secondary' : 'default'
                   }
@@ -1007,7 +1008,7 @@ const InvoiceView = () => {
                     <dd>
                       <Badge 
                         variant={
-                          invoice.status === 'paid' ? 'success' : 
+                          invoice.status === 'paid' ? 'default' : 
                           invoice.status === 'accepted' ? 'outline' : 
                           invoice.status === 'sent' ? 'secondary' : 'default'
                         }
@@ -1156,11 +1157,12 @@ const InvoiceView = () => {
                   <CardContent>
                     <PaymentScheduleTable 
                       paymentSchedules={invoice.paymentSchedules} 
-                      total={invoice.amount}
+                      amount={invoice.amount}
                       onUpdateStatus={isClientView ? undefined : handlePaymentStatusUpdate}
                       onUpdatePaymentDate={isClientView ? undefined : handlePaymentDateUpdate}
                       isUpdating={!!updatingPaymentId}
                       updatingId={updatingPaymentId}
+                      isClientView={isClientView}
                     />
                   </CardContent>
                 </Card>
@@ -1180,6 +1182,7 @@ const InvoiceView = () => {
                       <RichTextEditor
                         value={invoice.notes}
                         readOnly={true}
+                        onChange={() => {}} // Add noop onChange handler
                       />
                     </div>
                   </CardContent>
@@ -1196,7 +1199,7 @@ const InvoiceView = () => {
                       Contract Terms
                     </CardTitle>
                     {invoice.contractStatus === 'accepted' && (
-                      <Badge variant="success" className="ml-2">
+                      <Badge variant="outline" className="ml-2 bg-green-100 text-green-800">
                         <Check className="w-4 h-4 mr-1" />
                         Accepted
                       </Badge>
@@ -1207,6 +1210,7 @@ const InvoiceView = () => {
                       <RichTextEditor
                         value={invoice.contractTerms}
                         readOnly={true}
+                        onChange={() => {}} // Add noop onChange handler
                       />
                     </div>
                   </CardContent>

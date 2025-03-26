@@ -14,23 +14,23 @@ import { toast } from 'sonner';
 
 interface PaymentScheduleTableProps {
   paymentSchedules: PaymentSchedule[];
-  amount: number;
-  isClientView: boolean;
-  updatingPaymentId: string | null;
-  onUpdateStatus: (paymentId: string, status: 'paid' | 'unpaid' | 'write-off') => void;
-  formatCurrency: (amount: number) => string;
+  amount: number; // Changed from 'total' to 'amount' to match how it's used in InvoiceView
+  onUpdateStatus?: (paymentId: string, status: 'paid' | 'unpaid' | 'write-off') => void;
   onUpdatePaymentDate?: (paymentId: string, paymentDate: string) => void;
-  className?: string; // Add className prop to interface
+  isUpdating?: boolean;
+  updatingId?: string | null;
+  isClientView?: boolean;
+  className?: string;
 }
 
 const PaymentScheduleTable = memo(({
   paymentSchedules,
-  amount,
-  isClientView,
-  updatingPaymentId,
+  amount, // Changed from 'total' to 'amount'
+  isClientView = false,
+  updatingId,
   onUpdateStatus,
-  formatCurrency,
   onUpdatePaymentDate,
+  isUpdating = false,
   className
 }: PaymentScheduleTableProps) => {
   const paymentStatusColors: { [key: string]: string } = {
@@ -55,6 +55,15 @@ const PaymentScheduleTable = memo(({
     });
     
     setEditingDateId(null);
+  };
+
+  // Add a formatCurrency function here since it's not passed as a prop anymore
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    }).format(amount);
   };
 
   return (
@@ -131,16 +140,16 @@ const PaymentScheduleTable = memo(({
                   <span className="text-muted-foreground">-</span>
                 )}
               </TableCell>
-              {!isClientView && (
+              {!isClientView && onUpdateStatus && (
                 <TableCell>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button 
                         variant="ghost" 
                         size="sm"
-                        disabled={updatingPaymentId === schedule.id}
+                        disabled={updatingId === schedule.id}
                       >
-                        {updatingPaymentId === schedule.id ? 'Updating...' : 'Set Status'}
+                        {updatingId === schedule.id ? 'Updating...' : 'Set Status'}
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">

@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import jspdf from 'https://esm.sh/jspdf@2.5.1';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
@@ -495,6 +496,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
     
     let y = margin;
 
+    // Add page footer helper function
     const addPageFooter = () => {
       const totalPages = doc.internal.getNumberOfPages();
       console.log('Adding footer to', totalPages, 'pages');
@@ -509,160 +511,172 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
         doc.text(statusText, pageWidth - margin, pageHeight - 10, { align: 'right' });
       }
     };
-    
-    console.log('Rendering header section');
+
+    // ===== Updated Header Layout =====
+    // Left side - Logo
     if (invoiceData.company.logoUrl) {
       console.log('Attempting to add logo from URL:', invoiceData.company.logoUrl);
       try {
         const response = await fetch(invoiceData.company.logoUrl);
         if (!response.ok) throw new Error(`Failed to fetch logo: ${response.statusText}`);
+        
         const blob = await response.blob();
         const logo = await blobToBase64(blob);
-        const maxLogoHeight = 25;
+        
+        const maxLogoHeight = 40; // Increased logo height
         const imgProps = doc.getImageProperties(logo);
+        
         const aspectRatio = imgProps.width / imgProps.height;
         const logoHeight = Math.min(maxLogoHeight, imgProps.height);
         const logoWidth = logoHeight * aspectRatio;
+        
         doc.addImage(logo, 'PNG', margin, y, logoWidth, logoHeight);
-        y += logoHeight + 5;
       } catch (logoError) {
         console.error('Error adding logo:', logoError);
-        doc.setFontSize(16);
+        doc.setFontSize(24); // Larger font size for fallback company name
         doc.setFont('helvetica', 'bold');
-        doc.text(invoiceData.company.name.toUpperCase(), margin, y);
-        y += 8;
+        doc.text(invoiceData.company.name.toUpperCase(), margin, y + 15);
       }
     } else {
-      console.log('No logo URL provided, using company name');
-      doc.setFontSize(16);
+      doc.setFontSize(24);
       doc.setFont('helvetica', 'bold');
-      doc.text(invoiceData.company.name.toUpperCase(), margin, y);
-      y += 8;
+      doc.text(invoiceData.company.name.toUpperCase(), margin, y + 15);
     }
 
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-    
-    const companyInfo = [];
-    if (invoiceData.company.address) companyInfo.push(invoiceData.company.address);
-    if (invoiceData.company.phone) companyInfo.push(`Phone: ${invoiceData.company.phone}`);
-    if (invoiceData.company.website) companyInfo.push(`Website: ${invoiceData.company.website}`);
-    console.log('Company info:', companyInfo);
-    
-    companyInfo.forEach(info => {
-      doc.text(info, margin, y);
-      y += 5;
-    });
+    // Right side - Company Information
+    const rightColumnX = pageWidth / 2;
+    let rightColumnY = y;
 
-    const invoiceDetailsX = pageWidth - margin - 50;
-    let invoiceDetailsY = margin;
-    
-    doc.setFontSize(9);
+    // "FROM" heading
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(100, 100, 100); // Gray color for headings
+    doc.text('FROM', rightColumnX, rightColumnY);
+    rightColumnY += 7;
+
+    // Company name and details
+    doc.setFontSize(14);
+    doc.setTextColor(0, 0, 0); // Reset to black
+    doc.text(invoiceData.company.name, rightColumnX, rightColumnY);
+    rightColumnY += 7;
+
+    doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    console.log('Invoice details:', {
-      number: invoiceData.number,
-      date: invoiceData.date,
-      dueDate: invoiceData.dueDate,
-      status: invoiceData.status,
-    });
-    doc.text(`Invoice #: ${invoiceData.number}`, invoiceDetailsX, invoiceDetailsY, { align: 'left' });
-    invoiceDetailsY += 5;
-    doc.text(`Invoice Date: ${new Date(invoiceData.date).toLocaleDateString()}`, invoiceDetailsX, invoiceDetailsY, { align: 'left' });
-    invoiceDetailsY += 5;
-    doc.text(`Due Date: ${new Date(invoiceData.dueDate).toLocaleDateString()}`, invoiceDetailsX, invoiceDetailsY, { align: 'left' });
-    invoiceDetailsY += 5;
-    doc.text(`Status: ${invoiceData.status.toUpperCase()}`, invoiceDetailsX, invoiceDetailsY, { align: 'left' });
     
+    if (invoiceData.company.email) {
+      doc.text(invoiceData.company.email, rightColumnX, rightColumnY);
+      rightColumnY += 6;
+    }
+    
+    if (invoiceData.company.phone) {
+      doc.text(invoiceData.company.phone, rightColumnX, rightColumnY);
+      rightColumnY += 6;
+    }
+    
+    if (invoiceData.company.address) {
+      // Handle multiline address
+      const addressLines = invoiceData.company.address.split('\n');
+      const flattenedAddress = addressLines.join(' ');
+      doc.text(flattenedAddress, rightColumnX, rightColumnY);
+      rightColumnY += 10; // Add more space after address
+    }
+
+    // "INVOICE FOR" section
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(100, 100, 100);
+    doc.text('INVOICE FOR', rightColumnX, rightColumnY);
+    rightColumnY += 7;
+
+    // Job title if available
+    if (invoiceData.job && invoiceData.job.title) {
+      doc.setFontSize(14);
+      doc.setTextColor(0, 0, 0);
+      doc.text(invoiceData.job.title, rightColumnX, rightColumnY);
+      rightColumnY += 7;
+    }
+
+    // Client information
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Client: ${invoiceData.client.name}`, rightColumnX, rightColumnY);
+    rightColumnY += 6;
+    
+    if (invoiceData.client.email) {
+      doc.text(invoiceData.client.email, rightColumnX, rightColumnY);
+      rightColumnY += 6;
+    }
+    
+    if (invoiceData.client.phone) {
+      doc.text(invoiceData.client.phone, rightColumnX, rightColumnY);
+      rightColumnY += 6;
+    }
+
+    // Job date if available
+    if (invoiceData.job && invoiceData.job.date) {
+      rightColumnY += 4; // Add some space
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(100, 100, 100);
+      doc.text('JOB DATE', rightColumnX, rightColumnY);
+      rightColumnY += 7;
+      
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(0, 0, 0);
+      doc.text(invoiceData.job.date, rightColumnX, rightColumnY);
+    }
+
+    // Move y position below the header section
+    y = Math.max(y + 50, rightColumnY + 10);
+    
+    // Add separator line
+    doc.setDrawColor(220, 220, 220);
+    doc.line(margin, y, pageWidth - margin, y);
     y += 10;
     
-    console.log('Rendering invoice title section');
-    doc.setFontSize(20);
+    // Continue with rest of the PDF (invoice details, items, payment schedule, etc.)
+    // ===== End of Updated Header Layout =====
+
+    // Invoice Number and Details
+    doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text('INVOICE', margin, y);
+    doc.text(`INVOICE #${invoiceData.number}`, margin, y);
+    y += 7;
     
-    doc.setDrawColor(220, 220, 220);
-    doc.line(margin, y + 5, pageWidth - margin, y + 5);
-    
-    y += 15;
-    
-    console.log('Rendering BILL TO section');
     doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.text('BILL TO:', margin, y);
-    
     doc.setFont('helvetica', 'normal');
-    console.log('Client info:', {
-      name: invoiceData.client.name,
-      email: invoiceData.client.email,
-      phone: invoiceData.client.phone,
-      address: invoiceData.client.address,
+    
+    const invoiceDetailsTable = [
+      ['Invoice Date:', new Date(invoiceData.date).toLocaleDateString()],
+      ['Due Date:', new Date(invoiceData.dueDate).toLocaleDateString()],
+      ['Status:', invoiceData.status.toUpperCase()]
+    ];
+    
+    autoTable(doc, {
+      startY: y,
+      head: [],
+      body: invoiceDetailsTable,
+      theme: 'plain',
+      styles: {
+        cellPadding: 1,
+        fontSize: 10
+      },
+      columnStyles: {
+        0: { cellWidth: 30, fontStyle: 'bold' },
+        1: { cellWidth: 'auto' }
+      }
     });
-    doc.text(invoiceData.client.name, margin, y + 6);
     
-    let clientY = y + 12;
-    if (invoiceData.client.email) {
-      const emailLines = doc.splitTextToSize(`Email: ${invoiceData.client.email}`, columnWidth);
-      emailLines.forEach((line: string) => {
-        doc.text(line, margin, clientY);
-        clientY += 5;
-      });
-    }
-    if (invoiceData.client.phone) {
-      doc.text(`Phone: ${invoiceData.client.phone}`, margin, clientY);
-      clientY += 5;
-    }
-    if (invoiceData.client.address) {
-      const addressLines = doc.splitTextToSize(`Address: ${invoiceData.client.address}`, columnWidth);
-      addressLines.forEach((line: string) => {
-        doc.text(line, margin, clientY);
-        clientY += 5;
-      });
-    }
-    
-    const jobDetailsX = margin + columnWidth + margin;
-    let jobDetailsY = y;
-    
-    if (invoiceData.job) {
-      console.log('Rendering JOB section');
-      doc.setFont('helvetica', 'bold');
-      doc.text('JOB:', jobDetailsX, jobDetailsY);
-      jobDetailsY += 6;
-      
-      doc.setFont('helvetica', 'normal');
-      console.log('Job info:', {
-        title: invoiceData.job.title,
-        date: invoiceData.job.date,
-        makeup: invoiceData.job.makeup,
-      });
-      const jobTitleLines = doc.splitTextToSize(invoiceData.job.title, columnWidth);
-      jobTitleLines.forEach((line: string) => {
-        doc.text(line, jobDetailsX, jobDetailsY);
-        jobDetailsY += 5;
-      });
-      
-      if (invoiceData.job.date) {
-        doc.text(`Job Date: ${new Date(invoiceData.job.date).toLocaleDateString()}`, jobDetailsX, jobDetailsY);
-        jobDetailsY += 5;
-      }
-      if (invoiceData.job.makeup) {
-        doc.text(`makeup: ${invoiceData.job.makeup}`, jobDetailsX, jobDetailsY);
-        jobDetailsY += 5;
-      }
-    } else {
-      console.log('No job data available');
-    }
-    
-    y = Math.max(clientY, jobDetailsY) + 10;
+    y = (doc as any).lastAutoTable.finalY + 10;
     
     if (invoiceData.items && invoiceData.items.length > 0) {
       console.log('Rendering INVOICE ITEMS section');
-      doc.setFontSize(11);
+      doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
       doc.text('INVOICE ITEMS', margin, y);
       
-      y += 8;
-      
-      doc.setFontSize(9);
+      y += 5;
       
       const tableHeaders = [
         { header: 'Package/Service', dataKey: 'name' },
@@ -738,7 +752,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       }
       
       console.log('Rendering PAYMENT SCHEDULE section');
-      doc.setFontSize(11);
+      doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
       doc.text('PAYMENT SCHEDULE', margin, y);
       
@@ -812,7 +826,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       }
       
       console.log('Rendering NOTES section');
-      doc.setFontSize(11);
+      doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
       doc.text('NOTES', margin, y);
       

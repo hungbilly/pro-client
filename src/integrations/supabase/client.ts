@@ -52,7 +52,7 @@ export const logPaymentProcessing = (context: string, paymentInfo: any) => {
   console.log(`[${timestamp}] [Payment Processing] ${context}`, paymentInfo);
 };
 
-// Add company data debugging
+// Enhanced company data debugging
 export const logCompanyData = (context: string, companyInfo: any) => {
   const timestamp = new Date().toISOString();
   console.log(`[${timestamp}] [Company Data] ${context}`, companyInfo);
@@ -65,6 +65,15 @@ export const logCompanyData = (context: string, companyInfo: any) => {
       console.log(`[${timestamp}] [Company Logo] Found logoUrl:`, companyInfo.logoUrl);
     } else {
       console.log(`[${timestamp}] [Company Logo] No logo URL found in company data`);
+    }
+    
+    // Add address formatting logging
+    if (companyInfo.address) {
+      console.log(`[${timestamp}] [Company Address] Address format:`, {
+        original: companyInfo.address,
+        lines: companyInfo.address.split('\n'),
+        length: companyInfo.address.length
+      });
     }
   }
 };
@@ -101,6 +110,21 @@ export const parseDate = (dateString: string): Date | null => {
   } catch (error) {
     logError('Error parsing date', { dateString, error });
     return null;
+  }
+};
+
+// Format date for display
+export const formatDisplayDate = (dateString: string): string => {
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      logError('Invalid date string for display formatting', { dateString });
+      return '';
+    }
+    return date.toLocaleDateString();
+  } catch (error) {
+    logError('Error formatting display date', { dateString, error });
+    return '';
   }
 };
 

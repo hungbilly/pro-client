@@ -23,6 +23,7 @@ const InvoicePdfView = () => {
   const [clientSidePdfGenerating, setClientSidePdfGenerating] = useState(false);
   const { viewLink } = useParams<{ viewLink: string }>();
   const pdfContainerRef = React.useRef<HTMLDivElement>(null);
+  const [activeTab, setActiveTab] = useState('invoice');
 
   useEffect(() => {
     const fetchInvoice = async () => {
@@ -108,67 +109,84 @@ const InvoicePdfView = () => {
         el.style.display = 'none';
       });
 
-      // Generate PDF with enhanced quality settings
-      html2canvas(element, {
-        scale: 2, // Higher scale for better quality
-        useCORS: true,
-        logging: false,
-        allowTaint: true,
-        onclone: (clonedDoc) => {
-          const clonedInvoiceTab = clonedDoc.querySelector('[data-testid="invoice-tab"]');
-          const clonedContractTab = clonedDoc.querySelector('[data-testid="contract-tab"]');
-          
-          if (clonedInvoiceTab) {
-            (clonedInvoiceTab as HTMLElement).style.display = 'block';
-            (clonedInvoiceTab as HTMLElement).style.visibility = 'visible';
-          }
-          
-          if (clonedContractTab) {
-            (clonedContractTab as HTMLElement).style.display = 'block';
-            (clonedContractTab as HTMLElement).style.visibility = 'visible';
-            (clonedContractTab as HTMLElement).style.pageBreakBefore = 'always';
-          }
-        }
-      }).then(canvas => {
-        const imgData = canvas.toDataURL('image/png');
-        
-        const imgWidth = 210; // A4 width in mm
-        const pageHeight = 297; // A4 height in mm
-        const imgHeight = canvas.height * imgWidth / canvas.width;
-        
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        let position = 0;
-        
-        // Add first page
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        
-        // Add additional pages if needed
-        const totalPages = Math.ceil(imgHeight / pageHeight);
-        for (let i = 1; i < totalPages; i++) {
-          position = -pageHeight * i;
-          pdf.addPage();
-          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        }
-        
-        // Save the PDF
-        pdf.save(`invoice-${invoice?.number || 'download'}.pdf`);
-        toast.success('PDF generated successfully');
-      }).catch(err => {
-        console.error('Error in html2canvas:', err);
-        toast.error(`PDF generation error: ${err.message}`);
-      }).finally(() => {
-        // Restore original styles
-        if (tabsList) (tabsList as HTMLElement).style.display = originalStyles.tabsList;
-        if (invoiceTab) (invoiceTab as HTMLElement).style.display = originalStyles.invoiceTab;
-        if (contractTab) (contractTab as HTMLElement).style.display = originalStyles.contractTab;
-        
-        buttonsToHide.forEach((button, i) => {
-          const el = button as HTMLElement;
-          el.style.display = buttonOriginalStyles[i] || '';
+      // Force render both tabs content before generating the PDF
+      if (contractTab && invoiceTab) {
+        console.log('Ensuring both tabs are rendered:', {
+          invoiceTabVisible: (invoiceTab as HTMLElement).style.display,
+          contractTabVisible: (contractTab as HTMLElement).style.display,
+          contractTermsLength: invoice?.contractTerms?.length || 0
         });
-        
-        setClientSidePdfGenerating(false);
-      });
+      }
+
+      // Generate PDF with enhanced quality settings
+      setTimeout(() => {
+        html2canvas(element, {
+          scale: 2, // Higher scale for better quality
+          useCORS: true,
+          logging: true,
+          allowTaint: true,
+          onclone: (clonedDoc) => {
+            const clonedInvoiceTab = clonedDoc.querySelector('[data-testid="invoice-tab"]');
+            const clonedContractTab = clonedDoc.querySelector('[data-testid="contract-tab"]');
+            
+            console.log('Cloned document for PDF generation:', {
+              hasInvoiceTab: !!clonedInvoiceTab,
+              hasContractTab: !!clonedContractTab,
+              contractTermsLength: invoice?.contractTerms?.length || 0
+            });
+            
+            if (clonedInvoiceTab) {
+              (clonedInvoiceTab as HTMLElement).style.display = 'block';
+              (clonedInvoiceTab as HTMLElement).style.visibility = 'visible';
+            }
+            
+            if (clonedContractTab) {
+              (clonedContractTab as HTMLElement).style.display = 'block';
+              (clonedContractTab as HTMLElement).style.visibility = 'visible';
+              (clonedContractTab as HTMLElement).style.pageBreakBefore = 'always';
+            }
+          }
+        }).then(canvas => {
+          const imgData = canvas.toDataURL('image/png');
+          
+          const imgWidth = 210; // A4 width in mm
+          const pageHeight = 297; // A4 height in mm
+          const imgHeight = canvas.height * imgWidth / canvas.width;
+          
+          const pdf = new jsPDF('p', 'mm', 'a4');
+          let position = 0;
+          
+          // Add first page
+          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+          
+          // Add additional pages if needed
+          const totalPages = Math.ceil(imgHeight / pageHeight);
+          for (let i = 1; i < totalPages; i++) {
+            position = -pageHeight * i;
+            pdf.addPage();
+            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+          }
+          
+          // Save the PDF
+          pdf.save(`invoice-${invoice?.number || 'download'}.pdf`);
+          toast.success('PDF generated successfully');
+        }).catch(err => {
+          console.error('Error in html2canvas:', err);
+          toast.error(`PDF generation error: ${err.message}`);
+        }).finally(() => {
+          // Restore original styles
+          if (tabsList) (tabsList as HTMLElement).style.display = originalStyles.tabsList;
+          if (invoiceTab) (invoiceTab as HTMLElement).style.display = originalStyles.invoiceTab;
+          if (contractTab) (contractTab as HTMLElement).style.display = originalStyles.contractTab;
+          
+          buttonsToHide.forEach((button, i) => {
+            const el = button as HTMLElement;
+            el.style.display = buttonOriginalStyles[i] || '';
+          });
+          
+          setClientSidePdfGenerating(false);
+        });
+      }, 500); // Add a small delay to ensure the DOM is fully ready
     } catch (err) {
       console.error('Error generating client-side PDF:', err);
       toast.error('Failed to generate PDF. Please try again.');
@@ -225,6 +243,34 @@ const InvoicePdfView = () => {
     </div>
   );
 
+  // Function to toggle tab visibility for examining DOM
+  const toggleTabVisibility = () => {
+    if (!pdfContainerRef.current) return;
+    
+    const invoiceTab = pdfContainerRef.current.querySelector('[data-testid="invoice-tab"]');
+    const contractTab = pdfContainerRef.current.querySelector('[data-testid="contract-tab"]');
+    
+    if (invoiceTab && contractTab) {
+      const invoiceEl = invoiceTab as HTMLElement;
+      const contractEl = contractTab as HTMLElement;
+      
+      console.log('Current tab visibility:', {
+        invoiceDisplay: invoiceEl.style.display,
+        contractDisplay: contractEl.style.display
+      });
+      
+      // Toggle visibility
+      if (contractEl.style.display === 'none' || !contractEl.style.display) {
+        contractEl.style.display = 'block';
+        contractEl.style.visibility = 'visible';
+        console.log('Made contract visible');
+      } else {
+        contractEl.style.display = 'none';
+        console.log('Made contract hidden');
+      }
+    }
+  };
+
   if (loading) {
     return (
       <PageTransition>
@@ -273,6 +319,30 @@ const InvoicePdfView = () => {
             Please review the invoice and contract terms below.
           </p>
           {renderPdfDownloadButtons()}
+          
+          {/* Debug buttons for development - could be removed in production */}
+          <div className="mt-2 flex justify-center gap-2 no-print">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={toggleTabVisibility} 
+              className="text-xs"
+            >
+              Toggle Tab Debug
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => {
+                if (!pdfContainerRef.current) return;
+                console.log('Contract terms length:', invoice?.contractTerms?.length || 0);
+                console.log('Has contract tab:', !!pdfContainerRef.current.querySelector('[data-testid="contract-tab"]'));
+              }} 
+              className="text-xs"
+            >
+              Log Contract Status
+            </Button>
+          </div>
         </div>
 
         <Card className="bg-white dark:bg-gray-900 shadow-sm">
@@ -287,7 +357,7 @@ const InvoicePdfView = () => {
           
           <CardContent>
             <div ref={pdfContainerRef}>
-              <Tabs defaultValue="invoice" className="w-full">
+              <Tabs defaultValue="invoice" className="w-full" onValueChange={setActiveTab}>
                 <TabsList className="w-full no-print" data-testid="tabs-list">
                   <TabsTrigger value="invoice" className="flex-1">
                     Invoice Details

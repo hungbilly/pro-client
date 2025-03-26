@@ -62,7 +62,8 @@ serve(async (req) => {
         message: 'Please use client-side PDF generation',
         invoiceUrl,
         invoiceNumber: invoice.number,
-        invoiceId: invoice.id
+        invoiceId: invoice.id,
+        hasContractTerms: !!invoice.contract_terms
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     );

@@ -1,11 +1,14 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
-import puppeteer from 'https://deno.land/x/puppeteer@16.2.0/mod.ts';
+import { DOMParser } from 'https://deno.land/x/deno_dom@v0.1.38/deno-dom-wasm.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Import Chrome for Deno's built-in browser
+import puppeteer from 'https://deno.land/x/puppeteer@16.2.0/mod.ts';
 
 serve(async (req) => {
   const headers = {
@@ -51,18 +54,43 @@ serve(async (req) => {
     const baseUrl = `${url.protocol}//${url.hostname}`;
     
     // Construct the client view URL - use the deployed URL or a fallback
-    const clientViewUrl = `${baseUrl}/invoice/${invoice.view_link}`;
+    const viewLink = invoice.view_link.includes('/') ? invoice.view_link.split('/').pop() : invoice.view_link;
+    const clientViewUrl = `${baseUrl}/invoice/${viewLink}`;
     console.log('Generated client view URL:', clientViewUrl);
-
-    // Launch puppeteer
-    console.log('Launching puppeteer...');
+    
+    // First, use fetch to get the HTML content of the page
+    console.log('Fetching HTML content first...');
+    const response = await fetch(clientViewUrl);
+    const htmlContent = await response.text();
+    
+    // Parse the HTML and check if it contains contract terms
+    const parser = new DOMParser();
+    const document = parser.parseFromString(htmlContent, 'text/html');
+    const contractTermsContent = document?.querySelector('[data-testid="contract-tab"]');
+    console.log('Contract terms found in HTML:', !!contractTermsContent);
+    
+    // Generate the PDF using Chrome browser
+    console.log('Launching browser for PDF generation...');
+    
+    // Use the recommended approach for Deno Deploy
     const browser = await puppeteer.launch({
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
+        '--single-process',
+        '--disable-gpu'
+      ],
       headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
     
     try {
+      console.log('Browser launched successfully');
       const page = await browser.newPage();
+      console.log('New page created');
 
       // Set viewport to match A4 dimensions
       await page.setViewport({
@@ -70,198 +98,145 @@ serve(async (req) => {
         height: 1123, // A4 height in pixels at 96 DPI (297mm)
         deviceScaleFactor: 1,
       });
+      console.log('Viewport set to A4 dimensions');
 
-      console.log('Navigating to client view URL...');
-      // Navigate to the client view URL
-      await page.goto(clientViewUrl, { waitUntil: 'networkidle0' });
-
-      // Wait for specific elements to ensure the page is fully loaded
-      console.log('Waiting for page content to load...');
-      try {
-        await page.waitForSelector('.card', { timeout: 10000 });
-        console.log('Page content loaded successfully');
-      } catch (err) {
-        console.warn('Timeout waiting for card element, continuing anyway:', err);
-      }
-
-      // Wait for images to load
-      console.log('Waiting for images to load...');
-      await page.evaluate(async () => {
-        const images = Array.from(document.querySelectorAll('img'));
-        await Promise.all(
-          images.map((img) => {
-            if (img.complete) return Promise.resolve();
-            return new Promise((resolve) => {
-              img.onload = resolve;
-              img.onerror = resolve;
-            });
-          })
-        );
-      });
-
-      // Explicitly click the "Contract Terms" tab to ensure it loads
-      console.log('Attempting to click the Contract Terms tab...');
-      try {
-        await page.evaluate(() => {
-          const contractTabTrigger = document.querySelector('[role="tab"][data-state="inactive"]');
-          if (contractTabTrigger) {
-            (contractTabTrigger as HTMLElement).click();
-            console.log('Clicked contract tab trigger');
-          } else {
-            console.warn('Contract tab trigger not found');
-          }
-        });
-        
-        // Give time for the tab content to load after clicking
-        await page.waitForTimeout(1000);
-      } catch (err) {
-        console.warn('Error clicking contract tab:', err);
-      }
-
-      // Wait for RichTextEditor content to render (used in both Invoice Details and Contract Terms)
-      console.log('Waiting for RichTextEditor content to load...');
-      try {
-        await page.waitForSelector('.rich-text-editor', { timeout: 5000 });
-        console.log('RichTextEditor content loaded successfully');
-      } catch (err) {
-        console.warn('Timeout waiting for RichTextEditor, continuing anyway:', err);
-      }
-
-      // Hide elements that shouldn't appear in the PDF (e.g., buttons)
-      console.log('Hiding no-print elements...');
-      await page.evaluate(() => {
-        const elementsToHide = document.querySelectorAll('.no-print, button');
-        elementsToHide.forEach((el) => {
-          (el as HTMLElement).style.display = 'none';
-        });
-      });
-
-      // Force display of all tab panels and hide the tab list
-      console.log('Setting up tab display for printing...');
-      await page.evaluate(() => {
-        // Hide the tabs list
+      // Navigate to the invoice URL
+      console.log(`Navigating to: ${clientViewUrl}`);
+      await page.goto(clientViewUrl, { waitUntil: 'networkidle0', timeout: 15000 });
+      console.log('Page loaded successfully');
+      
+      // Add a delay to ensure everything loads properly
+      await page.waitForTimeout(2000);
+      console.log('Additional wait time complete');
+      
+      // Extract and log the current page content for debugging
+      const title = await page.title();
+      console.log('Page title:', title);
+      
+      // Check if contract terms are present
+      const contractTabExists = await page.evaluate(() => {
         const tabsList = document.querySelector('[data-testid="tabs-list"]');
-        if (tabsList) {
-          (tabsList as HTMLElement).style.display = 'none';
-          console.log('Hidden tabs list with data-testid');
-        } else {
-          console.warn('TabsList not found with data-testid');
-          
-          // Fallback: try to find it by role
-          const tabsListByRole = document.querySelector('[role="tablist"]');
-          if (tabsListByRole) {
-            (tabsListByRole as HTMLElement).style.display = 'none';
-            console.log('Found and hidden tablist by role');
-          }
-        }
+        const contractTab = document.querySelector('[data-testid="contract-tab"]');
+        const contractTrigger = document.querySelector('[value="contract"]');
         
-        // Make all tab panels visible
-        const tabPanels = document.querySelectorAll('[role="tabpanel"]');
-        if (tabPanels && tabPanels.length > 0) {
-          console.log(`Found ${tabPanels.length} tab panels by role`);
-          tabPanels.forEach((panel, index) => {
-            (panel as HTMLElement).style.display = 'block';
-            console.log(`Set display:block for panel ${index}`);
-            
-            // Add page break before the contract tab
-            if (index === 1) {
-              (panel as HTMLElement).style.pageBreakBefore = 'always';
-              console.log('Added page break before panel 1');
-            }
-          });
-        } else {
-          console.warn('No tab panels found by role');
-          
-          // Try specific selectors by data-testid
-          const invoiceTab = document.querySelector('[data-testid="invoice-tab"]');
-          const contractTab = document.querySelector('[data-testid="contract-tab"]');
-          
-          if (invoiceTab) {
-            (invoiceTab as HTMLElement).style.display = 'block';
-            console.log('Found and displayed invoice tab by data-testid');
-          }
-          
-          if (contractTab) {
-            (contractTab as HTMLElement).style.display = 'block';
-            (contractTab as HTMLElement).style.pageBreakBefore = 'always';
-            console.log('Found and displayed contract tab by data-testid with page break');
-          }
-        }
+        console.log('Tabs list exists:', !!tabsList);
+        console.log('Contract tab exists:', !!contractTab);
+        console.log('Contract trigger exists:', !!contractTrigger);
         
-        // Apply CSS to make contract terms visible in printed output
-        const style = document.createElement('style');
-        style.textContent = `
+        return !!contractTab;
+      });
+      
+      console.log('Contract tab exists in page:', contractTabExists);
+      
+      // Inject CSS to ensure all content is visible in the PDF
+      await page.addStyleTag({
+        content: `
           @media print {
             [data-testid="tabs-list"] { display: none !important; }
             [data-testid="invoice-tab"], 
-            [data-testid="contract-tab"] { display: block !important; }
-            [data-testid="contract-tab"] { page-break-before: always !important; }
-            .rich-text-editor { display: block !important; }
+            [data-testid="contract-tab"] { 
+              display: block !important; 
+              visibility: visible !important;
+            }
+            [data-testid="contract-tab"] { 
+              page-break-before: always !important; 
+              padding-top: 20px !important;
+              margin-top: 0 !important;
+            }
+            .rich-text-editor { 
+              display: block !important; 
+              visibility: visible !important;
+            }
+            .rich-text-editor * { 
+              display: block !important; 
+              visibility: visible !important;
+            }
+            .no-print { display: none !important; }
           }
-        `;
-        document.head.appendChild(style);
-        console.log('Added print-specific styles to document head');
-        
-        // Check for contract terms content and ensure it's visible
-        const richTextEditors = document.querySelectorAll('.rich-text-editor');
-        console.log(`Found ${richTextEditors.length} rich text editors`);
-        
-        // Extra check for contract terms content
-        const contractTermsSection = document.querySelector('[data-testid="contract-tab"] .rich-text-editor');
-        if (contractTermsSection) {
-          console.log('Contract terms section is present in the DOM');
-          (contractTermsSection as HTMLElement).style.display = 'block';
-          
-          // Force visibility of contract term contents
-          const contentNodes = contractTermsSection.querySelectorAll('*');
-          console.log(`Contract terms has ${contentNodes.length} child nodes`);
-          contentNodes.forEach((node) => {
-            (node as HTMLElement).style.display = 'block';
-            (node as HTMLElement).style.visibility = 'visible';
-          });
-        } else {
-          console.warn('Contract terms section not found by specific selector');
+        `
+      });
+      console.log('Added print styles');
+      
+      // First make sure the invoice tab is visible
+      await page.evaluate(() => {
+        const invoiceTab = document.querySelector('[data-testid="invoice-tab"]');
+        if (invoiceTab) {
+          (invoiceTab as HTMLElement).style.display = 'block';
         }
       });
-
-      // Add a small delay to ensure all DOM manipulations are complete
+      
+      // Force click the contract tab first to ensure it's loaded
+      await page.evaluate(() => {
+        const contractTrigger = document.querySelector('[value="contract"]');
+        if (contractTrigger) {
+          (contractTrigger as HTMLElement).click();
+          console.log('Clicked contract tab trigger');
+        }
+      });
+      
+      // Wait for contract tab content to load
       await page.waitForTimeout(1000);
       
-      // Log the final HTML structure for debugging
-      console.log('Analyzing DOM structure before PDF generation...');
+      // Now ensure both tabs are visible for print
       await page.evaluate(() => {
-        // Log tabs structure
-        const tabsElement = document.querySelector('[role="tablist"]');
-        console.log('Tabs element:', tabsElement ? 'Found' : 'Not found');
+        // Hide the tab list
+        const tabsList = document.querySelector('[data-testid="tabs-list"]');
+        if (tabsList) {
+          (tabsList as HTMLElement).style.display = 'none';
+        }
         
-        const tabPanels = document.querySelectorAll('[role="tabpanel"]');
-        console.log(`Tab panels by role: ${tabPanels.length}`);
-        
+        // Make invoice tab visible
         const invoiceTab = document.querySelector('[data-testid="invoice-tab"]');
-        console.log('Invoice tab by data-testid:', invoiceTab ? 'Found' : 'Not found');
+        if (invoiceTab) {
+          (invoiceTab as HTMLElement).style.display = 'block';
+          (invoiceTab as HTMLElement).style.visibility = 'visible';
+        }
         
+        // Make contract tab visible with page break
         const contractTab = document.querySelector('[data-testid="contract-tab"]');
-        console.log('Contract tab by data-testid:', contractTab ? 'Found' : 'Not found');
-        
         if (contractTab) {
-          console.log('Contract tab display style:', (contractTab as HTMLElement).style.display);
-          console.log('Contract tab visibility:', (contractTab as HTMLElement).style.visibility);
-          console.log('Contract tab content HTML (truncated):', contractTab.innerHTML.substring(0, 100) + '...');
+          (contractTab as HTMLElement).style.display = 'block';
+          (contractTab as HTMLElement).style.visibility = 'visible';
+          (contractTab as HTMLElement).style.pageBreakBefore = 'always';
         }
         
-        // Check rich text editor
-        const richTextEditors = document.querySelectorAll('.rich-text-editor');
-        console.log(`Rich text editors: ${richTextEditors.length}`);
+        // Ensure rich text editors are visible
+        document.querySelectorAll('.rich-text-editor').forEach(editor => {
+          (editor as HTMLElement).style.display = 'block';
+          (editor as HTMLElement).style.visibility = 'visible';
+        });
         
-        if (richTextEditors.length > 0) {
-          richTextEditors.forEach((editor, i) => {
-            console.log(`Rich text editor ${i} display:`, (editor as HTMLElement).style.display);
-            console.log(`Rich text editor ${i} visibility:`, (editor as HTMLElement).style.visibility);
-            console.log(`Rich text editor ${i} content length:`, editor.innerHTML.length);
-          });
-        }
+        // Hide elements with no-print class
+        document.querySelectorAll('.no-print').forEach(el => {
+          (el as HTMLElement).style.display = 'none';
+        });
       });
-
+      
+      console.log('DOM prepared for printing');
+      
+      // Verify contract content is visible before printing
+      const contractContentVisible = await page.evaluate(() => {
+        const contractTab = document.querySelector('[data-testid="contract-tab"]');
+        if (!contractTab) return false;
+        
+        const style = window.getComputedStyle(contractTab as Element);
+        const isVisible = style.display !== 'none' && style.visibility !== 'hidden';
+        
+        console.log('Contract tab computed style:', {
+          display: style.display,
+          visibility: style.visibility
+        });
+        
+        const richTextEditor = contractTab.querySelector('.rich-text-editor');
+        const hasContent = richTextEditor ? richTextEditor.textContent.trim().length > 0 : false;
+        
+        console.log('Rich text editor has content:', hasContent);
+        
+        return isVisible && hasContent;
+      });
+      
+      console.log('Contract content is visible:', contractContentVisible);
+      
       // Generate PDF
       console.log('Generating PDF...');
       const pdfBuffer = await page.pdf({
@@ -269,13 +244,10 @@ serve(async (req) => {
         printBackground: true,
         margin: { top: '10mm', bottom: '10mm', left: '10mm', right: '10mm' },
         preferCSSPageSize: true,
-        displayHeaderFooter: false,
       });
 
       console.log('PDF generation complete. Size:', pdfBuffer.byteLength, 'bytes');
-      console.log('Closing browser...');
-      await browser.close();
-
+      
       // Upload PDF to Supabase Storage
       console.log('Uploading PDF to storage...');
       const filePath = `invoices/${invoiceId}.pdf`;
@@ -325,7 +297,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error generating PDF:', error);
     return new Response(
-      JSON.stringify({ error: 'Internal server error', details: error.message }),
+      JSON.stringify({ error: 'Internal server error', details: error.message, stack: error.stack }),
       { headers: { ...headers, 'Content-Type': 'application/json' }, status: 500 }
     );
   }

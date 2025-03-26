@@ -370,10 +370,10 @@ const InvoiceView = () => {
       }
       
       if (data?.pdfUrl) {
-        setInvoice(prev => prev ? { ...prev, pdfUrl: data.pdfUrl } : null);
+        const debugPdfUrl = data.pdfUrl;
         
         const link = document.createElement('a');
-        link.href = data.pdfUrl;
+        link.href = debugPdfUrl;
         link.setAttribute('download', `Invoice-${invoice.number}-debug.pdf`);
         document.body.appendChild(link);
         link.click();

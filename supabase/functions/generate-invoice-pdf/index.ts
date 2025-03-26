@@ -246,9 +246,11 @@ serve(async (req) => {
     
     // Generate PDF based on debug mode
     let pdfData;
-    if (debugMode) {
+    if (debugMode === true) {
+      console.log('Using DEBUG PDF mode');
       pdfData = await generateDebugPDF(formattedInvoice);
     } else {
+      console.log('Using FULL PDF mode');
       pdfData = await generatePDF(formattedInvoice);
     }
 

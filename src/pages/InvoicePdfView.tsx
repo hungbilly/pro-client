@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { getInvoiceByViewLink, updateInvoiceStatus, updateContractStatus } from '@/lib/storage';
@@ -125,7 +124,19 @@ const InvoicePdfView = () => {
   const handleDownloadPdf = () => {
     if (!invoice?.pdfUrl) return;
     
-    window.open(invoice.pdfUrl, '_blank');
+    try {
+      const link = document.createElement('a');
+      link.href = invoice.pdfUrl;
+      link.setAttribute('download', `Invoice-${invoice.number || 'download'}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      
+      document.body.removeChild(link);
+      toast.success('Invoice downloaded successfully');
+    } catch (err) {
+      console.error('Error during download:', err);
+      toast.error('Failed to download invoice');
+    }
   };
 
   if (loading) {

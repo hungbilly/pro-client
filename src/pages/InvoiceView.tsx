@@ -280,7 +280,19 @@ const InvoiceView = () => {
     if (!invoice) return;
     
     if (invoice.pdfUrl) {
-      window.open(invoice.pdfUrl, '_blank');
+      try {
+        const link = document.createElement('a');
+        link.href = invoice.pdfUrl;
+        link.setAttribute('download', `Invoice-${invoice.number}.pdf`);
+        document.body.appendChild(link);
+        link.click();
+        
+        document.body.removeChild(link);
+        toast.success('Invoice downloaded successfully');
+      } catch (err) {
+        console.error('Error during download:', err);
+        toast.error('Failed to download invoice');
+      }
       return;
     }
     
@@ -300,7 +312,13 @@ const InvoiceView = () => {
       if (data?.pdfUrl) {
         setInvoice(prev => prev ? { ...prev, pdfUrl: data.pdfUrl } : null);
         
-        window.open(data.pdfUrl, '_blank');
+        const link = document.createElement('a');
+        link.href = data.pdfUrl;
+        link.setAttribute('download', `Invoice-${invoice.number}.pdf`);
+        document.body.appendChild(link);
+        link.click();
+        
+        document.body.removeChild(link);
         toast.success('Invoice downloaded successfully');
       }
     } catch (err) {
@@ -611,7 +629,7 @@ const InvoiceView = () => {
                     {invoice.items && invoice.items.length > 0 ? (
                       invoice.items.map((item) => (
                         <div key={item.id} className="mb-4 pb-4 border-b last:mb-0 last:pb-0 last:border-b-0">
-                          <div className="md:flex md:justify-between md:items-start">
+                          <div className="md:flex md-justify-between md:items-start">
                             <div className="md:flex-1">
                               <h5 className="font-medium">{item.name || 'Unnamed Package'}</h5>
                             </div>
@@ -752,4 +770,3 @@ const InvoiceView = () => {
 };
 
 export default InvoiceView;
-

@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import jspdf from 'https://esm.sh/jspdf@2.5.1';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
@@ -416,9 +415,9 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
         const logoHeight = Math.min(maxLogoHeight, imgProps.height);
         const logoWidth = logoHeight * aspectRatio;
       
-        // Position logo more centrally
-        const logoX = margin + (rightColumnX - margin - logoWidth) / 2;
-      
+        // Adjust logo X position to move more to the left
+        const logoX = margin + (rightColumnX - margin - logoWidth) / 4;  // Moved more to the left
+    
         doc.addImage(logo, 'PNG', logoX, y, logoWidth, logoHeight);
         y += logoHeight + 10; // Add some extra space after logo
       } catch (logoError) {

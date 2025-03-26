@@ -2,22 +2,21 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { DOMParser } from 'https://deno.land/x/deno_dom@v0.1.38/deno-dom-wasm.ts';
+import * as puppeteer from 'https://deno.land/x/puppeteer_plus@0.15.0/mod.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Import Chrome for Deno's built-in browser
-import puppeteer from 'https://deno.land/x/puppeteer@16.2.0/mod.ts';
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
 
 serve(async (req) => {
-  const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  };
-
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers, status: 204 });
+    return new Response(null, { headers: corsHeaders, status: 204 });
   }
 
   try {
@@ -27,7 +26,7 @@ serve(async (req) => {
     if (!invoiceId) {
       return new Response(
         JSON.stringify({ error: 'Missing required parameter: invoiceId' }),
-        { headers: { ...headers, 'Content-Type': 'application/json' }, status: 400 }
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
       );
     }
 
@@ -42,7 +41,7 @@ serve(async (req) => {
       console.error('Invoice not found:', invoiceError);
       return new Response(
         JSON.stringify({ error: 'Invoice not found' }),
-        { headers: { ...headers, 'Content-Type': 'application/json' }, status: 404 }
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 404 }
       );
     }
 
@@ -53,37 +52,14 @@ serve(async (req) => {
     const url = new URL(req.url);
     const baseUrl = `${url.protocol}//${url.hostname}`;
     
-    // Construct the client view URL - use the deployed URL or a fallback
+    // Construct the client view URL
     const viewLink = invoice.view_link.includes('/') ? invoice.view_link.split('/').pop() : invoice.view_link;
     const clientViewUrl = `${baseUrl}/invoice/${viewLink}`;
     console.log('Generated client view URL:', clientViewUrl);
     
-    // First, use fetch to get the HTML content of the page
-    console.log('Fetching HTML content first...');
-    const response = await fetch(clientViewUrl);
-    const htmlContent = await response.text();
-    
-    // Parse the HTML and check if it contains contract terms
-    const parser = new DOMParser();
-    const document = parser.parseFromString(htmlContent, 'text/html');
-    const contractTermsContent = document?.querySelector('[data-testid="contract-tab"]');
-    console.log('Contract terms found in HTML:', !!contractTermsContent);
-    
-    // Generate the PDF using Chrome browser
-    console.log('Launching browser for PDF generation...');
-    
-    // Use the recommended approach for Deno Deploy
+    // Use puppeteer_plus which is designed to work with Deno
+    console.log('Initializing browser with puppeteer_plus...');
     const browser = await puppeteer.launch({
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--no-first-run',
-        '--no-zygote',
-        '--single-process',
-        '--disable-gpu'
-      ],
       headless: true,
     });
     
@@ -102,28 +78,16 @@ serve(async (req) => {
 
       // Navigate to the invoice URL
       console.log(`Navigating to: ${clientViewUrl}`);
-      await page.goto(clientViewUrl, { waitUntil: 'networkidle0', timeout: 15000 });
+      await page.goto(clientViewUrl, { waitUntil: 'networkidle0', timeout: 30000 });
       console.log('Page loaded successfully');
       
       // Add a delay to ensure everything loads properly
       await page.waitForTimeout(2000);
       console.log('Additional wait time complete');
       
-      // Extract and log the current page content for debugging
-      const title = await page.title();
-      console.log('Page title:', title);
-      
-      // Check if contract terms are present
+      // Check if contract tab exists
       const contractTabExists = await page.evaluate(() => {
-        const tabsList = document.querySelector('[data-testid="tabs-list"]');
-        const contractTab = document.querySelector('[data-testid="contract-tab"]');
-        const contractTrigger = document.querySelector('[value="contract"]');
-        
-        console.log('Tabs list exists:', !!tabsList);
-        console.log('Contract tab exists:', !!contractTab);
-        console.log('Contract trigger exists:', !!contractTrigger);
-        
-        return !!contractTab;
+        return !!document.querySelector('[data-testid="contract-tab"]');
       });
       
       console.log('Contract tab exists in page:', contractTabExists);
@@ -157,32 +121,33 @@ serve(async (req) => {
       });
       console.log('Added print styles');
       
-      // First make sure the invoice tab is visible
-      await page.evaluate(() => {
-        const invoiceTab = document.querySelector('[data-testid="invoice-tab"]');
-        if (invoiceTab) {
-          (invoiceTab as HTMLElement).style.display = 'block';
-        }
-      });
-      
-      // Force click the contract tab first to ensure it's loaded
-      await page.evaluate(() => {
-        const contractTrigger = document.querySelector('[value="contract"]');
-        if (contractTrigger) {
-          (contractTrigger as HTMLElement).click();
-          console.log('Clicked contract tab trigger');
-        }
-      });
-      
-      // Wait for contract tab content to load
-      await page.waitForTimeout(1000);
+      // If contract tab exists, make sure it's loaded by clicking on it first
+      if (contractTabExists) {
+        console.log('Preparing to load contract tab content...');
+        
+        // Click the contract tab trigger to load content
+        await page.evaluate(() => {
+          const contractTrigger = document.querySelector('[value="contract"]');
+          if (contractTrigger) {
+            (contractTrigger as HTMLElement).click();
+            console.log('Clicked contract tab trigger');
+          }
+        });
+        
+        // Wait for contract tab content to load
+        await page.waitForTimeout(1000);
+        console.log('Waited for contract content to load');
+      }
       
       // Now ensure both tabs are visible for print
       await page.evaluate(() => {
+        console.log('Setting up DOM for PDF printing...');
+        
         // Hide the tab list
         const tabsList = document.querySelector('[data-testid="tabs-list"]');
         if (tabsList) {
           (tabsList as HTMLElement).style.display = 'none';
+          console.log('Hidden tabs list');
         }
         
         // Make invoice tab visible
@@ -190,6 +155,7 @@ serve(async (req) => {
         if (invoiceTab) {
           (invoiceTab as HTMLElement).style.display = 'block';
           (invoiceTab as HTMLElement).style.visibility = 'visible';
+          console.log('Made invoice tab visible');
         }
         
         // Make contract tab visible with page break
@@ -198,44 +164,39 @@ serve(async (req) => {
           (contractTab as HTMLElement).style.display = 'block';
           (contractTab as HTMLElement).style.visibility = 'visible';
           (contractTab as HTMLElement).style.pageBreakBefore = 'always';
+          console.log('Made contract tab visible with page break');
+          
+          // Check contract content
+          const contractContent = contractTab.querySelector('.rich-text-editor');
+          if (contractContent) {
+            console.log('Contract content exists, text length:', 
+              (contractContent.textContent || '').length);
+          } else {
+            console.log('No contract content found in contract tab');
+          }
+        } else {
+          console.log('Contract tab element not found');
         }
         
         // Ensure rich text editors are visible
         document.querySelectorAll('.rich-text-editor').forEach(editor => {
           (editor as HTMLElement).style.display = 'block';
           (editor as HTMLElement).style.visibility = 'visible';
+          console.log('Made rich text editor visible');
         });
         
         // Hide elements with no-print class
         document.querySelectorAll('.no-print').forEach(el => {
           (el as HTMLElement).style.display = 'none';
         });
+        
+        return {
+          invoiceTabVisible: !!invoiceTab,
+          contractTabVisible: !!contractTab
+        };
       });
       
       console.log('DOM prepared for printing');
-      
-      // Verify contract content is visible before printing
-      const contractContentVisible = await page.evaluate(() => {
-        const contractTab = document.querySelector('[data-testid="contract-tab"]');
-        if (!contractTab) return false;
-        
-        const style = window.getComputedStyle(contractTab as Element);
-        const isVisible = style.display !== 'none' && style.visibility !== 'hidden';
-        
-        console.log('Contract tab computed style:', {
-          display: style.display,
-          visibility: style.visibility
-        });
-        
-        const richTextEditor = contractTab.querySelector('.rich-text-editor');
-        const hasContent = richTextEditor ? richTextEditor.textContent.trim().length > 0 : false;
-        
-        console.log('Rich text editor has content:', hasContent);
-        
-        return isVisible && hasContent;
-      });
-      
-      console.log('Contract content is visible:', contractContentVisible);
       
       // Generate PDF
       console.log('Generating PDF...');
@@ -263,7 +224,7 @@ serve(async (req) => {
         console.error('Error uploading PDF:', uploadError);
         return new Response(
           JSON.stringify({ error: 'Failed to upload PDF' }),
-          { headers: { ...headers, 'Content-Type': 'application/json' }, status: 500 }
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
         );
       }
 
@@ -285,7 +246,7 @@ serve(async (req) => {
 
       return new Response(
         JSON.stringify({ pdfUrl: publicUrlData.publicUrl }),
-        { headers: { ...headers, 'Content-Type': 'application/json' }, status: 200 }
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
     } finally {
       // Ensure browser is closed even if an error occurs
@@ -298,7 +259,7 @@ serve(async (req) => {
     console.error('Error generating PDF:', error);
     return new Response(
       JSON.stringify({ error: 'Internal server error', details: error.message, stack: error.stack }),
-      { headers: { ...headers, 'Content-Type': 'application/json' }, status: 500 }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
   }
 });

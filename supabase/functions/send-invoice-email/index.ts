@@ -84,6 +84,7 @@ serve(async (req) => {
       clientName, 
       invoiceNumber, 
       invoiceUrl, 
+      pdfUrl,
       emailSubject, 
       emailContent 
     } = await req.json();
@@ -119,12 +120,21 @@ serve(async (req) => {
       }
       
       subject = emailSubject || `Invoice ${invoiceNumber}`;
+      
+      // Add PDF URL to email if available
+      const pdfText = pdfUrl ? `\n\nYou can also download a PDF copy of your invoice here:\n${pdfUrl}` : '';
+      
       rawText = `Dear ${clientName || 'Client'},
 
 Please find your invoice (${invoiceNumber}) at the following link:
-${invoiceUrl}
+${invoiceUrl}${pdfText}
 
 Thank you for your business.`;
+
+      // Create HTML version with the PDF link if available
+      const pdfHtml = pdfUrl ? `
+        <p>You can also <a href="${pdfUrl}" style="color: #3182ce; text-decoration: underline;">download a PDF copy</a> of your invoice.</p>
+      ` : '';
 
       html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -132,6 +142,7 @@ Thank you for your business.`;
         <p>Dear ${clientName || 'Client'},</p>
         <p>Please find your invoice (${invoiceNumber}) at the following link:</p>
         <p><a href="${invoiceUrl}" style="color: #3182ce; text-decoration: underline;">${invoiceUrl}</a></p>
+        ${pdfHtml}
         <p>Thank you for your business.</p>
         <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
           <p style="color: #718096; font-size: 0.9em;">This is an automated email, please do not reply directly.</p>

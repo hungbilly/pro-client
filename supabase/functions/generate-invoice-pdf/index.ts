@@ -142,8 +142,8 @@ serve(async (req) => {
   }
 
   try {
-    const { invoiceId, debugMode } = await req.json();
-    console.log('Received request to generate PDF for invoice:', invoiceId, 'Debug mode:', debugMode);
+    const { invoiceId } = await req.json();
+    console.log('Received request to generate PDF for invoice:', invoiceId);
 
     if (!invoiceId) {
       return new Response(
@@ -248,18 +248,11 @@ serve(async (req) => {
       })),
     };
 
-    console.log('Uploading PDF for invoice:', invoiceId, 'Debug mode:', debugMode);
+    console.log('Uploading PDF for invoice:', invoiceId);
     
-    let pdfData;
-    if (debugMode === true) {
-      console.log('Using DEBUG PDF mode');
-      pdfData = await generateDebugPDF(formattedInvoice);
-    } else {
-      console.log('Using FULL PDF mode');
-      pdfData = await generatePDF(formattedInvoice);
-    }
+    const pdfData = await generatePDF(formattedInvoice);
 
-    const filePath = `invoices/${invoiceId}${debugMode ? '_debug' : ''}.pdf`;
+    const filePath = `invoices/${invoiceId}.pdf`;
     const { data: uploadData, error: uploadError } = await supabase
       .storage
       .from('invoice-pdfs')
@@ -281,12 +274,10 @@ serve(async (req) => {
       .from('invoice-pdfs')
       .getPublicUrl(filePath);
 
-    if (!debugMode) {
-      await supabase
-        .from('invoices')
-        .update({ pdf_url: publicUrlData.publicUrl })
-        .eq('id', invoiceId);
-    }
+    await supabase
+      .from('invoices')
+      .update({ pdf_url: publicUrlData.publicUrl })
+      .eq('id', invoiceId);
 
     return new Response(
       JSON.stringify({ pdfUrl: publicUrlData.publicUrl }),
@@ -342,127 +333,6 @@ function addWrappedText(doc: any, text: string, x: number, y: number, maxWidth: 
   }
   
   return y;
-}
-
-async function generateDebugPDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
-  console.log('Generating DEBUG PDF for invoice:', invoiceData.number);
-  console.log('Company info:', {
-    name: invoiceData.company.name,
-    logoUrl: invoiceData.company.logoUrl,
-    address: invoiceData.company.address,
-    phone: invoiceData.company.phone,
-    website: invoiceData.company.website,
-    email: invoiceData.company.email
-  });
-  
-  try {
-    const doc = new jspdf({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4',
-    });
-    
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 15;
-    
-    let y = margin;
-
-    console.log('DEBUG: Rendering only header section with company logo and info');
-    
-    if (invoiceData.company.logoUrl) {
-      console.log('Attempting to add logo from URL:', invoiceData.company.logoUrl);
-      try {
-        const response = await fetch(invoiceData.company.logoUrl);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch logo: ${response.statusText}`);
-        }
-        
-        console.log('Logo fetched successfully, status:', response.status);
-        const blob = await response.blob();
-        console.log('Logo blob size:', blob.size, 'type:', blob.type);
-        
-        const logo = await blobToBase64(blob);
-        console.log('Logo converted to base64, length:', logo.length);
-        
-        const maxLogoHeight = 25;
-        const imgProps = doc.getImageProperties(logo);
-        console.log('Logo image properties:', imgProps);
-        
-        const aspectRatio = imgProps.width / imgProps.height;
-        const logoHeight = Math.min(maxLogoHeight, imgProps.height);
-        const logoWidth = logoHeight * aspectRatio;
-        
-        console.log('Adding logo to PDF with dimensions:', {
-          width: logoWidth,
-          height: logoHeight,
-          x: margin,
-          y: y
-        });
-        
-        doc.addImage(logo, 'PNG', margin, y, logoWidth, logoHeight);
-        y += logoHeight + 5;
-        console.log('Logo added successfully, new y position:', y);
-      } catch (logoError) {
-        console.error('Error adding logo:', logoError);
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'bold');
-        doc.text(invoiceData.company.name.toUpperCase(), margin, y);
-        y += 8;
-        console.log('Fallback to company name, new y position:', y);
-      }
-    } else {
-      console.log('No logo URL provided, using company name');
-      doc.setFontSize(16);
-      doc.setFont('helvetica', 'bold');
-      doc.text(invoiceData.company.name.toUpperCase(), margin, y);
-      y += 8;
-    }
-
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-    
-    const companyInfo = [];
-    if (invoiceData.company.address) {
-      const addressLines = invoiceData.company.address.split('\n');
-      for (const line of addressLines) {
-        companyInfo.push(line);
-      }
-    }
-    if (invoiceData.company.phone) companyInfo.push(`Phone: ${invoiceData.company.phone}`);
-    if (invoiceData.company.email) companyInfo.push(`Email: ${invoiceData.company.email}`);
-    if (invoiceData.company.website) companyInfo.push(`Website: ${invoiceData.company.website}`);
-    
-    console.log('Company info to add:', companyInfo);
-    
-    companyInfo.forEach(info => {
-      doc.text(info, margin, y);
-      y += 5;
-      console.log('Added company info line, new y position:', y);
-    });
-
-    y += 20;
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('DEBUG PDF - Company Information Only', margin, y);
-    
-    y += 10;
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Generated on: ${new Date().toLocaleString()}`, margin, y);
-    
-    y += 7;
-    doc.text(`Invoice #: ${invoiceData.number}`, margin, y);
-    
-    y += 7;
-    doc.text('This is a debug PDF showing only the company logo and information section.', margin, y);
-    
-    console.log('Debug PDF generation completed');
-    return doc.output('arraybuffer');
-  } catch (error) {
-    console.error('Error generating debug PDF:', error);
-    throw error;
-  }
 }
 
 async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {

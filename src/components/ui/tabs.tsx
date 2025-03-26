@@ -8,7 +8,9 @@ const Tabs = TabsPrimitive.Root
 
 const TabsList = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.List>,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
+  React.ComponentPropsWithoutRef<typeof TabsPrimitive.List> & {
+    'data-testid'?: string;  // Add data-testid prop
+  }
 >(({ className, ...props }, ref) => (
   <TabsPrimitive.List
     ref={ref}

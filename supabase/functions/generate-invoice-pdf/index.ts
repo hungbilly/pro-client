@@ -114,29 +114,73 @@ serve(async (req) => {
       });
     });
 
-    // Hide the TabsList (tab navigation)
-    console.log('Hiding TabsList...');
+    // Force display of all tab panels and hide the tab list
+    console.log('Setting up tab display for printing...');
     await page.evaluate(() => {
+      // Hide the tabs list
       const tabsList = document.querySelector('[data-testid="tabs-list"]');
       if (tabsList) {
         (tabsList as HTMLElement).style.display = 'none';
       } else {
-        console.warn('TabsList not found with selector [data-testid="tabs-list"]');
+        console.warn('TabsList not found');
+        
+        // Fallback: try to find it by role
+        const tabsListByRole = document.querySelector('[role="tablist"]');
+        if (tabsListByRole) {
+          (tabsListByRole as HTMLElement).style.display = 'none';
+          console.log('Found and hidden tablist by role');
+        }
+      }
+      
+      // Make all tab panels visible
+      const tabPanels = document.querySelectorAll('[role="tabpanel"]');
+      if (tabPanels && tabPanels.length > 0) {
+        console.log(`Found ${tabPanels.length} tab panels by role`);
+        tabPanels.forEach((panel, index) => {
+          (panel as HTMLElement).style.display = 'block';
+          console.log(`Set display:block for panel ${index}`);
+          
+          // Add page break before the contract tab
+          if (index === 1) {
+            (panel as HTMLElement).style.pageBreakBefore = 'always';
+            console.log('Added page break before panel 1');
+          }
+        });
+      } else {
+        console.warn('No tab panels found by role');
+        
+        // Try specific selectors by data-testid
+        const invoiceTab = document.querySelector('[data-testid="invoice-tab"]');
+        const contractTab = document.querySelector('[data-testid="contract-tab"]');
+        
+        if (invoiceTab) {
+          (invoiceTab as HTMLElement).style.display = 'block';
+          console.log('Found and displayed invoice tab by data-testid');
+        }
+        
+        if (contractTab) {
+          (contractTab as HTMLElement).style.display = 'block';
+          (contractTab as HTMLElement).style.pageBreakBefore = 'always';
+          console.log('Found and displayed contract tab by data-testid with page break');
+        }
+      }
+      
+      // Check for specific content that must be displayed
+      const richTextEditors = document.querySelectorAll('.rich-text-editor');
+      console.log(`Found ${richTextEditors.length} rich text editors`);
+      
+      // Extra check for contract terms content
+      const contractTermsSection = document.querySelector('[data-testid="contract-tab"] .rich-text-editor');
+      if (contractTermsSection) {
+        console.log('Contract terms section is present in the DOM');
+        (contractTermsSection as HTMLElement).style.display = 'block';
+      } else {
+        console.warn('Contract terms section not found by specific selector');
       }
     });
 
-    // Show both tab contents and add a page break before the Contract Terms tab
-    console.log('Showing both tab contents and adding page break...');
-    await page.evaluate(() => {
-      const tabsContent = document.querySelectorAll('[role="tabpanel"]');
-      tabsContent.forEach((content, index) => {
-        (content as HTMLElement).style.display = 'block';
-        // Add a page break before the Contract Terms tab (second tab, index 1)
-        if (index === 1) {
-          (content as HTMLElement).style.pageBreakBefore = 'always';
-        }
-      });
-    });
+    // Add a small delay to ensure all DOM manipulations are complete
+    await page.waitForTimeout(500);
 
     // Generate PDF
     console.log('Generating PDF...');
@@ -145,6 +189,7 @@ serve(async (req) => {
       printBackground: true,
       margin: { top: '10mm', bottom: '10mm', left: '10mm', right: '10mm' },
       preferCSSPageSize: true,
+      displayHeaderFooter: false,
     });
 
     console.log('Closing browser...');

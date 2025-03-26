@@ -867,4 +867,4 @@ const InvoiceView = () => {
     }
   }, [invoice]);
 
-  if (loading) {
+  if (

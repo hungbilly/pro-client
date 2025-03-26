@@ -14,7 +14,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Check, Calendar, FileText, DollarSign, Send, MailCheck, FileCheck, Edit, CalendarDays, Package, Building, User, Phone, Mail, MapPin, Download, Copy, Link as LinkIcon } from 'lucide-react';
+import { ArrowLeft, Check, Calendar, FileText, DollarSign, Send, MailCheck, FileCheck, Edit, CalendarDays, Package, Building, User, Phone, Mail, MapPin, Download, Copy, Link as LinkIcon, Bug } from 'lucide-react';
 import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { useAuth } from '@/context/AuthContext';
@@ -350,6 +350,32 @@ const InvoiceView = () => {
     } catch (err) {
       console.error('Failed to accept contract:', err);
       toast.error('Error accepting contract terms');
+    }
+  };
+
+  const handleDebugPdf = async () => {
+    if (!invoice) return;
+    
+    try {
+      toast.info('Generating simplified debug PDF with only company info...');
+      
+      const { data, error } = await supabase.functions.invoke('generate-invoice-pdf', {
+        body: { invoiceId: invoice.id, debugMode: true }
+      });
+      
+      if (error) {
+        console.error('Error generating debug PDF:', error);
+        toast.error('Failed to generate debug PDF');
+        return;
+      }
+      
+      if (data?.pdfUrl) {
+        setInvoice(prev => prev ? { ...prev, pdfUrl: data.pdfUrl } : null);
+        toast.success('Debug PDF generated successfully');
+      }
+    } catch (err) {
+      console.error('Error generating debug PDF:', err);
+      toast.error('Failed to generate debug PDF');
     }
   };
 
@@ -759,6 +785,13 @@ const InvoiceView = () => {
                 >
                   <Download className="h-4 w-4 mr-2" />
                   Download Invoice
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleDebugPdf}
+                >
+                  <Bug className="h-4 w-4 mr-2" />
+                  Debug PDF
                 </Button>
               </>
             )}

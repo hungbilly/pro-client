@@ -32,7 +32,7 @@ serve(async (req) => {
     // Fetch the invoice data
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
-      .select('view_link, contract_terms, html_content, number, id')
+      .select('view_link, contract_terms, html_content, number, id, contract_status')
       .eq('id', invoiceId)
       .single();
 
@@ -45,6 +45,8 @@ serve(async (req) => {
     }
 
     console.log('Found invoice with view link:', invoice.view_link);
+    console.log('Invoice has contract terms:', !!invoice.contract_terms);
+    console.log('Contract status:', invoice.contract_status);
     
     // Get the base URL from the request
     const url = new URL(req.url);
@@ -63,7 +65,9 @@ serve(async (req) => {
         invoiceUrl,
         invoiceNumber: invoice.number,
         invoiceId: invoice.id,
-        hasContractTerms: !!invoice.contract_terms
+        hasContractTerms: !!invoice.contract_terms,
+        contractStatus: invoice.contract_status,
+        contractTermsLength: invoice.contract_terms ? invoice.contract_terms.length : 0
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     );

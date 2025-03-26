@@ -330,72 +330,140 @@ const InvoiceView = () => {
     }
 
     const element = invoiceRef.current;
-    
-    const tabsList = element.querySelector('[data-testid="tabs-list"]');
-    const invoiceTab = element.querySelector('[data-testid="invoice-tab"]');
-    const contractTab = element.querySelector('[data-testid="contract-tab"]');
-    
-    const originalStyles = {
-      tabsList: tabsList ? (tabsList as HTMLElement).style.display : '',
-      invoiceTab: invoiceTab ? (invoiceTab as HTMLElement).style.display : '',
-      contractTab: contractTab ? (contractTab as HTMLElement).style.display : '',
-    };
-    
-    if (tabsList) (tabsList as HTMLElement).style.display = 'none';
-    if (invoiceTab) {
-      (invoiceTab as HTMLElement).style.display = 'block';
-      (invoiceTab as HTMLElement).style.visibility = 'visible';
-    }
-    if (contractTab) {
-      (contractTab as HTMLElement).style.display = 'block';
-      (contractTab as HTMLElement).style.visibility = 'visible';
-      (contractTab as HTMLElement).style.pageBreakBefore = 'always';
-    }
-    
-    const buttonsToHide = element.querySelectorAll('button, a.button, .no-print');
-    const buttonOriginalStyles: Record<string, string> = {};
-    
-    buttonsToHide.forEach((button, i) => {
-      const el = button as HTMLElement;
-      buttonOriginalStyles[i] = el.style.display;
-      el.style.display = 'none';
-    });
-
-    toast.info('Generating PDF...');
+    const originalDisplay = element.style.display;
     
     const opt = {
-      margin: 10,
+      margin: [10, 10, 10, 10],
       filename: `invoice-${invoice?.number || 'download'}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { 
         scale: 2, 
-        useCORS: true,
-        logging: false,
-        allowTaint: true
+        useCORS: true, 
+        width: 794, // A4 width in pixels at 96 DPI (210mm)
+        scrollY: 0,
+        windowWidth: 794,
+        logging: true,
       },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      jsPDF: { 
+        unit: 'px', 
+        format: [794, 1123], // A4 dimensions in pixels at 96 DPI
+        orientation: 'portrait' 
+      },
+      pagebreak: { mode: ['css', 'legacy'], avoid: ['.invoice-item', '.payment-schedule-table'] },
     };
 
-    html2pdf()
-      .from(element)
-      .set(opt)
-      .save()
+    // Show both tab contents for the PDF
+    const tabsContent = element.querySelectorAll('[data-testid="invoice-tab"], [data-testid="contract-tab"]');
+    tabsContent.forEach((content, index) => {
+      (content as HTMLElement).style.setProperty('display', 'block', 'important');
+      // Add a page break before the Contract Terms tab (second tab, index 1)
+      if (index === 1) {
+        (content as HTMLElement).style.setProperty('page-break-before', 'always', 'important');
+      }
+    });
+
+    // Hide the TabsList
+    const tabsList = element.querySelector('[data-testid="tabs-list"]');
+    if (tabsList) {
+      (tabsList as HTMLElement).style.setProperty('display', 'none', 'important');
+    } else {
+      console.warn('TabsList not found with selector [data-testid="tabs-list"]');
+    }
+
+    const originalStyles: Record<string, string> = {};
+    const elementsToHide = element.querySelectorAll('button, a.button, .no-print');
+    
+    elementsToHide.forEach((el, i) => {
+      const element = el as HTMLElement;
+      originalStyles[i] = element.style.display;
+      element.style.setProperty('display', 'none', 'important');
+    });
+
+    console.log('Contract tab content:', element.querySelector('[data-testid="contract-tab"]')?.innerHTML.substring(0, 100));
+    console.log('Invoice has contract terms:', !!invoice?.contractTerms);
+    console.log('Contract terms length:', invoice?.contractTerms?.length);
+
+    // Ensure images are loaded
+    const images = element.querySelectorAll('img');
+    const imagePromises = Array.from(images).map((img: HTMLImageElement) => {
+      if (img.complete) return Promise.resolve();
+      return new Promise((resolve) => {
+        img.onload = resolve;
+        img.onerror = resolve;
+      });
+    });
+
+    // Wait for RichTextEditor content to render
+    const waitForRichText = new Promise((resolve) => {
+      const checkRichText = () => {
+        const richTextEditors = element.querySelectorAll('.rich-text-editor');
+        if (richTextEditors.length > 0 && Array.from(richTextEditors).every((editor) => editor.innerHTML.trim() !== '')) {
+          resolve(true);
+        } else {
+          setTimeout(checkRichText, 100); // Check every 100ms
+        }
+      };
+      checkRichText();
+    });
+
+    toast.info('Preparing PDF, please wait...');
+
+    Promise.all([...imagePromises, waitForRichText])
       .then(() => {
-        toast.success('Invoice PDF generated successfully');
+        html2pdf()
+          .set(opt)
+          .from(element)
+          .save()
+          .then(() => {
+            toast.success('Invoice PDF generated successfully');
+            
+            elementsToHide.forEach((el, i) => {
+              const element = el as HTMLElement;
+              element.style.display = originalStyles[i] || '';
+            });
+
+            tabsContent.forEach((content) => {
+              (content as HTMLElement).style.display = '';
+            });
+
+            if (tabsList) {
+              (tabsList as HTMLElement).style.display = '';
+            }
+          })
+          .catch((err: any) => {
+            console.error('Error generating PDF:', err);
+            toast.error('Failed to generate PDF');
+            
+            elementsToHide.forEach((el, i) => {
+              const element = el as HTMLElement;
+              element.style.display = originalStyles[i] || '';
+            });
+
+            tabsContent.forEach((content) => {
+              (content as HTMLElement).style.display = '';
+            });
+
+            if (tabsList) {
+              (tabsList as HTMLElement).style.display = '';
+            }
+          });
       })
-      .catch((err: any) => {
-        console.error('Error generating PDF:', err);
-        toast.error('Failed to generate PDF: ' + (err.message || 'Unknown error'));
-      })
-      .finally(() => {
-        if (tabsList) (tabsList as HTMLElement).style.display = originalStyles.tabsList;
-        if (invoiceTab) (invoiceTab as HTMLElement).style.display = originalStyles.invoiceTab;
-        if (contractTab) (contractTab as HTMLElement).style.display = originalStyles.contractTab;
+      .catch((err) => {
+        console.error('Error loading content for PDF:', err);
+        toast.error('Failed to load content for PDF generation');
         
-        buttonsToHide.forEach((button, i) => {
-          const el = button as HTMLElement;
-          el.style.display = buttonOriginalStyles[i] || '';
+        elementsToHide.forEach((el, i) => {
+          const element = el as HTMLElement;
+          element.style.display = originalStyles[i] || '';
         });
+
+        tabsContent.forEach((content) => {
+          (content as HTMLElement).style.display = '';
+        });
+
+        if (tabsList) {
+          (tabsList as HTMLElement).style.display = '';
+        }
       });
   }, [invoice, invoiceRef]);
 
@@ -950,4 +1018,3 @@ const InvoiceView = () => {
 };
 
 export default InvoiceView;
-

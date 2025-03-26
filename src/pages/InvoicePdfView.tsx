@@ -45,7 +45,7 @@ const InvoicePdfView = () => {
         setInvoice(fetchedInvoice);
         
         if (!fetchedInvoice.pdfUrl) {
-          generateInvoicePdf(fetchedInvoice.id);
+          generateClientSidePdf();
         }
       } catch (err) {
         console.error('Failed to load invoice:', err);
@@ -73,7 +73,14 @@ const InvoicePdfView = () => {
       if (error) {
         logError('Error invoking generate-invoice-pdf function', error);
         setFunctionError(`Error: ${error.message || 'Failed to generate PDF'}`);
-        toast.error('Failed to generate invoice PDF. Please try again.');
+        toast.error('Server-side PDF generation failed. Using client-side generation instead.');
+        generateClientSidePdf();
+        return;
+      }
+      
+      if (data?.status === 'redirect' || data?.status === 'error') {
+        toast.info('Using client-side PDF generation...');
+        generateClientSidePdf();
         return;
       }
       
@@ -83,20 +90,107 @@ const InvoicePdfView = () => {
       } else {
         logError('No PDF URL returned from function', data);
         setFunctionError('No PDF URL returned from the server');
-        toast.error('Failed to generate invoice PDF. Please try again.');
+        toast.info('Falling back to client-side PDF generation');
+        generateClientSidePdf();
       }
     } catch (err) {
       logError('Exception in generateInvoicePdf', err);
       setFunctionError(`Exception: ${err instanceof Error ? err.message : 'Unknown error'}`);
-      toast.error('Failed to generate invoice PDF. Please try again.');
+      toast.error('Server PDF generation failed. Using client-side generation instead.');
+      generateClientSidePdf();
     } finally {
       setGeneratingPdf(false);
     }
   };
 
+  const generateClientSidePdf = () => {
+    if (!pdfContainerRef.current) {
+      toast.error('Cannot generate PDF: content not found');
+      return;
+    }
+
+    try {
+      setClientSidePdfGenerating(true);
+      toast.info('Generating PDF from page content...');
+
+      const element = pdfContainerRef.current;
+      
+      const invoiceTab = element.querySelector('[data-testid="invoice-tab"]');
+      const contractTab = element.querySelector('[data-testid="contract-tab"]');
+      const tabsList = element.querySelector('[data-testid="tabs-list"]');
+      
+      if (invoiceTab && contractTab && tabsList) {
+        (tabsList as HTMLElement).style.display = 'none';
+        
+        (invoiceTab as HTMLElement).style.display = 'block';
+        (invoiceTab as HTMLElement).style.visibility = 'visible';
+        (contractTab as HTMLElement).style.display = 'block';
+        (contractTab as HTMLElement).style.visibility = 'visible';
+        (contractTab as HTMLElement).style.pageBreakBefore = 'always';
+      }
+      
+      const buttonsToHide = element.querySelectorAll('button, .no-print');
+      buttonsToHide.forEach((button) => {
+        (button as HTMLElement).style.display = 'none';
+      });
+
+      html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        allowTaint: true,
+        onclone: (clonedDoc) => {
+          const clonedInvoiceTab = clonedDoc.querySelector('[data-testid="invoice-tab"]');
+          const clonedContractTab = clonedDoc.querySelector('[data-testid="contract-tab"]');
+          
+          if (clonedInvoiceTab) {
+            (clonedInvoiceTab as HTMLElement).style.display = 'block';
+            (clonedInvoiceTab as HTMLElement).style.visibility = 'visible';
+          }
+          
+          if (clonedContractTab) {
+            (clonedContractTab as HTMLElement).style.display = 'block';
+            (clonedContractTab as HTMLElement).style.visibility = 'visible';
+            (clonedContractTab as HTMLElement).style.pageBreakBefore = 'always';
+          }
+        }
+      }).then(canvas => {
+        const imgData = canvas.toDataURL('image/png');
+        
+        const imgWidth = 210; // A4 width in mm
+        const pageHeight = 297; // A4 height in mm
+        const imgHeight = canvas.height * imgWidth / canvas.width;
+        
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        let position = 0;
+        
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        
+        const totalPages = Math.ceil(imgHeight / pageHeight);
+        for (let i = 1; i < totalPages; i++) {
+          position = -pageHeight * i;
+          pdf.addPage();
+          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        }
+        
+        pdf.save(`invoice-${invoice?.number || 'download'}.pdf`);
+        toast.success('PDF generated successfully');
+      }).catch(err => {
+        console.error('Error in html2canvas:', err);
+        toast.error(`PDF generation error: ${err.message}`);
+      }).finally(() => {
+        setClientSidePdfGenerating(false);
+      });
+    } catch (err) {
+      console.error('Error generating client-side PDF:', err);
+      toast.error('Failed to generate PDF. Please try again.');
+      setClientSidePdfGenerating(false);
+    }
+  };
+
   const handleRetryGeneratePdf = () => {
     if (!invoice) return;
-    generateInvoicePdf(invoice.id);
+    generateClientSidePdf();
   };
 
   const handleAcceptInvoice = async () => {
@@ -129,51 +223,6 @@ const InvoicePdfView = () => {
     if (!invoice?.pdfUrl) return;
     
     window.open(invoice.pdfUrl, '_blank');
-  };
-
-  const generateClientSidePdf = async () => {
-    if (!pdfContainerRef.current) {
-      toast.error('Cannot generate PDF: content not found');
-      return;
-    }
-
-    try {
-      setClientSidePdfGenerating(true);
-      toast.info('Preparing your PDF...');
-
-      const element = pdfContainerRef.current;
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        logging: false
-      });
-      
-      const imgData = canvas.toDataURL('image/png');
-      
-      const imgWidth = 210; // A4 width in mm
-      const pageHeight = 297; // A4 height in mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      let position = 0;
-      
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      position -= pageHeight;
-      
-      while (position > -imgHeight) {
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        position -= pageHeight;
-      }
-      
-      pdf.save(`invoice-${invoice?.number || 'download'}.pdf`);
-      toast.success('PDF generated successfully');
-    } catch (err) {
-      console.error('Error generating client-side PDF:', err);
-      toast.error('Failed to generate PDF. Please try again or use the server PDF.');
-    } finally {
-      setClientSidePdfGenerating(false);
-    }
   };
 
   const renderPdfDownloadButtons = () => (

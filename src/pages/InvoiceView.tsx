@@ -303,6 +303,11 @@ const InvoiceView = () => {
         return;
       }
       
+      if (data?.status === 'redirect' || data?.status === 'error') {
+        generateClientSidePdf();
+        return;
+      }
+      
       if (data?.pdfUrl) {
         setInvoice(prev => prev ? { ...prev, pdfUrl: data.pdfUrl } : null);
         window.open(data.pdfUrl, '_blank');
@@ -325,44 +330,71 @@ const InvoiceView = () => {
     }
 
     const element = invoiceRef.current;
-    const originalDisplay = element.style.display;
+    
+    const tabsList = element.querySelector('[data-testid="tabs-list"]');
+    const invoiceTab = element.querySelector('[data-testid="invoice-tab"]');
+    const contractTab = element.querySelector('[data-testid="contract-tab"]');
+    
+    const originalStyles = {
+      tabsList: tabsList ? (tabsList as HTMLElement).style.display : '',
+      invoiceTab: invoiceTab ? (invoiceTab as HTMLElement).style.display : '',
+      contractTab: contractTab ? (contractTab as HTMLElement).style.display : '',
+    };
+    
+    if (tabsList) (tabsList as HTMLElement).style.display = 'none';
+    if (invoiceTab) {
+      (invoiceTab as HTMLElement).style.display = 'block';
+      (invoiceTab as HTMLElement).style.visibility = 'visible';
+    }
+    if (contractTab) {
+      (contractTab as HTMLElement).style.display = 'block';
+      (contractTab as HTMLElement).style.visibility = 'visible';
+      (contractTab as HTMLElement).style.pageBreakBefore = 'always';
+    }
+    
+    const buttonsToHide = element.querySelectorAll('button, a.button, .no-print');
+    const buttonOriginalStyles: Record<string, string> = {};
+    
+    buttonsToHide.forEach((button, i) => {
+      const el = button as HTMLElement;
+      buttonOriginalStyles[i] = el.style.display;
+      el.style.display = 'none';
+    });
+
+    toast.info('Generating PDF...');
     
     const opt = {
       margin: 10,
       filename: `invoice-${invoice?.number || 'download'}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true },
+      html2canvas: { 
+        scale: 2, 
+        useCORS: true,
+        logging: false,
+        allowTaint: true
+      },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
-    const originalStyles: Record<string, string> = {};
-    const buttonsToHide = element.querySelectorAll('button, a.button, .no-print');
-    
-    buttonsToHide.forEach((button, i) => {
-      const el = button as HTMLElement;
-      originalStyles[i] = el.style.display;
-      el.style.display = 'none';
-    });
-
     html2pdf()
-      .set(opt)
       .from(element)
+      .set(opt)
       .save()
       .then(() => {
         toast.success('Invoice PDF generated successfully');
-        
-        buttonsToHide.forEach((button, i) => {
-          const el = button as HTMLElement;
-          el.style.display = originalStyles[i] || '';
-        });
       })
       .catch((err: any) => {
         console.error('Error generating PDF:', err);
-        toast.error('Failed to generate PDF');
+        toast.error('Failed to generate PDF: ' + (err.message || 'Unknown error'));
+      })
+      .finally(() => {
+        if (tabsList) (tabsList as HTMLElement).style.display = originalStyles.tabsList;
+        if (invoiceTab) (invoiceTab as HTMLElement).style.display = originalStyles.invoiceTab;
+        if (contractTab) (contractTab as HTMLElement).style.display = originalStyles.contractTab;
         
         buttonsToHide.forEach((button, i) => {
           const el = button as HTMLElement;
-          el.style.display = originalStyles[i] || '';
+          el.style.display = buttonOriginalStyles[i] || '';
         });
       });
   }, [invoice, invoiceRef]);
@@ -918,3 +950,4 @@ const InvoiceView = () => {
 };
 
 export default InvoiceView;
+

@@ -226,6 +226,27 @@ const InvoicePdfView = () => {
           <p className="text-muted-foreground">
             Please review the invoice and contract terms below.
           </p>
+          {/* Add visible download buttons here */}
+          <div className="flex justify-center gap-2 mt-4">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={generateClientSidePdf} 
+              disabled={clientSidePdfGenerating}
+            >
+              {clientSidePdfGenerating ? 
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : 
+                <Download className="h-4 w-4 mr-2" />
+              }
+              Download as PDF
+            </Button>
+            {invoice.pdfUrl && (
+              <Button variant="default" size="sm" onClick={handleDownloadPdf}>
+                <Download className="h-4 w-4 mr-2" />
+                Download Server PDF
+              </Button>
+            )}
+          </div>
         </div>
 
         <Card className="bg-white dark:bg-gray-900 shadow-sm">

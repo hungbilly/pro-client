@@ -183,6 +183,7 @@ const InvoicePdfView = () => {
         size="sm" 
         onClick={generateClientSidePdf} 
         disabled={clientSidePdfGenerating}
+        className="w-full sm:w-auto"
       >
         {clientSidePdfGenerating ? 
           <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : 
@@ -195,6 +196,7 @@ const InvoicePdfView = () => {
           variant="default" 
           size="sm" 
           onClick={handleDownloadPdf}
+          className="w-full sm:w-auto"
         >
           <Download className="h-4 w-4 mr-2" />
           Download Server PDF
@@ -255,9 +257,9 @@ const InvoicePdfView = () => {
 
         <Card className="bg-white dark:bg-gray-900 shadow-sm">
           <CardHeader>
-            <CardTitle className="flex justify-between items-center">
+            <CardTitle className="flex flex-col sm:flex-row justify-between items-center">
               <span>Invoice #{invoice?.number}</span>
-              <div className="flex gap-2">
+              <div className="flex gap-2 mt-2 sm:mt-0 w-full sm:w-auto">
                 {renderPdfDownloadButtons()}
               </div>
             </CardTitle>
@@ -354,4 +356,3 @@ const InvoicePdfView = () => {
 };
 
 export default InvoicePdfView;
-

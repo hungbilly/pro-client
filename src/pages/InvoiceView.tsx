@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback, memo, useRef } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { 
@@ -622,7 +623,7 @@ const InvoiceView = () => {
           
           <CardContent className="pt-6">
             <Tabs defaultValue="invoice" className="w-full">
-              <TabsList className="w-full">
+              <TabsList className="w-full" data-testid="tabs-list">
                 <TabsTrigger value="invoice" className="flex-1">
                   Invoice Details
                   {invoice.status === 'accepted' && (
@@ -641,7 +642,7 @@ const InvoiceView = () => {
                 </TabsTrigger>
               </TabsList>
               
-              <TabsContent value="invoice" className="mt-6">
+              <TabsContent value="invoice" className="mt-6" data-testid="invoice-tab">
                 {isClientView && ['draft', 'sent'].includes(invoice.status) && (
                   <Button onClick={handleAcceptInvoice} className="mb-4 no-print">
                     <Check className="h-4 w-4 mr-2" />
@@ -679,7 +680,7 @@ const InvoiceView = () => {
                     
                     {invoice.items && invoice.items.length > 0 ? (
                       invoice.items.map((item) => (
-                        <div key={item.id} className="mb-4 pb-4 border-b last:mb-0 last:pb-0 last:border-b-0">
+                        <div key={item.id} className="mb-4 pb-4 border-b last:mb-0 last:pb-0 last:border-b-0 invoice-item">
                           <div className="md:flex md:justify-between md:items-start">
                             <div className="md:flex-1">
                               <h5 className="font-medium">{item.name || 'Unnamed Package'}</h5>
@@ -726,6 +727,7 @@ const InvoiceView = () => {
                       value={invoice.notes || 'No notes provided.'}
                       onChange={() => {}}
                       readOnly={true}
+                      className="rich-text-editor"
                     />
                   </div>
                 </div>
@@ -747,6 +749,7 @@ const InvoiceView = () => {
                       onUpdateStatus={handlePaymentStatusUpdate}
                       formatCurrency={formatCurrency}
                       onUpdatePaymentDate={handlePaymentDateUpdate}
+                      className="payment-schedule-table"
                     />
                   ) : (
                     <div className="text-muted-foreground border rounded-md p-4 bg-gray-50 dark:bg-gray-900/50">
@@ -756,7 +759,7 @@ const InvoiceView = () => {
                 </div>
               </TabsContent>
               
-              <TabsContent value="contract" className="mt-6">
+              <TabsContent value="contract" className="mt-6" data-testid="contract-tab">
                 {isClientView && invoice.contractStatus !== 'accepted' && (
                   <Button onClick={handleAcceptContract} className="mb-4 no-print">
                     <Check className="h-4 w-4 mr-2" />
@@ -783,6 +786,7 @@ const InvoiceView = () => {
                       value={invoice.contractTerms}
                       onChange={() => {}}
                       readOnly={true}
+                      className="rich-text-editor"
                     />
                   ) : (
                     <div className="p-4 text-muted-foreground">
@@ -831,6 +835,90 @@ const InvoiceView = () => {
           </CardFooter>
         </Card>
       </div>
+
+      <style jsx>{`
+        @media print {
+          .container-fluid {
+            max-width: 794px !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+          .card {
+            box-shadow: none !important;
+            border: none !important;
+            width: 100% !important;
+            max-width: 794px !important;
+          }
+          /* Hide the TabsList */
+          [data-testid="tabs-list"] {
+            display: none !important;
+          }
+          /* Show all tab content */
+          [data-testid="invoice-tab"],
+          [data-testid="contract-tab"] {
+            display: block !important;
+          }
+          /* Add page break before Contract Terms tab */
+          [data-testid="contract-tab"] {
+            page-break-before: always !important;
+            margin-top: 0 !important;
+            padding-top: 16px !important;
+          }
+          /* Ensure layout matches A4 */
+          .grid {
+            display: block !important;
+          }
+          .md\\:grid-cols-2 {
+            display: flex !important;
+            flex-direction: row !important;
+            gap: 24px !important;
+            flex-wrap: nowrap !important;
+          }
+          .md\\:grid-cols-2 > div {
+            flex: 1 !important;
+            max-width: 50% !important;
+          }
+          /* Adjust layout for invoice items */
+          .md\\:flex.justify-between {
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: start !important;
+            flex-wrap: nowrap !important;
+          }
+          .md\\:flex-1 {
+            flex: 1 !important;
+          }
+          .md\\:pr-4 {
+            padding-right: 16px !important;
+          }
+          .md\\:min-w-\\[260px\\] {
+            min-width: 260px !important;
+          }
+          .md\\:justify-end {
+            justify-content: flex-end !important;
+          }
+          /* Ensure rich text content fits */
+          .rich-text-editor {
+            max-width: 100% !important;
+            overflow: hidden !important;
+            word-wrap: break-word !important;
+          }
+          .rich-text-editor * {
+            max-width: 100% !important;
+            word-wrap: break-word !important;
+          }
+          /* Page breaks */
+          .mt-6 {
+            page-break-before: auto !important;
+          }
+          .invoice-item {
+            page-break-inside: avoid !important;
+          }
+          .payment-schedule-table {
+            page-break-inside: avoid !important;
+          }
+        }
+      `}</style>
     </PageTransition>
   );
 };

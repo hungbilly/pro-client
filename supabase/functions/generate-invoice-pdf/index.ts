@@ -185,11 +185,18 @@ serve(async (req) => {
       .eq('id', invoice.client_id)
       .single();
 
-    const { data: company } = await supabase
-      .from('companies')
+    // Fetch company data from company_clientview using company_id
+    const { data: company, error: companyError } = await supabase
+      .from('company_clientview')
       .select('*')
-      .eq('id', invoice.company_id)
+      .eq('company_id', invoice.company_id) // Match on company_id, not id)
       .single();
+    
+    console.log('Invoice company_id:', invoice.company_id);
+    console.log('Fetched company data from company_clientview:', company);
+    if (companyError) {
+      console.error('Error fetching company data from company_clientview:', companyError);
+    }
 
     let job = null;
     if (invoice.job_id) {
@@ -909,3 +916,4 @@ async function blobToBase64(blob: Blob): Promise<string> {
     reader.readAsDataURL(blob);
   });
 }
+

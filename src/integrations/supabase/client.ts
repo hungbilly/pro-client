@@ -52,6 +52,12 @@ export const logPaymentProcessing = (context: string, paymentInfo: any) => {
   console.log(`[${timestamp}] [Payment Processing] ${context}`, paymentInfo);
 };
 
+// Add company data debugging
+export const logCompanyData = (context: string, companyInfo: any) => {
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] [Company Data] ${context}`, companyInfo);
+};
+
 // Helper function to format dates consistently
 export const formatDate = (date: Date | string): string => {
   try {

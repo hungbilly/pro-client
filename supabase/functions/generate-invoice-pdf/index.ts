@@ -32,7 +32,20 @@ serve(async (req) => {
     // Fetch the invoice data
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
-      .select('view_link, contract_terms, html_content, number, id, contract_status')
+      .select(`
+        id, 
+        number, 
+        date, 
+        due_date, 
+        amount, 
+        notes, 
+        status, 
+        view_link, 
+        contract_terms, 
+        contract_status,
+        client_id,
+        company_id
+      `)
       .eq('id', invoiceId)
       .single();
 
@@ -44,9 +57,52 @@ serve(async (req) => {
       );
     }
 
+    // Fetch the invoice items
+    const { data: invoiceItems, error: itemsError } = await supabase
+      .from('invoice_items')
+      .select('*')
+      .eq('invoice_id', invoiceId);
+
+    if (itemsError) {
+      console.error('Error fetching invoice items:', itemsError);
+    }
+
+    // Fetch payment schedules if any
+    const { data: paymentSchedules, error: schedulesError } = await supabase
+      .from('payment_schedules')
+      .select('*')
+      .eq('invoice_id', invoiceId);
+
+    if (schedulesError) {
+      console.error('Error fetching payment schedules:', schedulesError);
+    }
+
+    // Fetch client details
+    const { data: client, error: clientError } = await supabase
+      .from('clients')
+      .select('*')
+      .eq('id', invoice.client_id)
+      .single();
+
+    if (clientError) {
+      console.error('Error fetching client:', clientError);
+    }
+
+    // Fetch company details
+    const { data: company, error: companyError } = await supabase
+      .from('company_clientview')
+      .select('*')
+      .eq('company_id', invoice.company_id)
+      .single();
+
+    if (companyError) {
+      console.error('Error fetching company:', companyError);
+    }
+
     console.log('Found invoice with view link:', invoice.view_link);
     console.log('Invoice has contract terms:', !!invoice.contract_terms);
     console.log('Contract status:', invoice.contract_status);
+    console.log('Contract terms length:', invoice.contract_terms ? invoice.contract_terms.length : 0);
     
     // Get the base URL from the request
     const url = new URL(req.url);
@@ -55,9 +111,8 @@ serve(async (req) => {
     // Construct full URL for the invoice view
     const viewLink = invoice.view_link.includes('/') ? invoice.view_link.split('/').pop() : invoice.view_link;
     const invoiceUrl = `${baseUrl}/invoice/${viewLink}`;
-    console.log('Invoice URL for client-side rendering:', invoiceUrl);
     
-    // Return instruction to use client-side PDF generation
+    // For now, return the collected data for client-side PDF generation
     return new Response(
       JSON.stringify({ 
         status: 'client-side', 
@@ -67,7 +122,18 @@ serve(async (req) => {
         invoiceId: invoice.id,
         hasContractTerms: !!invoice.contract_terms,
         contractStatus: invoice.contract_status,
-        contractTermsLength: invoice.contract_terms ? invoice.contract_terms.length : 0
+        contractTermsLength: invoice.contract_terms ? invoice.contract_terms.length : 0,
+        invoiceData: {
+          invoice: {
+            ...invoice,
+            dateFormatted: new Date(invoice.date).toLocaleDateString(),
+            dueDateFormatted: new Date(invoice.due_date).toLocaleDateString()
+          },
+          items: invoiceItems || [],
+          paymentSchedules: paymentSchedules || [],
+          client: client || null,
+          company: company || null
+        }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     );

@@ -371,7 +371,15 @@ const InvoiceView = () => {
       
       if (data?.pdfUrl) {
         setInvoice(prev => prev ? { ...prev, pdfUrl: data.pdfUrl } : null);
-        toast.success('Debug PDF generated successfully');
+        
+        const link = document.createElement('a');
+        link.href = data.pdfUrl;
+        link.setAttribute('download', `Invoice-${invoice.number}-debug.pdf`);
+        document.body.appendChild(link);
+        link.click();
+        
+        document.body.removeChild(link);
+        toast.success('Debug PDF downloaded successfully');
       }
     } catch (err) {
       console.error('Error generating debug PDF:', err);

@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { getInvoiceByViewLink, updateInvoiceStatus, updateContractStatus } from '@/lib/storage';
 import { Invoice } from '@/types';
@@ -151,7 +150,6 @@ const InvoicePdfView = () => {
       
       const imgData = canvas.toDataURL('image/png');
       
-      // Calculate dimensions to fit the content properly on A4
       const imgWidth = 210; // A4 width in mm
       const pageHeight = 297; // A4 height in mm
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
@@ -159,7 +157,6 @@ const InvoicePdfView = () => {
       const pdf = new jsPDF('p', 'mm', 'a4');
       let position = 0;
       
-      // Add pages as needed for long content
       pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
       position -= pageHeight;
       
@@ -178,6 +175,33 @@ const InvoicePdfView = () => {
       setClientSidePdfGenerating(false);
     }
   };
+
+  const renderPdfDownloadButtons = () => (
+    <div className="flex justify-center gap-2 mt-4">
+      <Button 
+        variant="outline" 
+        size="sm" 
+        onClick={generateClientSidePdf} 
+        disabled={clientSidePdfGenerating}
+      >
+        {clientSidePdfGenerating ? 
+          <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : 
+          <Download className="h-4 w-4 mr-2" />
+        }
+        Download as PDF
+      </Button>
+      {invoice?.pdfUrl && (
+        <Button 
+          variant="default" 
+          size="sm" 
+          onClick={handleDownloadPdf}
+        >
+          <Download className="h-4 w-4 mr-2" />
+          Download Server PDF
+        </Button>
+      )}
+    </div>
+  );
 
   if (loading) {
     return (
@@ -222,62 +246,19 @@ const InvoicePdfView = () => {
     <PageTransition>
       <div className="container py-8 max-w-4xl mx-auto">
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold mb-2">Invoice #{invoice.number}</h1>
+          <h1 className="text-2xl font-bold mb-2">Invoice #{invoice?.number}</h1>
           <p className="text-muted-foreground">
             Please review the invoice and contract terms below.
           </p>
-          {/* Add visible download buttons here */}
-          <div className="flex justify-center gap-2 mt-4">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={generateClientSidePdf} 
-              disabled={clientSidePdfGenerating}
-            >
-              {clientSidePdfGenerating ? 
-                <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : 
-                <Download className="h-4 w-4 mr-2" />
-              }
-              Download as PDF
-            </Button>
-            {invoice.pdfUrl && (
-              <Button variant="default" size="sm" onClick={handleDownloadPdf}>
-                <Download className="h-4 w-4 mr-2" />
-                Download Server PDF
-              </Button>
-            )}
-          </div>
+          {renderPdfDownloadButtons()}
         </div>
 
         <Card className="bg-white dark:bg-gray-900 shadow-sm">
           <CardHeader>
             <CardTitle className="flex justify-between items-center">
-              <span>Invoice #{invoice.number}</span>
+              <span>Invoice #{invoice?.number}</span>
               <div className="flex gap-2">
-                {invoice.pdfUrl && (
-                  <Button variant="outline" size="sm" onClick={handleDownloadPdf}>
-                    <Download className="h-4 w-4 mr-2" />
-                    Download Server PDF
-                  </Button>
-                )}
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={generateClientSidePdf} 
-                  disabled={clientSidePdfGenerating}
-                >
-                  {clientSidePdfGenerating ? 
-                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : 
-                    <Download className="h-4 w-4 mr-2" />
-                  }
-                  Download as PDF
-                </Button>
-                {!invoice.pdfUrl && !generatingPdf && (
-                  <Button variant="outline" size="sm" onClick={handleRetryGeneratePdf}>
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Generate Server PDF
-                  </Button>
-                )}
+                {renderPdfDownloadButtons()}
               </div>
             </CardTitle>
           </CardHeader>
@@ -373,3 +354,4 @@ const InvoicePdfView = () => {
 };
 
 export default InvoicePdfView;
+

@@ -25,6 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import RichTextEditor from '@/components/RichTextEditor';
 import PaymentScheduleTable from '@/components/invoice/PaymentScheduleTable';
 import isEqual from 'lodash/isEqual';
+import html2pdf from 'html2pdf.js';
 
 const InvoiceView = () => {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
@@ -33,6 +34,7 @@ const InvoiceView = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
   const invoiceRef = useRef<HTMLDivElement>(null);
 
   const { isAdmin } = useAuth();
@@ -276,38 +278,94 @@ const InvoiceView = () => {
       });
   };
 
-  const handleDownloadInvoice = async () => {
-    if (!invoice) return;
-    
-    if (invoice.pdfUrl) {
+  const handleDownloadInvoice = useCallback(async () => {
+    if (invoice?.pdfUrl) {
       window.open(invoice.pdfUrl, '_blank');
       return;
     }
     
+    if (!invoiceRef.current) {
+      toast.error('Unable to generate PDF: Invoice content not found');
+      return;
+    }
+
     try {
+      setGeneratingPdf(true);
       toast.info('Preparing PDF for download...');
       
       const { data, error } = await supabase.functions.invoke('generate-invoice-pdf', {
-        body: { invoiceId: invoice.id }
+        body: { invoiceId: invoice?.id }
       });
       
       if (error) {
-        console.error('Error generating PDF:', error);
-        toast.error('Failed to generate invoice PDF');
+        console.error('Error generating PDF via Supabase function:', error);
+        generateClientSidePdf();
         return;
       }
       
       if (data?.pdfUrl) {
         setInvoice(prev => prev ? { ...prev, pdfUrl: data.pdfUrl } : null);
-        
         window.open(data.pdfUrl, '_blank');
         toast.success('Invoice downloaded successfully');
+      } else {
+        generateClientSidePdf();
       }
     } catch (err) {
       console.error('Error downloading invoice:', err);
-      toast.error('Failed to download invoice');
+      generateClientSidePdf();
+    } finally {
+      setGeneratingPdf(false);
     }
-  };
+  }, [invoice, invoiceRef]);
+
+  const generateClientSidePdf = useCallback(() => {
+    if (!invoiceRef.current) {
+      toast.error('Unable to generate PDF: Invoice content not found');
+      return;
+    }
+
+    const element = invoiceRef.current;
+    const originalDisplay = element.style.display;
+    
+    const opt = {
+      margin: 10,
+      filename: `invoice-${invoice?.number || 'download'}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    const originalStyles: Record<string, string> = {};
+    const buttonsToHide = element.querySelectorAll('button, a.button, .no-print');
+    
+    buttonsToHide.forEach((button, i) => {
+      const el = button as HTMLElement;
+      originalStyles[i] = el.style.display;
+      el.style.display = 'none';
+    });
+
+    html2pdf()
+      .set(opt)
+      .from(element)
+      .save()
+      .then(() => {
+        toast.success('Invoice PDF generated successfully');
+        
+        buttonsToHide.forEach((button, i) => {
+          const el = button as HTMLElement;
+          el.style.display = originalStyles[i] || '';
+        });
+      })
+      .catch((err: any) => {
+        console.error('Error generating PDF:', err);
+        toast.error('Failed to generate PDF');
+        
+        buttonsToHide.forEach((button, i) => {
+          const el = button as HTMLElement;
+          el.style.display = originalStyles[i] || '';
+        });
+      });
+  }, [invoice, invoiceRef]);
 
   const handleAcceptInvoice = async () => {
     if (!invoice) return;
@@ -447,11 +505,11 @@ const InvoiceView = () => {
             <div className="flex justify-center gap-2 mb-4">
               <Button 
                 onClick={handleDownloadInvoice}
-                disabled={!invoice.pdfUrl}
-                className="w-full sm:w-auto"
+                disabled={generatingPdf}
+                className="w-full sm:w-auto no-print"
               >
                 <Download className="h-4 w-4 mr-2" />
-                Download Invoice PDF
+                {generatingPdf ? "Generating PDF..." : "Download Invoice PDF"}
               </Button>
             </div>
           </div>
@@ -471,7 +529,7 @@ const InvoiceView = () => {
                       window.location.href = `/client/${client.id}/invoice/${invoice.id}/edit`;
                     }
                   }}
-                  className="flex items-center gap-1"
+                  className="flex items-center gap-1 no-print"
                 >
                   <Edit className="h-3 w-3" />
                   Edit Invoice
@@ -585,7 +643,7 @@ const InvoiceView = () => {
               
               <TabsContent value="invoice" className="mt-6">
                 {isClientView && ['draft', 'sent'].includes(invoice.status) && (
-                  <Button onClick={handleAcceptInvoice} className="mb-4">
+                  <Button onClick={handleAcceptInvoice} className="mb-4 no-print">
                     <Check className="h-4 w-4 mr-2" />
                     Accept Invoice
                   </Button>
@@ -700,7 +758,7 @@ const InvoiceView = () => {
               
               <TabsContent value="contract" className="mt-6">
                 {isClientView && invoice.contractStatus !== 'accepted' && (
-                  <Button onClick={handleAcceptContract} className="mb-4">
+                  <Button onClick={handleAcceptContract} className="mb-4 no-print">
                     <Check className="h-4 w-4 mr-2" />
                     Accept Contract Terms
                   </Button>
@@ -742,6 +800,7 @@ const InvoiceView = () => {
                 <Button
                   variant="outline"
                   onClick={handleCopyInvoiceLink}
+                  className="no-print"
                 >
                   <LinkIcon className="h-4 w-4 mr-2" />
                   Copy Invoice Link
@@ -749,11 +808,25 @@ const InvoiceView = () => {
                 <Button
                   variant="default"
                   onClick={handleDownloadInvoice}
+                  disabled={generatingPdf}
+                  className="no-print"
                 >
                   <Download className="h-4 w-4 mr-2" />
-                  Download Invoice
+                  {generatingPdf ? "Generating PDF..." : "Download Invoice PDF"}
                 </Button>
               </>
+            )}
+            
+            {isClientView && (
+              <Button
+                variant="default"
+                onClick={handleDownloadInvoice}
+                disabled={generatingPdf}
+                className="no-print"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                {generatingPdf ? "Generating PDF..." : "Download Invoice PDF"}
+              </Button>
             )}
           </CardFooter>
         </Card>

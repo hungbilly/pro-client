@@ -443,6 +443,17 @@ const InvoiceView = () => {
             <p className="text-muted-foreground">
               Please review and accept this invoice and contract terms.
             </p>
+            
+            <div className="flex justify-center gap-2 mb-4">
+              <Button 
+                onClick={handleDownloadInvoice}
+                disabled={!invoice.pdfUrl}
+                className="w-full sm:w-auto"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Download Invoice PDF
+              </Button>
+            </div>
           </div>
         )}
         
@@ -752,4 +763,3 @@ const InvoiceView = () => {
 };
 
 export default InvoiceView;
-

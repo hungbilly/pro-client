@@ -397,6 +397,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
     // Left side - Logo
     const rightColumnX = pageWidth * 0.55; // Move the right column start point
     let rightColumnY = y;
+    let leftColumnY = y;
 
     // Logo positioning
     if (invoiceData.company.logoUrl) {
@@ -419,55 +420,55 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
         const logoX = margin + (rightColumnX - margin - logoWidth) / 4;  // Moved more to the left
     
         doc.addImage(logo, 'PNG', logoX, y, logoWidth, logoHeight);
-        y += logoHeight + 10; // Add some extra space after logo
+        leftColumnY += logoHeight + 10; // Update left column position after logo
       } catch (logoError) {
         console.error('Error adding logo:', logoError);
         doc.setFontSize(24);
         doc.setFont('helvetica', 'bold');
-        doc.text(invoiceData.company.name.toUpperCase(), margin, y + 15);
+        doc.text(invoiceData.company.name.toUpperCase(), margin, leftColumnY + 15);
+        leftColumnY += 20;
       }
     } else {
       doc.setFontSize(24);
       doc.setFont('helvetica', 'bold');
-      doc.text(invoiceData.company.name.toUpperCase(), margin, y + 15);
+      doc.text(invoiceData.company.name.toUpperCase(), margin, leftColumnY + 15);
+      leftColumnY += 20;
     }
 
-    // Right side - Company Information
-    rightColumnY = y;
-
-    // "FROM" heading and details
+    // Company details now below the logo on the left
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(100, 100, 100);
-    doc.text('FROM', rightColumnX, rightColumnY);
-    rightColumnY += 7;
+    doc.text('FROM', margin, leftColumnY);
+    leftColumnY += 7;
 
     // Company details
     doc.setFontSize(14);
     doc.setTextColor(0, 0, 0);
-    doc.text(invoiceData.company.name, rightColumnX, rightColumnY);
-    rightColumnY += 7;
+    doc.text(invoiceData.company.name, margin, leftColumnY);
+    leftColumnY += 7;
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     
     if (invoiceData.company.email) {
-      doc.text(invoiceData.company.email, rightColumnX, rightColumnY);
-      rightColumnY += 6;
+      doc.text(invoiceData.company.email, margin, leftColumnY);
+      leftColumnY += 6;
     }
     
     if (invoiceData.company.phone) {
-      doc.text(invoiceData.company.phone, rightColumnX, rightColumnY);
-      rightColumnY += 6;
+      doc.text(invoiceData.company.phone, margin, leftColumnY);
+      leftColumnY += 6;
     }
     
     if (invoiceData.company.address) {
       const addressLines = invoiceData.company.address.split('\n');
       const flattenedAddress = addressLines.join(' ');
-      doc.text(flattenedAddress, rightColumnX, rightColumnY);
-      rightColumnY += 10;
+      doc.text(flattenedAddress, margin, leftColumnY);
+      leftColumnY += 10;
     }
 
+    // Right side - Client Information
     // "INVOICE FOR" section
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
@@ -515,7 +516,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
     }
 
     // Move y position to the max of the header sections
-    y = Math.max(y + 50, rightColumnY + 10);
+    y = Math.max(leftColumnY + 10, rightColumnY + 10);
   
     // Add separator line
     doc.setDrawColor(220, 220, 220);

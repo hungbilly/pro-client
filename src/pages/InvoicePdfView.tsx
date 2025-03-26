@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { getInvoiceByViewLink, updateInvoiceStatus, updateContractStatus } from '@/lib/storage';
@@ -10,6 +11,8 @@ import PageTransition from '@/components/ui-custom/PageTransition';
 import { supabase, logDebug, logError } from "@/integrations/supabase/client";
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import RichTextEditor from '@/components/RichTextEditor';
 
 const InvoicePdfView = () => {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
@@ -58,51 +61,6 @@ const InvoicePdfView = () => {
     fetchInvoice();
   }, [viewLink]);
 
-  const generateInvoicePdf = async (invoiceId: string) => {
-    try {
-      setGeneratingPdf(true);
-      setFunctionError(null);
-      toast.info('Preparing invoice PDF...');
-      
-      logDebug('Calling generate-invoice-pdf function', { invoiceId });
-      
-      const { data, error } = await supabase.functions.invoke('generate-invoice-pdf', {
-        body: { invoiceId }
-      });
-      
-      if (error) {
-        logError('Error invoking generate-invoice-pdf function', error);
-        setFunctionError(`Error: ${error.message || 'Failed to generate PDF'}`);
-        toast.error('Server-side PDF generation failed. Using client-side generation instead.');
-        generateClientSidePdf();
-        return;
-      }
-      
-      if (data?.status === 'redirect' || data?.status === 'error') {
-        toast.info('Using client-side PDF generation...');
-        generateClientSidePdf();
-        return;
-      }
-      
-      if (data?.pdfUrl) {
-        setInvoice(prev => prev ? { ...prev, pdfUrl: data.pdfUrl } : null);
-        toast.success('Invoice PDF ready');
-      } else {
-        logError('No PDF URL returned from function', data);
-        setFunctionError('No PDF URL returned from the server');
-        toast.info('Falling back to client-side PDF generation');
-        generateClientSidePdf();
-      }
-    } catch (err) {
-      logError('Exception in generateInvoicePdf', err);
-      setFunctionError(`Exception: ${err instanceof Error ? err.message : 'Unknown error'}`);
-      toast.error('Server PDF generation failed. Using client-side generation instead.');
-      generateClientSidePdf();
-    } finally {
-      setGeneratingPdf(false);
-    }
-  };
-
   const generateClientSidePdf = () => {
     if (!pdfContainerRef.current) {
       toast.error('Cannot generate PDF: content not found');
@@ -119,23 +77,40 @@ const InvoicePdfView = () => {
       const contractTab = element.querySelector('[data-testid="contract-tab"]');
       const tabsList = element.querySelector('[data-testid="tabs-list"]');
       
-      if (invoiceTab && contractTab && tabsList) {
-        (tabsList as HTMLElement).style.display = 'none';
-        
+      // Store original display styles to restore later
+      const originalStyles = {
+        tabsList: tabsList ? (tabsList as HTMLElement).style.display : '',
+        invoiceTab: invoiceTab ? (invoiceTab as HTMLElement).style.display : '',
+        contractTab: contractTab ? (contractTab as HTMLElement).style.display : '',
+      };
+      
+      // Prepare for PDF generation
+      if (tabsList) (tabsList as HTMLElement).style.display = 'none';
+      
+      if (invoiceTab) {
         (invoiceTab as HTMLElement).style.display = 'block';
         (invoiceTab as HTMLElement).style.visibility = 'visible';
+      }
+      
+      if (contractTab) {
         (contractTab as HTMLElement).style.display = 'block';
         (contractTab as HTMLElement).style.visibility = 'visible';
         (contractTab as HTMLElement).style.pageBreakBefore = 'always';
       }
       
+      // Hide buttons and other elements not needed in the PDF
       const buttonsToHide = element.querySelectorAll('button, .no-print');
-      buttonsToHide.forEach((button) => {
-        (button as HTMLElement).style.display = 'none';
+      const buttonOriginalStyles: Record<string, string> = {};
+      
+      buttonsToHide.forEach((button, i) => {
+        const el = button as HTMLElement;
+        buttonOriginalStyles[i] = el.style.display;
+        el.style.display = 'none';
       });
 
+      // Generate PDF with enhanced quality settings
       html2canvas(element, {
-        scale: 2,
+        scale: 2, // Higher scale for better quality
         useCORS: true,
         logging: false,
         allowTaint: true,
@@ -164,8 +139,10 @@ const InvoicePdfView = () => {
         const pdf = new jsPDF('p', 'mm', 'a4');
         let position = 0;
         
+        // Add first page
         pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
         
+        // Add additional pages if needed
         const totalPages = Math.ceil(imgHeight / pageHeight);
         for (let i = 1; i < totalPages; i++) {
           position = -pageHeight * i;
@@ -173,12 +150,23 @@ const InvoicePdfView = () => {
           pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
         }
         
+        // Save the PDF
         pdf.save(`invoice-${invoice?.number || 'download'}.pdf`);
         toast.success('PDF generated successfully');
       }).catch(err => {
         console.error('Error in html2canvas:', err);
         toast.error(`PDF generation error: ${err.message}`);
       }).finally(() => {
+        // Restore original styles
+        if (tabsList) (tabsList as HTMLElement).style.display = originalStyles.tabsList;
+        if (invoiceTab) (invoiceTab as HTMLElement).style.display = originalStyles.invoiceTab;
+        if (contractTab) (contractTab as HTMLElement).style.display = originalStyles.contractTab;
+        
+        buttonsToHide.forEach((button, i) => {
+          const el = button as HTMLElement;
+          el.style.display = buttonOriginalStyles[i] || '';
+        });
+        
         setClientSidePdfGenerating(false);
       });
     } catch (err) {
@@ -219,12 +207,6 @@ const InvoicePdfView = () => {
     }
   };
 
-  const handleDownloadPdf = () => {
-    if (!invoice?.pdfUrl) return;
-    
-    window.open(invoice.pdfUrl, '_blank');
-  };
-
   const renderPdfDownloadButtons = () => (
     <div className="flex justify-center gap-2 mt-4">
       <Button 
@@ -240,17 +222,6 @@ const InvoicePdfView = () => {
         }
         Download as PDF
       </Button>
-      {invoice?.pdfUrl && (
-        <Button 
-          variant="default" 
-          size="sm" 
-          onClick={handleDownloadPdf}
-          className="w-full sm:w-auto"
-        >
-          <Download className="h-4 w-4 mr-2" />
-          Download Server PDF
-        </Button>
-      )}
     </div>
   );
 
@@ -316,90 +287,189 @@ const InvoicePdfView = () => {
           
           <CardContent>
             <div ref={pdfContainerRef}>
-              {invoice.pdfUrl ? (
-                <div className="w-full h-[70vh] border rounded-md overflow-hidden">
-                  <embed 
-                    src={invoice.pdfUrl} 
-                    type="application/pdf" 
-                    width="100%" 
-                    height="100%" 
-                  />
-                </div>
-              ) : (
-                <div className="flex justify-center items-center h-64 flex-col">
-                  {generatingPdf ? (
-                    <>
-                      <p className="mb-4">Preparing invoice PDF...</p>
-                      <div className="w-10 h-10 border-4 border-t-blue-500 border-b-blue-500 border-l-blue-200 border-r-blue-200 rounded-full animate-spin mx-auto"></div>
-                    </>
-                  ) : (
-                    <>
-                      {functionError ? (
-                        <div className="text-center max-w-md">
-                          <AlertCircle className="h-10 w-10 text-red-500 mx-auto mb-2" />
-                          <p className="mb-4 text-red-500">There was an error generating the PDF:</p>
-                          <p className="mb-4 p-2 bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300 rounded text-sm font-mono overflow-auto max-h-28">{functionError}</p>
-                        </div>
-                      ) : (
-                        <p className="mb-4">Click the button to generate the invoice PDF.</p>
-                      )}
-                      <Button onClick={handleRetryGeneratePdf}>
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Generate PDF
-                      </Button>
-                    </>
-                  )}
-                </div>
-              )}
+              <Tabs defaultValue="invoice" className="w-full">
+                <TabsList className="w-full no-print" data-testid="tabs-list">
+                  <TabsTrigger value="invoice" className="flex-1">
+                    Invoice Details
+                  </TabsTrigger>
+                  <TabsTrigger value="contract" className="flex-1">
+                    Contract Terms
+                  </TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="invoice" className="mt-6" data-testid="invoice-tab">
+                  <div className="invoice-content">
+                    <h2 className="text-2xl font-bold mb-4">Invoice #{invoice.number}</h2>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                      <div>
+                        <h3 className="text-lg font-semibold mb-2">Invoice Details</h3>
+                        <p><strong>Date:</strong> {new Date(invoice.date).toLocaleDateString()}</p>
+                        <p><strong>Due Date:</strong> {new Date(invoice.dueDate).toLocaleDateString()}</p>
+                        <p><strong>Status:</strong> {invoice.status}</p>
+                        <p><strong>Amount:</strong> ${invoice.amount}</p>
+                      </div>
+                      
+                      <div>
+                        {invoice.notes && (
+                          <div className="mb-4">
+                            <h3 className="text-lg font-semibold mb-2">Notes</h3>
+                            <div dangerouslySetInnerHTML={{ __html: invoice.notes }} />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {invoice.items && invoice.items.length > 0 && (
+                      <div className="mb-6">
+                        <h3 className="text-lg font-semibold mb-2">Items</h3>
+                        <table className="w-full border-collapse">
+                          <thead>
+                            <tr className="bg-gray-100 dark:bg-gray-800">
+                              <th className="border p-2 text-left">Item</th>
+                              <th className="border p-2 text-left">Description</th>
+                              <th className="border p-2 text-right">Quantity</th>
+                              <th className="border p-2 text-right">Rate</th>
+                              <th className="border p-2 text-right">Amount</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {invoice.items.map((item, index) => (
+                              <tr key={index} className="border-b">
+                                <td className="border p-2">{item.name}</td>
+                                <td className="border p-2">
+                                  <div dangerouslySetInnerHTML={{ __html: item.description }} />
+                                </td>
+                                <td className="border p-2 text-right">{item.quantity}</td>
+                                <td className="border p-2 text-right">${item.rate}</td>
+                                <td className="border p-2 text-right">${item.amount}</td>
+                              </tr>
+                            ))}
+                            <tr className="font-bold">
+                              <td colSpan={4} className="border p-2 text-right">Total</td>
+                              <td className="border p-2 text-right">${invoice.amount}</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                    
+                    {['draft', 'sent'].includes(invoice.status) && (
+                      <div className="mt-6 no-print">
+                        <Button onClick={handleAcceptInvoice}>
+                          <Check className="h-4 w-4 mr-2" />
+                          Accept Invoice
+                        </Button>
+                      </div>
+                    )}
+                    
+                    {invoice.status === 'accepted' && (
+                      <div className="mt-6 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-md flex items-center gap-2">
+                        <FileCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
+                        <span className="text-green-800 dark:text-green-400">
+                          Invoice accepted
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="contract" className="mt-6" data-testid="contract-tab">
+                  <div className="contract-content">
+                    <h2 className="text-2xl font-bold mb-4">Contract Terms</h2>
+                    
+                    {invoice.contractTerms ? (
+                      <div className="contract-terms-content">
+                        <RichTextEditor
+                          value={invoice.contractTerms}
+                          onChange={() => {}}
+                          readOnly={true}
+                          className="rich-text-editor"
+                        />
+                      </div>
+                    ) : (
+                      <p>No contract terms provided.</p>
+                    )}
+                    
+                    {invoice.contractStatus !== 'accepted' && (
+                      <div className="mt-6 no-print">
+                        <Button onClick={handleAcceptContract} variant="outline">
+                          <Check className="h-4 w-4 mr-2" />
+                          Accept Contract Terms
+                        </Button>
+                      </div>
+                    )}
+                    
+                    {invoice.contractStatus === 'accepted' && (
+                      <div className="mt-6 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-md flex items-center gap-2">
+                        <FileCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
+                        <span className="text-green-800 dark:text-green-400">
+                          Contract terms accepted
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+              </Tabs>
             </div>
           </CardContent>
           
           <CardFooter className="flex-col gap-4 pt-4">
-            <div className="w-full flex flex-col sm:flex-row gap-4 justify-center items-center">
-              {['draft', 'sent'].includes(invoice.status) && (
-                <Button 
-                  onClick={handleAcceptInvoice} 
-                  className="w-full sm:w-auto"
-                  disabled={!invoice.pdfUrl}
-                >
-                  <Check className="h-4 w-4 mr-2" />
-                  Accept Invoice
-                </Button>
-              )}
-              
-              {invoice.status === 'accepted' && (
-                <div className="w-full p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-md flex items-center gap-2">
-                  <FileCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
-                  <span className="text-green-800 dark:text-green-400">
-                    Invoice accepted
-                  </span>
-                </div>
-              )}
-              
-              {invoice.contractStatus !== 'accepted' && (
-                <Button 
-                  onClick={handleAcceptContract} 
-                  variant="outline" 
-                  className="w-full sm:w-auto"
-                  disabled={!invoice.pdfUrl}
-                >
-                  <Check className="h-4 w-4 mr-2" />
-                  Accept Contract Terms
-                </Button>
-              )}
-              
-              {invoice.contractStatus === 'accepted' && (
-                <div className="w-full p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-md flex items-center gap-2">
-                  <FileCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
-                  <span className="text-green-800 dark:text-green-400">
-                    Contract terms accepted
-                  </span>
-                </div>
-              )}
+            <div className="w-full flex flex-col sm:flex-row gap-4 justify-center items-center no-print">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={generateClientSidePdf} 
+                disabled={clientSidePdfGenerating}
+                className="w-full sm:w-auto"
+              >
+                {clientSidePdfGenerating ? 
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : 
+                  <Download className="h-4 w-4 mr-2" />
+                }
+                Download as PDF
+              </Button>
             </div>
           </CardFooter>
         </Card>
       </div>
+
+      <style>
+        {`
+          @media print {
+            body * {
+              visibility: visible;
+            }
+            .no-print {
+              display: none !important;
+            }
+            [data-testid="tabs-list"] {
+              display: none !important;
+            }
+            [data-testid="invoice-tab"],
+            [data-testid="contract-tab"] {
+              display: block !important;
+              visibility: visible !important;
+            }
+            [data-testid="contract-tab"] {
+              page-break-before: always !important;
+            }
+            .container {
+              width: 100% !important;
+              max-width: 100% !important;
+              padding: 0 !important;
+              margin: 0 !important;
+            }
+            .card {
+              box-shadow: none !important;
+              border: none !important;
+            }
+            .rich-text-editor {
+              border: none !important;
+            }
+          }
+        `}
+      </style>
     </PageTransition>
   );
 };

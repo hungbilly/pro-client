@@ -32,7 +32,7 @@ serve(async (req) => {
     // Fetch the invoice data
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
-      .select('view_link, contract_terms, html_content')
+      .select('view_link, contract_terms, html_content, number, id')
       .eq('id', invoiceId)
       .single();
 
@@ -45,69 +45,27 @@ serve(async (req) => {
     }
 
     console.log('Found invoice with view link:', invoice.view_link);
-    console.log('Contract terms length:', invoice.contract_terms?.length || 0);
     
     // Get the base URL from the request
     const url = new URL(req.url);
     const baseUrl = `${url.protocol}//${url.hostname}`;
     
-    // Since we can't use puppeteer in this environment, we'll use the html_content field
-    // or request the web service to generate the PDF
+    // Construct full URL for the invoice view
+    const viewLink = invoice.view_link.includes('/') ? invoice.view_link.split('/').pop() : invoice.view_link;
+    const invoiceUrl = `${baseUrl}/invoice/${viewLink}`;
+    console.log('Invoice URL for client-side rendering:', invoiceUrl);
     
-    let pdfBuffer;
-    
-    // Option 1: Use a third-party API service to convert HTML to PDF
-    // This is a placeholder - you need to implement an actual service integration
-    try {
-      // Construct full URL for the invoice view
-      const viewLink = invoice.view_link.includes('/') ? invoice.view_link.split('/').pop() : invoice.view_link;
-      const invoiceUrl = `${baseUrl}/invoice/${viewLink}`;
-      console.log('Invoice URL:', invoiceUrl);
-      
-      // For now, we'll just redirect to use client-side PDF generation
-      // In a production environment, you would integrate with a PDF generation service
-      
-      // Upload placeholder text to storage to track the request
-      const filePath = `invoices/${invoiceId}.txt`;
-      const placeholderText = `PDF generation requested for invoice ${invoiceId} at ${new Date().toISOString()}. Please use client-side PDF generation for now.`;
-      
-      // Upload to storage
-      const { error: uploadError } = await supabase
-        .storage
-        .from('invoice-pdfs')
-        .upload(filePath, new TextEncoder().encode(placeholderText), {
-          contentType: 'text/plain',
-          upsert: true,
-        });
-
-      if (uploadError) {
-        console.error('Error uploading placeholder:', uploadError);
-        throw new Error('Storage upload failed');
-      }
-      
-      // Return the invoice URL for client-side PDF generation
-      return new Response(
-        JSON.stringify({ 
-          status: 'redirect', 
-          message: 'Use client-side PDF generation',
-          invoiceUrl: invoiceUrl
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-      );
-      
-    } catch (err) {
-      console.error('PDF generation service error:', err);
-      
-      // Fall back to client-side handling
-      return new Response(
-        JSON.stringify({ 
-          status: 'error', 
-          message: 'PDF generation failed, use client-side generation',
-          error: err.message 
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-      );
-    }
+    // Return instruction to use client-side PDF generation
+    return new Response(
+      JSON.stringify({ 
+        status: 'client-side', 
+        message: 'Please use client-side PDF generation',
+        invoiceUrl,
+        invoiceNumber: invoice.number,
+        invoiceId: invoice.id
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+    );
   } catch (error) {
     console.error('Error processing request:', error);
     return new Response(

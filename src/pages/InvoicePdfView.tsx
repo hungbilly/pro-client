@@ -1,10 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { getInvoiceByViewLink, updateInvoiceStatus, updateContractStatus } from '@/lib/storage';
 import { Invoice } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Check, FileCheck, Download, RefreshCw, AlertCircle } from 'lucide-react';
+import { Check, FileCheck, Download, RefreshCw, AlertCircle, Bug } from 'lucide-react';
 import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { supabase, logDebug, logError } from "@/integrations/supabase/client";
@@ -54,16 +55,16 @@ const InvoicePdfView = () => {
     fetchInvoice();
   }, [viewLink]);
 
-  const generateInvoicePdf = async (invoiceId: string) => {
+  const generateInvoicePdf = async (invoiceId: string, debugMode = false) => {
     try {
       setGeneratingPdf(true);
       setFunctionError(null);
       toast.info('Preparing invoice PDF...');
       
-      logDebug('Calling generate-invoice-pdf function', { invoiceId });
+      logDebug('Calling generate-invoice-pdf function', { invoiceId, debugMode });
       
       const { data, error } = await supabase.functions.invoke('generate-invoice-pdf', {
-        body: { invoiceId }
+        body: { invoiceId, debugMode }
       });
       
       if (error) {
@@ -93,6 +94,12 @@ const InvoicePdfView = () => {
   const handleRetryGeneratePdf = () => {
     if (!invoice) return;
     generateInvoicePdf(invoice.id);
+  };
+
+  const handleDebugPdf = () => {
+    if (!invoice) return;
+    generateInvoicePdf(invoice.id, true);
+    toast.info('Generating simplified debug PDF with only company info...');
   };
 
   const handleAcceptInvoice = async () => {
@@ -200,10 +207,16 @@ const InvoicePdfView = () => {
                   </Button>
                 )}
                 {!invoice.pdfUrl && !generatingPdf && (
-                  <Button variant="outline" size="sm" onClick={handleRetryGeneratePdf}>
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Generate PDF
-                  </Button>
+                  <>
+                    <Button variant="outline" size="sm" onClick={handleRetryGeneratePdf}>
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Generate PDF
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handleDebugPdf}>
+                      <Bug className="h-4 w-4 mr-2" />
+                      Debug PDF
+                    </Button>
+                  </>
                 )}
               </div>
             </CardTitle>
@@ -237,10 +250,16 @@ const InvoicePdfView = () => {
                     ) : (
                       <p className="mb-4">Click the button to generate the invoice PDF.</p>
                     )}
-                    <Button onClick={handleRetryGeneratePdf}>
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Generate PDF
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button onClick={handleRetryGeneratePdf}>
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Generate PDF
+                      </Button>
+                      <Button variant="outline" onClick={handleDebugPdf}>
+                        <Bug className="h-4 w-4 mr-2" />
+                        Debug PDF
+                      </Button>
+                    </div>
                   </>
                 )}
               </div>

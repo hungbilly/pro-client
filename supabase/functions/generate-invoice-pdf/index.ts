@@ -61,10 +61,10 @@ serve(async (req) => {
     });
     const page = await browser.newPage();
 
-    // Set viewport size
+    // Set viewport to match A4 dimensions
     await page.setViewport({
-      width: 1200,
-      height: 1600,
+      width: 794, // A4 width in pixels at 96 DPI (210mm)
+      height: 1123, // A4 height in pixels at 96 DPI (297mm)
       deviceScaleFactor: 1,
     });
 
@@ -72,13 +72,37 @@ serve(async (req) => {
     // Navigate to the client view URL
     await page.goto(clientViewUrl, { waitUntil: 'networkidle0' });
 
-    // Optional: Wait for specific elements to ensure the page is fully loaded
+    // Wait for specific elements to ensure the page is fully loaded
     console.log('Waiting for page content to load...');
     try {
       await page.waitForSelector('.card', { timeout: 10000 });
       console.log('Page content loaded successfully');
     } catch (err) {
       console.warn('Timeout waiting for card element, continuing anyway:', err);
+    }
+
+    // Wait for images to load
+    console.log('Waiting for images to load...');
+    await page.evaluate(async () => {
+      const images = Array.from(document.querySelectorAll('img'));
+      await Promise.all(
+        images.map((img) => {
+          if (img.complete) return Promise.resolve();
+          return new Promise((resolve) => {
+            img.onload = resolve;
+            img.onerror = resolve;
+          });
+        })
+      );
+    });
+
+    // Wait for RichTextEditor content to render (used in both Invoice Details and Contract Terms)
+    console.log('Waiting for RichTextEditor content to load...');
+    try {
+      await page.waitForSelector('.rich-text-editor', { timeout: 5000 });
+      console.log('RichTextEditor content loaded successfully');
+    } catch (err) {
+      console.warn('Timeout waiting for RichTextEditor, continuing anyway:', err);
     }
 
     // Hide elements that shouldn't appear in the PDF (e.g., buttons)
@@ -90,12 +114,37 @@ serve(async (req) => {
       });
     });
 
+    // Hide the TabsList (tab navigation)
+    console.log('Hiding TabsList...');
+    await page.evaluate(() => {
+      const tabsList = document.querySelector('[data-testid="tabs-list"]');
+      if (tabsList) {
+        (tabsList as HTMLElement).style.display = 'none';
+      } else {
+        console.warn('TabsList not found with selector [data-testid="tabs-list"]');
+      }
+    });
+
+    // Show both tab contents and add a page break before the Contract Terms tab
+    console.log('Showing both tab contents and adding page break...');
+    await page.evaluate(() => {
+      const tabsContent = document.querySelectorAll('[role="tabpanel"]');
+      tabsContent.forEach((content, index) => {
+        (content as HTMLElement).style.display = 'block';
+        // Add a page break before the Contract Terms tab (second tab, index 1)
+        if (index === 1) {
+          (content as HTMLElement).style.pageBreakBefore = 'always';
+        }
+      });
+    });
+
     // Generate PDF
     console.log('Generating PDF...');
     const pdfBuffer = await page.pdf({
       format: 'A4',
       printBackground: true,
       margin: { top: '10mm', bottom: '10mm', left: '10mm', right: '10mm' },
+      preferCSSPageSize: true,
     });
 
     console.log('Closing browser...');

@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
@@ -54,9 +53,9 @@ serve(async (req) => {
 
   try {
     // Get request data
-    const { invoiceId, clientId } = await req.json();
+    const { jobId, clientId, invoiceId } = await req.json();
     
-    if (!invoiceId || !clientId) {
+    if ((!jobId && !invoiceId) || !clientId) {
       return new Response(
         JSON.stringify({ error: 'Missing required parameters' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -66,19 +65,43 @@ serve(async (req) => {
     // Initialize Supabase client
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
-    // Fetch invoice data
-    const { data: invoice, error: invoiceError } = await supabase
-      .from('invoices')
-      .select('*')
-      .eq('id', invoiceId)
-      .single();
+    // Fetch data based on whether it's a job or invoice
+    let eventData;
+    
+    if (jobId) {
+      // Fetch job data
+      const { data: job, error: jobError } = await supabase
+        .from('jobs')
+        .select('*')
+        .eq('id', jobId)
+        .single();
+        
+      if (jobError || !job) {
+        console.error('Error fetching job:', jobError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to fetch job data' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
       
-    if (invoiceError || !invoice) {
-      console.error('Error fetching invoice:', invoiceError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to fetch invoice data' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      eventData = job;
+    } else if (invoiceId) {
+      // Fetch invoice data (existing functionality)
+      const { data: invoice, error: invoiceError } = await supabase
+        .from('invoices')
+        .select('*')
+        .eq('id', invoiceId)
+        .single();
+        
+      if (invoiceError || !invoice) {
+        console.error('Error fetching invoice:', invoiceError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to fetch invoice data' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      eventData = invoice;
     }
     
     // Fetch client data
@@ -96,81 +119,209 @@ serve(async (req) => {
       );
     }
     
-    // Check if there's a shooting date
-    if (!invoice.shooting_date) {
+    // Determine event details based on the data source (job or invoice)
+    let eventDate, eventStartTime, eventEndTime, eventSummary, eventLocation, eventDescription;
+    
+    if (jobId) {
+      // Check if there's a job date
+      if (!eventData.date) {
+        return new Response(
+          JSON.stringify({ success: false, message: 'No job date to add to calendar' }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      eventDate = eventData.date;
+      
+      // Set default times if not specified
+      eventStartTime = eventData.startTime || '09:00:00';
+      eventEndTime = eventData.endTime || '17:00:00';
+      
+      // For all-day events
+      const isFullDay = eventData.isFullDay === true;
+      
+      eventSummary = `Job: ${eventData.title} - ${client.name}`;
+      eventLocation = eventData.location || client.address;
+      eventDescription = `${eventData.description || 'Job session'} for ${client.name}.\n\nClient Contact:\nEmail: ${client.email}\nPhone: ${client.phone}`;
+      
+      // Format date/time for Google Calendar
+      // For full-day events, we use date only format
+      if (isFullDay) {
+        // Format as YYYY-MM-DD for all-day events
+        const startDate = eventDate;
+        
+        // Create event object for all-day event (no time component)
+        const event = {
+          summary: eventSummary,
+          location: eventLocation,
+          description: eventDescription,
+          start: {
+            date: startDate,
+            timeZone: 'UTC',
+          },
+          end: {
+            date: startDate, // Same day end for a single day event
+            timeZone: 'UTC',
+          },
+        };
+        
+        // Get fresh access token for Google Calendar API
+        const accessToken = await getAccessToken();
+        
+        // Insert event to Google Calendar using OAuth2 access token
+        const calendarResponse = await fetch(
+          'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(event),
+          }
+        );
+        
+        if (!calendarResponse.ok) {
+          const errorData = await calendarResponse.json();
+          console.error('Google Calendar API error:', errorData);
+          return new Response(
+            JSON.stringify({ error: 'Failed to create calendar event', details: errorData }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        const calendarData = await calendarResponse.json();
+        
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            message: 'Event added to company calendar',
+            eventId: calendarData.id
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } else {
+        // Format start and end times for non-full-day events
+        const formattedStartDate = `${eventDate}T${eventStartTime}-00:00`;
+        const formattedEndDate = `${eventDate}T${eventEndTime}-00:00`;
+        
+        // Create event object with start/end times
+        const event = {
+          summary: eventSummary,
+          location: eventLocation,
+          description: eventDescription,
+          start: {
+            dateTime: formattedStartDate,
+            timeZone: 'UTC',
+          },
+          end: {
+            dateTime: formattedEndDate,
+            timeZone: 'UTC',
+          },
+        };
+        
+        // Get fresh access token for Google Calendar API
+        const accessToken = await getAccessToken();
+        
+        // Insert event to Google Calendar using OAuth2 access token
+        const calendarResponse = await fetch(
+          'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(event),
+          }
+        );
+        
+        if (!calendarResponse.ok) {
+          const errorData = await calendarResponse.json();
+          console.error('Google Calendar API error:', errorData);
+          return new Response(
+            JSON.stringify({ error: 'Failed to create calendar event', details: errorData }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        const calendarData = await calendarResponse.json();
+        
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            message: 'Event added to company calendar',
+            eventId: calendarData.id
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } else if (invoiceId) {
+      // Existing invoice event creation logic
+      // Check if there's a shooting date
+      if (!eventData.shooting_date) {
+        return new Response(
+          JSON.stringify({ success: false, message: 'No shooting date to add to calendar' }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      // Format shooting date (YYYY-MM-DD to RFC3339 format)
+      const shootingDate = new Date(eventData.shooting_date);
+      const formattedStartDate = `${shootingDate.toISOString().split('T')[0]}T09:00:00-00:00`; // Default to 9 AM
+      const formattedEndDate = `${shootingDate.toISOString().split('T')[0]}T17:00:00-00:00`;   // Default to 5 PM
+      
+      // Create event object
+      const event = {
+        summary: `Photo Shoot - ${client.name} - Invoice #${eventData.number}`,
+        location: client.address,
+        description: `Photo shooting session for ${client.name}.\n\nClient Contact:\nEmail: ${client.email}\nPhone: ${client.phone}\n\nInvoice #${eventData.number}`,
+        start: {
+          dateTime: formattedStartDate,
+          timeZone: 'UTC',
+        },
+        end: {
+          dateTime: formattedEndDate,
+          timeZone: 'UTC',
+        },
+      };
+      
+      // Get fresh access token for Google Calendar API
+      const accessToken = await getAccessToken();
+      
+      // Insert event to Google Calendar using OAuth2 access token
+      const calendarResponse = await fetch(
+        'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(event),
+        }
+      );
+      
+      if (!calendarResponse.ok) {
+        const errorData = await calendarResponse.json();
+        console.error('Google Calendar API error:', errorData);
+        return new Response(
+          JSON.stringify({ error: 'Failed to create calendar event', details: errorData }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      const calendarData = await calendarResponse.json();
+      
       return new Response(
-        JSON.stringify({ success: false, message: 'No shooting date to add to calendar' }),
+        JSON.stringify({ 
+          success: true, 
+          message: 'Event added to company calendar',
+          eventId: calendarData.id
+        }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-    
-    // Format shooting date (YYYY-MM-DD to RFC3339 format)
-    const shootingDate = new Date(invoice.shooting_date);
-    const formattedStartDate = `${shootingDate.toISOString().split('T')[0]}T09:00:00-00:00`; // Default to 9 AM
-    const formattedEndDate = `${shootingDate.toISOString().split('T')[0]}T17:00:00-00:00`;   // Default to 5 PM
-    
-    // Create event object
-    const event = {
-      summary: `Photo Shoot - ${client.name} - Invoice #${invoice.number}`,
-      location: client.address,
-      description: `Photo shooting session for ${client.name}.\n\nClient Contact:\nEmail: ${client.email}\nPhone: ${client.phone}\n\nInvoice #${invoice.number}`,
-      start: {
-        dateTime: formattedStartDate,
-        timeZone: 'UTC',
-      },
-      end: {
-        dateTime: formattedEndDate,
-        timeZone: 'UTC',
-      },
-    };
-    
-    // Get fresh access token for Google Calendar API
-    let accessToken;
-    try {
-      accessToken = await getAccessToken();
-    } catch (error) {
-      console.error('Error getting access token:', error);
-      return new Response(
-        JSON.stringify({ 
-          error: 'Authentication error', 
-          message: 'Failed to authenticate with Google Calendar' 
-        }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-    
-    // Insert event to Google Calendar using OAuth2 access token
-    const calendarResponse = await fetch(
-      'https://www.googleapis.com/calendar/v3/calendars/primary/events',
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(event),
-      }
-    );
-    
-    if (!calendarResponse.ok) {
-      const errorData = await calendarResponse.json();
-      console.error('Google Calendar API error:', errorData);
-      return new Response(
-        JSON.stringify({ error: 'Failed to create calendar event', details: errorData }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-    
-    const calendarData = await calendarResponse.json();
-    
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: 'Event added to company calendar',
-        eventId: calendarData.id
-      }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
     
   } catch (error) {
     console.error('Error in add-to-calendar function:', error);

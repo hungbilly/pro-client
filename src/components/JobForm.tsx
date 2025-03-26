@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Client, Job } from '@/types';
@@ -17,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { useCompany } from './CompanySelector';
 import { Checkbox } from '@/components/ui/checkbox';
 import JobWarningDialog from './JobWarningDialog';
+import AddToCalendarDialog from './AddToCalendarDialog';
 import { useQuery } from '@tanstack/react-query';
 
 interface JobFormProps {
@@ -40,6 +42,8 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
   const [isFullDay, setIsFullDay] = useState(existingJob?.isFullDay || false);
   const [showWarningDialog, setShowWarningDialog] = useState(false);
   const [conflictingJobs, setConflictingJobs] = useState<Job[]>([]);
+  const [showCalendarDialog, setShowCalendarDialog] = useState(false);
+  const [newJob, setNewJob] = useState<Job | null>(null);
 
   const clientId = predefinedClientId || clientIdParam || existingJob?.clientId || '';
   const { selectedCompany } = useCompany();
@@ -126,8 +130,14 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
 
         await updateJob(updatedJob);
         toast.success('Job updated successfully!');
+        
+        if (onSuccess) {
+          onSuccess();
+        } else {
+          navigate(`/job/${existingJob.id}`);
+        }
       } else {
-        const newJob = {
+        const newJobData = {
           clientId: client.id,
           companyId: selectedCompany.id,
           title,
@@ -140,18 +150,12 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
           isFullDay
         };
 
-        await saveJob(newJob);
+        const savedJob = await saveJob(newJobData);
+        setNewJob(savedJob);
         toast.success('Job created successfully!');
-      }
-      
-      if (onSuccess) {
-        onSuccess();
-      } else {
-        if (existingJob) {
-          navigate(`/job/${existingJob.id}`);
-        } else {
-          navigate(`/client/${client.id}`);
-        }
+        
+        // Show calendar dialog instead of navigating away immediately
+        setShowCalendarDialog(true);
       }
     } catch (error) {
       console.error('Failed to save/update job:', error);
@@ -176,6 +180,16 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
 
   const onCancelScheduling = () => {
     setShowWarningDialog(false);
+  };
+
+  const handleCalendarDialogClose = () => {
+    setShowCalendarDialog(false);
+    
+    if (onSuccess) {
+      onSuccess();
+    } else if (newJob) {
+      navigate(`/client/${client?.id}`);
+    }
   };
 
   if (!client) {
@@ -364,6 +378,13 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
         onConfirm={onConfirmScheduling}
         existingJobs={conflictingJobs}
         date={date}
+      />
+
+      <AddToCalendarDialog
+        isOpen={showCalendarDialog}
+        onClose={handleCalendarDialogClose}
+        job={newJob}
+        client={client}
       />
     </>
   );

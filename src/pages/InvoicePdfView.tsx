@@ -9,6 +9,8 @@ import { Check, FileCheck, Download, RefreshCw, AlertCircle } from 'lucide-react
 import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { supabase, logDebug, logError } from "@/integrations/supabase/client";
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 
 const InvoicePdfView = () => {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
@@ -16,7 +18,9 @@ const InvoicePdfView = () => {
   const [error, setError] = useState<string | null>(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [functionError, setFunctionError] = useState<string | null>(null);
+  const [clientSidePdfGenerating, setClientSidePdfGenerating] = useState(false);
   const { viewLink } = useParams<{ viewLink: string }>();
+  const pdfContainerRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchInvoice = async () => {
@@ -128,6 +132,53 @@ const InvoicePdfView = () => {
     window.open(invoice.pdfUrl, '_blank');
   };
 
+  const generateClientSidePdf = async () => {
+    if (!pdfContainerRef.current) {
+      toast.error('Cannot generate PDF: content not found');
+      return;
+    }
+
+    try {
+      setClientSidePdfGenerating(true);
+      toast.info('Preparing your PDF...');
+
+      const element = pdfContainerRef.current;
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      
+      // Calculate dimensions to fit the content properly on A4
+      const imgWidth = 210; // A4 width in mm
+      const pageHeight = 297; // A4 height in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      let position = 0;
+      
+      // Add pages as needed for long content
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      position -= pageHeight;
+      
+      while (position > -imgHeight) {
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        position -= pageHeight;
+      }
+      
+      pdf.save(`invoice-${invoice?.number || 'download'}.pdf`);
+      toast.success('PDF generated successfully');
+    } catch (err) {
+      console.error('Error generating client-side PDF:', err);
+      toast.error('Failed to generate PDF. Please try again or use the server PDF.');
+    } finally {
+      setClientSidePdfGenerating(false);
+    }
+  };
+
   if (loading) {
     return (
       <PageTransition>
@@ -185,13 +236,25 @@ const InvoicePdfView = () => {
                 {invoice.pdfUrl && (
                   <Button variant="outline" size="sm" onClick={handleDownloadPdf}>
                     <Download className="h-4 w-4 mr-2" />
-                    Download PDF
+                    Download Server PDF
                   </Button>
                 )}
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={generateClientSidePdf} 
+                  disabled={clientSidePdfGenerating}
+                >
+                  {clientSidePdfGenerating ? 
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : 
+                    <Download className="h-4 w-4 mr-2" />
+                  }
+                  Download as PDF
+                </Button>
                 {!invoice.pdfUrl && !generatingPdf && (
                   <Button variant="outline" size="sm" onClick={handleRetryGeneratePdf}>
                     <RefreshCw className="h-4 w-4 mr-2" />
-                    Generate PDF
+                    Generate Server PDF
                   </Button>
                 )}
               </div>
@@ -199,41 +262,43 @@ const InvoicePdfView = () => {
           </CardHeader>
           
           <CardContent>
-            {invoice.pdfUrl ? (
-              <div className="w-full h-[70vh] border rounded-md overflow-hidden">
-                <embed 
-                  src={invoice.pdfUrl} 
-                  type="application/pdf" 
-                  width="100%" 
-                  height="100%" 
-                />
-              </div>
-            ) : (
-              <div className="flex justify-center items-center h-64 flex-col">
-                {generatingPdf ? (
-                  <>
-                    <p className="mb-4">Preparing invoice PDF...</p>
-                    <div className="w-10 h-10 border-4 border-t-blue-500 border-b-blue-500 border-l-blue-200 border-r-blue-200 rounded-full animate-spin mx-auto"></div>
-                  </>
-                ) : (
-                  <>
-                    {functionError ? (
-                      <div className="text-center max-w-md">
-                        <AlertCircle className="h-10 w-10 text-red-500 mx-auto mb-2" />
-                        <p className="mb-4 text-red-500">There was an error generating the PDF:</p>
-                        <p className="mb-4 p-2 bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300 rounded text-sm font-mono overflow-auto max-h-28">{functionError}</p>
-                      </div>
-                    ) : (
-                      <p className="mb-4">Click the button to generate the invoice PDF.</p>
-                    )}
-                    <Button onClick={handleRetryGeneratePdf}>
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Generate PDF
-                    </Button>
-                  </>
-                )}
-              </div>
-            )}
+            <div ref={pdfContainerRef}>
+              {invoice.pdfUrl ? (
+                <div className="w-full h-[70vh] border rounded-md overflow-hidden">
+                  <embed 
+                    src={invoice.pdfUrl} 
+                    type="application/pdf" 
+                    width="100%" 
+                    height="100%" 
+                  />
+                </div>
+              ) : (
+                <div className="flex justify-center items-center h-64 flex-col">
+                  {generatingPdf ? (
+                    <>
+                      <p className="mb-4">Preparing invoice PDF...</p>
+                      <div className="w-10 h-10 border-4 border-t-blue-500 border-b-blue-500 border-l-blue-200 border-r-blue-200 rounded-full animate-spin mx-auto"></div>
+                    </>
+                  ) : (
+                    <>
+                      {functionError ? (
+                        <div className="text-center max-w-md">
+                          <AlertCircle className="h-10 w-10 text-red-500 mx-auto mb-2" />
+                          <p className="mb-4 text-red-500">There was an error generating the PDF:</p>
+                          <p className="mb-4 p-2 bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300 rounded text-sm font-mono overflow-auto max-h-28">{functionError}</p>
+                        </div>
+                      ) : (
+                        <p className="mb-4">Click the button to generate the invoice PDF.</p>
+                      )}
+                      <Button onClick={handleRetryGeneratePdf}>
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Generate PDF
+                      </Button>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           </CardContent>
           
           <CardFooter className="flex-col gap-4 pt-4">

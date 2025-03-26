@@ -330,35 +330,8 @@ const InvoiceView = () => {
     }
 
     const element = invoiceRef.current;
+    const originalDisplay = element.style.display;
     
-    // Log the initial state of tabs and content
-    const tabsList = element.querySelector('[data-testid="tabs-list"]');
-    const tabsContent = element.querySelectorAll('[data-testid="invoice-tab"], [data-testid="contract-tab"]');
-    
-    console.log('TabsList:', tabsList ? 'Found' : 'Not found');
-    console.log('Tabs content count:', tabsContent.length);
-    
-    tabsContent.forEach((content, index) => {
-      const htmlContent = (content as HTMLElement).innerHTML;
-      console.log(`Tab ${index} content length:`, htmlContent.length);
-      console.log(`Tab ${index} visible content preview:`, htmlContent.substring(0, 500));
-      
-      // Check for rich text editor content specifically
-      const richTextEditors = (content as HTMLElement).querySelectorAll('.rich-text-editor');
-      console.log(`Tab ${index} rich text editors:`, richTextEditors.length);
-      richTextEditors.forEach((editor, editorIndex) => {
-        console.log(`Tab ${index} editor ${editorIndex} content length:`, editor.innerHTML.length);
-        console.log(`Tab ${index} editor ${editorIndex} content preview:`, editor.innerHTML.substring(0, 200));
-      });
-    });
-
-    // Log contract terms details from the invoice state
-    console.log('Invoice contract terms:', {
-      hasContractTerms: !!invoice?.contractTerms,
-      contractTermsLength: invoice?.contractTerms?.length || 0,
-      contractStatus: invoice?.contractStatus
-    });
-
     const opt = {
       margin: [10, 10, 10, 10],
       filename: `invoice-${invoice?.number || 'download'}.pdf`,
@@ -379,35 +352,23 @@ const InvoiceView = () => {
       pagebreak: { mode: ['css', 'legacy'], avoid: ['.invoice-item', '.payment-schedule-table'] },
     };
 
-    // Show both tab contents for the PDF with enhanced logging
+    // Show both tab contents for the PDF
+    const tabsContent = element.querySelectorAll('[data-testid="invoice-tab"], [data-testid="contract-tab"]');
     tabsContent.forEach((content, index) => {
-      const htmlElement = content as HTMLElement;
-      
-      // Log before setting display
-      console.log(`Before display set - Tab ${index} style:`, htmlElement.style.display);
-      
-      htmlElement.style.setProperty('display', 'block', 'important');
-      
-      // Log after setting display
-      console.log(`After display set - Tab ${index} style:`, htmlElement.style.display);
-      
+      (content as HTMLElement).style.setProperty('display', 'block', 'important');
       // Add a page break before the Contract Terms tab (second tab, index 1)
       if (index === 1) {
-        htmlElement.style.setProperty('page-break-before', 'always', 'important');
+        (content as HTMLElement).style.setProperty('page-break-before', 'always', 'important');
       }
     });
 
-    // Hide the TabsList with logging
+    // Hide the TabsList
+    const tabsList = element.querySelector('[data-testid="tabs-list"]');
     if (tabsList) {
-      console.log('TabsList original display:', tabsList.getAttribute('style'));
       (tabsList as HTMLElement).style.setProperty('display', 'none', 'important');
-      console.log('TabsList new display:', tabsList.getAttribute('style'));
     } else {
       console.warn('TabsList not found with selector [data-testid="tabs-list"]');
     }
-
-    const originalDisplay = element.style.display;
-    
 
     const originalStyles: Record<string, string> = {};
     const elementsToHide = element.querySelectorAll('button, a.button, .no-print');
@@ -828,4 +789,232 @@ const InvoiceView = () => {
                                 <div className="mt-2 text-sm" dangerouslySetInnerHTML={{ __html: item.description }} />
                               )}
                             </div>
-                            <div className="mt-2 md:mt-0 flex flex
+                            <div className="mt-2 md:mt-0 flex flex-col md:flex-row md:items-center md:space-x-6 md:min-w-[260px] md:justify-end">
+                              <div className="text-sm text-muted-foreground md:text-right w-16">
+                                <span className="md:hidden">Quantity: </span>
+                                <span>{item.quantity}</span>
+                              </div>
+                              <div className="text-sm text-muted-foreground md:text-right w-24">
+                                <span className="md:hidden">Unit Price: </span>
+                                <span>{formatCurrency(item.rate)}</span>
+                              </div>
+                              <div className="font-medium md:text-right w-24">
+                                <span className="md:hidden">Total: </span>
+                                <span>{formatCurrency(item.amount)}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-muted-foreground">No items in this invoice.</p>
+                    )}
+                    
+                    <div className="mt-4 pt-4 border-t">
+                      <div className="flex justify-between font-medium">
+                        <span>Total</span>
+                        <span>{formatCurrency(invoice.amount)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <h4 className="text-lg font-semibold mb-2">Notes</h4>
+                  <div className="border rounded-md">
+                    <RichTextEditor
+                      value={invoice.notes || 'No notes provided.'}
+                      onChange={() => {}}
+                      readOnly={true}
+                      className="rich-text-editor"
+                    />
+                  </div>
+                </div>
+                
+                <Separator className="my-6" />
+                
+                <div className="mt-6">
+                  <div className="flex items-center mb-3">
+                    <CalendarDays className="h-5 w-5 mr-2" />
+                    <h4 className="text-lg font-semibold">Payment Schedule</h4>
+                  </div>
+                  
+                  {Array.isArray(invoice.paymentSchedules) && invoice.paymentSchedules.length > 0 ? (
+                    <PaymentScheduleTable
+                      paymentSchedules={invoice.paymentSchedules}
+                      amount={invoice.amount}
+                      isClientView={isClientView}
+                      updatingPaymentId={updatingPaymentId}
+                      onUpdateStatus={handlePaymentStatusUpdate}
+                      formatCurrency={formatCurrency}
+                      onUpdatePaymentDate={handlePaymentDateUpdate}
+                      className="payment-schedule-table"
+                    />
+                  ) : (
+                    <div className="text-muted-foreground border rounded-md p-4 bg-gray-50 dark:bg-gray-900/50">
+                      Full payment of {formatCurrency(invoice.amount)} due on {new Date(invoice.dueDate).toLocaleDateString()}
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="contract" className="mt-6" data-testid="contract-tab">
+                {isClientView && invoice.contractStatus !== 'accepted' && (
+                  <Button onClick={handleAcceptContract} className="mb-4 no-print">
+                    <Check className="h-4 w-4 mr-2" />
+                    Accept Contract Terms
+                  </Button>
+                )}
+                  
+                {invoice.contractStatus === 'accepted' && (
+                  <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-md flex items-center gap-2">
+                    <FileCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    <span className="text-green-800 dark:text-green-400">
+                      This contract has been accepted
+                    </span>
+                  </div>
+                )}
+                  
+                <div className="flex items-center mb-3">
+                  <FileText className="h-5 w-5 mr-2" />
+                  <h4 className="text-lg font-semibold">Contract Terms</h4>
+                </div>
+                <div className="border rounded-md">
+                  {invoice.contractTerms ? (
+                    <RichTextEditor
+                      value={invoice.contractTerms}
+                      onChange={() => {}}
+                      readOnly={true}
+                      className="rich-text-editor"
+                    />
+                  ) : (
+                    <div className="p-4 text-muted-foreground">
+                      No contract terms provided.
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+          
+          <CardFooter className="justify-end gap-2 flex-wrap pt-4 border-t">
+            {!isClientView && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={handleCopyInvoiceLink}
+                  className="no-print"
+                >
+                  <LinkIcon className="h-4 w-4 mr-2" />
+                  Copy Invoice Link
+                </Button>
+                <Button
+                  variant="default"
+                  onClick={handleDownloadInvoice}
+                  disabled={generatingPdf}
+                  className="no-print"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  {generatingPdf ? "Generating PDF..." : "Download Invoice PDF"}
+                </Button>
+              </>
+            )}
+            
+            {isClientView && (
+              <Button
+                variant="default"
+                onClick={handleDownloadInvoice}
+                disabled={generatingPdf}
+                className="no-print"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                {generatingPdf ? "Generating PDF..." : "Download Invoice PDF"}
+              </Button>
+            )}
+          </CardFooter>
+        </Card>
+      </div>
+
+      <style>
+        {`
+          @media print {
+            .container-fluid {
+              max-width: 794px !important;
+              padding: 0 !important;
+              margin: 0 !important;
+            }
+            .card {
+              box-shadow: none !important;
+              border: none !important;
+              width: 100% !important;
+              max-width: 794px !important;
+            }
+            [data-testid="tabs-list"] {
+              display: none !important;
+            }
+            [data-testid="invoice-tab"],
+            [data-testid="contract-tab"] {
+              display: block !important;
+            }
+            [data-testid="contract-tab"] {
+              page-break-before: always !important;
+              margin-top: 0 !important;
+              padding-top: 16px !important;
+            }
+            .grid {
+              display: block !important;
+            }
+            .md\\:grid-cols-2 {
+              display: flex !important;
+              flex-direction: row !important;
+              gap: 24px !important;
+              flex-wrap: nowrap !important;
+            }
+            .md\\:grid-cols-2 > div {
+              flex: 1 !important;
+              max-width: 50% !important;
+            }
+            .md\\:flex.justify-between {
+              display: flex !important;
+              flex-direction: row !important;
+              align-items: start !important;
+              flex-wrap: nowrap !important;
+            }
+            .md\\:flex-1 {
+              flex: 1 !important;
+            }
+            .md\\:pr-4 {
+              padding-right: 16px !important;
+            }
+            .md\\:min-w-\\[260px\\] {
+              min-width: 260px !important;
+            }
+            .md\\:justify-end {
+              justify-content: flex-end !important;
+            }
+            .rich-text-editor {
+              max-width: 100% !important;
+              overflow: hidden !important;
+              word-wrap: break-word !important;
+            }
+            .rich-text-editor * {
+              max-width: 100% !important;
+              word-wrap: break-word !important;
+            }
+            .mt-6 {
+              page-break-before: auto !important;
+            }
+            .invoice-item {
+              page-break-inside: avoid !important;
+            }
+            .payment-schedule-table {
+              page-break-inside: avoid !important;
+            }
+          }
+        `}
+      </style>
+    </PageTransition>
+  );
+};
+
+export default InvoiceView;

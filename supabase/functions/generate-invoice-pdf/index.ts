@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import jspdf from 'https://esm.sh/jspdf@2.5.1';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
@@ -347,8 +346,23 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
     const contentWidth = pageWidth - (margin * 2);
     
     let y = margin;
+
+    // Function to add page numbers to the footer
+    const addPageNumbers = () => {
+      const totalPages = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
+        
+        // Add company name to footer
+        doc.text(invoiceData.company.name, margin, pageHeight - 10);
+      }
+    };
     
-    // Add header with company information and invoice details
+    // HEADER SECTION
+    // Add logo if available, otherwise company name
     if (invoiceData.company.logoUrl) {
       try {
         const response = await fetch(invoiceData.company.logoUrl);
@@ -356,7 +370,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
         const logo = await blobToBase64(blob);
         
         // Calculate logo dimensions (max height 20mm, maintain aspect ratio)
-        const maxLogoHeight = 20;
+        const maxLogoHeight = 25;
         const imgProps = doc.getImageProperties(logo);
         const aspectRatio = imgProps.width / imgProps.height;
         const logoHeight = Math.min(maxLogoHeight, imgProps.height);
@@ -364,21 +378,20 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
         
         // Add logo
         doc.addImage(logo, 'PNG', margin, y, logoWidth, logoHeight);
-        y += logoHeight + 5;
       } catch (logoError) {
         console.error('Error adding logo:', logoError);
-        // Continue without logo if there's an error
-        y += 5;
+        // Add company name if logo fails
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text(invoiceData.company.name, margin, y + 8);
       }
     } else {
-      // Add company name if no logo
       doc.setFontSize(16);
       doc.setFont('helvetica', 'bold');
       doc.text(invoiceData.company.name, margin, y + 8);
-      y += 15;
     }
     
-    // Company details
+    // Add company details to top right
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     
@@ -388,111 +401,99 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
     if (invoiceData.company.phone) companyInfo.push(`Phone: ${invoiceData.company.phone}`);
     if (invoiceData.company.website) companyInfo.push(`Website: ${invoiceData.company.website}`);
     
+    const companyDetailsX = pageWidth - margin - 80;
+    let companyDetailsY = y;
+    
     companyInfo.forEach(info => {
-      doc.text(info, margin, y);
-      y += 4;
+      doc.text(info, companyDetailsX, companyDetailsY, { align: 'left' });
+      companyDetailsY += 5;
     });
     
-    // Invoice header
-    doc.setFontSize(14);
+    // Move past the header section
+    y += 30;
+    
+    // INVOICE TITLE SECTION
+    doc.setFontSize(20);
     doc.setFont('helvetica', 'bold');
-    doc.text('INVOICE', pageWidth - margin - 30, margin);
+    doc.text('INVOICE', margin, y);
     
     doc.setFontSize(11);
-    doc.text(`# ${invoiceData.number}`, pageWidth - margin - 30, margin + 7);
+    doc.text(`Invoice #${invoiceData.number}`, margin, y + 8);
     
-    // Add invoice details
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-    
-    const infoX = pageWidth - margin - 40;
-    const infoLabelX = infoX - 25;
-    
-    let infoY = margin + 15;
-    
-    doc.setFont('helvetica', 'bold');
-    doc.text('Invoice Date:', infoLabelX, infoY);
-    infoY += 5;
-    doc.text('Due Date:', infoLabelX, infoY);
-    infoY += 5;
-    doc.text('Status:', infoLabelX, infoY);
-    
-    doc.setFont('helvetica', 'normal');
-    
-    infoY = margin + 15;
-    doc.text(new Date(invoiceData.date).toLocaleDateString(), infoX, infoY);
-    infoY += 5;
-    doc.text(new Date(invoiceData.dueDate).toLocaleDateString(), infoX, infoY);
-    infoY += 5;
-    doc.text(invoiceData.status.toUpperCase(), infoX, infoY);
-    
-    y += 10;
-    
-    // Client and billing info section
+    // Add a separator line
     doc.setDrawColor(220, 220, 220);
-    doc.setFillColor(248, 248, 248);
-    doc.roundedRect(margin, y, contentWidth, 32, 2, 2, 'FD');
+    doc.line(margin, y + 12, pageWidth - margin, y + 12);
     
-    // Client info
+    y += 20;
+    
+    // INVOICE DETAILS & CLIENT SECTION (2-column layout)
+    // Client info on left
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
-    doc.text('BILL TO:', margin + 5, y + 8);
+    doc.text('BILL TO:', margin, y);
     
     doc.setFont('helvetica', 'normal');
-    doc.text(invoiceData.client.name, margin + 5, y + 14);
+    doc.text(invoiceData.client.name, margin, y + 6);
     
-    let clientY = y + 20;
+    let clientY = y + 12;
     if (invoiceData.client.email) {
-      doc.text(`Email: ${invoiceData.client.email}`, margin + 5, clientY);
+      doc.text(`Email: ${invoiceData.client.email}`, margin, clientY);
       clientY += 5;
     }
     if (invoiceData.client.phone) {
-      doc.text(`Phone: ${invoiceData.client.phone}`, margin + 5, clientY);
+      doc.text(`Phone: ${invoiceData.client.phone}`, margin, clientY);
       clientY += 5;
     }
     if (invoiceData.client.address) {
-      doc.text(`Address: ${invoiceData.client.address}`, margin + 5, clientY);
+      doc.text(`Address: ${invoiceData.client.address}`, margin, clientY);
     }
     
-    // Job info if available
+    // Invoice details on right
+    const invoiceDetailsX = pageWidth / 2;
+    let invoiceDetailsY = y;
+    
+    doc.setFont('helvetica', 'bold');
+    doc.text('INVOICE DETAILS:', invoiceDetailsX, invoiceDetailsY);
+    invoiceDetailsY += 6;
+    
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Date: ${new Date(invoiceData.date).toLocaleDateString()}`, invoiceDetailsX, invoiceDetailsY);
+    invoiceDetailsY += 5;
+    
+    doc.text(`Due Date: ${new Date(invoiceData.dueDate).toLocaleDateString()}`, invoiceDetailsX, invoiceDetailsY);
+    invoiceDetailsY += 5;
+    
+    doc.text(`Status: ${invoiceData.status.toUpperCase()}`, invoiceDetailsX, invoiceDetailsY);
+    invoiceDetailsY += 5;
+    
+    // Add job info if available
     if (invoiceData.job) {
       doc.setFont('helvetica', 'bold');
-      doc.text('JOB:', pageWidth / 2, y + 8);
-      
-      doc.setFont('helvetica', 'normal');
-      doc.text(invoiceData.job.title, pageWidth / 2, y + 14);
+      doc.text(`Job: ${invoiceData.job.title}`, invoiceDetailsX, invoiceDetailsY);
+      invoiceDetailsY += 5;
       
       if (invoiceData.job.date) {
-        doc.text(`Job Date: ${invoiceData.job.date}`, pageWidth / 2, y + 20);
-      }
-      
-      if (invoiceData.job.description) {
-        const desc = doc.splitTextToSize(
-          stripHtml(invoiceData.job.description), 
-          contentWidth / 2 - 10
-        );
-        if (desc.length > 0) {
-          doc.text(desc.slice(0, 2), pageWidth / 2, y + 26);
-        }
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Job Date: ${invoiceData.job.date}`, invoiceDetailsX, invoiceDetailsY);
       }
     }
     
-    y += 40;
+    y += 35;
     
-    // Invoice items table
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.text('INVOICE ITEMS', margin, y);
-    
-    y += 8;
-    
+    // LINE ITEMS SECTION
     if (invoiceData.items && invoiceData.items.length > 0) {
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text('INVOICE ITEMS', margin, y);
+      
+      y += 8;
+      
       // Use autotable for invoice items
       doc.setFontSize(9);
       
       // Define table header and rows
       const tableHeaders = [
-        { header: 'Package/Service', dataKey: 'name' },
+        { header: 'Item', dataKey: 'name' },
         { header: 'Description', dataKey: 'description' },
         { header: 'Qty', dataKey: 'quantity' },
         { header: 'Rate', dataKey: 'rate' },
@@ -509,15 +510,13 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
         };
       });
       
-      const startY = y;
-      
       // @ts-ignore - using autotable plugin
       autoTable(doc, {
         head: [tableHeaders.map(h => h.header)],
         body: tableData.map(row => 
           tableHeaders.map(h => row[h.dataKey as keyof typeof row])
         ),
-        startY: startY,
+        startY: y,
         margin: { left: margin, right: margin },
         headStyles: { 
           fillColor: [240, 240, 240], 
@@ -530,7 +529,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
           lineWidth: 0.1
         },
         columnStyles: {
-          0: { cellWidth: 35 },  // Package/Service
+          0: { cellWidth: 35 },  // Item
           1: { cellWidth: 'auto' },  // Description
           2: { cellWidth: 15, halign: 'center' },  // Qty
           3: { cellWidth: 25, halign: 'right' },  // Rate
@@ -553,18 +552,17 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       doc.text('Total:', pageWidth - margin - 35, y);
       doc.text(`$${invoiceData.amount.toFixed(2)}`, pageWidth - margin, y, { align: 'right' });
       
-      y += 10;
-    } else {
-      // If no items, just say so
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      doc.text('No items in this invoice.', margin, y);
-      y += 10;
+      y += 15;
     }
     
-    // Payment schedule section
+    // PAYMENT SCHEDULE SECTION
     if (invoiceData.paymentSchedules && invoiceData.paymentSchedules.length > 0) {
-      y += 5;
+      // Check if we need to add a new page
+      if (y > pageHeight - 80) {
+        doc.addPage();
+        y = margin;
+      }
+      
       doc.setFontSize(11);
       doc.setFont('helvetica', 'bold');
       doc.text('PAYMENT SCHEDULE', margin, y);
@@ -575,24 +573,20 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       doc.setFontSize(9);
       
       const paymentHeaders = [
-        { header: 'Description', dataKey: 'description' },
         { header: 'Due Date', dataKey: 'dueDate' },
-        { header: 'Percentage', dataKey: 'percentage' },
+        { header: 'Description', dataKey: 'description' },
         { header: 'Amount', dataKey: 'amount' },
         { header: 'Status', dataKey: 'status' }
       ];
       
       const paymentData = invoiceData.paymentSchedules.map(schedule => {
         return {
-          description: schedule.description || '',
           dueDate: new Date(schedule.dueDate).toLocaleDateString(),
-          percentage: `${schedule.percentage}%`,
+          description: schedule.description || '',
           amount: `$${schedule.amount.toFixed(2)}`,
           status: schedule.status.toUpperCase()
         };
       });
-      
-      const paymentStartY = y;
       
       // @ts-ignore - using autotable plugin
       autoTable(doc, {
@@ -600,7 +594,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
         body: paymentData.map(row => 
           paymentHeaders.map(h => row[h.dataKey as keyof typeof row])
         ),
-        startY: paymentStartY,
+        startY: y,
         margin: { left: margin, right: margin },
         headStyles: { 
           fillColor: [240, 240, 240], 
@@ -613,11 +607,10 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
           lineWidth: 0.1
         },
         columnStyles: {
-          0: { cellWidth: 'auto' },  // Description
-          1: { cellWidth: 25 },      // Due Date
-          2: { cellWidth: 25, halign: 'center' },  // Percentage
-          3: { cellWidth: 25, halign: 'right' },   // Amount
-          4: { cellWidth: 25, halign: 'center' }   // Status
+          0: { cellWidth: 30 },      // Due Date
+          1: { cellWidth: 'auto' },  // Description
+          2: { cellWidth: 30, halign: 'right' },   // Amount
+          3: { cellWidth: 30, halign: 'center' }   // Status
         },
         theme: 'grid',
         styles: {
@@ -652,48 +645,30 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       y = notesY + 15;
     }
     
-    // Add contract terms if available
+    // CONTRACT TERMS SECTION - Always start on a new page
     if (invoiceData.contractTerms) {
       console.log('Adding contract terms to PDF');
       
-      // Check if we need a new page
-      if (y > pageHeight - 80) {
-        doc.addPage();
-        y = margin;
-      }
+      // Always start contract terms on a new page
+      doc.addPage();
+      y = margin;
       
-      doc.setFontSize(11);
+      doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
       doc.text('CONTRACT TERMS', margin, y);
       
-      y += 8;
+      y += 10;
       
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
       
+      // Add contract terms as plain text with wrapping
       const contractY = addWrappedText(doc, invoiceData.contractTerms, margin, y, contentWidth);
       y = contractY + 10;
     }
     
-    // Footer
-    const footerY = pageHeight - 10;
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'italic');
-    doc.setTextColor(120, 120, 120);
-    doc.text(`Generated on ${new Date().toLocaleDateString()}`, margin, footerY);
-    
-    // Add status information
-    let statusText = '';
-    if (invoiceData.status === 'accepted') {
-      statusText = 'Invoice accepted';
-    }
-    if (invoiceData.contractStatus === 'accepted') {
-      statusText += statusText ? ' | Contract terms accepted' : 'Contract terms accepted';
-    }
-    
-    if (statusText) {
-      doc.text(statusText, pageWidth - margin, footerY, { align: 'right' });
-    }
+    // Add page numbers to all pages
+    addPageNumbers();
     
     // Return PDF as buffer
     return doc.output('arraybuffer');

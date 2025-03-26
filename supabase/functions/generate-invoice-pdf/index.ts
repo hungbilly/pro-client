@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import jspdf from 'https://esm.sh/jspdf@2.5.1';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
@@ -335,6 +336,15 @@ function addWrappedText(doc: any, text: string, x: number, y: number, maxWidth: 
   return y;
 }
 
+async function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
 async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
   console.log('Generating PDF for invoice:', invoiceData.number);
   console.log('Invoice data overview:', {
@@ -356,6 +366,9 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       unit: 'mm',
       format: 'a4',
     });
+    
+    // Add Inter font (similar to the web app font)
+    doc.setFont('helvetica');
     
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
@@ -535,7 +548,8 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       theme: 'plain',
       styles: {
         cellPadding: 1,
-        fontSize: 10
+        fontSize: 10,
+        font: 'helvetica'
       },
       columnStyles: {
         0: { cellWidth: 30, fontStyle: 'bold' },
@@ -583,12 +597,14 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
         headStyles: { 
           fillColor: [240, 240, 240], 
           textColor: [50, 50, 50],
-          fontStyle: 'bold' 
+          fontStyle: 'bold',
+          font: 'helvetica'
         },
         bodyStyles: { 
           fontSize: 9,
           lineColor: [220, 220, 220],
-          lineWidth: 0.1
+          lineWidth: 0.1,
+          font: 'helvetica'
         },
         columnStyles: {
           0: { cellWidth: 35 },
@@ -601,6 +617,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
         styles: {
           overflow: 'linebreak',
           cellPadding: 3,
+          font: 'helvetica'
         },
         didDrawPage: (data: any) => {
           y = data.cursor.y + 5;
@@ -665,12 +682,14 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
         headStyles: { 
           fillColor: [240, 240, 240], 
           textColor: [50, 50, 50],
-          fontStyle: 'bold' 
+          fontStyle: 'bold',
+          font: 'helvetica'
         },
         bodyStyles: { 
           fontSize: 9,
           lineColor: [220, 220, 220],
-          lineWidth: 0.1
+          lineWidth: 0.1,
+          font: 'helvetica'
         },
         columnStyles: {
           0: { cellWidth: 'auto' },
@@ -683,6 +702,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
         styles: {
           overflow: 'linebreak',
           cellPadding: 3,
+          font: 'helvetica'
         },
         didDrawPage: (data: any) => {
           y = data.cursor.y + 10;
@@ -749,3 +769,26 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
           isHeading,
           yPosition: y,
         });
+        
+        if (isHeading) {
+          doc.setFont('helvetica', 'bold');
+          addWrappedText(doc, trimmedParagraph, margin, y, contentWidth, 5, pageHeight, margin);
+          y += 7;
+        } else {
+          doc.setFont('helvetica', 'normal');
+          const paragraphY = addWrappedText(doc, trimmedParagraph, margin, y, contentWidth, 5, pageHeight, margin);
+          y = paragraphY + 5;
+        }
+      });
+    }
+    
+    // Add footers to all pages
+    addPageFooter();
+    
+    console.log('PDF generation completed');
+    return doc.output('arraybuffer');
+  } catch (err) {
+    console.error('Error generating PDF:', err);
+    throw new Error('Failed to generate PDF');
+  }
+}

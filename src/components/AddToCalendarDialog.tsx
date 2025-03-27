@@ -2,10 +2,9 @@
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Calendar, CheckCircle, AlertCircle } from 'lucide-react';
+import { Calendar, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { Client, Job } from '@/types';
-import { supabase } from '@/integrations/supabase/client';
 
 interface AddToCalendarDialogProps {
   isOpen: boolean;
@@ -20,39 +19,50 @@ const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({
   job, 
   client 
 }) => {
-  const [isAdding, setIsAdding] = React.useState(false);
-  const [isSuccess, setIsSuccess] = React.useState(false);
-  const [isError, setIsError] = React.useState(false);
-
-  const addToCalendar = async () => {
+  const openGoogleCalendar = () => {
     if (!job || !client) return;
-
-    setIsAdding(true);
-    setIsSuccess(false);
-    setIsError(false);
     
     try {
-      const { data, error } = await supabase.functions.invoke('add-to-calendar', {
-        body: { 
-          jobId: job.id,
-          clientId: client.id
+      // Format the date and time for Google Calendar URL
+      const formattedDate = job.date || '';
+      
+      // Set default title and description
+      const title = encodeURIComponent(`${job.title} - ${client.name}`);
+      const description = encodeURIComponent(`Job: ${job.description || ''}\n\nClient: ${client.name}\nEmail: ${client.email}\nPhone: ${client.phone}`);
+      
+      // Set location if available
+      const location = encodeURIComponent(job.location || client.address || '');
+      
+      // Format dates for Google Calendar
+      let dates = '';
+      
+      if (formattedDate) {
+        if (job.isFullDay) {
+          // For all-day events, use date format (no time component)
+          dates = `${formattedDate}/${formattedDate}`;
+        } else {
+          // For events with time, use full ISO format
+          const startTime = job.startTime || '09:00';
+          const endTime = job.endTime || '17:00';
+          
+          // Create ISO date strings (assumes UTC)
+          const startDateTime = `${formattedDate}T${startTime}:00Z`;
+          const endDateTime = `${formattedDate}T${endTime}:00Z`;
+          
+          dates = `${startDateTime}/${endDateTime}`;
         }
-      });
-
-      if (error) {
-        console.error('Error adding to calendar:', error);
-        setIsError(true);
-        toast.error('Failed to add to calendar.');
-      } else {
-        setIsSuccess(true);
-        toast.success('Event added to Google Calendar!');
       }
+      
+      // Construct Google Calendar URL
+      const googleCalendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&details=${description}&location=${location}&dates=${dates.replace(/-/g, '')}`;
+      
+      // Open Google Calendar in a new tab
+      window.open(googleCalendarUrl, '_blank');
+      
+      toast.success('Google Calendar opened in new tab');
     } catch (error) {
-      console.error('Error invoking add-to-calendar function:', error);
-      setIsError(true);
-      toast.error('Failed to add to calendar.');
-    } finally {
-      setIsAdding(false);
+      console.error('Error opening Google Calendar:', error);
+      toast.error('Failed to open Google Calendar');
     }
   };
 
@@ -70,53 +80,30 @@ const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({
         </DialogHeader>
         
         <div className="py-4">
-          {!isSuccess && !isError && (
-            <div className="text-sm text-muted-foreground">
-              <p className="mb-2">Event details:</p>
-              <ul className="list-disc pl-5 space-y-1">
-                <li><span className="font-medium">Title:</span> {job?.title}</li>
-                <li><span className="font-medium">Date:</span> {job?.date}</li>
-                <li><span className="font-medium">Client:</span> {client?.name}</li>
-                {job?.location && (
-                  <li><span className="font-medium">Location:</span> {job?.location}</li>
-                )}
-              </ul>
-            </div>
-          )}
-          
-          {isSuccess && (
-            <div className="flex items-center gap-3 p-3 bg-green-50 text-green-700 rounded-md">
-              <CheckCircle className="h-5 w-5 flex-shrink-0" />
-              <p className="text-sm">Successfully added to your Google Calendar.</p>
-            </div>
-          )}
-          
-          {isError && (
-            <div className="flex items-center gap-3 p-3 bg-red-50 text-red-700 rounded-md">
-              <AlertCircle className="h-5 w-5 flex-shrink-0" />
-              <p className="text-sm">Failed to add to Google Calendar. Please try again later.</p>
-            </div>
-          )}
+          <div className="text-sm text-muted-foreground">
+            <p className="mb-2">Event details:</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li><span className="font-medium">Title:</span> {job?.title}</li>
+              <li><span className="font-medium">Date:</span> {job?.date}</li>
+              <li><span className="font-medium">Client:</span> {client?.name}</li>
+              {job?.location && (
+                <li><span className="font-medium">Location:</span> {job?.location}</li>
+              )}
+            </ul>
+          </div>
         </div>
         
         <DialogFooter>
-          {!isSuccess ? (
-            <>
-              <Button variant="outline" onClick={onClose} disabled={isAdding}>
-                Skip
-              </Button>
-              <Button 
-                onClick={addToCalendar} 
-                disabled={isAdding || isSuccess} 
-                className="gap-2"
-              >
-                {isAdding ? "Adding..." : "Add to Calendar"}
-                <Calendar className="h-4 w-4" />
-              </Button>
-            </>
-          ) : (
-            <Button onClick={onClose}>Done</Button>
-          )}
+          <Button variant="outline" onClick={onClose}>
+            Skip
+          </Button>
+          <Button 
+            onClick={openGoogleCalendar} 
+            className="gap-2"
+          >
+            Open Google Calendar
+            <ExternalLink className="h-4 w-4" />
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

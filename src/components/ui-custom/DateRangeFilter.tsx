@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { DateRange } from 'react-day-picker';
@@ -12,7 +11,6 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
 
 interface DateRangeFilterProps {
   dateRange: DateRange | undefined;
@@ -228,14 +226,6 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
               />
             </PopoverContent>
           </Popover>
-        </div>
-      )}
-      
-      {dateRange && dateRange.from && (
-        <div className="mt-2">
-          <Badge variant="outline" className="bg-muted/50 text-xs px-2 py-0.5">
-            {formatDateRange(dateRange)}
-          </Badge>
         </div>
       )}
     </div>

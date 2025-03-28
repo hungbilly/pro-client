@@ -15,6 +15,7 @@ import ExportDateRangeDialog from '@/components/ExportDateRangeDialog';
 import { exportDataToFile, formatInvoicesForExport } from '@/utils/exportUtils';
 import { DateRange } from 'react-day-picker';
 import { toast } from 'sonner';
+import DateRangeFilter from '@/components/ui-custom/DateRangeFilter';
 
 import {
   Table,
@@ -54,6 +55,7 @@ const Invoices = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [invoiceToDelete, setInvoiceToDelete] = useState<string | null>(null);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const queryClient = useQueryClient();
   
   const { data: invoices = [], isLoading, error } = useQuery({
@@ -143,12 +145,34 @@ const Invoices = () => {
     }
   };
 
-  const filteredInvoices = invoices.filter(invoice => 
-    invoice.number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    getClientName(invoice.clientId).toLowerCase().includes(searchQuery.toLowerCase()) ||
-    invoice.status.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (getJobName(invoice.jobId) && getJobName(invoice.jobId).toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  // Filter invoices based on search query and date range
+  const filteredInvoices = invoices.filter(invoice => {
+    // Text search filter
+    const matchesSearch = 
+      invoice.number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      getClientName(invoice.clientId).toLowerCase().includes(searchQuery.toLowerCase()) ||
+      invoice.status.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (getJobName(invoice.jobId) && getJobName(invoice.jobId).toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    // Date range filter
+    let matchesDateRange = true;
+    if (dateRange?.from) {
+      const invoiceDate = invoice.date ? new Date(invoice.date) : new Date(invoice.createdAt);
+      
+      const fromDate = new Date(dateRange.from);
+      fromDate.setHours(0, 0, 0, 0);
+      
+      if (dateRange.to) {
+        const toDate = new Date(dateRange.to);
+        toDate.setHours(23, 59, 59, 999);
+        matchesDateRange = invoiceDate >= fromDate && invoiceDate <= toDate;
+      } else {
+        matchesDateRange = invoiceDate >= fromDate;
+      }
+    }
+    
+    return matchesSearch && matchesDateRange;
+  });
 
   const handleExportOpen = () => {
     setIsExportDialogOpen(true);
@@ -158,12 +182,12 @@ const Invoices = () => {
     setIsExportDialogOpen(false);
   };
 
-  const handleExport = (format: 'csv' | 'xlsx', dateRange: DateRange | null) => {
+  const handleExport = (format: 'csv' | 'xlsx', exportDateRange: DateRange | null) => {
     const formattedData = formatInvoicesForExport(filteredInvoices, clients, jobs);
     exportDataToFile(formattedData, {
       filename: 'invoices-export',
       format,
-      dateRange
+      dateRange: exportDateRange || dateRange || null
     });
     toast.success(`Invoices exported as ${format.toUpperCase()} successfully`);
   };
@@ -216,8 +240,14 @@ const Invoices = () => {
         </div>
         
         <Card className="backdrop-blur-sm bg-white/80 border-transparent shadow-soft">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle>All Invoices</CardTitle>
+            <div className="flex gap-2">
+              <DateRangeFilter
+                dateRange={dateRange}
+                onDateRangeChange={setDateRange}
+              />
+            </div>
           </CardHeader>
           <CardContent>
             <SearchBox
@@ -247,7 +277,16 @@ const Invoices = () => {
               </div>
             ) : filteredInvoices.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-muted-foreground">No invoices match your search</p>
+                <p className="text-muted-foreground">No invoices match your search or date filter</p>
+                {dateRange?.from && (
+                  <Button 
+                    variant="ghost" 
+                    className="mt-2" 
+                    onClick={() => setDateRange(undefined)}
+                  >
+                    Clear Date Filter
+                  </Button>
+                )}
               </div>
             ) : (
               <div className="rounded-md border">

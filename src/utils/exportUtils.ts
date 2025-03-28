@@ -14,7 +14,10 @@ interface ExportOptions {
 
 const getDateValue = (item: Record<string, any>): Date | null => {
   // Try various date field names that might exist in the data
-  const dateFields = ['createdAt', 'created_at', 'date', 'dueDate', 'due_date', 'shootingDate', 'shooting_date'];
+  const dateFields = [
+    'createdAt', 'created_at', 'date', 'dueDate', 'due_date', 
+    'shootingDate', 'shooting_date', 'updatedAt', 'updated_at'
+  ];
   
   for (const field of dateFields) {
     if (item[field] && item[field] !== '') {

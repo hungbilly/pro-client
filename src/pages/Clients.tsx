@@ -15,6 +15,7 @@ import SearchBox from '@/components/ui-custom/SearchBox';
 import ExportDateRangeDialog from '@/components/ExportDateRangeDialog';
 import { exportDataToFile, formatClientsForExport } from '@/utils/exportUtils';
 import { DateRange } from 'react-day-picker';
+import DateRangeFilter from '@/components/ui-custom/DateRangeFilter';
 
 import {
   DropdownMenu,
@@ -70,6 +71,7 @@ const ClientsTable = () => {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
   
   const { data: clients = [], isLoading, error, refetch } = useQuery({
     queryKey: ['clients', selectedCompanyId],
@@ -114,12 +116,32 @@ const ClientsTable = () => {
     navigate(`/client/${clientId}`);
   };
 
-  // Filter clients based on search query
-  const filteredClients = clients.filter(client => 
-    client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    client.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    client.phone.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter clients based on search query and date range
+  const filteredClients = clients.filter(client => {
+    // Text search filter
+    const matchesSearch = client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      client.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      client.phone.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    // Date range filter
+    let matchesDateRange = true;
+    if (dateRange?.from) {
+      const clientDate = new Date(client.createdAt);
+      
+      const fromDate = new Date(dateRange.from);
+      fromDate.setHours(0, 0, 0, 0);
+      
+      if (dateRange.to) {
+        const toDate = new Date(dateRange.to);
+        toDate.setHours(23, 59, 59, 999);
+        matchesDateRange = clientDate >= fromDate && clientDate <= toDate;
+      } else {
+        matchesDateRange = clientDate >= fromDate;
+      }
+    }
+    
+    return matchesSearch && matchesDateRange;
+  });
 
   const handleExportOpen = () => {
     setIsExportDialogOpen(true);
@@ -129,12 +151,12 @@ const ClientsTable = () => {
     setIsExportDialogOpen(false);
   };
 
-  const handleExport = (format: 'csv' | 'xlsx', dateRange: DateRange | null) => {
+  const handleExport = (format: 'csv' | 'xlsx', exportDateRange: DateRange | null) => {
     const formattedData = formatClientsForExport(filteredClients);
     exportDataToFile(formattedData, {
       filename: 'clients-export',
       format,
-      dateRange
+      dateRange: exportDateRange || dateRange || null
     });
     toast.success(`Clients exported as ${format.toUpperCase()} successfully`);
   };
@@ -176,19 +198,26 @@ const ClientsTable = () => {
       />
 
       <Card className="backdrop-blur-sm bg-white/80 border-transparent shadow-soft">
-        <CardContent className="pt-6">
-          <div className="flex justify-between mb-4">
-            <SearchBox 
-              placeholder="Search clients by name, email, or phone..." 
-              value={searchQuery} 
-              onChange={(e) => setSearchQuery(e.target.value)} 
-              className="w-full max-w-md"
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle>All Clients</CardTitle>
+          <div className="flex gap-2">
+            <DateRangeFilter
+              dateRange={dateRange}
+              onDateRangeChange={setDateRange}
             />
-            <Button variant="outline" onClick={handleExportOpen} className="ml-2">
+            <Button variant="outline" onClick={handleExportOpen}>
               <Download className="h-4 w-4 mr-2" />
               Export
             </Button>
           </div>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <SearchBox 
+            placeholder="Search clients by name, email, or phone..." 
+            value={searchQuery} 
+            onChange={(e) => setSearchQuery(e.target.value)} 
+            className="mb-4"
+          />
           
           <div className="rounded-md border">
             <Table>
@@ -205,7 +234,7 @@ const ClientsTable = () => {
                 {filteredClients.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                      No clients match your search
+                      No clients match your search or date filter
                     </TableCell>
                   </TableRow>
                 ) : (

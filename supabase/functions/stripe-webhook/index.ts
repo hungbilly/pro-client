@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from 'https://esm.sh/stripe@14.21.0';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
@@ -28,9 +27,9 @@ serve(async (req) => {
     // Get the raw request body
     const body = await req.text();
     
-    // Initialize Stripe with the secret key
+    // Initialize Stripe with the secret key and updated API version
     const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
-      apiVersion: '2023-10-16',
+      apiVersion: '2025-02-24', // Updated to match the dashboard version
     });
 
     // Initialize Supabase client

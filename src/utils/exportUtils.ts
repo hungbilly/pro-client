@@ -1,29 +1,56 @@
-
 import { saveAs } from 'file-saver';
 import * as XLSX from 'xlsx';
+import { DateRange } from 'react-day-picker';
 
 type ExportFormat = 'csv' | 'xlsx';
 
 interface ExportOptions {
   filename: string;
   format: ExportFormat;
+  dateRange?: DateRange | null;
 }
 
 export const exportDataToFile = <T extends Record<string, any>>(
   data: T[],
   options: ExportOptions
 ) => {
-  const { filename, format } = options;
+  const { filename, format, dateRange } = options;
   
   if (data.length === 0) {
     console.error('No data to export');
     return;
   }
   
+  // Filter data by date range if provided
+  let filteredData = data;
+  if (dateRange?.from) {
+    const fromDate = new Date(dateRange.from);
+    fromDate.setHours(0, 0, 0, 0);
+    
+    let toDate: Date;
+    if (dateRange.to) {
+      toDate = new Date(dateRange.to);
+      toDate.setHours(23, 59, 59, 999);
+    } else {
+      toDate = new Date();
+      toDate.setHours(23, 59, 59, 999);
+    }
+    
+    filteredData = data.filter(item => {
+      const itemDate = new Date(item.createdAt || item.created_at || item.date);
+      return itemDate >= fromDate && itemDate <= toDate;
+    });
+    
+    if (filteredData.length === 0) {
+      console.error('No data matches the selected date range');
+      return;
+    }
+  }
+  
   if (format === 'csv') {
-    exportToCSV(data, filename);
+    exportToCSV(filteredData, filename);
   } else if (format === 'xlsx') {
-    exportToXLSX(data, filename);
+    exportToXLSX(filteredData, filename);
   }
 };
 
@@ -94,4 +121,50 @@ export const formatExpensesForExport = (expenses: any[]) => {
     'Category': expense.category.name,
     'Amount': expense.amount.toFixed(2)
   }));
+};
+
+export const formatClientsForExport = (clients: any[]) => {
+  return clients.map(client => ({
+    'Name': client.name,
+    'Email': client.email,
+    'Phone': client.phone,
+    'Address': client.address || 'N/A',
+    'Created': client.createdAt ? new Date(client.createdAt).toLocaleDateString() : 'N/A',
+    'Notes': client.notes || ''
+  }));
+};
+
+export const formatJobsForExport = (jobs: any[], clients?: any[]) => {
+  return jobs.map(job => {
+    const clientName = clients?.find(c => c.id === job.clientId)?.name || 'Unknown Client';
+    
+    return {
+      'Title': job.title,
+      'Client': clientName,
+      'Date': job.date ? new Date(job.date).toLocaleDateString() : 'N/A',
+      'Time': job.isFullDay ? 'Full Day' : (job.startTime && job.endTime ? `${job.startTime} - ${job.endTime}` : 'N/A'),
+      'Location': job.location || 'N/A',
+      'Status': job.status.charAt(0).toUpperCase() + job.status.slice(1),
+      'Description': job.description || '',
+      'Created': job.createdAt ? new Date(job.createdAt).toLocaleDateString() : 'N/A'
+    };
+  });
+};
+
+export const formatInvoicesForExport = (invoices: any[], clients?: any[], jobs?: any[]) => {
+  return invoices.map(invoice => {
+    const clientName = clients?.find(c => c.id === invoice.clientId)?.name || 'Unknown Client';
+    const jobTitle = jobs?.find(j => j.id === invoice.jobId)?.title || 'N/A';
+    
+    return {
+      'Invoice #': invoice.number || 'Draft',
+      'Client': clientName,
+      'Job': jobTitle,
+      'Date': invoice.date ? new Date(invoice.date).toLocaleDateString() : 'N/A',
+      'Due Date': invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString() : 'N/A',
+      'Amount': invoice.amount ? invoice.amount.toFixed(2) : '0.00',
+      'Status': invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1),
+      'Created': invoice.createdAt ? new Date(invoice.createdAt).toLocaleDateString() : 'N/A'
+    };
+  });
 };

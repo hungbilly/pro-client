@@ -5,11 +5,15 @@ import { getJobs } from '@/lib/storage';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Briefcase, MoreHorizontal, Eye, FileEdit } from 'lucide-react';
+import { Briefcase, MoreHorizontal, Eye, FileEdit, Download } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import AddJobButton from '@/components/ui-custom/AddJobButton';
 import SearchBox from '@/components/ui-custom/SearchBox';
+import ExportDateRangeDialog from '@/components/ExportDateRangeDialog';
+import { exportDataToFile, formatJobsForExport } from '@/utils/exportUtils';
+import { DateRange } from 'react-day-picker';
+import { toast } from 'sonner';
 
 import {
   Table,
@@ -34,6 +38,7 @@ const Jobs = () => {
   const selectedCompanyId = selectedCompany?.id;
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   
   const { data: jobs = [], isLoading, error } = useQuery({
     queryKey: ['jobs', selectedCompanyId],
@@ -84,17 +89,50 @@ const Jobs = () => {
     (job.location && job.location.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
+  const handleExportOpen = () => {
+    setIsExportDialogOpen(true);
+  };
+
+  const handleExportClose = () => {
+    setIsExportDialogOpen(false);
+  };
+
+  const handleExport = (format: 'csv' | 'xlsx', dateRange: DateRange | null) => {
+    const formattedData = formatJobsForExport(filteredJobs, clients);
+    exportDataToFile(formattedData, {
+      filename: 'jobs-export',
+      format,
+      dateRange
+    });
+    toast.success(`Jobs exported as ${format.toUpperCase()} successfully`);
+  };
+
   return (
     <PageTransition>
+      <ExportDateRangeDialog
+        isOpen={isExportDialogOpen}
+        onClose={handleExportClose}
+        onExport={handleExport}
+        title="Export Jobs"
+        description="Export your jobs data as CSV or Excel file"
+        count={filteredJobs.length}
+      />
+
       <div className="container mx-auto py-6 px-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
           <h1 className="text-3xl font-bold mb-4 sm:mb-0">Jobs</h1>
-          <AddJobButton />
+          <div className="flex gap-2">
+            <AddJobButton />
+          </div>
         </div>
         
         <Card className="backdrop-blur-sm bg-white/80 border-transparent shadow-soft">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle>All Jobs</CardTitle>
+            <Button variant="outline" onClick={handleExportOpen}>
+              <Download className="h-4 w-4 mr-2" />
+              Export
+            </Button>
           </CardHeader>
           <CardContent>
             <SearchBox

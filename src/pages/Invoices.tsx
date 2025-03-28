@@ -1,15 +1,19 @@
+
 import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getInvoices, deleteInvoice } from '@/lib/storage';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, MoreHorizontal, Receipt } from 'lucide-react';
+import { FileText, MoreHorizontal, Receipt, Download } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { formatCurrency } from '@/lib/utils';
 import CreateInvoiceModal from '@/components/ui-custom/CreateInvoiceModal';
 import SearchBox from '@/components/ui-custom/SearchBox';
+import ExportDateRangeDialog from '@/components/ExportDateRangeDialog';
+import { exportDataToFile, formatInvoicesForExport } from '@/utils/exportUtils';
+import { DateRange } from 'react-day-picker';
 import { toast } from 'sonner';
 
 import {
@@ -49,6 +53,7 @@ const Invoices = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [invoiceToDelete, setInvoiceToDelete] = useState<string | null>(null);
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const queryClient = useQueryClient();
   
   const { data: invoices = [], isLoading, error } = useQuery({
@@ -145,6 +150,24 @@ const Invoices = () => {
     (getJobName(invoice.jobId) && getJobName(invoice.jobId).toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
+  const handleExportOpen = () => {
+    setIsExportDialogOpen(true);
+  };
+
+  const handleExportClose = () => {
+    setIsExportDialogOpen(false);
+  };
+
+  const handleExport = (format: 'csv' | 'xlsx', dateRange: DateRange | null) => {
+    const formattedData = formatInvoicesForExport(filteredInvoices, clients, jobs);
+    exportDataToFile(formattedData, {
+      filename: 'invoices-export',
+      format,
+      dateRange
+    });
+    toast.success(`Invoices exported as ${format.toUpperCase()} successfully`);
+  };
+
   return (
     <PageTransition>
       <AlertDialog open={!!invoiceToDelete} onOpenChange={(open) => !open && setInvoiceToDelete(null)}>
@@ -168,13 +191,28 @@ const Invoices = () => {
         </AlertDialogContent>
       </AlertDialog>
 
+      <ExportDateRangeDialog
+        isOpen={isExportDialogOpen}
+        onClose={handleExportClose}
+        onExport={handleExport}
+        title="Export Invoices"
+        description="Export your invoices data as CSV or Excel file"
+        count={filteredInvoices.length}
+      />
+
       <div className="container mx-auto py-6 px-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
           <h1 className="text-3xl font-bold mb-4 sm:mb-0">Invoices</h1>
-          <Button onClick={openCreateModal}>
-            <FileText className="mr-2 h-4 w-4" />
-            <span>Create New Invoice</span>
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={openCreateModal}>
+              <FileText className="mr-2 h-4 w-4" />
+              <span>Create New Invoice</span>
+            </Button>
+            <Button variant="outline" onClick={handleExportOpen}>
+              <Download className="h-4 w-4 mr-2" />
+              Export
+            </Button>
+          </div>
         </div>
         
         <Card className="backdrop-blur-sm bg-white/80 border-transparent shadow-soft">

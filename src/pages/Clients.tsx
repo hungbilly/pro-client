@@ -6,12 +6,15 @@ import { getClients, deleteClient } from '@/lib/storage';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { UserPlus, Pencil, Trash2, FileEdit, FileText, Eye, MoreHorizontal } from 'lucide-react';
+import { UserPlus, Pencil, Trash2, FileEdit, FileText, Eye, MoreHorizontal, Download } from 'lucide-react';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { useAuth } from '@/context/AuthContext';
 import AddClientButton from '@/components/ui-custom/AddClientButton';
 import { toast } from 'sonner';
 import SearchBox from '@/components/ui-custom/SearchBox';
+import ExportDateRangeDialog from '@/components/ExportDateRangeDialog';
+import { exportDataToFile, formatClientsForExport } from '@/utils/exportUtils';
+import { DateRange } from 'react-day-picker';
 
 import {
   DropdownMenu,
@@ -40,7 +43,9 @@ const Clients = () => {
         <div className="container mx-auto py-6 px-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
             <h1 className="text-3xl font-bold mb-4 sm:mb-0">Clients</h1>
-            <AddClientButton />
+            <div className="flex gap-2">
+              <AddClientButton />
+            </div>
           </div>
           
           <ClientsTable />
@@ -64,6 +69,7 @@ const ClientsTable = () => {
   const selectedCompanyId = selectedCompany?.id;
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   
   const { data: clients = [], isLoading, error, refetch } = useQuery({
     queryKey: ['clients', selectedCompanyId],
@@ -115,6 +121,24 @@ const ClientsTable = () => {
     client.phone.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const handleExportOpen = () => {
+    setIsExportDialogOpen(true);
+  };
+
+  const handleExportClose = () => {
+    setIsExportDialogOpen(false);
+  };
+
+  const handleExport = (format: 'csv' | 'xlsx', dateRange: DateRange | null) => {
+    const formattedData = formatClientsForExport(filteredClients);
+    exportDataToFile(formattedData, {
+      filename: 'clients-export',
+      format,
+      dateRange
+    });
+    toast.success(`Clients exported as ${format.toUpperCase()} successfully`);
+  };
+
   if (isLoading) return <div>Loading clients...</div>;
   if (error) return <div>Error: {error.message}</div>;
 
@@ -142,14 +166,29 @@ const ClientsTable = () => {
         </AlertDialogContent>
       </AlertDialog>
 
+      <ExportDateRangeDialog
+        isOpen={isExportDialogOpen}
+        onClose={handleExportClose}
+        onExport={handleExport}
+        title="Export Clients"
+        description="Export your clients data as CSV or Excel file"
+        count={filteredClients.length}
+      />
+
       <Card className="backdrop-blur-sm bg-white/80 border-transparent shadow-soft">
         <CardContent className="pt-6">
-          <SearchBox 
-            placeholder="Search clients by name, email, or phone..." 
-            value={searchQuery} 
-            onChange={(e) => setSearchQuery(e.target.value)} 
-            className="mb-4"
-          />
+          <div className="flex justify-between mb-4">
+            <SearchBox 
+              placeholder="Search clients by name, email, or phone..." 
+              value={searchQuery} 
+              onChange={(e) => setSearchQuery(e.target.value)} 
+              className="w-full max-w-md"
+            />
+            <Button variant="outline" onClick={handleExportOpen} className="ml-2">
+              <Download className="h-4 w-4 mr-2" />
+              Export
+            </Button>
+          </div>
           
           <div className="rounded-md border">
             <Table>

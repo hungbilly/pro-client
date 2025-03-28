@@ -188,7 +188,7 @@ const Subscription = () => {
                   Try all premium features for 3 months
                 </CardDescription>
                 <div className="mt-4">
-                  <span className="text-3xl font-bold">$0</span>
+                  <span className="text-3xl font-bold">HK$0</span>
                   <span className="text-gray-500 ml-1">/ 3 months</span>
                 </div>
               </CardHeader>
@@ -234,7 +234,7 @@ const Subscription = () => {
                   After your trial ends
                 </CardDescription>
                 <div className="mt-4">
-                  <span className="text-3xl font-bold">$19.99</span>
+                  <span className="text-3xl font-bold">HK$50</span>
                   <span className="text-gray-500 ml-1">/ month</span>
                 </div>
               </CardHeader>

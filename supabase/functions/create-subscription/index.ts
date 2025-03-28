@@ -131,12 +131,12 @@ serve(async (req) => {
       line_items: [
         {
           price_data: {
-            currency: 'usd',
+            currency: 'hkd',
             product_data: {
               name: 'Premium Photography Business Management',
               description: 'Unlock all features of the photography business management platform',
             },
-            unit_amount: 1999, // $19.99 per month
+            unit_amount: 5000, // 50 HKD per month
             recurring: {
               interval: 'month',
             },

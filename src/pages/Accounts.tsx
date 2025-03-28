@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO, differenceInDays, startOfMonth, endOfMonth, startOfYear, endOfYear, subMonths } from 'date-fns';
@@ -46,6 +45,8 @@ import { format as formatDate } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FormMessage } from '@/components/ui/form';
+import ExportDialog from '@/components/ExportDialog';
+import { exportDataToFile, formatPaymentsForExport, formatExpensesForExport } from '@/utils/exportUtils';
 
 // Income tab - PaymentScheduleWithDetails type
 type PaymentScheduleWithDetails = {
@@ -153,6 +154,8 @@ const Accounts = () => {
     date?: string;
     amount?: string;
   }>({});
+
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -936,6 +939,52 @@ const Accounts = () => {
     });
   };
 
+  const handleExport = (format: 'csv' | 'xlsx') => {
+    if (activeTab === 'income') {
+      if (filteredPayments.length === 0) {
+        toast({
+          title: 'No data to export',
+          description: 'There are no payments matching your current filters.',
+          variant: 'destructive'
+        });
+        return;
+      }
+      
+      const formattedData = formatPaymentsForExport(filteredPayments);
+      exportDataToFile(formattedData, {
+        filename: `payments-export-${formatDate(new Date(), 'yyyy-MM-dd')}`,
+        format
+      });
+      
+      toast({
+        title: 'Export successful',
+        description: `Payments have been exported to ${format.toUpperCase()} format.`,
+        variant: 'default'
+      });
+    } else {
+      if (filteredExpenses.length === 0) {
+        toast({
+          title: 'No data to export',
+          description: 'There are no expenses matching your current filters.',
+          variant: 'destructive'
+        });
+        return;
+      }
+      
+      const formattedData = formatExpensesForExport(filteredExpenses);
+      exportDataToFile(formattedData, {
+        filename: `expenses-export-${formatDate(new Date(), 'yyyy-MM-dd')}`,
+        format
+      });
+      
+      toast({
+        title: 'Export successful',
+        description: `Expenses have been exported to ${format.toUpperCase()} format.`,
+        variant: 'default'
+      });
+    }
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -1073,7 +1122,7 @@ const Accounts = () => {
           {activeTab === "income" ? (
             <Button 
               variant="outline" 
-              onClick={exportData}
+              onClick={() => setIsExportDialogOpen(true)}
               className="whitespace-nowrap"
             >
               <Download className="mr-2 h-4 w-4" />
@@ -1099,7 +1148,7 @@ const Accounts = () => {
               </Button>
               <Button 
                 variant="outline" 
-                onClick={exportData}
+                onClick={() => setIsExportDialogOpen(true)}
                 className="whitespace-nowrap"
               >
                 <Download className="mr-2 h-4 w-4" />
@@ -1443,6 +1492,16 @@ const Accounts = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      {/* Export Dialog */}
+      <ExportDialog
+        isOpen={isExportDialogOpen}
+        onClose={() => setIsExportDialogOpen(false)}
+        onExport={handleExport}
+        title={`Export ${activeTab === 'income' ? 'Payments' : 'Expenses'}`}
+        description={`Choose a format to export your ${activeTab === 'income' ? 'payment' : 'expense'} data.`}
+        count={activeTab === 'income' ? filteredPayments.length : filteredExpenses.length}
+      />
     </div>
   );
 };

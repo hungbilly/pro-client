@@ -82,74 +82,21 @@ serve(async (req) => {
       );
     }
 
-    // If no subscription found, check if customer exists in Stripe
-    if (subError || !userSubscription) {
-      const customers = await stripe.customers.list({
-        email: email,
-        limit: 1,
-      });
+    // Check Stripe for subscription status - do this regardless of whether we have a record in our database
+    // This helps sync our database with Stripe's data
+    console.log('Checking Stripe for customer with email:', email);
+    const customers = await stripe.customers.list({
+      email: email,
+      limit: 1,
+    });
 
-      if (customers.data.length === 0) {
-        return new Response(
-          JSON.stringify({ 
-            hasAccess: false,
-            subscription: null,
-            trialDaysLeft: 0,
-            isInTrialPeriod: false,
-          }),
-          { 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 200,
-          }
-        );
-      }
-
-      const customerId = customers.data[0].id;
-      const subscriptions = await stripe.subscriptions.list({
-        customer: customerId,
-        status: 'active',
-        limit: 1,
-      });
-
-      if (subscriptions.data.length === 0) {
-        return new Response(
-          JSON.stringify({ 
-            hasAccess: false,
-            subscription: null,
-            trialDaysLeft: 0,
-            isInTrialPeriod: false,
-          }),
-          { 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 200,
-          }
-        );
-      }
-
-      // Found active subscription in Stripe but not in our DB - sync it
-      const stripeSubscription = subscriptions.data[0];
-      const { error: insertError } = await supabase
-        .from('user_subscriptions')
-        .insert({
-          user_id: userId,
-          stripe_customer_id: customerId,
-          stripe_subscription_id: stripeSubscription.id,
-          status: stripeSubscription.status,
-          current_period_end: new Date(stripeSubscription.current_period_end * 1000).toISOString(),
-        });
-
-      if (insertError) {
-        console.error('Error syncing subscription to database:', insertError);
-      }
-
+    if (customers.data.length === 0) {
+      console.log('No customer found in Stripe for email:', email);
+      // No customer in Stripe means no subscription
       return new Response(
         JSON.stringify({ 
-          hasAccess: true,
-          subscription: {
-            id: stripeSubscription.id,
-            status: stripeSubscription.status,
-            currentPeriodEnd: new Date(stripeSubscription.current_period_end * 1000).toISOString(),
-          },
+          hasAccess: false,
+          subscription: null,
           trialDaysLeft: 0,
           isInTrialPeriod: false,
         }),
@@ -160,79 +107,39 @@ serve(async (req) => {
       );
     }
 
-    // Check if stored subscription is still valid
-    if (userSubscription.status === 'active') {
-      const currentPeriodEnd = new Date(userSubscription.current_period_end);
-      const isValid = currentPeriodEnd > now;
+    const customerId = customers.data[0].id;
+    console.log('Found Stripe customer ID:', customerId);
+    
+    console.log('Checking for active subscriptions for customer ID:', customerId);
+    const subscriptions = await stripe.subscriptions.list({
+      customer: customerId,
+      status: 'active',
+      limit: 100, // Get all active subscriptions
+    });
 
-      if (!isValid) {
-        // Double-check with Stripe
-        try {
-          const stripeSubscription = await stripe.subscriptions.retrieve(
-            userSubscription.stripe_subscription_id
-          );
+    console.log(`Found ${subscriptions.data.length} active subscriptions for customer`);
 
-          if (stripeSubscription.status === 'active') {
-            // Update our record
-            const { error: updateError } = await supabase
-              .from('user_subscriptions')
-              .update({
-                status: stripeSubscription.status,
-                current_period_end: new Date(stripeSubscription.current_period_end * 1000).toISOString(),
-              })
-              .eq('id', userSubscription.id);
-
-            if (updateError) {
-              console.error('Error updating subscription record:', updateError);
-            }
-
-            return new Response(
-              JSON.stringify({ 
-                hasAccess: true,
-                subscription: {
-                  id: stripeSubscription.id,
-                  status: stripeSubscription.status,
-                  currentPeriodEnd: new Date(stripeSubscription.current_period_end * 1000).toISOString(),
-                },
-                trialDaysLeft: 0,
-                isInTrialPeriod: false,
-              }),
-              { 
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                status: 200,
-              }
-            );
-          }
-        } catch (error) {
-          console.error('Error fetching subscription from Stripe:', error);
-        }
-
-        return new Response(
-          JSON.stringify({ 
-            hasAccess: false,
-            subscription: {
-              id: userSubscription.stripe_subscription_id,
-              status: 'inactive',
-              currentPeriodEnd: userSubscription.current_period_end,
-            },
-            trialDaysLeft: 0,
-            isInTrialPeriod: false,
-          }),
-          { 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 200,
-          }
-        );
+    if (subscriptions.data.length === 0) {
+      // No active subscriptions in Stripe
+      // If we have a record in our database, update it to inactive
+      if (!subError && userSubscription) {
+        console.log('Updating subscription record to inactive in database');
+        await supabase
+          .from('user_subscriptions')
+          .update({
+            status: 'inactive',
+          })
+          .eq('id', userSubscription.id);
       }
 
       return new Response(
         JSON.stringify({ 
-          hasAccess: true,
-          subscription: {
+          hasAccess: false,
+          subscription: userSubscription ? {
             id: userSubscription.stripe_subscription_id,
-            status: userSubscription.status,
+            status: 'inactive',
             currentPeriodEnd: userSubscription.current_period_end,
-          },
+          } : null,
           trialDaysLeft: 0,
           isInTrialPeriod: false,
         }),
@@ -241,18 +148,66 @@ serve(async (req) => {
           status: 200,
         }
       );
+    }
+
+    // Sort subscriptions by created date, newest first
+    const sortedSubscriptions = [...subscriptions.data].sort((a, b) => 
+      b.created > a.created ? 1 : -1
+    );
+    
+    // Get the most recent active subscription
+    const activeSubscription = sortedSubscriptions[0];
+    
+    // Found active subscription in Stripe but not in our DB (or status mismatch) - sync it
+    if (subError || !userSubscription || userSubscription.status !== activeSubscription.status) {
+      console.log('Syncing subscription from Stripe to database');
+      
+      const subscriptionData = {
+        user_id: userId,
+        stripe_customer_id: customerId,
+        stripe_subscription_id: activeSubscription.id,
+        status: activeSubscription.status,
+        current_period_end: new Date(activeSubscription.current_period_end * 1000).toISOString(),
+      };
+      
+      if (!userSubscription) {
+        // Insert new record
+        console.log('Inserting new subscription record');
+        const { error: insertError } = await supabase
+          .from('user_subscriptions')
+          .insert(subscriptionData);
+
+        if (insertError) {
+          console.error('Error inserting subscription record:', insertError);
+        }
+      } else {
+        // Update existing record
+        console.log('Updating existing subscription record');
+        const { error: updateError } = await supabase
+          .from('user_subscriptions')
+          .update(subscriptionData)
+          .eq('id', userSubscription.id);
+
+        if (updateError) {
+          console.error('Error updating subscription record:', updateError);
+        }
+      }
     }
 
     return new Response(
       JSON.stringify({ 
-        hasAccess: false,
+        hasAccess: true,
         subscription: {
-          id: userSubscription.stripe_subscription_id,
-          status: userSubscription.status,
-          currentPeriodEnd: userSubscription.current_period_end,
+          id: activeSubscription.id,
+          status: activeSubscription.status,
+          currentPeriodEnd: new Date(activeSubscription.current_period_end * 1000).toISOString(),
         },
         trialDaysLeft: 0,
         isInTrialPeriod: false,
+        stripeData: {
+          customerId,
+          subscriptionId: activeSubscription.id,
+        },
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

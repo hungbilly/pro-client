@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { DateRange } from 'react-day-picker';
 import { CalendarRange, Check, Calendar as CalendarIcon } from 'lucide-react';
@@ -12,6 +12,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
+import { DatePicker } from "@/components/ui/date-picker";
 
 interface DateRangeFilterProps {
   dateRange: DateRange | undefined;
@@ -30,7 +31,7 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
   className = '',
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [showCustomRange, setShowCustomRange] = useState(false);
+  const [selectedPreset, setSelectedPreset] = useState<string>('All time');
   const [startDate, setStartDate] = useState<Date | undefined>(dateRange?.from);
   const [endDate, setEndDate] = useState<Date | undefined>(dateRange?.to);
 
@@ -59,35 +60,53 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
     ] as PresetOption[];
   }, []);
 
+  // Update the date range when the selected preset or custom dates change
+  useEffect(() => {
+    if (selectedPreset !== 'Custom range') {
+      const preset = presets.find(p => p.label === selectedPreset);
+      if (preset) {
+        onDateRangeChange(preset.range);
+        if (preset.range) {
+          setStartDate(preset.range.from);
+          setEndDate(preset.range.to);
+        } else {
+          setStartDate(undefined);
+          setEndDate(undefined);
+        }
+      }
+    } else if (startDate || endDate) {
+      onDateRangeChange({ from: startDate, to: endDate });
+    }
+  }, [selectedPreset, startDate, endDate]);
+
   const handleClearFilter = () => {
     onDateRangeChange(undefined);
     setStartDate(undefined);
     setEndDate(undefined);
-    setShowCustomRange(false);
+    setSelectedPreset('All time');
     setIsOpen(false);
   };
 
   const handlePresetSelect = (preset: PresetOption) => {
-    if (preset.label === 'Custom range') {
-      setShowCustomRange(true);
-      return;
-    }
+    setSelectedPreset(preset.label);
     
-    onDateRangeChange(preset.range);
-    if (preset.range) {
-      setStartDate(preset.range.from);
-      setEndDate(preset.range.to);
-    } else {
-      setStartDate(undefined);
-      setEndDate(undefined);
+    if (preset.label !== 'Custom range') {
+      onDateRangeChange(preset.range);
+      if (preset.range) {
+        setStartDate(preset.range.from);
+        setEndDate(preset.range.to);
+      } else {
+        setStartDate(undefined);
+        setEndDate(undefined);
+      }
+      setIsOpen(false);
     }
-    setShowCustomRange(false);
-    setIsOpen(false);
   };
 
   const handleStartDateChange = (date: Date | null) => {
     const newStartDate = date || undefined;
     setStartDate(newStartDate);
+    setSelectedPreset('Custom range');
     
     if (newStartDate && endDate) {
       onDateRangeChange({ from: newStartDate, to: endDate });
@@ -99,30 +118,13 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
   const handleEndDateChange = (date: Date | null) => {
     const newEndDate = date || undefined;
     setEndDate(newEndDate);
+    setSelectedPreset('Custom range');
     
     if (startDate && newEndDate) {
       onDateRangeChange({ from: startDate, to: newEndDate });
     } else if (startDate) {
       onDateRangeChange({ from: startDate, to: undefined });
     }
-  };
-
-  // Get the current preset label
-  const getCurrentPresetLabel = (): string => {
-    if (!dateRange?.from) return 'All time';
-    
-    // Try to match with one of our presets
-    for (const preset of presets) {
-      if (preset.range && 
-          preset.range.from && dateRange.from && 
-          preset.range.to && dateRange.to && 
-          preset.range.from.getTime() === dateRange.from.getTime() && 
-          preset.range.to.getTime() === dateRange.to.getTime()) {
-        return preset.label;
-      }
-    }
-    
-    return 'Custom range';
   };
 
   // Format the date range for display in button
@@ -156,9 +158,9 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
             </div>
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[240px] p-0" align="start">
+        <PopoverContent className="w-[300px] p-0" align="start">
           <div className="p-2">
-            <ScrollArea className="h-[240px]">
+            <ScrollArea className="max-h-[240px]">
               <div className="flex flex-col space-y-1">
                 {presets.map((preset) => (
                   <Button
@@ -166,12 +168,12 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
                     variant="ghost"
                     className={cn(
                       "w-full justify-start px-2 text-sm font-normal hover:bg-accent", 
-                      getCurrentPresetLabel() === preset.label && "bg-accent text-accent-foreground"
+                      selectedPreset === preset.label && "bg-accent text-accent-foreground"
                     )}
                     onClick={() => handlePresetSelect(preset)}
                   >
                     <Check 
-                      className={`mr-2 h-4 w-4 ${getCurrentPresetLabel() === preset.label ? 'opacity-100' : 'opacity-0'}`}
+                      className={`mr-2 h-4 w-4 ${selectedPreset === preset.label ? 'opacity-100' : 'opacity-0'}`}
                     />
                     {preset.label}
                   </Button>
@@ -179,11 +181,11 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
               </div>
             </ScrollArea>
             
-            {/* Custom date range picker */}
-            {showCustomRange && (
-              <div className="p-2 pt-0 space-y-2">
+            {/* Show start date and end date inputs when "Custom range" is selected */}
+            {selectedPreset === 'Custom range' && (
+              <div className="p-3 space-y-3 border-t mt-1">
                 <div>
-                  <p className="text-sm font-medium mb-1">Start date</p>
+                  <p className="text-sm font-medium mb-1.5">Start date</p>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
@@ -210,7 +212,7 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
                 </div>
                 
                 <div>
-                  <p className="text-sm font-medium mb-1">End date</p>
+                  <p className="text-sm font-medium mb-1.5">End date</p>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
@@ -258,4 +260,3 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
 };
 
 export default DateRangeFilter;
-

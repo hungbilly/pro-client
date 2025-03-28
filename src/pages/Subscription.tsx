@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Check, Clock, AlertCircle } from 'lucide-react';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { toast } from 'sonner';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const Subscription = () => {
   const navigate = useNavigate();
@@ -21,6 +22,7 @@ const Subscription = () => {
     createSubscription 
   } = useSubscription();
   const [isLoading, setIsLoading] = useState(false);
+  const [showDialog, setShowDialog] = useState(false);
 
   const handleSubscribe = async (withTrial: boolean = true) => {
     if (!user) {
@@ -33,7 +35,10 @@ const Subscription = () => {
     try {
       const url = await createSubscription(withTrial);
       if (url) {
-        window.location.href = url;
+        // Open the Stripe checkout URL in a new tab
+        window.open(url, '_blank');
+        // Show a dialog to guide the user
+        setShowDialog(true);
       }
     } catch (error) {
       console.error("Subscription error:", error);
@@ -282,6 +287,25 @@ const Subscription = () => {
           </div>
         </div>
       </div>
+      
+      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Completing your subscription</DialogTitle>
+            <DialogDescription>
+              A new tab has been opened to complete your subscription with Stripe. 
+              Once you've completed the payment process, you'll be redirected back to our site.
+              
+              If you don't see the tab, please check if it was blocked by your browser.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end space-x-2 mt-4">
+            <Button onClick={() => setShowDialog(false)}>
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </PageTransition>
   );
 };

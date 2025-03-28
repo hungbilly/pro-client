@@ -1,6 +1,8 @@
+
 import { saveAs } from 'file-saver';
 import * as XLSX from 'xlsx';
 import { DateRange } from 'react-day-picker';
+import { toast } from 'sonner';
 
 type ExportFormat = 'csv' | 'xlsx';
 
@@ -18,6 +20,7 @@ export const exportDataToFile = <T extends Record<string, any>>(
   
   if (data.length === 0) {
     console.error('No data to export');
+    toast.error('No data to export');
     return;
   }
   
@@ -37,12 +40,17 @@ export const exportDataToFile = <T extends Record<string, any>>(
     }
     
     filteredData = data.filter(item => {
-      const itemDate = new Date(item.createdAt || item.created_at || item.date);
+      // Try various date field names that might exist in the data
+      const dateField = item.createdAt || item.created_at || item.date;
+      if (!dateField) return false;
+      
+      const itemDate = new Date(dateField);
       return itemDate >= fromDate && itemDate <= toDate;
     });
     
     if (filteredData.length === 0) {
       console.error('No data matches the selected date range');
+      toast.error('No data matches the selected date range. Try a different date range or export all data.');
       return;
     }
   }

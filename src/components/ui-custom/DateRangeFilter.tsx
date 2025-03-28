@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { DateRange } from 'react-day-picker';
-import { CalendarRange, Check } from 'lucide-react';
+import { CalendarRange, Check, Calendar as CalendarIcon } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
 import { format, startOfMonth, endOfMonth, subMonths, startOfYear, endOfYear } from 'date-fns';
 import {
@@ -11,6 +11,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Calendar } from "@/components/ui/calendar";
 
 interface DateRangeFilterProps {
   dateRange: DateRange | undefined;
@@ -30,6 +31,8 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [showCustomRange, setShowCustomRange] = useState(false);
+  const [startDate, setStartDate] = useState<Date | undefined>(dateRange?.from);
+  const [endDate, setEndDate] = useState<Date | undefined>(dateRange?.to);
 
   // Preset date ranges
   const presets = useMemo(() => {
@@ -58,6 +61,8 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
 
   const handleClearFilter = () => {
     onDateRangeChange(undefined);
+    setStartDate(undefined);
+    setEndDate(undefined);
     setShowCustomRange(false);
     setIsOpen(false);
   };
@@ -69,8 +74,37 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
     }
     
     onDateRangeChange(preset.range);
+    if (preset.range) {
+      setStartDate(preset.range.from);
+      setEndDate(preset.range.to);
+    } else {
+      setStartDate(undefined);
+      setEndDate(undefined);
+    }
     setShowCustomRange(false);
     setIsOpen(false);
+  };
+
+  const handleStartDateChange = (date: Date | null) => {
+    const newStartDate = date || undefined;
+    setStartDate(newStartDate);
+    
+    if (newStartDate && endDate) {
+      onDateRangeChange({ from: newStartDate, to: endDate });
+    } else if (newStartDate) {
+      onDateRangeChange({ from: newStartDate, to: undefined });
+    }
+  };
+
+  const handleEndDateChange = (date: Date | null) => {
+    const newEndDate = date || undefined;
+    setEndDate(newEndDate);
+    
+    if (startDate && newEndDate) {
+      onDateRangeChange({ from: startDate, to: newEndDate });
+    } else if (startDate) {
+      onDateRangeChange({ from: startDate, to: undefined });
+    }
   };
 
   // Get the current preset label
@@ -140,14 +174,65 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
             
             {/* Custom date range picker */}
             {showCustomRange && (
-              <div className="pt-4">
-                <DatePicker
-                  mode="range"
-                  selected={dateRange}
-                  onSelect={onDateRangeChange as (range: DateRange | null) => void}
-                  initialFocus
-                  highlightToday
-                />
+              <div className="pt-4 space-y-3">
+                <div className="grid grid-cols-1 gap-2">
+                  <div>
+                    <p className="text-sm font-medium mb-1">Start date</p>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start text-left font-normal"
+                        >
+                          {startDate ? (
+                            format(startDate, 'PP')
+                          ) : (
+                            <span className="text-muted-foreground">Pick a date</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={startDate}
+                          onSelect={(date) => handleStartDateChange(date)}
+                          initialFocus
+                          className="pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm font-medium mb-1">End date</p>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start text-left font-normal"
+                        >
+                          {endDate ? (
+                            format(endDate, 'PP')
+                          ) : (
+                            <span className="text-muted-foreground">Pick a date</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={endDate}
+                          onSelect={(date) => handleEndDateChange(date)}
+                          initialFocus
+                          className="pointer-events-auto"
+                          disabled={(date) => startDate ? date < startDate : false}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
               </div>
             )}
             

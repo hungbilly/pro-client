@@ -7,6 +7,7 @@ import InvoiceTemplateSettings from '@/components/InvoiceTemplateSettings';
 import PackageSettings from '@/components/PackageSettings';
 import ContractTemplateSettings from '@/components/ContractTemplateSettings';
 import CompanyProvider from '@/context/CompanyContext';
+import SubscriptionStatus from '@/components/SubscriptionStatus';
 
 const Settings = () => {
   console.log("Settings page rendering");
@@ -65,7 +66,11 @@ const Settings = () => {
             <TabsContent value="billing" className="space-y-4">
               <div className="rounded-lg border p-6">
                 <h2 className="text-xl font-semibold mb-4">Billing Information</h2>
-                <p className="text-muted-foreground">Billing settings will be available in a future update.</p>
+                <div className="mb-6">
+                  <SubscriptionStatus />
+                </div>
+                <h3 className="text-lg font-medium mt-8 mb-3">Payment History</h3>
+                <p className="text-muted-foreground">Payment history will be available in a future update.</p>
               </div>
             </TabsContent>
           </Tabs>

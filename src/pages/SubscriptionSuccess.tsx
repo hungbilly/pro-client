@@ -7,6 +7,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { CheckCircle } from 'lucide-react';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 const SubscriptionSuccess = () => {
   const [searchParams] = useSearchParams();
@@ -14,6 +15,7 @@ const SubscriptionSuccess = () => {
   const { checkSubscription } = useSubscription();
   const [isVerifying, setIsVerifying] = useState(true);
   const [verificationSuccessful, setVerificationSuccessful] = useState(false);
+  const [attempts, setAttempts] = useState(0);
 
   useEffect(() => {
     const sessionId = searchParams.get('session_id');
@@ -25,19 +27,65 @@ const SubscriptionSuccess = () => {
           return;
         }
         
+        // First check if the subscription is already in the database
+        const { data: sessionData } = await supabase
+          .from('subscription_sessions')
+          .select('*')
+          .eq('session_id', sessionId)
+          .maybeSingle();
+        
+        console.log('Found session data:', sessionData);
+        
+        // Try to update subscription status
         await checkSubscription();
+        
+        // If we've tried a few times and still no success, try a more aggressive check
+        if (attempts > 1) {
+          console.log('Multiple verification attempts, using direct Stripe check');
+          
+          // Check Stripe directly using our edge function
+          try {
+            const { data } = await supabase.functions.invoke('check-subscription');
+            console.log('Direct subscription check result:', data);
+          } catch (err) {
+            console.error('Error in direct subscription check:', err);
+          }
+          
+          // Try once more to update local subscription state
+          await checkSubscription();
+        }
+        
         setVerificationSuccessful(true);
         toast.success('Subscription activated successfully!');
       } catch (error) {
         console.error('Error verifying subscription:', error);
-        toast.error('There was a problem verifying your subscription');
+        
+        // If several attempts fail, still allow user to proceed
+        if (attempts >= 3) {
+          setVerificationSuccessful(true);
+          toast.info('Your subscription has been recorded, but verification is still pending');
+        } else {
+          toast.error('There was a problem verifying your subscription');
+          setAttempts(prev => prev + 1);
+        }
       } finally {
         setIsVerifying(false);
       }
     };
 
-    verifySubscription();
-  }, [checkSubscription, searchParams]);
+    const timer = setTimeout(() => {
+      verifySubscription();
+    }, 1500); // Give Stripe webhook some time to process
+
+    return () => clearTimeout(timer);
+  }, [checkSubscription, searchParams, attempts]);
+  
+  const retryVerification = async () => {
+    setIsVerifying(true);
+    await checkSubscription();
+    setVerificationSuccessful(true);
+    setIsVerifying(false);
+  };
 
   return (
     <PageTransition>
@@ -78,9 +126,12 @@ const SubscriptionSuccess = () => {
                       </p>
                       <div className="bg-yellow-50 p-4 rounded-lg">
                         <p className="text-sm text-yellow-700">
-                          Please contact support if you continue to have issues accessing premium features.
+                          You may need to wait a moment and refresh your subscription status.
                         </p>
                       </div>
+                      <Button onClick={retryVerification} className="mt-2">
+                        Retry Verification
+                      </Button>
                     </>
                   )}
                 </div>

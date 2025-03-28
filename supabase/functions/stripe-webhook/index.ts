@@ -33,7 +33,7 @@ serve(async (req) => {
       apiVersion: '2025-02-24', // Updated to match the dashboard version
     });
 
-    // Initialize Supabase client
+    // Initialize Supabase client with the service role key
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     const supabase = createClient(supabaseUrl, supabaseServiceKey);

@@ -26,6 +26,10 @@ serve(async (req) => {
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+    // For service role operations
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
     // Get user from token
     const token = authHeader.replace('Bearer ', '');
     const { data: userData, error: userError } = await supabase.auth.getUser(token);
@@ -157,9 +161,9 @@ serve(async (req) => {
       }
     });
 
-    // Store subscription info in Supabase
+    // Store subscription info in Supabase using the admin client to bypass RLS
     if (session.id) {
-      const { error: insertError } = await supabase
+      const { error: insertError } = await supabaseAdmin
         .from('subscription_sessions')
         .insert({
           user_id: user.id,

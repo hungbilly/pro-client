@@ -37,7 +37,6 @@ serve(async (req) => {
 
     const user = userData.user;
     const email = user.email;
-    console.log('User authenticated:', user.id, email);
 
     if (!email) {
       throw new Error('User email not found');
@@ -50,26 +49,24 @@ serve(async (req) => {
 
     // Get or create customer
     let customerId;
-    const { data: subscriptionData, error: subError } = await supabase.functions.invoke('check-subscription', {
+    const { data: customers, error: customerFetchError } = await supabase.functions.invoke('check-subscription', {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
-    
-    console.log('Subscription check result:', JSON.stringify(subscriptionData));
 
-    // First, check if user already has an active subscription
+    // Check if the customer exists in the response from check-subscription
+    let existingCustomer = false;
     try {
       // Search for stripe customer by email
       const stripeCustomers = await stripe.customers.list({
         email: email,
         limit: 1,
       });
-      console.log('Found Stripe customers:', stripeCustomers.data.length);
 
       if (stripeCustomers && stripeCustomers.data && stripeCustomers.data.length > 0) {
         customerId = stripeCustomers.data[0].id;
-        console.log('Using existing Stripe customer:', customerId);
+        existingCustomer = true;
         
         // Check if customer already has an active subscription
         const subscriptions = await stripe.subscriptions.list({
@@ -78,38 +75,7 @@ serve(async (req) => {
           limit: 1,
         });
         
-        console.log('Active subscriptions found:', subscriptions.data.length);
-        
         if (subscriptions.data && subscriptions.data.length > 0) {
-          console.log('User already has active subscription:', subscriptions.data[0].id);
-          
-          // Store subscription in our database if not already there
-          const { data: existingSub, error: checkError } = await supabase
-            .from('user_subscriptions')
-            .select('*')
-            .eq('user_id', user.id)
-            .eq('stripe_subscription_id', subscriptions.data[0].id)
-            .maybeSingle();
-            
-          console.log('Existing subscription in DB:', existingSub, 'Error:', checkError);
-          
-          if (!existingSub) {
-            console.log('Storing subscription in database');
-            const { error: insertError } = await supabase
-              .from('user_subscriptions')
-              .insert({
-                user_id: user.id,
-                stripe_customer_id: customerId,
-                stripe_subscription_id: subscriptions.data[0].id,
-                status: subscriptions.data[0].status,
-                current_period_end: new Date(subscriptions.data[0].current_period_end * 1000).toISOString(),
-              });
-              
-            if (insertError) {
-              console.error('Error storing subscription in database:', insertError);
-            }
-          }
-          
           return new Response(
             JSON.stringify({ 
               message: 'User already has an active subscription',
@@ -130,9 +96,8 @@ serve(async (req) => {
     }
 
     // Create a new customer if one doesn't exist
-    if (!customerId) {
+    if (!existingCustomer) {
       try {
-        console.log('Creating new Stripe customer');
         const newCustomer = await stripe.customers.create({
           email: email,
           metadata: {
@@ -140,7 +105,6 @@ serve(async (req) => {
           },
         });
         customerId = newCustomer.id;
-        console.log('Created new customer:', customerId);
       } catch (error) {
         console.error('Error creating Stripe customer:', error);
         throw new Error('Failed to create Stripe customer');
@@ -156,12 +120,9 @@ serve(async (req) => {
     try {
       const requestBody = await req.json();
       withTrial = requestBody.withTrial !== false; // Default to true unless explicitly set to false
-      console.log('Request body parsed, withTrial:', withTrial);
     } catch (error) {
       console.log('No request body or invalid JSON, defaulting to trial=true');
     }
-    
-    console.log('Creating checkout session with trial:', withTrial);
     
     // Create a subscription session with a 3-month trial
     const session = await stripe.checkout.sessions.create({
@@ -192,16 +153,12 @@ serve(async (req) => {
       metadata: {
         plan_name: 'Premium Photography HKD',
         price_amount: '50',
-        price_currency: 'HKD',
-        supabase_user_id: user.id
+        price_currency: 'HKD'
       }
     });
 
-    console.log('Checkout session created:', session.id);
-
     // Store subscription info in Supabase
     if (session.id) {
-      console.log('Storing session in database');
       const { error: insertError } = await supabase
         .from('subscription_sessions')
         .insert({

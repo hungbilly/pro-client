@@ -21,6 +21,10 @@ import Accounts from './pages/Accounts';
 import AuthCallback from './pages/AuthCallback';
 import Invoices from './pages/Invoices';
 import InvoicePdfView from './pages/InvoicePdfView';
+import Subscription from './pages/Subscription';
+import SubscriptionSuccess from './pages/SubscriptionSuccess';
+import SubscriptionCancel from './pages/SubscriptionCancel';
+import SubscriptionGuard from './components/SubscriptionGuard';
 
 const Routes = () => {
   return (
@@ -29,12 +33,19 @@ const Routes = () => {
       <Route path="/auth" element={<Auth />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
       
+      {/* Subscription routes */}
+      <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+        <Route path="/subscription" element={<Subscription />} />
+        <Route path="/subscription/success" element={<SubscriptionSuccess />} />
+        <Route path="/subscription/cancel" element={<SubscriptionCancel />} />
+      </Route>
+      
       {/* Public invoice views without AppLayout for client view */}
       <Route path="/invoice/:idOrViewLink" element={<InvoiceView />} />
       <Route path="/invoice/pdf/:viewLink" element={<InvoicePdfView />} />
       
-      {/* Protected routes with layout */}
-      <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+      {/* Protected routes with layout that require subscription */}
+      <Route element={<ProtectedRoute><SubscriptionGuard><AppLayout /></SubscriptionGuard></ProtectedRoute>}>
         <Route path="/" element={<Index />} />
         <Route path="/clients" element={<Clients />} />
         <Route path="/client/new" element={<ClientNew />} />

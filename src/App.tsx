@@ -6,6 +6,7 @@ import { Toaster } from 'sonner';
 import CompanyProvider from './context/CompanyContext';
 import { AuthProvider } from './context/AuthContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import SubscriptionProvider from './context/SubscriptionContext';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -23,9 +24,11 @@ function App() {
       <BrowserRouter>
         <AuthProvider>
           <Toaster position="top-center" richColors />
-          <CompanyProvider>
-            <Routes />
-          </CompanyProvider>
+          <SubscriptionProvider>
+            <CompanyProvider>
+              <Routes />
+            </CompanyProvider>
+          </SubscriptionProvider>
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>

@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Check, Clock, AlertCircle } from 'lucide-react';
+import { Check, Clock, AlertCircle, Info } from 'lucide-react';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -23,6 +23,7 @@ const Subscription = () => {
   } = useSubscription();
   const [isLoading, setIsLoading] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
+  const [showTestInfo, setShowTestInfo] = useState(false);
 
   const handleSubscribe = async (withTrial: boolean = true) => {
     if (!user) {
@@ -173,11 +174,33 @@ const Subscription = () => {
     <PageTransition>
       <div className="container mx-auto py-12 px-4">
         <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-12">
+          <div className="text-center mb-8">
             <h1 className="text-3xl font-bold mb-2">Upgrade Your Photography Business</h1>
             <p className="text-gray-600 max-w-xl mx-auto">
               Get access to all features and take your photography business to the next level
             </p>
+            <div className="mt-4 flex justify-center">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex items-center gap-2"
+                onClick={() => setShowTestInfo(!showTestInfo)}
+              >
+                <Info className="h-4 w-4" />
+                Test Mode Information
+              </Button>
+            </div>
+            {showTestInfo && (
+              <div className="mt-4 p-4 bg-blue-50 rounded-lg max-w-2xl mx-auto">
+                <h3 className="font-medium text-blue-700">Test Mode Information</h3>
+                <p className="text-sm text-blue-600 mt-2">
+                  This is running in Stripe Test Mode. You can use test card number <code className="bg-blue-100 px-1 rounded">4242 4242 4242 4242</code> with any future expiration date and any 3-digit CVC to test the subscription process.
+                </p>
+                <p className="text-sm text-blue-600 mt-2">
+                  No real charges will be made in test mode. To test the subscription, simply complete the checkout process with the test card.
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="grid md:grid-cols-2 gap-8 mb-12">

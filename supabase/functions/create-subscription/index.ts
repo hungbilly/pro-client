@@ -134,7 +134,7 @@ serve(async (req) => {
             currency: 'hkd',
             product_data: {
               name: 'Premium Photography Business Management',
-              description: 'Unlock all features of the photography business management platform',
+              description: 'Unlock all features of the photography business management platform - HK$50 per month',
             },
             unit_amount: 5000, // 50 HKD per month
             recurring: {
@@ -150,6 +150,11 @@ serve(async (req) => {
       subscription_data: withTrial ? {
         trial_period_days: 90, // 3-month free trial
       } : undefined,
+      metadata: {
+        plan_name: 'Premium Photography HKD',
+        price_amount: '50',
+        price_currency: 'HKD'
+      }
     });
 
     // Store subscription info in Supabase

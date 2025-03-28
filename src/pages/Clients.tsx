@@ -12,7 +12,7 @@ import { useAuth } from '@/context/AuthContext';
 import AddClientButton from '@/components/ui-custom/AddClientButton';
 import { toast } from 'sonner';
 import SearchBox from '@/components/ui-custom/SearchBox';
-import ExportDateRangeDialog from '@/components/ExportDateRangeDialog';
+import ExportDialog from '@/components/ExportDialog';
 import { exportDataToFile, formatClientsForExport } from '@/utils/exportUtils';
 import { DateRange } from 'react-day-picker';
 import DateRangeFilter from '@/components/ui-custom/DateRangeFilter';
@@ -151,12 +151,12 @@ const ClientsTable = () => {
     setIsExportDialogOpen(false);
   };
 
-  const handleExport = (format: 'csv' | 'xlsx', exportDateRange: DateRange | null) => {
+  const handleExport = (format: 'csv' | 'xlsx') => {
     const formattedData = formatClientsForExport(filteredClients);
     exportDataToFile(formattedData, {
       filename: 'clients-export',
       format,
-      dateRange: exportDateRange || dateRange || null
+      dateRange: dateRange || null
     });
     toast.success(`Clients exported as ${format.toUpperCase()} successfully`);
   };
@@ -188,12 +188,12 @@ const ClientsTable = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      <ExportDateRangeDialog
+      <ExportDialog
         isOpen={isExportDialogOpen}
         onClose={handleExportClose}
         onExport={handleExport}
         title="Export Clients"
-        description="Export your clients data as CSV or Excel file"
+        description="Export your filtered clients data as CSV or Excel file"
         count={filteredClients.length}
       />
 

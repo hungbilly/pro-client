@@ -3,7 +3,6 @@ import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { DateRange } from 'react-day-picker';
 import { CalendarRange, Check, Calendar as CalendarIcon } from 'lucide-react';
-import { DatePicker } from '@/components/ui/date-picker';
 import { format, startOfMonth, endOfMonth, subMonths, startOfYear, endOfYear } from 'date-fns';
 import {
   Popover,
@@ -12,6 +11,7 @@ import {
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 
 interface DateRangeFilterProps {
   dateRange: DateRange | undefined;
@@ -142,25 +142,32 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
         <PopoverTrigger asChild>
           <Button 
             variant="outline" 
-            className="flex gap-2 items-center"
+            className="flex gap-2 items-center min-w-[160px] justify-between"
             aria-label="Filter by date range"
           >
-            <CalendarRange className="h-4 w-4" />
-            <span className="hidden sm:inline">{formatDateRange(dateRange)}</span>
+            <div className="flex items-center gap-2">
+              <CalendarRange className="h-4 w-4" />
+              <span className="text-sm">{formatDateRange(dateRange)}</span>
+            </div>
+            <div className="text-muted-foreground opacity-70">
+              <svg width="8" height="5" viewBox="0 0 8 5" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M1 1L4 4L7 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
-          <div className="p-4">
-            <h4 className="mb-2 font-medium">Filter by Date Range</h4>
-            
-            {/* Preset selection */}
-            <ScrollArea className="h-[180px]">
-              <div className="flex flex-col space-y-1 p-1">
+        <PopoverContent className="w-[240px] p-0" align="start">
+          <div className="p-2">
+            <ScrollArea className="h-[240px]">
+              <div className="flex flex-col space-y-1">
                 {presets.map((preset) => (
                   <Button
                     key={preset.label}
                     variant="ghost"
-                    className="justify-start font-normal"
+                    className={cn(
+                      "w-full justify-start px-2 text-sm font-normal hover:bg-accent", 
+                      getCurrentPresetLabel() === preset.label && "bg-accent text-accent-foreground"
+                    )}
                     onClick={() => handlePresetSelect(preset)}
                   >
                     <Check 
@@ -174,72 +181,69 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
             
             {/* Custom date range picker */}
             {showCustomRange && (
-              <div className="pt-4 space-y-3">
-                <div className="grid grid-cols-1 gap-2">
-                  <div>
-                    <p className="text-sm font-medium mb-1">Start date</p>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="w-full justify-start text-left font-normal"
-                        >
-                          {startDate ? (
-                            format(startDate, 'PP')
-                          ) : (
-                            <span className="text-muted-foreground">Pick a date</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={startDate}
-                          onSelect={(date) => handleStartDateChange(date)}
-                          initialFocus
-                          className="pointer-events-auto"
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm font-medium mb-1">End date</p>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="w-full justify-start text-left font-normal"
-                        >
-                          {endDate ? (
-                            format(endDate, 'PP')
-                          ) : (
-                            <span className="text-muted-foreground">Pick a date</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={endDate}
-                          onSelect={(date) => handleEndDateChange(date)}
-                          initialFocus
-                          className="pointer-events-auto"
-                          disabled={(date) => startDate ? date < startDate : false}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
+              <div className="p-2 pt-0 space-y-2">
+                <div>
+                  <p className="text-sm font-medium mb-1">Start date</p>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start text-left font-normal"
+                      >
+                        {startDate ? (
+                          format(startDate, 'PP')
+                        ) : (
+                          <span className="text-muted-foreground">Pick a date</span>
+                        )}
+                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={startDate}
+                        onSelect={(date) => handleStartDateChange(date)}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                
+                <div>
+                  <p className="text-sm font-medium mb-1">End date</p>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start text-left font-normal"
+                      >
+                        {endDate ? (
+                          format(endDate, 'PP')
+                        ) : (
+                          <span className="text-muted-foreground">Pick a date</span>
+                        )}
+                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={endDate}
+                        onSelect={(date) => handleEndDateChange(date)}
+                        initialFocus
+                        disabled={(date) => startDate ? date < startDate : false}
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </div>
             )}
             
-            <div className="flex justify-end mt-4">
+            <div className="p-2 border-t">
               <Button 
                 variant="ghost" 
                 size="sm" 
+                className="w-full"
                 onClick={handleClearFilter}
                 disabled={!dateRange?.from}
               >
@@ -254,3 +258,4 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
 };
 
 export default DateRangeFilter;
+

@@ -14,6 +14,7 @@ import ExportDateRangeDialog from '@/components/ExportDateRangeDialog';
 import { exportDataToFile, formatJobsForExport } from '@/utils/exportUtils';
 import { DateRange } from 'react-day-picker';
 import { toast } from 'sonner';
+import DateRangeFilter from '@/components/ui-custom/DateRangeFilter';
 
 import {
   Table,
@@ -39,6 +40,7 @@ const Jobs = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
   
   const { data: jobs = [], isLoading, error } = useQuery({
     queryKey: ['jobs', selectedCompanyId],
@@ -81,13 +83,34 @@ const Jobs = () => {
     }
   };
 
-  // Filter jobs based on search query
-  const filteredJobs = jobs.filter(job => 
-    job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    getClientName(job.clientId).toLowerCase().includes(searchQuery.toLowerCase()) ||
-    job.status.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (job.location && job.location.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  // Filter jobs based on search query and date range
+  const filteredJobs = jobs.filter(job => {
+    // Text search filter
+    const matchesSearch = job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      getClientName(job.clientId).toLowerCase().includes(searchQuery.toLowerCase()) ||
+      job.status.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (job.location && job.location.toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    // Date range filter
+    let matchesDateRange = true;
+    if (dateRange?.from) {
+      const jobDate = job.date ? new Date(job.date) : null;
+      if (!jobDate) return false;
+      
+      const fromDate = new Date(dateRange.from);
+      fromDate.setHours(0, 0, 0, 0);
+      
+      if (dateRange.to) {
+        const toDate = new Date(dateRange.to);
+        toDate.setHours(23, 59, 59, 999);
+        matchesDateRange = jobDate >= fromDate && jobDate <= toDate;
+      } else {
+        matchesDateRange = jobDate >= fromDate;
+      }
+    }
+    
+    return matchesSearch && matchesDateRange;
+  });
 
   const handleExportOpen = () => {
     setIsExportDialogOpen(true);
@@ -97,12 +120,12 @@ const Jobs = () => {
     setIsExportDialogOpen(false);
   };
 
-  const handleExport = (format: 'csv' | 'xlsx', dateRange: DateRange | null) => {
+  const handleExport = (format: 'csv' | 'xlsx', exportDateRange: DateRange | null) => {
     const formattedData = formatJobsForExport(filteredJobs, clients);
     exportDataToFile(formattedData, {
       filename: 'jobs-export',
       format,
-      dateRange
+      dateRange: exportDateRange || dateRange || null
     });
     toast.success(`Jobs exported as ${format.toUpperCase()} successfully`);
   };
@@ -129,10 +152,16 @@ const Jobs = () => {
         <Card className="backdrop-blur-sm bg-white/80 border-transparent shadow-soft">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle>All Jobs</CardTitle>
-            <Button variant="outline" onClick={handleExportOpen}>
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </Button>
+            <div className="flex gap-2">
+              <DateRangeFilter
+                dateRange={dateRange}
+                onDateRangeChange={setDateRange}
+              />
+              <Button variant="outline" onClick={handleExportOpen}>
+                <Download className="h-4 w-4 mr-2" />
+                Export
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <SearchBox
@@ -157,7 +186,16 @@ const Jobs = () => {
               </div>
             ) : filteredJobs.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-muted-foreground">No jobs match your search</p>
+                <p className="text-muted-foreground">No jobs match your search criteria</p>
+                {dateRange?.from && (
+                  <Button 
+                    variant="ghost" 
+                    className="mt-2" 
+                    onClick={() => setDateRange(undefined)}
+                  >
+                    Clear Date Filter
+                  </Button>
+                )}
               </div>
             ) : (
               <div className="rounded-md border">

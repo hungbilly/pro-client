@@ -12,6 +12,27 @@ interface ExportOptions {
   dateRange?: DateRange | null;
 }
 
+const getDateValue = (item: Record<string, any>): Date | null => {
+  // Try various date field names that might exist in the data
+  const dateFields = ['createdAt', 'created_at', 'date', 'dueDate', 'due_date', 'shootingDate', 'shooting_date'];
+  
+  for (const field of dateFields) {
+    if (item[field] && item[field] !== '') {
+      try {
+        const date = new Date(item[field]);
+        // Check if date is valid
+        if (!isNaN(date.getTime())) {
+          return date;
+        }
+      } catch (e) {
+        console.error(`Error parsing date from field ${field}:`, e);
+      }
+    }
+  }
+  
+  return null;
+};
+
 export const exportDataToFile = <T extends Record<string, any>>(
   data: T[],
   options: ExportOptions
@@ -40,11 +61,9 @@ export const exportDataToFile = <T extends Record<string, any>>(
     }
     
     filteredData = data.filter(item => {
-      // Try various date field names that might exist in the data
-      const dateField = item.createdAt || item.created_at || item.date;
-      if (!dateField) return false;
+      const itemDate = getDateValue(item);
+      if (!itemDate) return false;
       
-      const itemDate = new Date(dateField);
       return itemDate >= fromDate && itemDate <= toDate;
     });
     

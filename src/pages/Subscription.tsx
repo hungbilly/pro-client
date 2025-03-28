@@ -5,22 +5,39 @@ import { useAuth } from '@/context/AuthContext';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Check, Clock } from 'lucide-react';
+import { Check, Clock, AlertCircle } from 'lucide-react';
 import PageTransition from '@/components/ui-custom/PageTransition';
+import { toast } from 'sonner';
 
 const Subscription = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { hasAccess, isInTrialPeriod, trialDaysLeft, subscription, createSubscription } = useSubscription();
+  const { 
+    hasAccess, 
+    isInTrialPeriod, 
+    trialDaysLeft, 
+    trialEndDate,
+    subscription, 
+    createSubscription 
+  } = useSubscription();
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubscribe = async () => {
+  const handleSubscribe = async (withTrial: boolean = true) => {
+    if (!user) {
+      toast.error("You must be logged in to subscribe");
+      navigate("/auth");
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const url = await createSubscription();
+      const url = await createSubscription(withTrial);
       if (url) {
         window.location.href = url;
       }
+    } catch (error) {
+      console.error("Subscription error:", error);
+      toast.error("Could not process subscription request");
     } finally {
       setIsLoading(false);
     }
@@ -34,6 +51,33 @@ const Subscription = () => {
       day: 'numeric',
     });
   };
+
+  if (!user) {
+    return (
+      <PageTransition>
+        <div className="container mx-auto py-12 px-4">
+          <div className="max-w-md mx-auto">
+            <Card className="border-orange-200 shadow-lg">
+              <CardHeader>
+                <div className="flex justify-center">
+                  <AlertCircle className="h-16 w-16 text-orange-500 mb-4" />
+                </div>
+                <CardTitle className="text-2xl">Login Required</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>Please login to view subscription options and manage your account.</p>
+              </CardContent>
+              <CardFooter className="flex justify-center">
+                <Button onClick={() => navigate('/auth')}>
+                  Go to Login
+                </Button>
+              </CardFooter>
+            </Card>
+          </div>
+        </div>
+      </PageTransition>
+    );
+  }
 
   if (hasAccess) {
     return (
@@ -95,9 +139,23 @@ const Subscription = () => {
                 <Button variant="outline" onClick={() => navigate('/')}>
                   Return to Dashboard
                 </Button>
-                <Button variant="ghost" onClick={() => window.open('https://billing.stripe.com/p/login/test_5kA5kSdUY9Sn0qA6oo', '_blank')}>
-                  Manage Billing
-                </Button>
+                {subscription && !isInTrialPeriod && (
+                  <Button 
+                    variant="ghost" 
+                    onClick={() => window.open('https://billing.stripe.com/p/login/test_5kA5kSdUY9Sn0qA6oo', '_blank')}
+                  >
+                    Manage Billing
+                  </Button>
+                )}
+                {isInTrialPeriod && (
+                  <Button 
+                    variant="default"
+                    onClick={() => handleSubscribe(false)}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? 'Processing...' : 'Subscribe Now'}
+                  </Button>
+                )}
               </CardFooter>
             </Card>
           </div>
@@ -156,7 +214,7 @@ const Subscription = () => {
               <CardFooter>
                 <Button
                   className="w-full"
-                  onClick={handleSubscribe}
+                  onClick={() => handleSubscribe(true)}
                   disabled={isLoading}
                 >
                   {isLoading ? 'Processing...' : 'Start Free Trial'}
@@ -207,7 +265,7 @@ const Subscription = () => {
                 <Button 
                   variant="outline" 
                   className="w-full"
-                  onClick={handleSubscribe}
+                  onClick={() => handleSubscribe(false)}
                   disabled={isLoading}
                 >
                   {isLoading ? 'Processing...' : 'Subscribe Now'}

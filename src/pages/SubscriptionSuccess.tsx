@@ -6,26 +6,38 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { CheckCircle } from 'lucide-react';
 import PageTransition from '@/components/ui-custom/PageTransition';
+import { toast } from 'sonner';
 
 const SubscriptionSuccess = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { checkSubscription } = useSubscription();
   const [isVerifying, setIsVerifying] = useState(true);
+  const [verificationSuccessful, setVerificationSuccessful] = useState(false);
 
   useEffect(() => {
+    const sessionId = searchParams.get('session_id');
+    
     const verifySubscription = async () => {
       try {
+        if (!sessionId) {
+          toast.error('No session ID found');
+          return;
+        }
+        
         await checkSubscription();
-        setIsVerifying(false);
+        setVerificationSuccessful(true);
+        toast.success('Subscription activated successfully!');
       } catch (error) {
         console.error('Error verifying subscription:', error);
+        toast.error('There was a problem verifying your subscription');
+      } finally {
         setIsVerifying(false);
       }
     };
 
     verifySubscription();
-  }, [checkSubscription]);
+  }, [checkSubscription, searchParams]);
 
   return (
     <PageTransition>
@@ -40,17 +52,37 @@ const SubscriptionSuccess = () => {
             </CardHeader>
             <CardContent>
               {isVerifying ? (
-                <p>Verifying your subscription...</p>
+                <div className="space-y-4">
+                  <div className="flex justify-center">
+                    <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
+                  </div>
+                  <p>Verifying your subscription...</p>
+                </div>
               ) : (
                 <div className="space-y-4">
-                  <p>
-                    Thank you for subscribing to our service. Your account has been activated with full access to all premium features.
-                  </p>
-                  <div className="bg-green-50 p-4 rounded-lg">
-                    <p className="text-sm text-green-700">
-                      You can now enjoy all the premium features of our platform.
-                    </p>
-                  </div>
+                  {verificationSuccessful ? (
+                    <>
+                      <p>
+                        Thank you for subscribing to our service. Your account has been activated with full access to all premium features.
+                      </p>
+                      <div className="bg-green-50 p-4 rounded-lg">
+                        <p className="text-sm text-green-700">
+                          You can now enjoy all the premium features of our platform.
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p>
+                        Your payment was processed, but we're having trouble confirming your subscription status.
+                      </p>
+                      <div className="bg-yellow-50 p-4 rounded-lg">
+                        <p className="text-sm text-yellow-700">
+                          Please contact support if you continue to have issues accessing premium features.
+                        </p>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </CardContent>

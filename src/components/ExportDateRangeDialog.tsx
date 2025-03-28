@@ -19,7 +19,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { DateRange } from 'react-day-picker';
 
 interface ExportDateRangeDialogProps {
@@ -111,11 +110,9 @@ const ExportDateRangeDialog: React.FC<ExportDateRangeDialogProps> = ({
                         <SelectValue placeholder="Month" />
                       </SelectTrigger>
                       <SelectContent>
-                        <ScrollArea className="h-[200px]">
-                          {months.map((month) => (
-                            <SelectItem key={`from-${month}`} value={month}>{month}</SelectItem>
-                          ))}
-                        </ScrollArea>
+                        {months.map((month) => (
+                          <SelectItem key={`from-${month}`} value={month}>{month}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     
@@ -124,11 +121,9 @@ const ExportDateRangeDialog: React.FC<ExportDateRangeDialogProps> = ({
                         <SelectValue placeholder="Year" />
                       </SelectTrigger>
                       <SelectContent>
-                        <ScrollArea className="h-[200px]">
-                          {years.map((year) => (
-                            <SelectItem key={`from-${year}`} value={year.toString()}>{year}</SelectItem>
-                          ))}
-                        </ScrollArea>
+                        {years.map((year) => (
+                          <SelectItem key={`from-${year}`} value={year.toString()}>{year}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -142,11 +137,9 @@ const ExportDateRangeDialog: React.FC<ExportDateRangeDialogProps> = ({
                         <SelectValue placeholder="Month" />
                       </SelectTrigger>
                       <SelectContent>
-                        <ScrollArea className="h-[200px]">
-                          {months.map((month) => (
-                            <SelectItem key={`to-${month}`} value={month}>{month}</SelectItem>
-                          ))}
-                        </ScrollArea>
+                        {months.map((month) => (
+                          <SelectItem key={`to-${month}`} value={month}>{month}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     
@@ -155,11 +148,9 @@ const ExportDateRangeDialog: React.FC<ExportDateRangeDialogProps> = ({
                         <SelectValue placeholder="Year" />
                       </SelectTrigger>
                       <SelectContent>
-                        <ScrollArea className="h-[200px]">
-                          {years.map((year) => (
-                            <SelectItem key={`to-${year}`} value={year.toString()}>{year}</SelectItem>
-                          ))}
-                        </ScrollArea>
+                        {years.map((year) => (
+                          <SelectItem key={`to-${year}`} value={year.toString()}>{year}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>

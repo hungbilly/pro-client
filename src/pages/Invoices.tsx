@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getInvoices, deleteInvoice } from '@/lib/storage';
@@ -145,19 +144,16 @@ const Invoices = () => {
     }
   };
 
-  // Filter invoices based on search query and date range
   const filteredInvoices = invoices.filter(invoice => {
-    // Text search filter
     const matchesSearch = 
       invoice.number.toLowerCase().includes(searchQuery.toLowerCase()) ||
       getClientName(invoice.clientId).toLowerCase().includes(searchQuery.toLowerCase()) ||
       invoice.status.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (getJobName(invoice.jobId) && getJobName(invoice.jobId).toLowerCase().includes(searchQuery.toLowerCase()));
     
-    // Date range filter
     let matchesDateRange = true;
     if (dateRange?.from) {
-      const invoiceDate = invoice.date ? new Date(invoice.date) : new Date(invoice.createdAt);
+      const invoiceDate = new Date(invoice.date);
       
       const fromDate = new Date(dateRange.from);
       fromDate.setHours(0, 0, 0, 0);

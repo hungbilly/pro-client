@@ -49,53 +49,80 @@ serve(async (req) => {
 
     // Get or create customer
     let customerId;
-    const { data: customers, error: customerFetchError } = await stripe.customers.list({
-      email: email,
-      limit: 1,
+    const { data: customers, error: customerFetchError } = await supabase.functions.invoke('check-subscription', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     });
 
-    if (customerFetchError) {
-      console.error('Error fetching Stripe customer:', customerFetchError);
-      throw new Error('Failed to fetch Stripe customer');
-    }
-
-    if (customers.data.length > 0) {
-      customerId = customers.data[0].id;
-      
-      // Check if customer already has an active subscription
-      const subscriptions = await stripe.subscriptions.list({
-        customer: customerId,
-        status: 'active',
+    // Check if the customer exists in the response from check-subscription
+    let existingCustomer = false;
+    try {
+      // Search for stripe customer by email
+      const stripeCustomers = await stripe.customers.list({
+        email: email,
         limit: 1,
       });
-      
-      if (subscriptions.data.length > 0) {
-        return new Response(
-          JSON.stringify({ 
-            message: 'User already has an active subscription',
-            url: null,
-            subscriptionId: subscriptions.data[0].id,
-            alreadySubscribed: true
-          }),
-          { 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 200,
-          }
-        );
+
+      if (stripeCustomers && stripeCustomers.data && stripeCustomers.data.length > 0) {
+        customerId = stripeCustomers.data[0].id;
+        existingCustomer = true;
+        
+        // Check if customer already has an active subscription
+        const subscriptions = await stripe.subscriptions.list({
+          customer: customerId,
+          status: 'active',
+          limit: 1,
+        });
+        
+        if (subscriptions.data && subscriptions.data.length > 0) {
+          return new Response(
+            JSON.stringify({ 
+              message: 'User already has an active subscription',
+              url: null,
+              subscriptionId: subscriptions.data[0].id,
+              alreadySubscribed: true
+            }),
+            { 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 200,
+            }
+          );
+        }
       }
-    } else {
-      // Create a new customer
-      const newCustomer = await stripe.customers.create({
-        email: email,
-        metadata: {
-          supabase_user_id: user.id,
-        },
-      });
-      customerId = newCustomer.id;
+    } catch (error) {
+      console.error('Error checking Stripe customer:', error);
+      // Continue to create a new customer if there was an error
+    }
+
+    // Create a new customer if one doesn't exist
+    if (!existingCustomer) {
+      try {
+        const newCustomer = await stripe.customers.create({
+          email: email,
+          metadata: {
+            supabase_user_id: user.id,
+          },
+        });
+        customerId = newCustomer.id;
+      } catch (error) {
+        console.error('Error creating Stripe customer:', error);
+        throw new Error('Failed to create Stripe customer');
+      }
+    }
+
+    if (!customerId) {
+      throw new Error('Failed to get or create customer ID');
     }
 
     // Parse request body to get trial flag
-    const { withTrial = true } = await req.json();
+    let withTrial = true;
+    try {
+      const requestBody = await req.json();
+      withTrial = requestBody.withTrial !== false; // Default to true unless explicitly set to false
+    } catch (error) {
+      console.log('No request body or invalid JSON, defaulting to trial=true');
+    }
     
     // Create a subscription session with a 3-month trial
     const session = await stripe.checkout.sessions.create({

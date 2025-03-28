@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { DateRange } from 'react-day-picker';
@@ -158,9 +157,14 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
             </div>
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[300px] p-0" align="start">
-          <div className="p-2">
-            <ScrollArea className="max-h-[240px]">
+        <PopoverContent 
+          className="w-[300px] p-0" 
+          align="start"
+          sideOffset={8}
+          style={{ maxHeight: '85vh', overflowY: 'auto' }}
+        >
+          <ScrollArea className="max-h-[85vh]">
+            <div className="p-2">
               <div className="flex flex-col space-y-1">
                 {presets.map((preset) => (
                   <Button
@@ -179,80 +183,82 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
                   </Button>
                 ))}
               </div>
-            </ScrollArea>
-            
-            {/* Show start date and end date inputs when "Custom range" is selected */}
-            {selectedPreset === 'Custom range' && (
-              <div className="p-3 space-y-3 border-t mt-1">
-                <div>
-                  <p className="text-sm font-medium mb-1.5">Start date</p>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start text-left font-normal"
-                      >
-                        {startDate ? (
-                          format(startDate, 'PP')
-                        ) : (
-                          <span className="text-muted-foreground">Pick a date</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={startDate}
-                        onSelect={(date) => handleStartDateChange(date)}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
+              
+              {/* Show start date and end date inputs when "Custom range" is selected */}
+              {selectedPreset === 'Custom range' && (
+                <div className="p-3 space-y-3 border-t mt-1">
+                  <div>
+                    <p className="text-sm font-medium mb-1.5">Start date</p>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start text-left font-normal"
+                        >
+                          {startDate ? (
+                            format(startDate, 'PP')
+                          ) : (
+                            <span className="text-muted-foreground">Pick a date</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={startDate}
+                          onSelect={(date) => handleStartDateChange(date)}
+                          initialFocus
+                          className="pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm font-medium mb-1.5">End date</p>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start text-left font-normal"
+                        >
+                          {endDate ? (
+                            format(endDate, 'PP')
+                          ) : (
+                            <span className="text-muted-foreground">Pick a date</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={endDate}
+                          onSelect={(date) => handleEndDateChange(date)}
+                          initialFocus
+                          disabled={(date) => startDate ? date < startDate : false}
+                          className="pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
                 </div>
-                
-                <div>
-                  <p className="text-sm font-medium mb-1.5">End date</p>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start text-left font-normal"
-                      >
-                        {endDate ? (
-                          format(endDate, 'PP')
-                        ) : (
-                          <span className="text-muted-foreground">Pick a date</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={endDate}
-                        onSelect={(date) => handleEndDateChange(date)}
-                        initialFocus
-                        disabled={(date) => startDate ? date < startDate : false}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
+              )}
+              
+              <div className="p-2 border-t">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="w-full"
+                  onClick={handleClearFilter}
+                  disabled={!dateRange?.from}
+                >
+                  Clear Filter
+                </Button>
               </div>
-            )}
-            
-            <div className="p-2 border-t">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="w-full"
-                onClick={handleClearFilter}
-                disabled={!dateRange?.from}
-              >
-                Clear Filter
-              </Button>
             </div>
-          </div>
+          </ScrollArea>
         </PopoverContent>
       </Popover>
     </div>

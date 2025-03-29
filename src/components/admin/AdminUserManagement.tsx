@@ -22,6 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Search, Loader } from 'lucide-react';
+import { User } from '@supabase/supabase-js';
 
 interface AdminUser {
   id: string;
@@ -47,18 +48,21 @@ const AdminUserManagement = () => {
       setLoadingAdmins(true);
       
       // Get all users with admin status set to true
-      const { data: { users }, error } = await supabase.auth.admin.listUsers();
+      const { data, error } = await supabase.auth.admin.listUsers();
       
       if (error) throw error;
       
       // Filter users with admin status
-      const adminUsersList = users.filter(user => 
-        user.user_metadata?.is_admin === true
-      ).map(user => ({
-        id: user.id,
-        email: user.email || 'No email',
-        isAdmin: true
-      }));
+      const adminUsersList = data.users
+        .filter(user => {
+          // Use optional chaining and check if user_metadata exists and has is_admin property
+          return user.user_metadata && user.user_metadata.is_admin === true;
+        })
+        .map(user => ({
+          id: user.id,
+          email: user.email || 'No email',
+          isAdmin: true
+        }));
       
       setAdminUsers(adminUsersList);
     } catch (error: any) {
@@ -87,16 +91,20 @@ const AdminUserManagement = () => {
       setLoading(true);
       setFoundUser(null);
 
-      // Search for user by email
+      // Search for user by email - using the correct parameters
       const { data, error } = await supabase.auth.admin.listUsers({
-        filters: {
-          email: searchEmail.trim()
-        }
+        page: 1,
+        perPage: 1,
       });
 
       if (error) throw error;
       
-      if (data.users.length === 0) {
+      // Filter users by email manually since we can't use the filter parameter directly
+      const matchedUsers = data.users.filter(user => 
+        user.email?.toLowerCase() === searchEmail.trim().toLowerCase()
+      );
+      
+      if (matchedUsers.length === 0) {
         toast({
           title: "User Not Found",
           description: "No user found with that email address",
@@ -105,7 +113,7 @@ const AdminUserManagement = () => {
         return;
       }
 
-      const user = data.users[0];
+      const user = matchedUsers[0];
       setFoundUser({
         id: user.id,
         email: user.email || 'No email',

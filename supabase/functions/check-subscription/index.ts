@@ -61,6 +61,35 @@ serve(async (req) => {
 
     console.log('Local subscription data:', userSubscription);
 
+    // If we have a valid subscription in our database
+    if (!subError && userSubscription) {
+      console.log(`User ${userId} has subscription record in database with status: ${userSubscription.status}`);
+      
+      // If the status is active or trialing, user has access
+      if (['active', 'trialing'].includes(userSubscription.status)) {
+        console.log(`User ${userId} has active/trial subscription in database`);
+        return new Response(
+          JSON.stringify({
+            hasAccess: true,
+            subscription: {
+              id: userSubscription.stripe_subscription_id,
+              status: userSubscription.status,
+              currentPeriodEnd: userSubscription.current_period_end,
+            },
+            trialDaysLeft: userSubscription.status === 'trialing' && userSubscription.trial_end_date ? 
+              Math.ceil((new Date(userSubscription.trial_end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0,
+            isInTrialPeriod: userSubscription.status === 'trialing',
+            trialEndDate: userSubscription.trial_end_date,
+            local: true,
+          }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200,
+          }
+        );
+      }
+    }
+
     // First, check if user is within free trial period (90 days from account creation)
     const userCreatedAt = new Date(user.created_at || Date.now());
     const trialEndDate = new Date(userCreatedAt);
@@ -79,28 +108,6 @@ serve(async (req) => {
           trialDaysLeft: Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
           isInTrialPeriod: true,
           trialEndDate: trialEndDate.toISOString(),
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200,
-        }
-      );
-    }
-
-    // Check if we have a valid subscription in our database
-    if (!subError && userSubscription && ['active', 'trialing'].includes(userSubscription.status)) {
-      console.log(`User ${userId} has valid subscription in database: ${userSubscription.status}`);
-      return new Response(
-        JSON.stringify({
-          hasAccess: true,
-          subscription: {
-            id: userSubscription.stripe_subscription_id,
-            status: userSubscription.status,
-            currentPeriodEnd: userSubscription.current_period_end,
-          },
-          trialDaysLeft: 0,
-          isInTrialPeriod: userSubscription.status === 'trialing',
-          local: true,
         }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },

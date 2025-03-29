@@ -35,6 +35,15 @@ const SubscriptionStatus = () => {
     );
   }
 
+  // Add debug logging to help diagnose issues
+  console.log("SubscriptionStatus rendering with:", {
+    hasAccess,
+    isInTrialPeriod,
+    trialDaysLeft,
+    trialEndDate,
+    subscription
+  });
+
   return (
     <Card className="w-full">
       <CardHeader>
@@ -42,24 +51,7 @@ const SubscriptionStatus = () => {
         <CardDescription>Manage your subscription plan</CardDescription>
       </CardHeader>
       <CardContent>
-        {isInTrialPeriod ? (
-          <div className="p-4 border rounded-lg bg-amber-50 border-amber-200">
-            <div className="flex items-start gap-3">
-              <Clock className="h-5 w-5 text-amber-600 mt-0.5" />
-              <div>
-                <h3 className="font-medium text-amber-800">Trial Period</h3>
-                <p className="text-sm text-amber-700">
-                  You are currently in your free trial period. {trialDaysLeft} days remaining.
-                </p>
-                {trialEndDate && (
-                  <p className="text-sm text-amber-700 mt-1">
-                    Trial ends on {format(new Date(trialEndDate), 'MMMM d, yyyy')}
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-        ) : subscription ? (
+        {subscription && subscription.status === 'active' ? (
           <div className="p-4 border rounded-lg bg-green-50 border-green-200">
             <div className="flex items-start gap-3">
               <Check className="h-5 w-5 text-green-600 mt-0.5" />
@@ -78,6 +70,23 @@ const SubscriptionStatus = () => {
                 <p className="text-sm text-green-700 mt-1">
                   Price: HK$50/month
                 </p>
+              </div>
+            </div>
+          </div>
+        ) : isInTrialPeriod ? (
+          <div className="p-4 border rounded-lg bg-amber-50 border-amber-200">
+            <div className="flex items-start gap-3">
+              <Clock className="h-5 w-5 text-amber-600 mt-0.5" />
+              <div>
+                <h3 className="font-medium text-amber-800">Trial Period</h3>
+                <p className="text-sm text-amber-700">
+                  You are currently in your free trial period. {trialDaysLeft} days remaining.
+                </p>
+                {trialEndDate && (
+                  <p className="text-sm text-amber-700 mt-1">
+                    Trial ends on {format(new Date(trialEndDate), 'MMMM d, yyyy')}
+                  </p>
+                )}
               </div>
             </div>
           </div>

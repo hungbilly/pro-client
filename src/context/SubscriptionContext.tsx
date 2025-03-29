@@ -80,9 +80,10 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       } else if (!subscriptionData) {
         console.log('No subscription found in user_subscriptions table');
       } else {
-        console.log('Found active subscription in database:', subscriptionData);
+        console.log('Found subscription in database:', subscriptionData);
       }
       
+      // Check if subscription is active or trialing in database
       if (subscriptionData && ['active', 'trialing'].includes(subscriptionData.status)) {
         console.log('Setting hasAccess to true for subscription:', subscriptionData);
         setHasAccess(true);
@@ -91,10 +92,20 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
           status: subscriptionData.status as SubscriptionStatus,
           currentPeriodEnd: subscriptionData.current_period_end,
         });
+        // If status is active, ensure we're not in trial period
         setIsInTrialPeriod(subscriptionData.status === 'trialing');
         setIsLoading(false);
         setHasCheckedSubscription(true);
-        console.log('State after setting active subscription:', {
+        
+        // If we have an active subscription, we don't need to check for trial period
+        if (subscriptionData.status === 'active') {
+          setTrialDaysLeft(0);
+          setTrialEndDate(null);
+          console.log('Active subscription found, skipping trial period check');
+          return;
+        }
+        
+        console.log('State after setting subscription from database:', {
           hasAccess: true,
           isLoading: false,
           subscription: {
@@ -133,18 +144,29 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
             status: data.subscription.status as SubscriptionStatus,
             currentPeriodEnd: data.subscription.currentPeriodEnd
           });
+          
+          // If we have an active subscription from the edge function, ensure we're not in trial period
+          if (data.subscription.status === 'active') {
+            setIsInTrialPeriod(false);
+            setTrialDaysLeft(0);
+            setTrialEndDate(null);
+          } else {
+            setIsInTrialPeriod(data.isInTrialPeriod);
+            setTrialDaysLeft(data.trialDaysLeft);
+            setTrialEndDate(data.trialEndDate);
+          }
         } else {
           setSubscription(null);
+          setIsInTrialPeriod(data.isInTrialPeriod);
+          setTrialDaysLeft(data.trialDaysLeft);
+          setTrialEndDate(data.trialEndDate);
         }
         
-        setIsInTrialPeriod(data.isInTrialPeriod);
-        setTrialDaysLeft(data.trialDaysLeft);
-        setTrialEndDate(data.trialEndDate);
         console.log('State after edge function:', {
           hasAccess: data.hasAccess,
           isLoading: false,
           subscription: data.subscription,
-          isInTrialPeriod: data.isInTrialPeriod,
+          isInTrialPeriod: data.subscription ? data.subscription.status !== 'active' && data.isInTrialPeriod : data.isInTrialPeriod,
           trialDaysLeft: data.trialDaysLeft,
           trialEndDate: data.trialEndDate,
           hasCheckedSubscription: true,

@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from 'https://esm.sh/stripe@14.21.0';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
@@ -36,10 +37,23 @@ serve(async (req) => {
 
     const user = userData.user;
     const userId = user.id;
-    const email = user.email;
+    
+    // Get email from profiles table instead of auth.users
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('email')
+      .eq('id', userId)
+      .single();
+      
+    if (profileError || !profileData) {
+      console.error('Error getting profile:', profileError);
+      throw new Error('User profile not found');
+    }
+    
+    const email = profileData.email;
 
     if (!email) {
-      throw new Error('User email not found');
+      throw new Error('User email not found in profile');
     }
 
     console.log(`Checking subscription for user: ${userId} (${email})`);
@@ -64,7 +78,7 @@ serve(async (req) => {
     if (!subError && userSubscription) {
       console.log(`User ${userId} has subscription record in database with status: ${userSubscription.status}`);
       
-      // FIX: If the status is active, user has access regardless of trial status
+      // If the status is active, user has access regardless of trial status
       if (userSubscription.status === 'active') {
         console.log(`User ${userId} has active subscription in database`);
         return new Response(

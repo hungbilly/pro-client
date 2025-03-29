@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { toast } from 'sonner';
@@ -19,40 +19,47 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }) => {
     subscription,
     checkSubscription
   } = useSubscription();
+  const [hasChecked, setHasChecked] = useState(false);
 
   // Add effect to check subscription on mount
   useEffect(() => {
-    // Force a re-check of subscription status when component mounts
     console.log('SubscriptionGuard: Checking subscription status...');
-    checkSubscription().then(() => {
+    const verifySubscription = async () => {
+      await checkSubscription(); // Wait for the subscription check to complete
       console.log('SubscriptionGuard: Subscription check completed');
-    });
+      setHasChecked(true);
+    };
+
+    verifySubscription();
   }, [checkSubscription]);
 
   // Add debug logging
   useEffect(() => {
-    console.log('SubscriptionGuard state:', { 
-      hasAccess, 
-      isLoading, 
-      subscription: subscription ? {
-        id: subscription.id,
-        status: subscription.status,
-        currentPeriodEnd: subscription.currentPeriodEnd
-      } : null,
-      isInTrialPeriod,
-      trialDaysLeft
-    });
-  }, [hasAccess, isLoading, subscription, isInTrialPeriod, trialDaysLeft]);
+    if (hasChecked) {
+      console.log('SubscriptionGuard state after check:', { 
+        hasAccess, 
+        isLoading, 
+        subscription: subscription ? {
+          id: subscription.id,
+          status: subscription.status,
+          currentPeriodEnd: subscription.currentPeriodEnd
+        } : null,
+        isInTrialPeriod,
+        trialDaysLeft
+      });
+    }
+  }, [hasAccess, isLoading, subscription, isInTrialPeriod, trialDaysLeft, hasChecked]);
 
   useEffect(() => {
-    if (!hasAccess && !isLoading) {
+    if (hasChecked && !isLoading && !hasAccess) {
       toast.warning("You need an active subscription to access this feature");
     } else if (isInTrialPeriod && trialDaysLeft <= 7) {
       toast.info(`Your trial ends in ${trialDaysLeft} days. Subscribe to continue using all features.`);
     }
-  }, [hasAccess, isLoading, isInTrialPeriod, trialDaysLeft]);
+  }, [hasAccess, isLoading, isInTrialPeriod, trialDaysLeft, hasChecked]);
 
-  if (isLoading) {
+  if (isLoading || !hasChecked) {
+    console.log('SubscriptionGuard: Loading subscription status...');
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
@@ -65,6 +72,7 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }) => {
 
   if (!hasAccess) {
     // For debugging purposes, show more information about what's happening
+    console.log("SubscriptionGuard: No access, redirecting to /subscription");
     console.log("Subscription check failed:", { 
       hasAccess, 
       isLoading, 
@@ -90,6 +98,7 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }) => {
     );
   }
 
+  console.log('SubscriptionGuard: Access granted, rendering children');
   return children ? <>{children}</> : <Outlet />;
 };
 

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useSubscription } from '@/context/SubscriptionContext';
@@ -9,6 +8,7 @@ import PageTransition from '@/components/ui-custom/PageTransition';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import WebhookSetupInstructions from '@/components/WebhookSetupInstructions';
 
 const SubscriptionSuccess = () => {
   const [searchParams] = useSearchParams();
@@ -58,7 +58,6 @@ const SubscriptionSuccess = () => {
       
       if (data && data.length > 0) {
         setDbSubscriptionData(data[0]);
-        // If we have subscription data, the webhook might be working
         await checkWebhookStatus();
       }
     } catch (err) {
@@ -68,24 +67,22 @@ const SubscriptionSuccess = () => {
 
   const checkWebhookStatus = async () => {
     try {
-      // Test if the webhook endpoint is reachable - just a simple OPTIONS request
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-webhook`, {
         method: 'OPTIONS',
       });
       
-      if (response.ok) {
-        setWebhookMissing(false);
-      }
+      setWebhookMissing(!response.ok);
+      return response.ok;
     } catch (error) {
       console.error('Error checking webhook status:', error);
       setWebhookMissing(true);
+      return false;
     }
   };
 
   const handleManualSync = async () => {
     setIsManualSyncing(true);
     try {
-      // Call the check-subscription function to force a sync
       const { data, error } = await supabase.functions.invoke('check-subscription');
       
       if (error) throw error;
@@ -103,8 +100,8 @@ const SubscriptionSuccess = () => {
   const testWebhook = async () => {
     setIsTestingWebhook(true);
     try {
-      await checkWebhookStatus();
-      if (!webhookMissing) {
+      const isReachable = await checkWebhookStatus();
+      if (isReachable) {
         toast.success('Webhook endpoint is reachable');
       } else {
         toast.error('Webhook endpoint is not reachable');
@@ -227,33 +224,7 @@ const SubscriptionSuccess = () => {
             </CardFooter>
           </Card>
 
-          <Card className="mt-6 border-amber-200 shadow-md">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <InfoIcon className="h-5 w-5 text-amber-500" />
-                <CardTitle className="text-lg">Webhook Setup Instructions</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="text-sm text-left space-y-3">
-              <p>
-                To ensure subscription updates are automatic, please set up a webhook in your Stripe dashboard:
-              </p>
-              <ol className="list-decimal list-inside space-y-2 pl-2">
-                <li>Go to the Stripe Dashboard → Developers → Webhooks</li>
-                <li>Click "Add endpoint"</li>
-                <li>Set the endpoint URL to: <code className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">{import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-webhook</code></li>
-                <li>Select events to listen for:
-                  <ul className="list-disc list-inside pl-4 text-gray-600">
-                    <li>customer.subscription.created</li>
-                    <li>customer.subscription.updated</li>
-                    <li>customer.subscription.deleted</li>
-                    <li>invoice.paid</li>
-                  </ul>
-                </li>
-                <li>Add the Webhook Secret to your Supabase Edge Function secrets with the name <code className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">STRIPE_WEBHOOK_SECRET</code></li>
-              </ol>
-            </CardContent>
-          </Card>
+          <WebhookSetupInstructions />
         </div>
       </div>
     </PageTransition>

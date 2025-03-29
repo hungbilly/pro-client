@@ -97,7 +97,15 @@ serve(async (req) => {
     // Parse request body to get trial flag
     const { withTrial = true } = await req.json();
     
-    // Create a subscription session with a 3-month trial
+    console.log('Subscription check result:', await supabase.functions.invoke('check-subscription', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }));
+    
+    console.log('Using existing Stripe customer:', customerId);
+    
+    // Create a subscription session
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ['card'],
@@ -105,10 +113,7 @@ serve(async (req) => {
         {
           price_data: {
             currency: 'usd',
-            product_data: {
-              name: 'Premium Photography Business Management',
-              description: 'Unlock all features of the photography business management platform',
-            },
+            product: 'prod_S1W7TUjrYkLT1I', // Using your specific product ID
             unit_amount: 1999, // $19.99 per month
             recurring: {
               interval: 'month',

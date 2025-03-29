@@ -21,7 +21,9 @@ import {
   CardHeader, 
   CardTitle 
 } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import UserTrialModal from '@/components/admin/UserTrialModal';
+import AdminUserManagement from '@/components/admin/AdminUserManagement';
 import { format, parseISO, addDays } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Search, Loader, AlertCircle } from 'lucide-react';
@@ -54,6 +56,7 @@ const AdminDashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<(User & { subscription?: Subscription }) | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("subscriptions");
 
   useEffect(() => {
     // Redirect if not admin
@@ -208,103 +211,116 @@ const AdminDashboard = () => {
     <div className="container py-10">
       <h1 className="text-3xl font-bold mb-8">Admin Dashboard</h1>
       
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle>User Management</CardTitle>
-          <CardDescription>
-            View and manage users and their subscription status
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="relative mb-6">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by user ID"
-              className="pl-10"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          
-          {error && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-          
-          {loading ? (
-            <div className="flex justify-center py-8">
-              <Loader className="h-6 w-6 animate-spin mr-2" />
-              <p>Loading users...</p>
-            </div>
-          ) : (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>User ID</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead>Subscription</TableHead>
-                    <TableHead>Trial Status</TableHead>
-                    <TableHead>End Date</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredUsers.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
-                        No users found
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredUsers.map(user => {
-                      const trialInfo = getTrialStatus(user);
-                      return (
-                        <TableRow key={user.id}>
-                          <TableCell>{user.id}</TableCell>
-                          <TableCell>{format(parseISO(user.created_at), 'MMM d, yyyy')}</TableCell>
-                          <TableCell>
-                            <UserSubscriptionBadge status={user.subscription?.status || 'none'} />
-                          </TableCell>
-                          <TableCell>
-                            {trialInfo.status === 'trial' ? (
-                              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
-                                Trial ({trialInfo.daysLeft} days left)
-                              </Badge>
-                            ) : trialInfo.status === 'active' ? (
-                              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                                Active Subscription
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-                                Expired
-                              </Badge>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {trialInfo.endDate ? format(parseISO(trialInfo.endDate), 'MMM d, yyyy') : 'N/A'}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => handleOpenTrialModal(user)}
-                            >
-                              Modify Trial
-                            </Button>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-8">
+        <TabsList className="grid w-full md:w-auto grid-cols-2">
+          <TabsTrigger value="subscriptions">User Subscriptions</TabsTrigger>
+          <TabsTrigger value="admin-users">Admin Management</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="subscriptions">
+          <Card>
+            <CardHeader>
+              <CardTitle>User Subscription Management</CardTitle>
+              <CardDescription>
+                View and manage users and their subscription status
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="relative mb-6">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by user ID"
+                  className="pl-10"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              
+              {error && (
+                <Alert variant="destructive" className="mb-4">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+              
+              {loading ? (
+                <div className="flex justify-center py-8">
+                  <Loader className="h-6 w-6 animate-spin mr-2" />
+                  <p>Loading users...</p>
+                </div>
+              ) : (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>User ID</TableHead>
+                        <TableHead>Created</TableHead>
+                        <TableHead>Subscription</TableHead>
+                        <TableHead>Trial Status</TableHead>
+                        <TableHead>End Date</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredUsers.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
+                            No users found
                           </TableCell>
                         </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                      ) : (
+                        filteredUsers.map(user => {
+                          const trialInfo = getTrialStatus(user);
+                          return (
+                            <TableRow key={user.id}>
+                              <TableCell>{user.id}</TableCell>
+                              <TableCell>{format(parseISO(user.created_at), 'MMM d, yyyy')}</TableCell>
+                              <TableCell>
+                                <UserSubscriptionBadge status={user.subscription?.status || 'none'} />
+                              </TableCell>
+                              <TableCell>
+                                {trialInfo.status === 'trial' ? (
+                                  <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                                    Trial ({trialInfo.daysLeft} days left)
+                                  </Badge>
+                                ) : trialInfo.status === 'active' ? (
+                                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                                    Active Subscription
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                                    Expired
+                                  </Badge>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {trialInfo.endDate ? format(parseISO(trialInfo.endDate), 'MMM d, yyyy') : 'N/A'}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => handleOpenTrialModal(user)}
+                                >
+                                  Modify Trial
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="admin-users">
+          <AdminUserManagement />
+        </TabsContent>
+      </Tabs>
       
       {selectedUser && (
         <UserTrialModal

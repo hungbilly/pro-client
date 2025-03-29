@@ -69,40 +69,60 @@ const AdminUserManagement = () => {
     try {
       setLoadingSubscriptions(true);
       
-      // Fetch all subscriptions - RLS policies will automatically filter based on user role
+      // Fetch all subscriptions - now with working RLS policies
       const { data: subscriptionsData, error: subscriptionsError } = await supabase
         .from('user_subscriptions')
         .select('*');
       
-      if (subscriptionsError) throw subscriptionsError;
+      if (subscriptionsError) {
+        console.error('Error fetching subscriptions:', subscriptionsError.message);
+        throw subscriptionsError;
+      }
+      
+      console.log('Subscriptions data fetched:', subscriptionsData?.length || 0, 'records');
       
       // For each subscription, fetch user info (email)
       const subscriptionsWithUsers: SubscriptionUser[] = [];
       
-      // We have to fetch users one by one as we can't directly join with auth.users
       if (subscriptionsData && subscriptionsData.length > 0) {
         for (const subscription of subscriptionsData) {
-          // Get user email by retrieving their profile or directly from auth if needed
-          // This relies on the admin having permission to retrieve user info
-          const { data: userData, error: userError } = await supabase.auth.admin.getUserById(subscription.user_id);
-          
-          if (!userError && userData && userData.user) {
+          try {
+            // Get user email through admin API
+            const { data: userData, error: userError } = await supabase.auth.admin.getUserById(subscription.user_id);
+            
+            if (userError) {
+              console.error('Error fetching user details:', userError.message);
+              // Still add subscription with null email if we can't get user details
+              subscriptionsWithUsers.push({
+                id: subscription.user_id,
+                email: null,
+                created_at: subscription.created_at,
+                subscription: {
+                  id: subscription.id,
+                  status: subscription.status,
+                  current_period_end: subscription.current_period_end,
+                  trial_end_date: subscription.trial_end_date
+                }
+              });
+            } else if (userData && userData.user) {
+              subscriptionsWithUsers.push({
+                id: subscription.user_id,
+                email: userData.user.email,
+                created_at: userData.user.created_at,
+                subscription: {
+                  id: subscription.id,
+                  status: subscription.status,
+                  current_period_end: subscription.current_period_end,
+                  trial_end_date: subscription.trial_end_date
+                }
+              });
+            }
+          } catch (error: any) {
+            console.error('Error processing user data:', error.message);
+            // Add subscription with null email if there's an error
             subscriptionsWithUsers.push({
               id: subscription.user_id,
-              email: userData.user.email,
-              created_at: userData.user.created_at,
-              subscription: {
-                id: subscription.id,
-                status: subscription.status,
-                current_period_end: subscription.current_period_end,
-                trial_end_date: subscription.trial_end_date
-              }
-            });
-          } else {
-            // If we can't get the user details, still add the subscription
-            subscriptionsWithUsers.push({
-              id: subscription.user_id,
-              email: null, // We don't have access to the email
+              email: null,
               created_at: subscription.created_at,
               subscription: {
                 id: subscription.id,
@@ -115,6 +135,7 @@ const AdminUserManagement = () => {
         }
       }
       
+      console.log('Processed subscription users:', subscriptionsWithUsers.length);
       setSubscriptionUsers(subscriptionsWithUsers);
     } catch (error: any) {
       console.error('Error loading subscription users:', error);

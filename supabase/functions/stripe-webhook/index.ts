@@ -37,9 +37,10 @@ serve(async (req) => {
     // Get the raw request body
     const body = await req.text();
     
-    // Initialize Stripe with the secret key and updated API version
+    // Initialize Stripe with the secret key and a valid API version
+    // Use 2023-10-16 which is known to be compatible with the Stripe SDK we're using
     const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
-      apiVersion: '2025-02-24', // Updated to match your Stripe dashboard version
+      apiVersion: '2023-10-16', // Updated to a compatible API version
     });
 
     // Initialize Supabase client with the service role key

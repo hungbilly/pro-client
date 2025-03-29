@@ -35,7 +35,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         setSession(session);
         setUser(session?.user ?? null);
-        setIsAdmin(session?.user?.user_metadata?.is_admin || false);
+        
+        // Check if user is admin@billyhung.com to grant admin privileges
+        const isAdminUser = session?.user?.email === 'admin@billyhung.com';
+        
+        if (isAdminUser) {
+          console.log('Admin user detected: admin@billyhung.com');
+          setIsAdmin(true);
+          
+          // Update user metadata to include is_admin flag if not already set
+          if (!session.user.user_metadata?.is_admin) {
+            try {
+              await supabase.auth.updateUser({
+                data: { is_admin: true }
+              });
+              console.log('Set admin metadata for user');
+            } catch (error) {
+              console.error('Error updating admin metadata:', error);
+            }
+          }
+        } else {
+          setIsAdmin(session?.user?.user_metadata?.is_admin || false);
+        }
         
         // For Google auth, make sure we have the is_admin field set
         if (session?.user && session.user.app_metadata.provider === 'google' && 
@@ -65,7 +86,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('Auth state changed:', event, session?.user?.email);
         setSession(session);
         setUser(session?.user ?? null);
-        setIsAdmin(session?.user?.user_metadata?.is_admin || false);
+        
+        // Check if user is admin@billyhung.com to grant admin privileges
+        const isAdminUser = session?.user?.email === 'admin@billyhung.com';
+        
+        if (isAdminUser) {
+          console.log('Admin user detected in auth change: admin@billyhung.com');
+          setIsAdmin(true);
+        } else {
+          setIsAdmin(session?.user?.user_metadata?.is_admin || false);
+        }
+        
         setLoading(false);
       }
     );

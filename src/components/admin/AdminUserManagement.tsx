@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { 
@@ -30,6 +30,18 @@ interface AdminUser {
   isAdmin: boolean;
 }
 
+interface SubscriptionUser {
+  id: string;
+  email: string | null;
+  created_at: string;
+  subscription?: {
+    id: string;
+    status: string;
+    current_period_end: string;
+    trial_end_date: string | null;
+  }
+}
+
 // Define a type for the user objects returned from Supabase
 interface SupabaseUser extends User {
   user_metadata: UserMetadata & {
@@ -43,12 +55,78 @@ const AdminUserManagement = () => {
   const [foundUser, setFoundUser] = useState<AdminUser | null>(null);
   const [loading, setLoading] = useState(false);
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
+  const [subscriptionUsers, setSubscriptionUsers] = useState<SubscriptionUser[]>([]);
   const [loadingAdmins, setLoadingAdmins] = useState(true);
+  const [loadingSubscriptions, setLoadingSubscriptions] = useState(true);
 
-  // Load all admin users on component mount
-  React.useEffect(() => {
+  // Load all admin users and subscriptions on component mount
+  useEffect(() => {
     loadAdminUsers();
+    loadSubscriptionUsers();
   }, []);
+
+  const loadSubscriptionUsers = async () => {
+    try {
+      setLoadingSubscriptions(true);
+      
+      // Fetch all subscriptions - RLS policies will automatically filter based on user role
+      const { data: subscriptionsData, error: subscriptionsError } = await supabase
+        .from('user_subscriptions')
+        .select('*');
+      
+      if (subscriptionsError) throw subscriptionsError;
+      
+      // For each subscription, fetch user info (email)
+      const subscriptionsWithUsers: SubscriptionUser[] = [];
+      
+      // We have to fetch users one by one as we can't directly join with auth.users
+      if (subscriptionsData && subscriptionsData.length > 0) {
+        for (const subscription of subscriptionsData) {
+          // Get user email by retrieving their profile or directly from auth if needed
+          // This relies on the admin having permission to retrieve user info
+          const { data: userData, error: userError } = await supabase.auth.admin.getUserById(subscription.user_id);
+          
+          if (!userError && userData && userData.user) {
+            subscriptionsWithUsers.push({
+              id: subscription.user_id,
+              email: userData.user.email,
+              created_at: userData.user.created_at,
+              subscription: {
+                id: subscription.id,
+                status: subscription.status,
+                current_period_end: subscription.current_period_end,
+                trial_end_date: subscription.trial_end_date
+              }
+            });
+          } else {
+            // If we can't get the user details, still add the subscription
+            subscriptionsWithUsers.push({
+              id: subscription.user_id,
+              email: null, // We don't have access to the email
+              created_at: subscription.created_at,
+              subscription: {
+                id: subscription.id,
+                status: subscription.status,
+                current_period_end: subscription.current_period_end,
+                trial_end_date: subscription.trial_end_date
+              }
+            });
+          }
+        }
+      }
+      
+      setSubscriptionUsers(subscriptionsWithUsers);
+    } catch (error: any) {
+      console.error('Error loading subscription users:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to load subscription users",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingSubscriptions(false);
+    }
+  };
 
   const loadAdminUsers = async () => {
     try {
@@ -244,6 +322,57 @@ const AdminUserManagement = () => {
               </div>
             </div>
           )}
+
+          {/* User Subscriptions */}
+          <div>
+            <h3 className="font-medium mb-2">User Subscriptions</h3>
+            {loadingSubscriptions ? (
+              <div className="flex justify-center py-4">
+                <Loader className="h-6 w-6 animate-spin" />
+              </div>
+            ) : (
+              <div className="border rounded-md">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>User ID</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Period End</TableHead>
+                      <TableHead>Trial End</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {subscriptionUsers.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">
+                          No subscription data found
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      subscriptionUsers.map(user => (
+                        <TableRow key={user.id + (user.subscription?.id || '')}>
+                          <TableCell className="text-xs">{user.id}</TableCell>
+                          <TableCell>{user.email || 'Unknown'}</TableCell>
+                          <TableCell>{user.subscription?.status || 'N/A'}</TableCell>
+                          <TableCell>
+                            {user.subscription?.current_period_end 
+                              ? new Date(user.subscription.current_period_end).toLocaleDateString() 
+                              : 'N/A'}
+                          </TableCell>
+                          <TableCell>
+                            {user.subscription?.trial_end_date 
+                              ? new Date(user.subscription.trial_end_date).toLocaleDateString() 
+                              : 'No trial'}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </div>
 
           {/* Current admin users list */}
           <div>

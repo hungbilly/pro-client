@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -21,12 +22,19 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Search, Loader } from 'lucide-react';
-import { User } from '@supabase/supabase-js';
+import { User, UserMetadata } from '@supabase/supabase-js';
 
 interface AdminUser {
   id: string;
   email: string;
   isAdmin: boolean;
+}
+
+// Define a type for the user objects returned from Supabase
+interface SupabaseUser extends User {
+  user_metadata: UserMetadata & {
+    is_admin?: boolean;
+  };
 }
 
 const AdminUserManagement = () => {
@@ -54,8 +62,9 @@ const AdminUserManagement = () => {
       // Filter users with admin status
       const adminUsersList = data.users
         .filter(user => {
-          // Use optional chaining and check if user_metadata exists and has is_admin property
-          return user?.user_metadata && user?.user_metadata?.is_admin === true;
+          // Check if user_metadata exists and has is_admin property
+          const metadata = (user as SupabaseUser).user_metadata;
+          return metadata && metadata.is_admin === true;
         })
         .map(user => ({
           id: user.id,
@@ -100,7 +109,7 @@ const AdminUserManagement = () => {
       
       // Filter users by email manually since we can't use the filter parameter directly
       const matchedUsers = data.users.filter(user => 
-        user?.email?.toLowerCase() === searchEmail.trim().toLowerCase()
+        user.email?.toLowerCase() === searchEmail.trim().toLowerCase()
       );
       
       if (matchedUsers.length === 0) {
@@ -112,11 +121,11 @@ const AdminUserManagement = () => {
         return;
       }
 
-      const user = matchedUsers[0];
+      const user = matchedUsers[0] as SupabaseUser;
       setFoundUser({
         id: user.id,
         email: user.email || 'No email',
-        isAdmin: user?.user_metadata?.is_admin === true
+        isAdmin: user.user_metadata?.is_admin === true
       });
       
     } catch (error: any) {

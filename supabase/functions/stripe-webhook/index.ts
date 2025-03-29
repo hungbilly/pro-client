@@ -39,7 +39,7 @@ serve(async (req) => {
     
     // Initialize Stripe with the secret key and updated API version
     const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
-      apiVersion: '2023-10-16', // Using a stable version
+      apiVersion: '2025-02-24', // Updated to match your Stripe dashboard version
     });
 
     // Initialize Supabase client with the service role key
@@ -54,8 +54,8 @@ serve(async (req) => {
     let event;
     
     try {
-      // Using constructEvent for synchronous operation
-      event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+      // Use constructEventAsync instead of constructEvent
+      event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
       console.log(`Webhook verified successfully: ${event.type}`);
     } catch (err) {
       console.error(`Webhook signature verification failed: ${err.message}`);

@@ -23,7 +23,7 @@ export const SubscriptionStatusBadge = () => {
     );
   }
 
-  // First check for active subscription, then trial status
+  // Always prioritize active subscription status over trial status
   if (subscription && subscription.status === 'active') {
     return (
       <span className="text-xs px-1.5 py-0.5 rounded bg-green-100 text-green-800">

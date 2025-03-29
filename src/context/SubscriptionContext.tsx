@@ -93,7 +93,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
           currentPeriodEnd: subscriptionData.current_period_end,
         });
         
-        // FIX: If status is active, ensure we're not in trial period
+        // If status is active, ensure we're not in trial period
         if (subscriptionData.status === 'active') {
           setIsInTrialPeriod(false);
           setTrialDaysLeft(0);
@@ -149,7 +149,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
             currentPeriodEnd: data.subscription.currentPeriodEnd
           });
           
-          // FIX: Explicitly disable trial mode if the subscription is active
+          // Explicitly disable trial mode if the subscription is active
           if (data.subscription.status === 'active') {
             setIsInTrialPeriod(false);
             setTrialDaysLeft(0);

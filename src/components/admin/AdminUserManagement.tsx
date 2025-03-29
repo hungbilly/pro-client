@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -56,7 +55,7 @@ const AdminUserManagement = () => {
       const adminUsersList = data.users
         .filter(user => {
           // Use optional chaining and check if user_metadata exists and has is_admin property
-          return user.user_metadata && user.user_metadata.is_admin === true;
+          return user?.user_metadata && user?.user_metadata?.is_admin === true;
         })
         .map(user => ({
           id: user.id,
@@ -101,7 +100,7 @@ const AdminUserManagement = () => {
       
       // Filter users by email manually since we can't use the filter parameter directly
       const matchedUsers = data.users.filter(user => 
-        user.email?.toLowerCase() === searchEmail.trim().toLowerCase()
+        user?.email?.toLowerCase() === searchEmail.trim().toLowerCase()
       );
       
       if (matchedUsers.length === 0) {
@@ -117,7 +116,7 @@ const AdminUserManagement = () => {
       setFoundUser({
         id: user.id,
         email: user.email || 'No email',
-        isAdmin: user.user_metadata?.is_admin === true
+        isAdmin: user?.user_metadata?.is_admin === true
       });
       
     } catch (error: any) {

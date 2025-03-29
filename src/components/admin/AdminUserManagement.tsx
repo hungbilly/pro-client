@@ -24,7 +24,6 @@ import { Label } from '@/components/ui/label';
 import { Search, Loader, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { format } from 'date-fns';
-import { User } from '@supabase/supabase-js';
 
 interface AdminUser {
   id: string;
@@ -46,6 +45,20 @@ interface SubscriptionUser {
   }
 }
 
+interface User {
+  id: string;
+  email: string;
+  created_at: string;
+  last_sign_in_at?: string;
+  is_admin: boolean;
+  subscription?: {
+    id: string;
+    status: string;
+    current_period_end: string;
+    trial_end_date: string | null;
+  } | null;
+}
+
 const AdminUserManagement = () => {
   const { toast } = useToast();
   const [searchEmail, setSearchEmail] = useState('');
@@ -62,7 +75,6 @@ const AdminUserManagement = () => {
   // Load all users and subscriptions on component mount
   useEffect(() => {
     loadAllUsers();
-    loadSubscriptionUsers();
   }, []);
 
   // Log all Auth-related information for debugging
@@ -146,7 +158,7 @@ const AdminUserManagement = () => {
       }
       
       // Transform the user data
-      const formattedUsers: AdminUser[] = data.users.map((user: any) => ({
+      const formattedUsers: AdminUser[] = data.users.map((user: User) => ({
         id: user.id,
         email: user.email || 'No email',
         isAdmin: user.is_admin || false,
@@ -160,50 +172,22 @@ const AdminUserManagement = () => {
       const admins = formattedUsers.filter(user => user.isAdmin);
       console.log('Admin users:', admins.length);
       
-      return { allUsers: formattedUsers, adminUsers: admins };
+      // Extract subscription users
+      const subscriptionsWithUsers: SubscriptionUser[] = data.users
+        .filter((user: User) => user.subscription)
+        .map((user: User) => ({
+          id: user.id,
+          email: user.email,
+          created_at: user.created_at,
+          subscription: user.subscription
+        }));
+      
+      console.log('Subscription users:', subscriptionsWithUsers.length);
+      
+      return { allUsers: formattedUsers, adminUsers: admins, subscriptionUsers: subscriptionsWithUsers };
     } catch (error) {
       console.error('Error in fetchAllUsers:', error);
       throw error;
-    }
-  };
-  
-  const fetchSubscriptionWithLogging = async () => {
-    console.log('Starting subscription fetch with detailed logging...');
-    
-    try {
-      console.log('Getting current user session...');
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError) {
-        console.error('Error getting session:', sessionError);
-        return { data: null, error: sessionError };
-      }
-      
-      console.log('Session obtained:', !!sessionData.session);
-      console.log('User authenticated:', !!sessionData.session?.user);
-      
-      if (sessionData.session?.user?.user_metadata?.is_admin) {
-        console.log('User has admin privileges:', true);
-      } else {
-        console.log('User has admin privileges:', false);
-      }
-      
-      console.log('Attempting to fetch user_subscriptions...');
-      const result = await supabase
-        .from('user_subscriptions')
-        .select('*');
-      
-      console.log('Fetch result:', {
-        success: !result.error,
-        errorCode: result.error?.code,
-        errorMessage: result.error?.message,
-        dataCount: result.data?.length || 0
-      });
-      
-      return result;
-    } catch (err) {
-      console.error('Unexpected error in fetchSubscriptionWithLogging:', err);
-      return { data: null, error: err };
     }
   };
   
@@ -211,12 +195,14 @@ const AdminUserManagement = () => {
     try {
       setLoadingAllUsers(true);
       setLoadingAdmins(true);
+      setLoadingSubscriptions(true);
       setError(null);
       
-      const { allUsers, adminUsers } = await fetchAllUsers();
+      const { allUsers, adminUsers, subscriptionUsers } = await fetchAllUsers();
       
       setAllUsers(allUsers);
       setAdminUsers(adminUsers);
+      setSubscriptionUsers(subscriptionUsers);
       
       console.log('Successfully loaded users and admins');
     } catch (error) {
@@ -230,61 +216,6 @@ const AdminUserManagement = () => {
     } finally {
       setLoadingAllUsers(false);
       setLoadingAdmins(false);
-    }
-  };
-
-  const loadSubscriptionUsers = async () => {
-    try {
-      setLoadingSubscriptions(true);
-      setError(null);
-      
-      console.log('Starting loadSubscriptionUsers function...');
-      
-      // Try a different approach - use the fetchSubscriptionWithLogging function
-      const { data: subscriptionsData, error: subscriptionsError } = await fetchSubscriptionWithLogging();
-      
-      if (subscriptionsError) {
-        console.error('Error fetching subscriptions:', subscriptionsError);
-        throw subscriptionsError;
-      }
-      
-      console.log('Subscriptions data fetched successfully:', subscriptionsData?.length || 0, 'records');
-      
-      if (!subscriptionsData || subscriptionsData.length === 0) {
-        console.log('No subscription data found or access denied');
-        setSubscriptionUsers([]);
-        return;
-      }
-      
-      // Match subscription data with user data if available
-      const subscriptionsWithUsers: SubscriptionUser[] = subscriptionsData.map(subscription => {
-        // Try to find matching user in allUsers array
-        const matchingUser = allUsers.find(user => user.id === subscription.user_id);
-        
-        return {
-          id: subscription.user_id,
-          email: matchingUser?.email || null,
-          created_at: matchingUser?.createdAt || subscription.created_at,
-          subscription: {
-            id: subscription.id,
-            status: subscription.status,
-            current_period_end: subscription.current_period_end,
-            trial_end_date: subscription.trial_end_date
-          }
-        };
-      });
-      
-      console.log('Processed', subscriptionsWithUsers.length, 'subscription users in total');
-      setSubscriptionUsers(subscriptionsWithUsers);
-    } catch (error) {
-      console.error('Error loading subscription users:', error);
-      setError(error.message || "Failed to load subscription users");
-      toast({
-        title: "Error",
-        description: error.message || "Failed to load subscription users",
-        variant: "destructive"
-      });
-    } finally {
       setLoadingSubscriptions(false);
     }
   };
@@ -341,23 +272,35 @@ const AdminUserManagement = () => {
       setLoading(true);
       setError(null);
       
-      // Get the current session to use the session token
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      // Update the profile in the profiles table
+      const { error } = await supabase
+        .from('profiles')
+        .update({ 
+          is_admin: !currentStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId);
       
-      if (sessionError || !sessionData.session) {
-        throw new Error("No active session");
+      if (error) {
+        throw new Error(`Failed to update admin status: ${error.message}`);
       }
       
-      // Call our admin edge function to update the user's admin status
-      // This would require adding a new endpoint to the admin-get-users function
-      // For now, we'll just update our local state to simulate the change
+      // Also update user metadata (this requires admin privileges)
+      const { data: sessionData } = await supabase.auth.getSession();
       
-      // In a real implementation, you would update the user's metadata via the admin API
+      if (sessionData.session) {
+        await supabase.functions.invoke('admin-update-user-metadata', {
+          headers: {
+            Authorization: `Bearer ${sessionData.session.access_token}`
+          },
+          body: {
+            userId,
+            metadata: { is_admin: !currentStatus }
+          }
+        });
+      }
       
-      // Simulate a successful update for now
-      const updatedUser = { isAdmin: !currentStatus };
-      
-      console.log('Admin status successfully toggled:', updatedUser);
+      console.log('Admin status successfully toggled to:', !currentStatus);
       
       // Update local state
       if (foundUser && foundUser.id === userId) {
@@ -429,9 +372,8 @@ const AdminUserManagement = () => {
               onClick={() => {
                 logAuthInfo();
                 loadAllUsers();
-                loadSubscriptionUsers();
               }}
-              disabled={loading || loadingAllUsers || loadingSubscriptions}
+              disabled={loading || loadingAllUsers}
             >
               Refresh Data
             </Button>

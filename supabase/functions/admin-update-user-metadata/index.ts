@@ -14,7 +14,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Admin Get Users function called');
+    console.log('Admin Update User Metadata function called');
     
     // Create a Supabase client with the Admin key
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -28,6 +28,16 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: 'No authorization header provided' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    // Parse request body
+    const { userId, metadata } = await req.json();
+    
+    if (!userId || !metadata) {
+      return new Response(
+        JSON.stringify({ error: 'Missing required parameters (userId, metadata)' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
@@ -45,7 +55,7 @@ serve(async (req) => {
         );
       }
       
-      // Check if user is an admin by getting their profile
+      // Check if user is an admin by checking the profiles table
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('is_admin')
@@ -55,7 +65,7 @@ serve(async (req) => {
       if (profileError) {
         console.log('Error fetching user profile:', profileError);
         return new Response(
-          JSON.stringify({ error: 'Error fetching user profile' }),
+          JSON.stringify({ error: 'Error verifying admin status' }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -71,75 +81,38 @@ serve(async (req) => {
       
       console.log('Admin user verified:', user.id);
       
-      // Fetch user data from profiles table
-      console.log('Fetching users from profiles table');
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('*');
+      // Update user metadata using the admin API
+      console.log(`Updating metadata for user ${userId}`);
+      const { data, error: updateError } = await supabase.auth.admin.updateUserById(
+        userId,
+        { user_metadata: metadata }
+      );
       
-      if (profilesError) {
-        console.error('Error fetching profiles:', profilesError.message);
+      if (updateError) {
+        console.error('Error updating user metadata:', updateError);
         return new Response(
-          JSON.stringify({ error: `Error fetching profiles: ${profilesError.message}` }),
+          JSON.stringify({ error: `Error updating user metadata: ${updateError.message}` }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       
-      // For each profile, get subscription information if available
-      console.log('Fetching subscription information');
-      const { data: subscriptions, error: subscriptionsError } = await supabase
-        .from('user_subscriptions')
-        .select('*');
+      console.log('Successfully updated user metadata');
       
-      if (subscriptionsError) {
-        console.error('Error fetching subscriptions:', subscriptionsError.message);
-        return new Response(
-          JSON.stringify({ error: `Error fetching subscriptions: ${subscriptionsError.message}` }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      // Combine profiles with subscription data
-      const combinedUsers = profiles.map(profile => {
-        // Find matching subscription if it exists
-        const subscription = subscriptions?.find(sub => sub.user_id === profile.id);
-        
-        return {
-          id: profile.id,
-          email: profile.email,
-          created_at: profile.created_at,
-          last_sign_in_at: profile.last_sign_in_at,
-          is_admin: profile.is_admin,
-          subscription: subscription ? {
-            id: subscription.id,
-            status: subscription.status,
-            stripe_subscription_id: subscription.stripe_subscription_id,
-            stripe_customer_id: subscription.stripe_customer_id,
-            current_period_end: subscription.current_period_end,
-            trial_end_date: subscription.trial_end_date,
-            created_at: subscription.created_at
-          } : null
-        };
-      });
-      
-      console.log(`Successfully fetched ${combinedUsers.length} users`);
-      
-      // Return the users
       return new Response(
-        JSON.stringify({ users: combinedUsers }),
+        JSON.stringify({ success: true, data }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
       
     } catch (error) {
-      console.error('Error verifying admin user:', error.message);
+      console.error('Error updating user metadata:', error.message);
       return new Response(
-        JSON.stringify({ error: `Error verifying admin user: ${error.message}` }),
+        JSON.stringify({ error: `Error: ${error.message}` }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
   } catch (error) {
-    console.error('Unexpected error in admin-get-users function:', error.message);
+    console.error('Unexpected error:', error.message);
     return new Response(
       JSON.stringify({ error: `Unexpected error: ${error.message}` }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

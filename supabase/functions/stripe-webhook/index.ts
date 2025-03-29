@@ -74,28 +74,30 @@ serve(async (req) => {
         console.log(`Customer ID: ${customerId}, Subscription ID: ${subscriptionId}, User ID: ${clientReferenceId}`);
         
         if (clientReferenceId && subscriptionId) {
-          // Store subscription data in the database
-          const { data: subscription, error: subError } = await stripe.subscriptions.retrieve(subscriptionId);
-          
-          if (subError) {
-            console.error(`Error retrieving subscription: ${subError}`);
-          } else {
-            const { error: insertError } = await supabase
-              .from('user_subscriptions')
-              .upsert({
-                user_id: clientReferenceId,
-                stripe_customer_id: customerId,
-                stripe_subscription_id: subscriptionId,
-                status: subscription.status,
-                current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-                trial_end_date: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
-              });
+          try {
+            // Store subscription data in the database
+            const subscription = await stripe.subscriptions.retrieve(subscriptionId);
             
-            if (insertError) {
-              console.error(`Error updating subscription record: ${insertError.message}`);
-            } else {
-              console.log(`Subscription record updated for user ${clientReferenceId}`);
+            if (subscription) {
+              const { error: insertError } = await supabase
+                .from('user_subscriptions')
+                .upsert({
+                  user_id: clientReferenceId,
+                  stripe_customer_id: customerId,
+                  stripe_subscription_id: subscriptionId,
+                  status: subscription.status,
+                  current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+                  trial_end_date: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
+                });
+              
+              if (insertError) {
+                console.error(`Error updating subscription record: ${insertError.message}`);
+              } else {
+                console.log(`Subscription record updated for user ${clientReferenceId}`);
+              }
             }
+          } catch (error) {
+            console.error(`Error retrieving subscription: ${error.message}`);
           }
         }
         break;
@@ -112,7 +114,7 @@ serve(async (req) => {
           // Get customer to find the associated user
           const customer = await stripe.customers.retrieve(customerIdSub);
           
-          if (customer.deleted) {
+          if ('deleted' in customer && customer.deleted) {
             console.log(`Customer ${customerIdSub} was deleted`);
             break;
           }
@@ -149,6 +151,64 @@ serve(async (req) => {
           }
         } catch (error) {
           console.error(`Error processing subscription event: ${error.message}`);
+        }
+        break;
+        
+      case 'invoice.paid':
+        // Handle invoice.paid event
+        const invoice = event.data.object;
+        console.log(`Processing invoice payment: ${invoice.id} for subscription: ${invoice.subscription}`);
+        
+        if (invoice.subscription) {
+          try {
+            // Get the subscription details
+            const invoiceSubscription = await stripe.subscriptions.retrieve(invoice.subscription);
+            const invoiceCustomerId = invoice.customer;
+            
+            // Get customer to find the associated user
+            const invoiceCustomer = await stripe.customers.retrieve(invoiceCustomerId);
+            
+            if ('deleted' in invoiceCustomer && invoiceCustomer.deleted) {
+              console.log(`Customer ${invoiceCustomerId} was deleted`);
+              break;
+            }
+            
+            // Find user by customer email
+            const { data: invoiceUserData, error: invoiceUserError } = await supabase
+              .from('profiles')
+              .select('id')
+              .eq('email', invoiceCustomer.email)
+              .single();
+              
+            if (invoiceUserError) {
+              console.error(`Error finding user for invoice: ${invoiceUserError.message}`);
+              break;
+            }
+            
+            const invoiceUserId = invoiceUserData.id;
+            
+            // Update the subscription in the database
+            const { error: invoiceUpsertError } = await supabase
+              .from('user_subscriptions')
+              .upsert({
+                user_id: invoiceUserId,
+                stripe_customer_id: invoiceCustomerId,
+                stripe_subscription_id: invoice.subscription,
+                status: invoiceSubscription.status,
+                current_period_end: new Date(invoiceSubscription.current_period_end * 1000).toISOString(),
+                trial_end_date: invoiceSubscription.trial_end ? new Date(invoiceSubscription.trial_end * 1000).toISOString() : null,
+              });
+              
+            if (invoiceUpsertError) {
+              console.error(`Error updating subscription from invoice: ${invoiceUpsertError.message}`);
+            } else {
+              console.log(`Subscription record updated from invoice for user ${invoiceUserId}`);
+            }
+          } catch (error) {
+            console.error(`Error processing invoice.paid event: ${error.message}`);
+          }
+        } else {
+          console.log(`Invoice ${invoice.id} is not associated with a subscription, skipping`);
         }
         break;
         

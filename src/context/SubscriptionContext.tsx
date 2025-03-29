@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
@@ -44,12 +44,14 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [trialDaysLeft, setTrialDaysLeft] = useState<number>(0);
   const [trialEndDate, setTrialEndDate] = useState<string | null>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [hasCheckedSubscription, setHasCheckedSubscription] = useState<boolean>(false);
 
-  const checkSubscription = async () => {
+  const checkSubscription = useCallback(async () => {
     if (!user || !session) {
       console.log('No user or session, setting hasAccess to false');
       setHasAccess(false);
       setIsLoading(false);
+      setHasCheckedSubscription(true);
       return;
     }
 
@@ -57,7 +59,13 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setIsLoading(true);
       console.log('Checking subscription for user:', user.id);
       
-      // First try to get subscription directly from database
+      // Log the authenticated user ID from the Supabase client
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      console.log('Authenticated user ID from Supabase client:', currentUser?.id);
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      console.log('Current session:', currentSession);
+
+      console.log('Querying user_subscriptions table...');
       const { data: subscriptionData, error: subError } = await supabase
         .from('user_subscriptions')
         .select('*')
@@ -67,14 +75,15 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         .single();
       
       if (subError) {
-        console.error('Error checking local subscription:', subError);
+        console.error('Error checking local subscription:', subError.message);
+      } else if (!subscriptionData) {
+        console.log('No subscription found in user_subscriptions table');
       } else {
-        console.log('Subscription data from database:', subscriptionData);
+        console.log('Found active subscription in database:', subscriptionData);
       }
       
-      // If we have a subscription record with active or trialing status, grant access immediately
       if (subscriptionData && ['active', 'trialing'].includes(subscriptionData.status)) {
-        console.log('Found active subscription in database:', subscriptionData);
+        console.log('Setting hasAccess to true for subscription:', subscriptionData);
         setHasAccess(true);
         setSubscription({
           id: subscriptionData.stripe_subscription_id,
@@ -83,11 +92,11 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         });
         setIsInTrialPeriod(subscriptionData.status === 'trialing');
         setIsLoading(false);
+        setHasCheckedSubscription(true);
         return;
       }
 
-      // If no valid subscription was found in the database or we need to validate with Stripe,
-      // call the check-subscription function
+      console.log('No active subscription found in database, calling check-subscription function...');
       try {
         console.log('Calling check-subscription function with token:', session.access_token.substring(0, 10) + '...');
         const { data, error } = await supabase.functions.invoke('check-subscription', {
@@ -97,15 +106,13 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         });
 
         if (error) {
-          console.error('Error calling check-subscription function:', error);
-          // Fall back to user creation date for trial check if we can't reach the function
+          console.error('Error calling check-subscription function:', error.message);
           handleTrialFallback();
           return;
         }
 
         console.log('Subscription check result from edge function:', data);
         
-        // Important: Set hasAccess first to ensure state is updated properly
         setHasAccess(data.hasAccess);
         
         if (data.subscription) {
@@ -122,35 +129,52 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setTrialDaysLeft(data.trialDaysLeft);
         setTrialEndDate(data.trialEndDate);
       } catch (error) {
-        console.error('Error checking subscription:', error);
-        // Fall back to user creation date for trial check
+        console.error('Error checking subscription with edge function:', error.message);
         handleTrialFallback();
       }
     } catch (error) {
-      console.error('Error in checkSubscription:', error);
+      console.error('Error in checkSubscription:', error.message);
       handleTrialFallback();
     } finally {
       setIsLoading(false);
+      setHasCheckedSubscription(true);
     }
-  };
+  }, [user, session]);
 
-  // Fallback to calculate trial based on user creation date if Stripe check fails
   const handleTrialFallback = () => {
     if (!user) return;
     
+    console.log('Falling back to trial period check based on user creation date...');
     const userCreatedAt = new Date(user.created_at || Date.now());
     const trialEndDate = new Date(userCreatedAt);
-    trialEndDate.setDate(trialEndDate.getDate() + 90); // 90-day trial
+    trialEndDate.setDate(trialEndDate.getDate() + 90);
     
     const now = new Date();
     const isInTrialPeriod = now < trialEndDate;
+    
+    console.log('User created at:', userCreatedAt.toISOString());
+    console.log('Trial end date:', trialEndDate.toISOString());
+    console.log('Is in trial period:', isInTrialPeriod);
     
     setHasAccess(isInTrialPeriod);
     setIsInTrialPeriod(isInTrialPeriod);
     setTrialDaysLeft(Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
     setTrialEndDate(trialEndDate.toISOString());
     setSubscription(null);
+    setHasCheckedSubscription(true);
   };
+
+  useEffect(() => {
+    if (user && !hasCheckedSubscription) {
+      console.log('User logged in, checking subscription');
+      checkSubscription();
+    } else if (!user) {
+      console.log('No user, setting hasAccess to false');
+      setHasAccess(false);
+      setIsLoading(false);
+      setHasCheckedSubscription(false);
+    }
+  }, [user, checkSubscription, hasCheckedSubscription]);
 
   const createSubscription = async (withTrial: boolean = true): Promise<string | null> => {
     if (!user || !session) {
@@ -193,17 +217,6 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
-  useEffect(() => {
-    if (user) {
-      console.log('User logged in, checking subscription');
-      checkSubscription();
-    } else {
-      console.log('No user, setting hasAccess to false');
-      setHasAccess(false);
-      setIsLoading(false);
-    }
-  }, [user, session]);
-
   const value = {
     hasAccess,
     isLoading,
@@ -214,6 +227,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     checkSubscription,
     createSubscription,
   };
+
+  console.log('SubscriptionProvider state:', value);
 
   return (
     <SubscriptionContext.Provider value={value}>

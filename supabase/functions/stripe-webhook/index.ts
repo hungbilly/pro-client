@@ -117,7 +117,7 @@ serve(async (req) => {
             break;
           }
           
-          // Find user by customer email
+          // Find user by customer email in profiles table instead of auth.users
           const { data: userData, error: userError } = await supabase
             .from('profiles')
             .select('id')

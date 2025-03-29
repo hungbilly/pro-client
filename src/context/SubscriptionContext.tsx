@@ -104,6 +104,15 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
           return;
         } else {
           setIsInTrialPeriod(subscriptionData.status === 'trialing');
+          
+          // If trialing, make sure to set the trial days left
+          if (subscriptionData.status === 'trialing' && subscriptionData.trial_end_date) {
+            const trialEnd = new Date(subscriptionData.trial_end_date);
+            const now = new Date();
+            const daysLeft = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+            setTrialDaysLeft(daysLeft > 0 ? daysLeft : 0);
+            setTrialEndDate(subscriptionData.trial_end_date);
+          }
         }
         
         setIsLoading(false);
@@ -186,7 +195,13 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     } finally {
       setIsLoading(false);
       setHasCheckedSubscription(true);
-      console.log('State in finally block:', { hasAccess, isLoading: false, hasCheckedSubscription: true });
+      console.log('State in finally block:', { 
+        hasAccess, 
+        isLoading: false, 
+        hasCheckedSubscription: true,
+        isInTrialPeriod,
+        subscription
+      });
     }
   }, [user, session]);
 

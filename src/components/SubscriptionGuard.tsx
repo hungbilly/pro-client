@@ -53,10 +53,10 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }) => {
   useEffect(() => {
     if (hasChecked && !isLoading && !hasAccess) {
       toast.warning("You need an active subscription to access this feature");
-    } else if (isInTrialPeriod && trialDaysLeft <= 7) {
+    } else if (isInTrialPeriod && (!subscription || subscription.status !== 'active') && trialDaysLeft <= 7) {
       toast.info(`Your trial ends in ${trialDaysLeft} days. Subscribe to continue using all features.`);
     }
-  }, [hasAccess, isLoading, isInTrialPeriod, trialDaysLeft, hasChecked]);
+  }, [hasAccess, isLoading, isInTrialPeriod, trialDaysLeft, hasChecked, subscription]);
 
   if (isLoading || !hasChecked) {
     console.log('SubscriptionGuard: Loading subscription status...');

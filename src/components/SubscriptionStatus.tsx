@@ -30,13 +30,17 @@ export const SubscriptionStatusBadge = () => {
         Active
       </span>
     );
-  } else if (isInTrialPeriod) {
+  } 
+  
+  if (isInTrialPeriod && (!subscription || subscription.status !== 'active')) {
     return (
       <span className="text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
         Trial
       </span>
     );
-  } else if (!hasAccess) {
+  } 
+  
+  if (!hasAccess) {
     return (
       <span className="text-xs px-1.5 py-0.5 rounded bg-red-100 text-red-800">
         Expired
@@ -59,6 +63,16 @@ const SubscriptionStatus = () => {
   } = useSubscription();
   const navigate = useNavigate();
 
+  // Add debug logging
+  console.log("SubscriptionStatus render state:", {
+    hasAccess,
+    isLoading,
+    isInTrialPeriod,
+    trialDaysLeft,
+    trialEndDate,
+    subscription
+  });
+
   if (isLoading) {
     return (
       <Card className="w-full">
@@ -74,15 +88,6 @@ const SubscriptionStatus = () => {
       </Card>
     );
   }
-
-  // Add debug logging to help diagnose issues
-  console.log("SubscriptionStatus rendering with:", {
-    hasAccess,
-    isInTrialPeriod,
-    trialDaysLeft,
-    trialEndDate,
-    subscription
-  });
 
   return (
     <Card className="w-full">
@@ -113,7 +118,7 @@ const SubscriptionStatus = () => {
               </div>
             </div>
           </div>
-        ) : isInTrialPeriod ? (
+        ) : isInTrialPeriod && (!subscription || subscription.status !== 'active') ? (
           <div className="p-4 border rounded-lg bg-amber-50 border-amber-200">
             <div className="flex items-start gap-3">
               <Clock className="h-5 w-5 text-amber-600 mt-0.5" />
@@ -154,7 +159,7 @@ const SubscriptionStatus = () => {
               Subscribe Now
             </Button>
           )}
-          {isInTrialPeriod && (
+          {isInTrialPeriod && (!subscription || subscription.status !== 'active') && (
             <Button 
               onClick={() => navigate('/subscription')}
               variant="outline"

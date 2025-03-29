@@ -81,6 +81,23 @@ serve(async (req) => {
       // If the status is active, user has access regardless of trial status
       if (userSubscription.status === 'active') {
         console.log(`User ${userId} has active subscription in database`);
+        
+        // Make sure to set trial related fields to null/0 for active subscriptions
+        // This ensures we don't have mixed signals in the frontend
+        const { error: updateError } = await supabase
+          .from('user_subscriptions')
+          .update({
+            trial_end_date: null, // Explicitly set to null for active subscriptions
+          })
+          .eq('id', userSubscription.id)
+          .eq('status', 'active'); // Only update active subscriptions
+          
+        if (updateError) {
+          console.error('Error updating subscription trial_end_date:', updateError);
+        } else {
+          console.log('Updated active subscription to have null trial_end_date');
+        }
+        
         return new Response(
           JSON.stringify({
             hasAccess: true,
@@ -239,6 +256,7 @@ serve(async (req) => {
         stripe_subscription_id: activeSubscription.id,
         status: activeSubscription.status,
         current_period_end: new Date(activeSubscription.current_period_end * 1000).toISOString(),
+        trial_end_date: null, // Important: Set to null for active subscriptions
       };
       
       if (!userSubscription) {

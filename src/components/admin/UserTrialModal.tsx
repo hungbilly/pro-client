@@ -18,7 +18,6 @@ import { Loader } from 'lucide-react';
 
 interface User {
   id: string;
-  email: string;
   created_at: string;
 }
 
@@ -30,6 +29,7 @@ interface Subscription {
   stripe_customer_id: string;
   current_period_end: string;
   trial_end_date: string | null;
+  created_at: string;
 }
 
 interface UserTrialModalProps {
@@ -111,7 +111,7 @@ const UserTrialModal: React.FC<UserTrialModalProps> = ({
         <DialogHeader>
           <DialogTitle>Modify Trial Period</DialogTitle>
           <DialogDescription>
-            Update the trial period for {user.email}
+            Update the trial period for user ID: {user.id.substring(0, 8)}...
           </DialogDescription>
         </DialogHeader>
         

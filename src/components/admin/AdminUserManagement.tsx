@@ -111,39 +111,25 @@ const AdminUserManagement = () => {
         throw new Error("No active session");
       }
       
-      // Get the user's metadata by email
-      const { data, error } = await supabase.auth.admin.getUserByEmail(searchEmail);
+      // Since getUserByEmail doesn't exist in the API, we'll use a different approach
+      // First, check if the current user's email matches the search
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
       
-      if (error) {
-        // If admin API fails, try to see if this is the current user
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (user && user.email?.toLowerCase() === searchEmail.trim().toLowerCase()) {
-          setFoundUser({
-            id: user.id,
-            email: user.email || 'No email',
-            isAdmin: user.user_metadata?.is_admin === true
-          });
-          return;
-        }
-        
-        throw error;
-      }
-      
-      if (!data) {
-        toast({
-          title: "User Not Found",
-          description: "No user found with that email address",
-          variant: "destructive"
+      if (currentUser && currentUser.email?.toLowerCase() === searchEmail.trim().toLowerCase()) {
+        setFoundUser({
+          id: currentUser.id,
+          email: currentUser.email,
+          isAdmin: currentUser.user_metadata?.is_admin === true
         });
         return;
       }
-
-      const user = data.user as SupabaseUser;
-      setFoundUser({
-        id: user.id,
-        email: user.email || 'No email',
-        isAdmin: user.user_metadata?.is_admin === true
+      
+      // If we're looking for a different user, we can't use the admin API directly
+      // Instead, we'll show a message that we can only manage the current user
+      toast({
+        title: "Limited Functionality",
+        description: "For security reasons, you can only manage your own admin status. The searched user couldn't be found or managed.",
+        variant: "destructive"
       });
       
     } catch (error: any) {
@@ -163,6 +149,7 @@ const AdminUserManagement = () => {
       setLoading(true);
       
       // We'll update the user metadata through updateUser
+      // This only works for the current user
       const { data, error } = await supabase.auth.updateUser({
         data: { is_admin: !currentStatus }
       });

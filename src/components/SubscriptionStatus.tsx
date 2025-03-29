@@ -7,6 +7,45 @@ import { Check, Clock, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 
+export const SubscriptionStatusBadge = () => {
+  const { 
+    hasAccess, 
+    isLoading, 
+    isInTrialPeriod, 
+    subscription 
+  } = useSubscription();
+
+  if (isLoading) {
+    return (
+      <span className="text-xs px-1.5 py-0.5 rounded bg-gray-200 text-gray-700">
+        Loading...
+      </span>
+    );
+  }
+
+  if (subscription && subscription.status === 'active') {
+    return (
+      <span className="text-xs px-1.5 py-0.5 rounded bg-green-100 text-green-800">
+        Active
+      </span>
+    );
+  } else if (isInTrialPeriod) {
+    return (
+      <span className="text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
+        Trial
+      </span>
+    );
+  } else if (!hasAccess) {
+    return (
+      <span className="text-xs px-1.5 py-0.5 rounded bg-red-100 text-red-800">
+        Expired
+      </span>
+    );
+  }
+
+  return null;
+};
+
 const SubscriptionStatus = () => {
   const { 
     hasAccess, 

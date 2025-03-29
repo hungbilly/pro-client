@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Button } from './ui/button';
 import { toast } from 'sonner';
 import CompanySelector from './CompanySelector';
+import { SubscriptionStatusBadge } from './SubscriptionStatus';
 
 const MainNavbar = () => {
   const navigate = useNavigate();
@@ -45,6 +46,7 @@ const MainNavbar = () => {
             {user && (
               <div className="flex items-center space-x-2">
                 <span className="text-sm text-gray-600">{user.email}</span>
+                <SubscriptionStatusBadge />
                 <Button 
                   variant="outline" 
                   size="sm" 

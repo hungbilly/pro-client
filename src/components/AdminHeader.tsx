@@ -17,6 +17,7 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import { useCompany } from './CompanySelector';
+import { SubscriptionStatusBadge } from './SubscriptionStatus';
 
 const AdminHeader = () => {
   const { signOut, user } = useAuth();
@@ -45,9 +46,12 @@ const AdminHeader = () => {
         
         <div className="flex items-center gap-2">
           {user && (
-            <span className="hidden md:inline text-sm mr-2">
-              {user.email}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="hidden md:inline text-sm mr-2">
+                {user.email}
+              </span>
+              <SubscriptionStatusBadge />
+            </div>
           )}
           
           <DropdownMenu>

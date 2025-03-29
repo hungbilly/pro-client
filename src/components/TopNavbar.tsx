@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Home, Users, Briefcase, Settings, CreditCard, LogOut, Building, Menu, User, UserCog, FileText } from 'lucide-react';
@@ -11,6 +10,7 @@ import CompanySelector from './CompanySelector';
 import { useIsMobile } from '@/hooks/use-mobile';
 import UserProfileModal from './ui-custom/UserProfileModal';
 import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
+import { SubscriptionStatusBadge } from './SubscriptionStatus';
 
 interface MenuItem {
   path: string;
@@ -188,6 +188,7 @@ const TopNavbar = () => {
                   <span className="text-xs truncate">
                     {user.email}
                   </span>
+                  <SubscriptionStatusBadge />
                 </Button>}
               
               <Button variant="ghost" size="sm" className="text-white hover:bg-slate-700 flex items-center gap-2" onClick={handleLogout}>

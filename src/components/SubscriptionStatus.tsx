@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { Button } from '@/components/ui/button';
@@ -93,6 +94,7 @@ const SubscriptionStatus = () => {
   const handleShowDebug = async () => {
     setIsLoadingDebug(true);
     try {
+      // Query only the user_subscriptions table without joining to users
       const { data, error } = await supabase
         .from('user_subscriptions')
         .select('*');

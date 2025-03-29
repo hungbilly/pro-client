@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from 'https://esm.sh/stripe@latest';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
@@ -33,7 +34,7 @@ serve(async (req) => {
     const body = await req.text();
     
     const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
-      apiVersion: '2025-02-24',
+      apiVersion: '2025-02-24', // Removed '.acacia' suffix
     });
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';

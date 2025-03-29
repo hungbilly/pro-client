@@ -27,7 +27,7 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }) => {
     checkSubscription().then(() => {
       console.log('SubscriptionGuard: Subscription check completed');
     });
-  }, []);
+  }, [checkSubscription]);
 
   // Add debug logging
   useEffect(() => {

@@ -78,7 +78,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setHasAccess(true);
         setSubscription({
           id: subscriptionData.stripe_subscription_id,
-          status: subscriptionData.status as SubscriptionStatus, // Fix: Cast string to SubscriptionStatus
+          status: subscriptionData.status as SubscriptionStatus,
           currentPeriodEnd: subscriptionData.current_period_end,
         });
         setIsInTrialPeriod(subscriptionData.status === 'trialing');
@@ -105,6 +105,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
         console.log('Subscription check result from edge function:', data);
         
+        // Important: Set hasAccess first to ensure state is updated properly
         setHasAccess(data.hasAccess);
         
         if (data.subscription) {

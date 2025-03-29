@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AlertCircle, Database, RefreshCw, User } from 'lucide-react';
+import { AlertCircle, Database, RefreshCw, User, Lock, Unlock } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Profile {
@@ -32,11 +32,12 @@ interface UserSubscription {
 }
 
 const DebugPage = () => {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [subscriptions, setSubscriptions] = useState<UserSubscription[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [rlsEnabled, setRlsEnabled] = useState<boolean>(true);
 
   const fetchData = async () => {
     try {
@@ -74,8 +75,48 @@ const DebugPage = () => {
     }
   };
 
+  const toggleRls = async () => {
+    if (!isAdmin) {
+      toast.error('Only admins can toggle RLS');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const { error } = await supabase.rpc('toggle_rls_for_subscriptions', { 
+        enable_rls: !rlsEnabled 
+      });
+      
+      if (error) throw error;
+      
+      setRlsEnabled(!rlsEnabled);
+      toast.success(`RLS ${!rlsEnabled ? 'enabled' : 'disabled'} for user_subscriptions table`);
+      
+      // Refetch data
+      await fetchData();
+    } catch (err) {
+      console.error('Error toggling RLS:', err);
+      toast.error('Failed to toggle RLS. Make sure the database function exists.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const checkRlsStatus = async () => {
+    try {
+      const { data, error } = await supabase.rpc('check_rls_status_for_subscriptions');
+      
+      if (error) throw error;
+      
+      setRlsEnabled(data);
+    } catch (err) {
+      console.error('Error checking RLS status:', err);
+    }
+  };
+
   useEffect(() => {
     fetchData();
+    checkRlsStatus();
   }, []);
 
   const formatDate = (dateString: string | null) => {
@@ -94,15 +135,31 @@ const DebugPage = () => {
           <Database className="mr-3 h-8 w-8 text-blue-600" />
           <h1 className="text-3xl font-bold">Database Debug</h1>
         </div>
-        <Button 
-          onClick={fetchData} 
-          variant="outline" 
-          className="flex items-center"
-          disabled={loading}
-        >
-          <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          Refresh Data
-        </Button>
+        <div className="flex space-x-2">
+          {isAdmin && (
+            <Button 
+              onClick={toggleRls} 
+              variant={rlsEnabled ? "destructive" : "default"}
+              className="flex items-center"
+              disabled={loading}
+            >
+              {rlsEnabled ? (
+                <><Unlock className="mr-2 h-4 w-4" /> Disable RLS</>
+              ) : (
+                <><Lock className="mr-2 h-4 w-4" /> Enable RLS</>
+              )}
+            </Button>
+          )}
+          <Button 
+            onClick={fetchData} 
+            variant="outline" 
+            className="flex items-center"
+            disabled={loading}
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh Data
+          </Button>
+        </div>
       </div>
 
       {error && (

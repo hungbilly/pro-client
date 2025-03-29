@@ -9,7 +9,6 @@ interface AuthContextType {
   loading: boolean;
   signOut: () => Promise<void>;
   isAdmin: boolean;
-  profile: any | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -19,28 +18,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [profile, setProfile] = useState<any | null>(null);
-
-  const fetchProfile = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-      
-      if (error) {
-        console.error('Error fetching profile:', error);
-      } else if (data) {
-        console.log('Profile fetched:', data);
-        setProfile(data);
-        // Update admin status based on profile
-        setIsAdmin(data.is_admin);
-      }
-    } catch (error) {
-      console.error('Error in fetchProfile:', error);
-    }
-  };
 
   useEffect(() => {
     // Get initial session
@@ -58,33 +35,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         setSession(session);
         setUser(session?.user ?? null);
-        
-        // Check if user is admin@billyhung.com to grant admin privileges
-        const isAdminUser = session?.user?.email === 'admin@billyhung.com';
-        
-        if (isAdminUser) {
-          console.log('Admin user detected: admin@billyhung.com');
-          setIsAdmin(true);
-          
-          // Update user metadata to include is_admin flag if not already set
-          if (!session.user.user_metadata?.is_admin) {
-            try {
-              await supabase.auth.updateUser({
-                data: { is_admin: true }
-              });
-              console.log('Set admin metadata for user');
-            } catch (error) {
-              console.error('Error updating admin metadata:', error);
-            }
-          }
-        } else {
-          setIsAdmin(session?.user?.user_metadata?.is_admin || false);
-        }
-        
-        // Fetch profile from our new profiles table
-        if (session?.user) {
-          await fetchProfile(session.user.id);
-        }
+        setIsAdmin(session?.user?.user_metadata?.is_admin || false);
         
         // For Google auth, make sure we have the is_admin field set
         if (session?.user && session.user.app_metadata.provider === 'google' && 
@@ -110,28 +61,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         console.log('Auth state changed:', event, session?.user?.email);
         setSession(session);
         setUser(session?.user ?? null);
-        
-        // Check if user is admin@billyhung.com to grant admin privileges
-        const isAdminUser = session?.user?.email === 'admin@billyhung.com';
-        
-        if (isAdminUser) {
-          console.log('Admin user detected in auth change: admin@billyhung.com');
-          setIsAdmin(true);
-        } else {
-          setIsAdmin(session?.user?.user_metadata?.is_admin || false);
-        }
-        
-        // Fetch profile when auth state changes
-        if (session?.user) {
-          await fetchProfile(session.user.id);
-        } else {
-          setProfile(null);
-        }
-        
+        setIsAdmin(session?.user?.user_metadata?.is_admin || false);
         setLoading(false);
       }
     );
@@ -147,7 +81,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // First clear local session state
       setSession(null);
       setUser(null);
-      setProfile(null);
       
       // Clear all supabase related items from local storage
       for (let i = 0; i < localStorage.length; i++) {
@@ -188,8 +121,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     user,
     loading,
     signOut,
-    isAdmin,
-    profile
+    isAdmin
   };
 
   return (

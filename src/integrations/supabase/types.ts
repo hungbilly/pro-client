@@ -9,27 +9,6 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      admin_settings: {
-        Row: {
-          created_at: string
-          default_trial_days: number
-          id: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          default_trial_days?: number
-          id?: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          default_trial_days?: number
-          id?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       clients: {
         Row: {
           address: string
@@ -643,33 +622,6 @@ export type Database = {
           },
         ]
       }
-      profiles: {
-        Row: {
-          created_at: string | null
-          email: string | null
-          id: string
-          is_admin: boolean | null
-          last_sign_in_at: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          email?: string | null
-          id: string
-          is_admin?: boolean | null
-          last_sign_in_at?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          email?: string | null
-          id?: string
-          is_admin?: boolean | null
-          last_sign_in_at?: string | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
       subscription_sessions: {
         Row: {
           created_at: string
@@ -741,7 +693,6 @@ export type Database = {
           status: string
           stripe_customer_id: string
           stripe_subscription_id: string
-          trial_end_date: string | null
           updated_at: string
           user_id: string
         }
@@ -752,7 +703,6 @@ export type Database = {
           status: string
           stripe_customer_id: string
           stripe_subscription_id: string
-          trial_end_date?: string | null
           updated_at?: string
           user_id: string
         }
@@ -763,7 +713,6 @@ export type Database = {
           status?: string
           stripe_customer_id?: string
           stripe_subscription_id?: string
-          trial_end_date?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -774,13 +723,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      set_user_trial_end_date: {
-        Args: {
-          user_id: string
-          days_from_now: number
-        }
-        Returns: string
-      }
+      [_ in never]: never
     }
     Enums: {
       [_ in never]: never

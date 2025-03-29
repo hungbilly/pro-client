@@ -57,32 +57,53 @@ serve(async (req) => {
       
       console.log('Admin user verified:', user.id);
       
-      // Fetch users using the service role key (admin access)
-      console.log('Fetching users from auth.users table');
-      const { data: users, error: usersError } = await supabase.auth.admin.listUsers();
+      // Fetch detailed user profiles including auth data
+      console.log('Fetching users from profiles table and auth.users');
       
-      if (usersError) {
-        console.error('Error fetching users:', usersError.message);
+      // Get basic profile data from public.profiles
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*');
+      
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError.message);
         return new Response(
-          JSON.stringify({ error: `Error fetching users: ${usersError.message}` }),
+          JSON.stringify({ error: `Error fetching profiles: ${profilesError.message}` }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       
-      // If we got this far, we have successfully fetched users
-      console.log(`Successfully fetched ${users.users.length} users`);
+      // Get detailed user data for each profile (we need the admin key to access auth.users)
+      const { data: authUsers, error: authUsersError } = await supabase.auth.admin.listUsers();
+      
+      if (authUsersError) {
+        console.error('Error fetching auth users:', authUsersError.message);
+        return new Response(
+          JSON.stringify({ error: `Error fetching auth users: ${authUsersError.message}` }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      // Combine the data for a complete view
+      const combinedUsers = authUsers.users.map(authUser => {
+        // Find matching profile if it exists
+        const matchingProfile = profiles.find(profile => profile.id === authUser.id) || {};
+        
+        return {
+          id: authUser.id,
+          email: authUser.email,
+          created_at: authUser.created_at,
+          last_sign_in_at: authUser.last_sign_in_at,
+          is_admin: matchingProfile.is_admin || authUser.user_metadata?.is_admin || false,
+          profile: matchingProfile
+        };
+      });
+      
+      console.log(`Successfully fetched ${combinedUsers.length} users`);
       
       // Return the users
       return new Response(
-        JSON.stringify({ 
-          users: users.users.map(user => ({
-            id: user.id,
-            email: user.email,
-            created_at: user.created_at,
-            last_sign_in_at: user.last_sign_in_at,
-            is_admin: user.user_metadata?.is_admin || false
-          }))
-        }),
+        JSON.stringify({ users: combinedUsers }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
       

@@ -163,13 +163,27 @@ serve(async (req) => {
           try {
             // Get the subscription details
             const invoiceSubscription = await stripe.subscriptions.retrieve(invoice.subscription);
+            if (!invoiceSubscription) {
+              console.log(`No subscription found for invoice ${invoice.id}, skipping`);
+              break;
+            }
+            
             const invoiceCustomerId = invoice.customer;
+            if (!invoiceCustomerId) {
+              console.log(`No customer ID found for invoice ${invoice.id}, skipping`);
+              break;
+            }
             
             // Get customer to find the associated user
             const invoiceCustomer = await stripe.customers.retrieve(invoiceCustomerId);
             
-            if ('deleted' in invoiceCustomer && invoiceCustomer.deleted) {
-              console.log(`Customer ${invoiceCustomerId} was deleted`);
+            if (!invoiceCustomer || ('deleted' in invoiceCustomer && invoiceCustomer.deleted)) {
+              console.log(`Customer ${invoiceCustomerId} not found or was deleted, skipping`);
+              break;
+            }
+            
+            if (!invoiceCustomer.email) {
+              console.log(`No email found for customer ${invoiceCustomerId}, skipping`);
               break;
             }
             
@@ -180,8 +194,8 @@ serve(async (req) => {
               .eq('email', invoiceCustomer.email)
               .single();
               
-            if (invoiceUserError) {
-              console.error(`Error finding user for invoice: ${invoiceUserError.message}`);
+            if (invoiceUserError || !invoiceUserData) {
+              console.error(`Error finding user for invoice: ${invoiceUserError?.message || 'No user found'}`);
               break;
             }
             

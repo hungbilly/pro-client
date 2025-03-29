@@ -54,28 +54,90 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     try {
       setIsLoading(true);
-      const { data, error } = await supabase.functions.invoke('check-subscription', {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
+      
+      // First try to get subscription directly from database
+      const { data: subscriptionData, error: subError } = await supabase
+        .from('user_subscriptions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (subError) {
+        console.error('Error checking local subscription:', subError);
+      }
+      
+      // If we have a subscription record with active or trialing status, grant access immediately
+      if (subscriptionData && ['active', 'trialing'].includes(subscriptionData.status)) {
+        console.log('Found active subscription in database:', subscriptionData);
+        setHasAccess(true);
+        setSubscription({
+          id: subscriptionData.stripe_subscription_id,
+          status: subscriptionData.status,
+          currentPeriodEnd: subscriptionData.current_period_end,
+        });
+        setIsInTrialPeriod(subscriptionData.status === 'trialing');
+        setIsLoading(false);
+        return;
+      }
 
-      if (error) {
-        console.error('Error checking subscription:', error);
-        setHasAccess(false);
-      } else {
+      // If no valid subscription was found in the database or we need to validate with Stripe,
+      // call the check-subscription function
+      try {
+        const { data, error } = await supabase.functions.invoke('check-subscription', {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        });
+
+        if (error) {
+          console.error('Error calling check-subscription function:', error);
+          // Fall back to user creation date for trial check if we can't reach the function
+          handleTrialFallback();
+          return;
+        }
+
         setHasAccess(data.hasAccess);
         setSubscription(data.subscription);
         setIsInTrialPeriod(data.isInTrialPeriod);
         setTrialDaysLeft(data.trialDaysLeft);
         setTrialEndDate(data.trialEndDate);
+        
+        console.log('Subscription check result:', {
+          hasAccess: data.hasAccess,
+          subscription: data.subscription,
+          isInTrialPeriod: data.isInTrialPeriod
+        });
+      } catch (error) {
+        console.error('Error checking subscription:', error);
+        // Fall back to user creation date for trial check
+        handleTrialFallback();
       }
     } catch (error) {
-      console.error('Error checking subscription:', error);
-      setHasAccess(false);
+      console.error('Error in checkSubscription:', error);
+      handleTrialFallback();
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Fallback to calculate trial based on user creation date if Stripe check fails
+  const handleTrialFallback = () => {
+    if (!user) return;
+    
+    const userCreatedAt = new Date(user.created_at || Date.now());
+    const trialEndDate = new Date(userCreatedAt);
+    trialEndDate.setDate(trialEndDate.getDate() + 90); // 90-day trial
+    
+    const now = new Date();
+    const isInTrialPeriod = now < trialEndDate;
+    
+    setHasAccess(isInTrialPeriod);
+    setIsInTrialPeriod(isInTrialPeriod);
+    setTrialDaysLeft(Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+    setTrialEndDate(trialEndDate.toISOString());
+    setSubscription(null);
   };
 
   const createSubscription = async (withTrial: boolean = true): Promise<string | null> => {
@@ -89,7 +151,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         headers: {
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: { withTrial },
+        body: { withTrial, productId: "prod_S1W7TUjrYkLT1I" },
       });
 
       if (error) {

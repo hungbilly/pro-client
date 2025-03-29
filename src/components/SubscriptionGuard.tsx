@@ -3,13 +3,28 @@ import React, { useEffect } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { toast } from 'sonner';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
 
 interface SubscriptionGuardProps {
   children?: React.ReactNode;
 }
 
 const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }) => {
-  const { hasAccess, isLoading, isInTrialPeriod, trialDaysLeft } = useSubscription();
+  const { 
+    hasAccess, 
+    isLoading, 
+    isInTrialPeriod, 
+    trialDaysLeft, 
+    subscription,
+    checkSubscription
+  } = useSubscription();
+
+  // Add effect to check subscription on mount
+  useEffect(() => {
+    // Force a re-check of subscription status when component mounts
+    checkSubscription();
+  }, []);
 
   useEffect(() => {
     if (!hasAccess && !isLoading) {
@@ -31,7 +46,30 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }) => {
   }
 
   if (!hasAccess) {
-    return <Navigate to="/subscription" replace />;
+    // For debugging purposes, show more information about what's happening
+    console.log("Subscription check failed:", { 
+      hasAccess, 
+      isLoading, 
+      subscription: subscription ? {
+        id: subscription.id,
+        status: subscription.status,
+        currentPeriodEnd: subscription.currentPeriodEnd
+      } : null
+    });
+
+    return (
+      <div className="p-6">
+        <Alert variant="destructive" className="mb-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Subscription Required</AlertTitle>
+          <AlertDescription>
+            You need an active subscription to access this feature. 
+            {subscription ? ` Current status: ${subscription.status}` : ' No subscription found.'}
+          </AlertDescription>
+        </Alert>
+        <Navigate to="/subscription" replace />
+      </div>
+    );
   }
 
   return children ? <>{children}</> : <Outlet />;

@@ -43,12 +43,14 @@ serve(async (req) => {
       throw new Error('User email not found');
     }
 
+    console.log(`Checking subscription for user: ${userId} (${email})`);
+
     // Initialize Stripe
     const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
       apiVersion: '2023-10-16',
     });
 
-    // Check if user has valid subscription or is within trial period
+    // Check for subscription in our database first
     const { data: userSubscription, error: subError } = await supabase
       .from('user_subscriptions')
       .select('*')
@@ -56,6 +58,8 @@ serve(async (req) => {
       .order('created_at', { ascending: false })
       .limit(1)
       .single();
+
+    console.log('Local subscription data:', userSubscription);
 
     // First, check if user is within free trial period (90 days from account creation)
     const userCreatedAt = new Date(user.created_at || Date.now());
@@ -67,6 +71,7 @@ serve(async (req) => {
     
     // If user is in trial period, they have access
     if (isInTrialPeriod) {
+      console.log(`User ${userId} is in trial period until ${trialEndDate}`);
       return new Response(
         JSON.stringify({
           hasAccess: true,
@@ -82,8 +87,29 @@ serve(async (req) => {
       );
     }
 
-    // Check Stripe for subscription status - do this regardless of whether we have a record in our database
-    // This helps sync our database with Stripe's data
+    // Check if we have a valid subscription in our database
+    if (!subError && userSubscription && ['active', 'trialing'].includes(userSubscription.status)) {
+      console.log(`User ${userId} has valid subscription in database: ${userSubscription.status}`);
+      return new Response(
+        JSON.stringify({
+          hasAccess: true,
+          subscription: {
+            id: userSubscription.stripe_subscription_id,
+            status: userSubscription.status,
+            currentPeriodEnd: userSubscription.current_period_end,
+          },
+          trialDaysLeft: 0,
+          isInTrialPeriod: userSubscription.status === 'trialing',
+          local: true,
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      );
+    }
+
+    // Check Stripe for customer
     console.log('Checking Stripe for customer with email:', email);
     const customers = await stripe.customers.list({
       email: email,
@@ -157,6 +183,10 @@ serve(async (req) => {
     
     // Get the most recent active subscription
     const activeSubscription = sortedSubscriptions[0];
+    console.log('Most recent active subscription:', {
+      id: activeSubscription.id,
+      status: activeSubscription.status,
+    });
     
     // Found active subscription in Stripe but not in our DB (or status mismatch) - sync it
     if (subError || !userSubscription || userSubscription.status !== activeSubscription.status) {
@@ -203,7 +233,7 @@ serve(async (req) => {
           currentPeriodEnd: new Date(activeSubscription.current_period_end * 1000).toISOString(),
         },
         trialDaysLeft: 0,
-        isInTrialPeriod: false,
+        isInTrialPeriod: activeSubscription.status === 'trialing',
         stripeData: {
           customerId,
           subscriptionId: activeSubscription.id,

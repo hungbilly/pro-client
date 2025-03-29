@@ -30,7 +30,6 @@ import UserSubscriptionBadge from '@/components/admin/UserSubscriptionBadge';
 
 interface User {
   id: string;
-  email: string;
   created_at: string;
 }
 
@@ -42,6 +41,7 @@ interface Subscription {
   stripe_customer_id: string;
   current_period_end: string;
   trial_end_date: string | null;
+  created_at: string;
 }
 
 const AdminDashboard = () => {
@@ -73,32 +73,37 @@ const AdminDashboard = () => {
         setLoading(true);
         setError(null);
         
-        // Instead of directly querying auth.users, we'll get users from user_subscriptions
+        // Query user_subscriptions table directly instead of auth.users
         const { data: subscriptionsData, error: subscriptionsError } = await supabase
           .from('user_subscriptions')
           .select('*');
         
         if (subscriptionsError) throw subscriptionsError;
         
-        // Transform subscription data into user format
-        const usersWithSubscriptions = subscriptionsData.map(subscription => {
-          return {
-            id: subscription.user_id,
-            email: "User " + subscription.user_id.substring(0, 8), // Using a placeholder since we can't query auth.users directly
-            created_at: subscription.created_at,
-            subscription: {
-              id: subscription.id,
-              user_id: subscription.user_id,
-              status: subscription.status,
-              stripe_subscription_id: subscription.stripe_subscription_id,
-              stripe_customer_id: subscription.stripe_customer_id,
-              current_period_end: subscription.current_period_end,
-              trial_end_date: subscription.trial_end_date
-            }
-          };
-        });
-        
-        setUsers(usersWithSubscriptions);
+        if (subscriptionsData && subscriptionsData.length > 0) {
+          // Transform subscription data into user format with subscription info
+          const usersWithSubscriptions = subscriptionsData.map(subscription => {
+            return {
+              id: subscription.user_id,
+              created_at: subscription.created_at,
+              subscription: {
+                id: subscription.id,
+                user_id: subscription.user_id,
+                status: subscription.status,
+                stripe_subscription_id: subscription.stripe_subscription_id,
+                stripe_customer_id: subscription.stripe_customer_id,
+                current_period_end: subscription.current_period_end,
+                trial_end_date: subscription.trial_end_date,
+                created_at: subscription.created_at
+              }
+            };
+          });
+          
+          setUsers(usersWithSubscriptions);
+        } else {
+          setUsers([]);
+          console.log('No subscription data found');
+        }
       } catch (error: any) {
         console.error('Error fetching users:', error);
         setError(error.message);
@@ -156,8 +161,9 @@ const AdminDashboard = () => {
     }
   };
 
+  // Since we don't have access to email from auth.users, we'll just use user ID
   const filteredUsers = users.filter(user => 
-    user.email.toLowerCase().includes(searchTerm.toLowerCase())
+    user.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleOpenTrialModal = (user: User & { subscription?: Subscription }) => {
@@ -213,7 +219,7 @@ const AdminDashboard = () => {
           <div className="relative mb-6">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by email"
+              placeholder="Search by user ID"
               className="pl-10"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -257,7 +263,7 @@ const AdminDashboard = () => {
                       const trialInfo = getTrialStatus(user);
                       return (
                         <TableRow key={user.id}>
-                          <TableCell>{user.email}</TableCell>
+                          <TableCell>{user.id}</TableCell>
                           <TableCell>{format(parseISO(user.created_at), 'MMM d, yyyy')}</TableCell>
                           <TableCell>
                             <UserSubscriptionBadge status={user.subscription?.status || 'none'} />

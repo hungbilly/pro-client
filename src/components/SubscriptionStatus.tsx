@@ -1,12 +1,13 @@
-
 import React, { useState } from 'react';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Check, Clock, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
+import { Check, Clock, AlertCircle, Loader2, RefreshCw, Bug } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { Table, TableBody, TableCell, TableHeader, TableHead, TableRow } from '@/components/ui/table';
 
 export const SubscriptionStatusBadge = () => {
   const { 
@@ -24,7 +25,6 @@ export const SubscriptionStatusBadge = () => {
     );
   }
 
-  // Always prioritize active subscription status over trial status
   if (subscription && subscription.status === 'active') {
     return (
       <span className="text-xs px-1.5 py-0.5 rounded bg-green-100 text-green-800">
@@ -64,8 +64,10 @@ const SubscriptionStatus = () => {
   } = useSubscription();
   const navigate = useNavigate();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showDebug, setShowDebug] = useState(false);
+  const [debugData, setDebugData] = useState<any>(null);
+  const [isLoadingDebug, setIsLoadingDebug] = useState(false);
 
-  // Add debug logging
   console.log("SubscriptionStatus render state:", {
     hasAccess,
     isLoading,
@@ -85,6 +87,28 @@ const SubscriptionStatus = () => {
       console.error("Error refreshing subscription:", error);
     } finally {
       setIsRefreshing(false);
+    }
+  };
+
+  const handleShowDebug = async () => {
+    setIsLoadingDebug(true);
+    try {
+      const { data, error } = await supabase
+        .from('user_subscriptions')
+        .select('*');
+      
+      if (error) {
+        throw error;
+      }
+      
+      setDebugData(data);
+      setShowDebug(true);
+      console.log('Debug subscription data:', data);
+    } catch (error) {
+      console.error('Error fetching subscription debug data:', error);
+      toast.error('Failed to fetch subscription debug data');
+    } finally {
+      setIsLoadingDebug(false);
     }
   };
 
@@ -109,16 +133,28 @@ const SubscriptionStatus = () => {
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <span>Subscription Status</span>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={handleRefreshStatus} 
-            disabled={isRefreshing}
-            className="h-8 w-8 p-0"
-          >
-            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-            <span className="sr-only">Refresh</span>
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleShowDebug} 
+              disabled={isLoadingDebug}
+              className="h-8 px-2"
+            >
+              <Bug className={`h-4 w-4 mr-1 ${isLoadingDebug ? 'animate-pulse' : ''}`} />
+              Debug
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleRefreshStatus} 
+              disabled={isRefreshing}
+              className="h-8 w-8 p-0"
+            >
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <span className="sr-only">Refresh</span>
+            </Button>
+          </div>
         </CardTitle>
         <CardDescription>Manage your subscription plan</CardDescription>
       </CardHeader>
@@ -173,6 +209,68 @@ const SubscriptionStatus = () => {
                   You don't have an active subscription. Subscribe to access all premium features.
                 </p>
               </div>
+            </div>
+          </div>
+        )}
+
+        {showDebug && debugData && (
+          <div className="mt-4 border rounded-lg p-4 bg-gray-50">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="font-medium text-gray-800 flex items-center">
+                <Bug className="h-4 w-4 mr-1" /> Raw Subscription Data
+              </h3>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setShowDebug(false)}
+                className="h-6 px-2 text-xs"
+              >
+                Hide
+              </Button>
+            </div>
+            
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Field</TableHead>
+                    <TableHead>Value</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {debugData.map((sub: any, index: number) => (
+                    <React.Fragment key={sub.id || index}>
+                      <TableRow className="bg-blue-50 font-medium">
+                        <TableCell colSpan={2}>Record #{index + 1}</TableCell>
+                      </TableRow>
+                      {Object.entries(sub).map(([key, value]: [string, any]) => (
+                        <TableRow key={key}>
+                          <TableCell className="font-mono text-xs">{key}</TableCell>
+                          <TableCell className="font-mono text-xs">
+                            {typeof value === 'object' 
+                              ? JSON.stringify(value) 
+                              : String(value)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </React.Fragment>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            <div className="mt-2 text-xs text-gray-500">
+              {debugData.length === 0 && (
+                <p>No subscription records found in the database.</p>
+              )}
+              <pre className="mt-2 bg-gray-100 p-2 rounded text-xs overflow-x-auto">
+                ContextSubscription: {JSON.stringify({
+                  hasAccess,
+                  isInTrialPeriod,
+                  trialDaysLeft,
+                  subscription
+                }, null, 2)}
+              </pre>
             </div>
           </div>
         )}

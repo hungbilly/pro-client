@@ -83,8 +83,8 @@ const DebugPage = () => {
 
     try {
       setLoading(true);
-      const { error } = await supabase.rpc('toggle_rls_for_subscriptions', { 
-        enable_rls: !rlsEnabled 
+      const { error } = await supabase.functions.invoke('toggle-rls-for-subscriptions', { 
+        body: { enable_rls: !rlsEnabled }
       });
       
       if (error) throw error;
@@ -104,11 +104,15 @@ const DebugPage = () => {
 
   const checkRlsStatus = async () => {
     try {
-      const { data, error } = await supabase.rpc('check_rls_status_for_subscriptions');
+      const { data, error } = await supabase.functions.invoke('check-rls-status', {
+        body: { table: 'user_subscriptions' }
+      });
       
       if (error) throw error;
       
-      setRlsEnabled(data);
+      if (data !== null && data !== undefined) {
+        setRlsEnabled(!!data.is_enabled);
+      }
     } catch (err) {
       console.error('Error checking RLS status:', err);
     }

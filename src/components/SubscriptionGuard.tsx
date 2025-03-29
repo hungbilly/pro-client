@@ -4,7 +4,9 @@ import { Navigate, Outlet } from 'react-router-dom';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { toast } from 'sonner';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
 
 interface SubscriptionGuardProps {
   children?: React.ReactNode;
@@ -20,7 +22,9 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }) => {
     checkSubscription
   } = useSubscription();
   const [hasChecked, setHasChecked] = useState(false);
-
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const navigate = useNavigate();
+  
   // Add effect to check subscription on mount
   useEffect(() => {
     console.log('SubscriptionGuard: Checking subscription status...');
@@ -58,12 +62,25 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }) => {
     }
   }, [hasAccess, isLoading, isInTrialPeriod, trialDaysLeft, hasChecked, subscription]);
 
+  const handleRefreshStatus = async () => {
+    setIsRefreshing(true);
+    try {
+      await checkSubscription();
+      toast.success("Subscription status refreshed");
+    } catch (error) {
+      toast.error("Failed to refresh subscription status");
+      console.error("Error refreshing subscription:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   if (isLoading || !hasChecked) {
     console.log('SubscriptionGuard: Loading subscription status...');
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center min-h-[50vh]">
         <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
+          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
           <p className="mt-4 text-gray-600">Checking subscription...</p>
         </div>
       </div>
@@ -84,7 +101,7 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }) => {
     });
 
     return (
-      <div className="p-6">
+      <div className="p-6 max-w-md mx-auto">
         <Alert variant="destructive" className="mb-4">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Subscription Required</AlertTitle>
@@ -93,6 +110,33 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }) => {
             {subscription ? ` Current status: ${subscription.status}` : ' No subscription found.'}
           </AlertDescription>
         </Alert>
+        
+        <div className="flex flex-col space-y-4 mt-4">
+          <Button 
+            variant="default"
+            onClick={() => navigate('/subscription')}
+            className="w-full"
+          >
+            View Subscription Options
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            onClick={handleRefreshStatus}
+            disabled={isRefreshing}
+            className="w-full"
+          >
+            {isRefreshing ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Refreshing...
+              </>
+            ) : (
+              'Refresh Status'
+            )}
+          </Button>
+        </div>
+        
         <Navigate to="/subscription" replace />
       </div>
     );

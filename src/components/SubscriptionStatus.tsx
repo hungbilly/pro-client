@@ -1,11 +1,12 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Check, Clock, AlertCircle } from 'lucide-react';
+import { Check, Clock, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 export const SubscriptionStatusBadge = () => {
   const { 
@@ -62,6 +63,7 @@ const SubscriptionStatus = () => {
     checkSubscription
   } = useSubscription();
   const navigate = useNavigate();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Add debug logging
   console.log("SubscriptionStatus render state:", {
@@ -73,6 +75,19 @@ const SubscriptionStatus = () => {
     subscription
   });
 
+  const handleRefreshStatus = async () => {
+    setIsRefreshing(true);
+    try {
+      await checkSubscription();
+      toast.success("Subscription status refreshed");
+    } catch (error) {
+      toast.error("Failed to refresh subscription status");
+      console.error("Error refreshing subscription:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <Card className="w-full">
@@ -82,7 +97,7 @@ const SubscriptionStatus = () => {
         </CardHeader>
         <CardContent>
           <div className="flex justify-center py-6">
-            <div className="h-6 w-6 animate-spin rounded-full border-4 border-primary border-r-transparent"></div>
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
           </div>
         </CardContent>
       </Card>
@@ -92,7 +107,19 @@ const SubscriptionStatus = () => {
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle>Subscription Status</CardTitle>
+        <CardTitle className="flex items-center justify-between">
+          <span>Subscription Status</span>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={handleRefreshStatus} 
+            disabled={isRefreshing}
+            className="h-8 w-8 p-0"
+          >
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span className="sr-only">Refresh</span>
+          </Button>
+        </CardTitle>
         <CardDescription>Manage your subscription plan</CardDescription>
       </CardHeader>
       <CardContent>
@@ -125,7 +152,8 @@ const SubscriptionStatus = () => {
               <div>
                 <h3 className="font-medium text-amber-800">Trial Period</h3>
                 <p className="text-sm text-amber-700">
-                  You are currently in your free trial period. {trialDaysLeft} days remaining.
+                  You are currently in your free trial period. 
+                  <span className="font-medium">{trialDaysLeft} days remaining.</span>
                 </p>
                 {trialEndDate && (
                   <p className="text-sm text-amber-700 mt-1">
@@ -169,11 +197,19 @@ const SubscriptionStatus = () => {
             </Button>
           )}
           <Button 
-            onClick={() => checkSubscription()} 
+            onClick={handleRefreshStatus} 
             variant="outline"
             className="flex-1"
+            disabled={isRefreshing}
           >
-            Refresh Status
+            {isRefreshing ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Refreshing...
+              </>
+            ) : (
+              'Refresh Status'
+            )}
           </Button>
         </div>
       </CardFooter>

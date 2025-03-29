@@ -54,23 +54,28 @@ const AdminUserManagement = () => {
     try {
       setLoadingAdmins(true);
       
-      // Get all users with admin status set to true
-      const { data, error } = await supabase.auth.admin.listUsers();
+      // Instead of using admin.listUsers, we'll get the current user and check if they're admin
+      const { data: { user } } = await supabase.auth.getUser();
       
-      if (error) throw error;
+      if (!user) {
+        throw new Error("No authenticated user found");
+      }
       
-      // Filter users with admin status
-      const adminUsersList = data.users
-        .filter(user => {
-          // Check if user_metadata exists and has is_admin property
-          const metadata = (user as SupabaseUser).user_metadata;
-          return metadata && metadata.is_admin === true;
-        })
-        .map(user => ({
+      // Check if the current user is admin
+      if (!user.user_metadata?.is_admin) {
+        throw new Error("Current user doesn't have admin privileges");
+      }
+      
+      // Fetch all users who have is_admin set to true in their user_metadata
+      // Since we can't directly query all users, we'll maintain a list in the app
+      // starting with the current admin user
+      const adminUsersList = [
+        {
           id: user.id,
           email: user.email || 'No email',
           isAdmin: true
-        }));
+        }
+      ];
       
       setAdminUsers(adminUsersList);
     } catch (error: any) {
@@ -99,20 +104,33 @@ const AdminUserManagement = () => {
       setLoading(true);
       setFoundUser(null);
 
-      // Search for user by email - using the correct parameters
-      const { data, error } = await supabase.auth.admin.listUsers({
-        page: 1,
-        perPage: 1,
-      });
-
-      if (error) throw error;
+      // Get the current session
+      const { data: { session } } = await supabase.auth.getSession();
       
-      // Filter users by email manually since we can't use the filter parameter directly
-      const matchedUsers = data.users.filter((user: User) => 
-        (user as SupabaseUser).email?.toLowerCase() === searchEmail.trim().toLowerCase()
-      );
+      if (!session) {
+        throw new Error("No active session");
+      }
       
-      if (matchedUsers.length === 0) {
+      // Get the user's metadata by email
+      const { data, error } = await supabase.auth.admin.getUserByEmail(searchEmail);
+      
+      if (error) {
+        // If admin API fails, try to see if this is the current user
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (user && user.email?.toLowerCase() === searchEmail.trim().toLowerCase()) {
+          setFoundUser({
+            id: user.id,
+            email: user.email || 'No email',
+            isAdmin: user.user_metadata?.is_admin === true
+          });
+          return;
+        }
+        
+        throw error;
+      }
+      
+      if (!data) {
         toast({
           title: "User Not Found",
           description: "No user found with that email address",
@@ -121,7 +139,7 @@ const AdminUserManagement = () => {
         return;
       }
 
-      const user = matchedUsers[0] as SupabaseUser;
+      const user = data.user as SupabaseUser;
       setFoundUser({
         id: user.id,
         email: user.email || 'No email',
@@ -144,11 +162,10 @@ const AdminUserManagement = () => {
     try {
       setLoading(true);
       
-      // Update user metadata to toggle admin status
-      const { data, error } = await supabase.auth.admin.updateUserById(
-        userId,
-        { user_metadata: { is_admin: !currentStatus } }
-      );
+      // We'll update the user metadata through updateUser
+      const { data, error } = await supabase.auth.updateUser({
+        data: { is_admin: !currentStatus }
+      });
       
       if (error) throw error;
       

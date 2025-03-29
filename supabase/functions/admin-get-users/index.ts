@@ -71,7 +71,7 @@ serve(async (req) => {
       
       console.log('Admin user verified:', user.id);
       
-      // Fetch user data from profiles table
+      // Fetch user data from profiles table only
       console.log('Fetching users from profiles table');
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')

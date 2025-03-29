@@ -108,8 +108,8 @@ const AdminUserManagement = () => {
       if (error) throw error;
       
       // Filter users by email manually since we can't use the filter parameter directly
-      const matchedUsers = data.users.filter(user => 
-        user.email?.toLowerCase() === searchEmail.trim().toLowerCase()
+      const matchedUsers = data.users.filter((user: User) => 
+        (user as SupabaseUser).email?.toLowerCase() === searchEmail.trim().toLowerCase()
       );
       
       if (matchedUsers.length === 0) {

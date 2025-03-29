@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from 'https://esm.sh/stripe@14.21.0';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
@@ -65,9 +64,9 @@ serve(async (req) => {
     if (!subError && userSubscription) {
       console.log(`User ${userId} has subscription record in database with status: ${userSubscription.status}`);
       
-      // If the status is active or trialing, user has access
-      if (['active', 'trialing'].includes(userSubscription.status)) {
-        console.log(`User ${userId} has active/trial subscription in database`);
+      // FIX: If the status is active, user has access regardless of trial status
+      if (userSubscription.status === 'active') {
+        console.log(`User ${userId} has active subscription in database`);
         return new Response(
           JSON.stringify({
             hasAccess: true,
@@ -76,9 +75,29 @@ serve(async (req) => {
               status: userSubscription.status,
               currentPeriodEnd: userSubscription.current_period_end,
             },
-            trialDaysLeft: userSubscription.status === 'trialing' && userSubscription.trial_end_date ? 
+            trialDaysLeft: 0,
+            isInTrialPeriod: false,
+            trialEndDate: null,
+            local: true,
+          }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200,
+          }
+        );
+      } else if (userSubscription.status === 'trialing') {
+        console.log(`User ${userId} has trial subscription in database`);
+        return new Response(
+          JSON.stringify({
+            hasAccess: true,
+            subscription: {
+              id: userSubscription.stripe_subscription_id,
+              status: userSubscription.status,
+              currentPeriodEnd: userSubscription.current_period_end,
+            },
+            trialDaysLeft: userSubscription.trial_end_date ? 
               Math.ceil((new Date(userSubscription.trial_end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0,
-            isInTrialPeriod: userSubscription.status === 'trialing',
+            isInTrialPeriod: true,
             trialEndDate: userSubscription.trial_end_date,
             local: true,
           }),
@@ -230,6 +249,31 @@ serve(async (req) => {
           console.error('Error updating subscription record:', updateError);
         }
       }
+    }
+
+    // For active subscriptions in Stripe, ensure trial mode is explicitly disabled
+    if (activeSubscription && activeSubscription.status === 'active') {
+      return new Response(
+        JSON.stringify({ 
+          hasAccess: true,
+          subscription: {
+            id: activeSubscription.id,
+            status: activeSubscription.status,
+            currentPeriodEnd: new Date(activeSubscription.current_period_end * 1000).toISOString(),
+          },
+          trialDaysLeft: 0,
+          isInTrialPeriod: false,
+          trialEndDate: null,
+          stripeData: {
+            customerId,
+            subscriptionId: activeSubscription.id,
+          },
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      );
     }
 
     return new Response(

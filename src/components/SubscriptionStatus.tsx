@@ -23,6 +23,7 @@ export const SubscriptionStatusBadge = () => {
     );
   }
 
+  // FIX: Check for active subscription first, then trial status
   if (subscription && subscription.status === 'active') {
     return (
       <span className="text-xs px-1.5 py-0.5 rounded bg-green-100 text-green-800">

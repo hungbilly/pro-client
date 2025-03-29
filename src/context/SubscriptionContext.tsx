@@ -92,18 +92,22 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
           status: subscriptionData.status as SubscriptionStatus,
           currentPeriodEnd: subscriptionData.current_period_end,
         });
-        // If status is active, ensure we're not in trial period
-        setIsInTrialPeriod(subscriptionData.status === 'trialing');
-        setIsLoading(false);
-        setHasCheckedSubscription(true);
         
-        // If we have an active subscription, we don't need to check for trial period
+        // FIX: If status is active, ensure we're not in trial period
         if (subscriptionData.status === 'active') {
+          setIsInTrialPeriod(false);
           setTrialDaysLeft(0);
           setTrialEndDate(null);
-          console.log('Active subscription found, skipping trial period check');
+          console.log('Active subscription found, disabling trial period');
+          setIsLoading(false);
+          setHasCheckedSubscription(true);
           return;
+        } else {
+          setIsInTrialPeriod(subscriptionData.status === 'trialing');
         }
+        
+        setIsLoading(false);
+        setHasCheckedSubscription(true);
         
         console.log('State after setting subscription from database:', {
           hasAccess: true,
@@ -145,11 +149,12 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
             currentPeriodEnd: data.subscription.currentPeriodEnd
           });
           
-          // If we have an active subscription from the edge function, ensure we're not in trial period
+          // FIX: Explicitly disable trial mode if the subscription is active
           if (data.subscription.status === 'active') {
             setIsInTrialPeriod(false);
             setTrialDaysLeft(0);
             setTrialEndDate(null);
+            console.log('Active subscription found from edge function, disabling trial period');
           } else {
             setIsInTrialPeriod(data.isInTrialPeriod);
             setTrialDaysLeft(data.trialDaysLeft);
@@ -166,9 +171,9 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
           hasAccess: data.hasAccess,
           isLoading: false,
           subscription: data.subscription,
-          isInTrialPeriod: data.subscription ? data.subscription.status !== 'active' && data.isInTrialPeriod : data.isInTrialPeriod,
-          trialDaysLeft: data.trialDaysLeft,
-          trialEndDate: data.trialEndDate,
+          isInTrialPeriod: data.subscription && data.subscription.status === 'active' ? false : data.isInTrialPeriod,
+          trialDaysLeft: data.subscription && data.subscription.status === 'active' ? 0 : data.trialDaysLeft,
+          trialEndDate: data.subscription && data.subscription.status === 'active' ? null : data.trialEndDate,
           hasCheckedSubscription: true,
         });
       } catch (error) {

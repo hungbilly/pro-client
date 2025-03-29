@@ -73,26 +73,28 @@ const AdminDashboard = () => {
         setLoading(true);
         setError(null);
         
-        // Get all users from auth.users (admins only)
-        const { data: usersData, error: usersError } = await supabase
-          .from('auth.users')
-          .select('id, email, created_at');
-        
-        if (usersError) throw usersError;
-        
-        // Get all subscription data
+        // Instead of directly querying auth.users, we'll get users from user_subscriptions
         const { data: subscriptionsData, error: subscriptionsError } = await supabase
           .from('user_subscriptions')
           .select('*');
         
         if (subscriptionsError) throw subscriptionsError;
         
-        // Combine users with their subscription data
-        const usersWithSubscriptions = usersData.map(user => {
-          const subscription = subscriptionsData.find(sub => sub.user_id === user.id);
+        // Transform subscription data into user format
+        const usersWithSubscriptions = subscriptionsData.map(subscription => {
           return {
-            ...user,
-            subscription: subscription || undefined
+            id: subscription.user_id,
+            email: "User " + subscription.user_id.substring(0, 8), // Using a placeholder since we can't query auth.users directly
+            created_at: subscription.created_at,
+            subscription: {
+              id: subscription.id,
+              user_id: subscription.user_id,
+              status: subscription.status,
+              stripe_subscription_id: subscription.stripe_subscription_id,
+              stripe_customer_id: subscription.stripe_customer_id,
+              current_period_end: subscription.current_period_end,
+              trial_end_date: subscription.trial_end_date
+            }
           };
         });
         
@@ -235,7 +237,7 @@ const AdminDashboard = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Email</TableHead>
+                    <TableHead>User ID</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead>Subscription</TableHead>
                     <TableHead>Trial Status</TableHead>

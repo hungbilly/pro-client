@@ -1,23 +1,14 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useSubscription } from '@/context/SubscriptionContext';
-import { toast } from 'sonner';
 
 interface SubscriptionGuardProps {
   children?: React.ReactNode;
 }
 
 const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }) => {
-  const { hasAccess, isLoading, isInTrialPeriod, trialDaysLeft } = useSubscription();
-
-  useEffect(() => {
-    if (!hasAccess && !isLoading) {
-      toast.warning("You need an active subscription to access this feature");
-    } else if (isInTrialPeriod && trialDaysLeft <= 7) {
-      toast.info(`Your trial ends in ${trialDaysLeft} days. Subscribe to continue using all features.`);
-    }
-  }, [hasAccess, isLoading, isInTrialPeriod, trialDaysLeft]);
+  const { hasAccess, isLoading } = useSubscription();
 
   if (isLoading) {
     return (

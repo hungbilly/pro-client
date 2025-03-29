@@ -104,7 +104,6 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         return null;
       }
 
-      // Return the URL rather than redirecting here
       return data.url;
     } catch (error) {
       console.error('Error creating subscription:', error);

@@ -5,11 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle } from 'lucide-react';
 import PageTransition from '@/components/ui-custom/PageTransition';
-import { useAuth } from '@/context/AuthContext';
 
 const SubscriptionCancel = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
 
   return (
     <PageTransition>
@@ -29,9 +27,7 @@ const SubscriptionCancel = () => {
                 </p>
                 <div className="bg-orange-50 p-4 rounded-lg">
                   <p className="text-sm text-orange-700">
-                    {user 
-                      ? "You can subscribe anytime to get full access to all features."
-                      : "Please sign in to subscribe to our services."}
+                    You can subscribe anytime to get full access to all features.
                   </p>
                 </div>
               </div>

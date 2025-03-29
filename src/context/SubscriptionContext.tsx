@@ -74,7 +74,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setHasAccess(true);
         setSubscription({
           id: subscriptionData.stripe_subscription_id,
-          status: subscriptionData.status,
+          status: subscriptionData.status as SubscriptionStatus, // Fix: Cast string to SubscriptionStatus
           currentPeriodEnd: subscriptionData.current_period_end,
         });
         setIsInTrialPeriod(subscriptionData.status === 'trialing');

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -65,34 +64,85 @@ const AdminUserManagement = () => {
     loadSubscriptionUsers();
   }, []);
 
+  // Added comprehensive logging to debug permission issues
+  const fetchSubscriptionWithLogging = async () => {
+    console.log('Starting subscription fetch with detailed logging...');
+    
+    try {
+      console.log('Getting current user session...');
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error('Error getting session:', sessionError);
+        return { data: null, error: sessionError };
+      }
+      
+      console.log('Session obtained:', !!sessionData.session);
+      console.log('User authenticated:', !!sessionData.session?.user);
+      
+      if (sessionData.session?.user?.user_metadata?.is_admin) {
+        console.log('User has admin privileges:', true);
+      } else {
+        console.log('User has admin privileges:', false);
+      }
+      
+      console.log('Attempting to fetch user_subscriptions...');
+      const result = await supabase
+        .from('user_subscriptions')
+        .select('*');
+      
+      console.log('Fetch result:', {
+        success: !result.error,
+        errorCode: result.error?.code,
+        errorMessage: result.error?.message,
+        dataCount: result.data?.length || 0
+      });
+      
+      return result;
+    } catch (err) {
+      console.error('Unexpected error in fetchSubscriptionWithLogging:', err);
+      return { data: null, error: err };
+    }
+  };
+  
   const loadSubscriptionUsers = async () => {
     try {
       setLoadingSubscriptions(true);
       
-      // Fetch all subscriptions - now with working RLS policies
-      const { data: subscriptionsData, error: subscriptionsError } = await supabase
-        .from('user_subscriptions')
-        .select('*');
+      console.log('Starting loadSubscriptionUsers function...');
+      
+      // Try a different approach - use the fetchSubscriptionWithLogging function
+      const { data: subscriptionsData, error: subscriptionsError } = await fetchSubscriptionWithLogging();
       
       if (subscriptionsError) {
-        console.error('Error fetching subscriptions:', subscriptionsError.message);
+        console.error('Error fetching subscriptions:', subscriptionsError);
         throw subscriptionsError;
       }
       
-      console.log('Subscriptions data fetched:', subscriptionsData?.length || 0, 'records');
+      console.log('Subscriptions data fetched successfully:', subscriptionsData?.length || 0, 'records');
       
       // For each subscription, fetch user info (email)
       const subscriptionsWithUsers: SubscriptionUser[] = [];
       
       if (subscriptionsData && subscriptionsData.length > 0) {
+        console.log('Processing subscription data for', subscriptionsData.length, 'users');
+        
         for (const subscription of subscriptionsData) {
           try {
-            // Get user email through admin API
-            const { data: userData, error: userError } = await supabase.auth.admin.getUserById(subscription.user_id);
+            console.log('Processing subscription for user_id:', subscription.user_id);
             
-            if (userError) {
-              console.error('Error fetching user details:', userError.message);
-              // Still add subscription with null email if we can't get user details
+            // Getting user data directly from auth admin API
+            console.log('Trying to get user data via auth.admin.getUserById...');
+            
+            // Check if we have access to the admin API
+            const { data: authUserData, error: authUserError } = await supabase.auth.admin.getUserById(
+              subscription.user_id
+            );
+            
+            if (authUserError) {
+              console.error('Error with auth.admin.getUserById:', authUserError.message);
+              console.log('Falling back to adding subscription without email');
+              
               subscriptionsWithUsers.push({
                 id: subscription.user_id,
                 email: null,
@@ -104,11 +154,13 @@ const AdminUserManagement = () => {
                   trial_end_date: subscription.trial_end_date
                 }
               });
-            } else if (userData && userData.user) {
+            } else if (authUserData && authUserData.user) {
+              console.log('Successfully retrieved user data for:', authUserData.user.email);
+              
               subscriptionsWithUsers.push({
                 id: subscription.user_id,
-                email: userData.user.email,
-                created_at: userData.user.created_at,
+                email: authUserData.user.email,
+                created_at: authUserData.user.created_at,
                 subscription: {
                   id: subscription.id,
                   status: subscription.status,
@@ -118,8 +170,9 @@ const AdminUserManagement = () => {
               });
             }
           } catch (error: any) {
-            console.error('Error processing user data:', error.message);
-            // Add subscription with null email if there's an error
+            console.error('Error processing user data for subscription:', error);
+            
+            // Still add the subscription even if we can't get the user data
             subscriptionsWithUsers.push({
               id: subscription.user_id,
               email: null,
@@ -133,9 +186,11 @@ const AdminUserManagement = () => {
             });
           }
         }
+      } else {
+        console.log('No subscription data found or access denied');
       }
       
-      console.log('Processed subscription users:', subscriptionsWithUsers.length);
+      console.log('Processed', subscriptionsWithUsers.length, 'subscription users in total');
       setSubscriptionUsers(subscriptionsWithUsers);
     } catch (error: any) {
       console.error('Error loading subscription users:', error);
@@ -152,30 +207,44 @@ const AdminUserManagement = () => {
   const loadAdminUsers = async () => {
     try {
       setLoadingAdmins(true);
+      console.log('Starting loadAdminUsers function...');
       
-      // Instead of using admin.listUsers, we'll get the current user and check if they're admin
-      const { data: { user } } = await supabase.auth.getUser();
+      // Get the current user session
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       
-      if (!user) {
+      if (sessionError) {
+        console.error('Error getting session:', sessionError);
+        throw new Error("Error retrieving session");
+      }
+      
+      if (!sessionData.session?.user) {
+        console.error('No authenticated user found in session');
         throw new Error("No authenticated user found");
       }
       
+      const currentUser = sessionData.session.user;
+      console.log('Current user:', currentUser.id);
+      
       // Check if the current user is admin
-      if (!user.user_metadata?.is_admin) {
+      const isAdmin = currentUser.user_metadata?.is_admin === true;
+      console.log('Current user is admin:', isAdmin);
+      
+      if (!isAdmin) {
+        console.warn('Current user is not an admin');
         throw new Error("Current user doesn't have admin privileges");
       }
       
-      // Fetch all users who have is_admin set to true in their user_metadata
-      // Since we can't directly query all users, we'll maintain a list in the app
-      // starting with the current admin user
+      // For now, just add the current admin user to the list
+      // A proper implementation would fetch all admin users
       const adminUsersList = [
         {
-          id: user.id,
-          email: user.email || 'No email',
+          id: currentUser.id,
+          email: currentUser.email || 'No email',
           isAdmin: true
         }
       ];
       
+      console.log('Admin users list:', adminUsersList);
       setAdminUsers(adminUsersList);
     } catch (error: any) {
       console.error('Error loading admin users:', error);
@@ -200,31 +269,51 @@ const AdminUserManagement = () => {
     }
 
     try {
+      console.log('Searching for user by email:', searchEmail);
       setLoading(true);
       setFoundUser(null);
 
       // Get the current session
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       
-      if (!session) {
+      if (sessionError) {
+        console.error('Error getting session:', sessionError);
         throw new Error("No active session");
       }
       
-      // Since getUserByEmail doesn't exist in the API, we'll use a different approach
-      // First, check if the current user's email matches the search
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!sessionData.session) {
+        console.error('No active session found');
+        throw new Error("No active session");
+      }
       
-      if (currentUser && currentUser.email?.toLowerCase() === searchEmail.trim().toLowerCase()) {
+      // Check if the searched email matches the current user's email
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      
+      if (userError) {
+        console.error('Error getting current user:', userError);
+        throw userError;
+      }
+      
+      if (!userData.user) {
+        console.error('No user found in current session');
+        throw new Error("No user found");
+      }
+      
+      console.log('Current user email:', userData.user.email);
+      console.log('Comparing with search email:', searchEmail);
+      
+      if (userData.user.email?.toLowerCase() === searchEmail.trim().toLowerCase()) {
+        console.log('Email match found - current user');
         setFoundUser({
-          id: currentUser.id,
-          email: currentUser.email,
-          isAdmin: currentUser.user_metadata?.is_admin === true
+          id: userData.user.id,
+          email: userData.user.email,
+          isAdmin: userData.user.user_metadata?.is_admin === true
         });
         return;
       }
       
-      // If we're looking for a different user, we can't use the admin API directly
-      // Instead, we'll show a message that we can only manage the current user
+      // We don't have a direct way to search for other users by email
+      console.log('Email does not match current user, cannot search for other users');
       toast({
         title: "Limited Functionality",
         description: "For security reasons, you can only manage your own admin status. The searched user couldn't be found or managed.",
@@ -245,15 +334,22 @@ const AdminUserManagement = () => {
 
   const toggleAdminStatus = async (userId: string, email: string, currentStatus: boolean) => {
     try {
+      console.log('Toggling admin status for user:', userId);
+      console.log('Current admin status:', currentStatus);
       setLoading(true);
       
-      // We'll update the user metadata through updateUser
+      // Update the user metadata through updateUser
       // This only works for the current user
       const { data, error } = await supabase.auth.updateUser({
         data: { is_admin: !currentStatus }
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error updating user:', error);
+        throw error;
+      }
+      
+      console.log('User update successful:', data);
       
       // Update local state
       if (foundUser && foundUser.id === userId) {
@@ -267,10 +363,12 @@ const AdminUserManagement = () => {
       if (!currentStatus) {
         // User was made admin, add to list if not already there
         if (!adminUsers.find(user => user.id === userId)) {
+          console.log('Adding user to admin list:', email);
           setAdminUsers([...adminUsers, { id: userId, email, isAdmin: true }]);
         }
       } else {
         // User was removed as admin, remove from list
+        console.log('Removing user from admin list:', email);
         setAdminUsers(adminUsers.filter(user => user.id !== userId));
       }
       
@@ -292,6 +390,7 @@ const AdminUserManagement = () => {
     }
   };
 
+  // Rest of the component remains the same
   return (
     <Card>
       <CardHeader>

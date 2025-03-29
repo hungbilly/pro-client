@@ -25,8 +25,12 @@ import Subscription from './pages/Subscription';
 import SubscriptionSuccess from './pages/SubscriptionSuccess';
 import SubscriptionCancel from './pages/SubscriptionCancel';
 import SubscriptionGuard from './components/SubscriptionGuard';
+import AdminDashboard from './pages/AdminDashboard';
+import { useAuth } from './context/AuthContext';
 
 const Routes = () => {
+  const { isAdmin } = useAuth();
+  
   return (
     <ReactRoutes>
       {/* Auth routes outside of the layout */}
@@ -39,6 +43,13 @@ const Routes = () => {
         <Route path="/subscription/success" element={<SubscriptionSuccess />} />
         <Route path="/subscription/cancel" element={<SubscriptionCancel />} />
       </Route>
+      
+      {/* Admin routes */}
+      {isAdmin && (
+        <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+          <Route path="/admin" element={<AdminDashboard />} />
+        </Route>
+      )}
       
       {/* Public invoice views without AppLayout for client view */}
       <Route path="/invoice/:idOrViewLink" element={<InvoiceView />} />

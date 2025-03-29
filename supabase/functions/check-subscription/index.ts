@@ -186,6 +186,7 @@ serve(async (req) => {
     console.log('Most recent active subscription:', {
       id: activeSubscription.id,
       status: activeSubscription.status,
+      current_period_end: activeSubscription.current_period_end,
     });
     
     // Found active subscription in Stripe but not in our DB (or status mismatch) - sync it

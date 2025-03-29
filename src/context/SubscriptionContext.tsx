@@ -47,6 +47,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const checkSubscription = async () => {
     if (!user || !session) {
+      console.log('No user or session, setting hasAccess to false');
       setHasAccess(false);
       setIsLoading(false);
       return;
@@ -54,6 +55,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     try {
       setIsLoading(true);
+      console.log('Checking subscription for user:', user.id);
       
       // First try to get subscription directly from database
       const { data: subscriptionData, error: subError } = await supabase
@@ -66,6 +68,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       
       if (subError) {
         console.error('Error checking local subscription:', subError);
+      } else {
+        console.log('Subscription data from database:', subscriptionData);
       }
       
       // If we have a subscription record with active or trialing status, grant access immediately
@@ -85,6 +89,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       // If no valid subscription was found in the database or we need to validate with Stripe,
       // call the check-subscription function
       try {
+        console.log('Calling check-subscription function with token:', session.access_token.substring(0, 10) + '...');
         const { data, error } = await supabase.functions.invoke('check-subscription', {
           headers: {
             Authorization: `Bearer ${session.access_token}`,
@@ -98,17 +103,23 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
           return;
         }
 
+        console.log('Subscription check result from edge function:', data);
+        
         setHasAccess(data.hasAccess);
-        setSubscription(data.subscription);
+        
+        if (data.subscription) {
+          setSubscription({
+            id: data.subscription.id,
+            status: data.subscription.status as SubscriptionStatus,
+            currentPeriodEnd: data.subscription.currentPeriodEnd
+          });
+        } else {
+          setSubscription(null);
+        }
+        
         setIsInTrialPeriod(data.isInTrialPeriod);
         setTrialDaysLeft(data.trialDaysLeft);
         setTrialEndDate(data.trialEndDate);
-        
-        console.log('Subscription check result:', {
-          hasAccess: data.hasAccess,
-          subscription: data.subscription,
-          isInTrialPeriod: data.isInTrialPeriod
-        });
       } catch (error) {
         console.error('Error checking subscription:', error);
         // Fall back to user creation date for trial check
@@ -147,11 +158,15 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
 
     try {
+      console.log('Creating subscription with trial:', withTrial);
       const { data, error } = await supabase.functions.invoke('create-subscription', {
         headers: {
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: { withTrial, productId: "prod_S1W7TUjrYkLT1I" },
+        body: { 
+          withTrial, 
+          productId: "prod_S1W7TUjrYkLT1I" // Pass the product ID to the function
+        },
       });
 
       if (error) {
@@ -159,6 +174,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         toast.error('Failed to create subscription');
         return null;
       }
+
+      console.log('Create subscription response:', data);
 
       if (data.alreadySubscribed) {
         toast.info('You already have an active subscription');
@@ -177,8 +194,10 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   useEffect(() => {
     if (user) {
+      console.log('User logged in, checking subscription');
       checkSubscription();
     } else {
+      console.log('No user, setting hasAccess to false');
       setHasAccess(false);
       setIsLoading(false);
     }

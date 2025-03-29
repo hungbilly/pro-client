@@ -23,8 +23,26 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }) => {
   // Add effect to check subscription on mount
   useEffect(() => {
     // Force a re-check of subscription status when component mounts
-    checkSubscription();
+    console.log('SubscriptionGuard: Checking subscription status...');
+    checkSubscription().then(() => {
+      console.log('SubscriptionGuard: Subscription check completed');
+    });
   }, []);
+
+  // Add debug logging
+  useEffect(() => {
+    console.log('SubscriptionGuard state:', { 
+      hasAccess, 
+      isLoading, 
+      subscription: subscription ? {
+        id: subscription.id,
+        status: subscription.status,
+        currentPeriodEnd: subscription.currentPeriodEnd
+      } : null,
+      isInTrialPeriod,
+      trialDaysLeft
+    });
+  }, [hasAccess, isLoading, subscription, isInTrialPeriod, trialDaysLeft]);
 
   useEffect(() => {
     if (!hasAccess && !isLoading) {

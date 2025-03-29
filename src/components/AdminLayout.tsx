@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Outlet, Link, useNavigate } from 'react-router-dom';
 import { Shield, LogOut } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -9,6 +9,14 @@ import { toast } from 'sonner';
 const AdminLayout = () => {
   const { user, signOut, isAdmin } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Redirect if not admin
+    if (!isAdmin) {
+      toast.error('Access denied. Admin privileges required.');
+      navigate('/');
+    }
+  }, [isAdmin, navigate]);
 
   const handleLogout = async () => {
     try {
@@ -21,6 +29,7 @@ const AdminLayout = () => {
     }
   };
 
+  // Don't render anything if not admin
   if (!isAdmin) {
     return null;
   }

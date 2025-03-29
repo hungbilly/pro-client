@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { CheckCircle, Database, RefreshCw, ShieldAlert, InfoIcon } from 'lucide-react';
+import { CheckCircle, Database, RefreshCw, ShieldAlert, InfoIcon, CheckIcon } from 'lucide-react';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,6 +19,7 @@ const SubscriptionSuccess = () => {
   const [isManualSyncing, setIsManualSyncing] = useState(false);
   const [dbSubscriptionData, setDbSubscriptionData] = useState<any>(null);
   const [webhookMissing, setWebhookMissing] = useState(true);
+  const [isTestingWebhook, setIsTestingWebhook] = useState(false);
 
   useEffect(() => {
     const sessionId = searchParams.get('session_id');
@@ -57,9 +58,27 @@ const SubscriptionSuccess = () => {
       
       if (data && data.length > 0) {
         setDbSubscriptionData(data[0]);
+        // If we have subscription data, the webhook might be working
+        await checkWebhookStatus();
       }
     } catch (err) {
       console.error('Error fetching subscription data:', err);
+    }
+  };
+
+  const checkWebhookStatus = async () => {
+    try {
+      // Test if the webhook endpoint is reachable - just a simple OPTIONS request
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-webhook`, {
+        method: 'OPTIONS',
+      });
+      
+      if (response.ok) {
+        setWebhookMissing(false);
+      }
+    } catch (error) {
+      console.error('Error checking webhook status:', error);
+      setWebhookMissing(true);
     }
   };
 
@@ -78,6 +97,22 @@ const SubscriptionSuccess = () => {
       toast.error('Failed to sync subscription data');
     } finally {
       setIsManualSyncing(false);
+    }
+  };
+
+  const testWebhook = async () => {
+    setIsTestingWebhook(true);
+    try {
+      await checkWebhookStatus();
+      if (!webhookMissing) {
+        toast.success('Webhook endpoint is reachable');
+      } else {
+        toast.error('Webhook endpoint is not reachable');
+      }
+    } catch (error) {
+      toast.error('Failed to test webhook');
+    } finally {
+      setIsTestingWebhook(false);
     }
   };
 
@@ -131,12 +166,20 @@ const SubscriptionSuccess = () => {
                         )}
                       </div>
 
-                      {webhookMissing && (
+                      {webhookMissing ? (
                         <Alert variant="warning" className="mt-4 bg-amber-50 border-amber-200">
                           <ShieldAlert className="h-4 w-4 text-amber-600" />
                           <AlertTitle className="text-amber-800">Webhook not configured</AlertTitle>
                           <AlertDescription className="text-amber-700 text-sm">
                             Stripe webhook is not configured. Subscription status may not update automatically. Please set up a webhook in your Stripe dashboard pointing to your app's webhook endpoint.
+                          </AlertDescription>
+                        </Alert>
+                      ) : (
+                        <Alert className="mt-4 bg-green-50 border-green-200">
+                          <CheckIcon className="h-4 w-4 text-green-600" />
+                          <AlertTitle className="text-green-800">Webhook configured</AlertTitle>
+                          <AlertDescription className="text-green-700 text-sm">
+                            Webhook endpoint is reachable. Subscription status should update automatically.
                           </AlertDescription>
                         </Alert>
                       )}
@@ -172,6 +215,15 @@ const SubscriptionSuccess = () => {
                 <RefreshCw className={`h-4 w-4 ${isManualSyncing ? 'animate-spin' : ''}`} />
                 {isManualSyncing ? 'Syncing...' : 'Sync Data'}
               </Button>
+              <Button
+                variant="outline"
+                className="flex items-center gap-2"
+                onClick={testWebhook}
+                disabled={isTestingWebhook}
+              >
+                <ShieldAlert className="h-4 w-4" />
+                {isTestingWebhook ? 'Testing...' : 'Test Webhook'}
+              </Button>
             </CardFooter>
           </Card>
 
@@ -189,7 +241,7 @@ const SubscriptionSuccess = () => {
               <ol className="list-decimal list-inside space-y-2 pl-2">
                 <li>Go to the Stripe Dashboard → Developers → Webhooks</li>
                 <li>Click "Add endpoint"</li>
-                <li>Set the endpoint URL to: <code className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">[YOUR_DOMAIN]/functions/stripe-webhook</code></li>
+                <li>Set the endpoint URL to: <code className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">{import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-webhook</code></li>
                 <li>Select events to listen for:
                   <ul className="list-disc list-inside pl-4 text-gray-600">
                     <li>customer.subscription.created</li>

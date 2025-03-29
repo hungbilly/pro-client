@@ -5,7 +5,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, stripe-signature',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
 serve(async (req) => {
@@ -14,14 +15,22 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Only accept POST requests for the actual webhook
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   try {
     // Get the signature from the header
     const signature = req.headers.get('stripe-signature');
     if (!signature) {
       console.error('No Stripe signature found in the request');
-      return new Response(JSON.stringify({ error: 'No signature' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
+      return new Response(JSON.stringify({ error: 'No signature', code: 401, message: 'Missing stripe-signature header' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
@@ -30,7 +39,7 @@ serve(async (req) => {
     
     // Initialize Stripe with the secret key and updated API version
     const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
-      apiVersion: '2025-02-24', // Updated to match the dashboard version
+      apiVersion: '2023-10-16', // Using a stable version
     });
 
     // Initialize Supabase client with the service role key
@@ -40,16 +49,19 @@ serve(async (req) => {
     
     // Verify the webhook signature
     const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET') || '';
+    console.log(`Attempting to verify webhook with secret: ${webhookSecret ? 'Secret exists' : 'No secret found'}`);
+    
     let event;
     
     try {
-      // Using constructEventAsync instead of constructEvent
-      event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
+      // Using constructEvent for synchronous operation
+      event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+      console.log(`Webhook verified successfully: ${event.type}`);
     } catch (err) {
       console.error(`Webhook signature verification failed: ${err.message}`);
-      return new Response(JSON.stringify({ error: `Webhook Error: ${err.message}` }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
+      return new Response(JSON.stringify({ error: `Webhook Error: ${err.message}`, code: 401 }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
@@ -77,7 +89,7 @@ serve(async (req) => {
     }
 
     return new Response(JSON.stringify({ received: true }), {
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });
     
@@ -85,7 +97,7 @@ serve(async (req) => {
     console.error(`Error processing webhook: ${error.message}`);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 });
@@ -94,12 +106,17 @@ async function handleSubscriptionChange(subscription, supabase, stripe) {
   try {
     // Get customer to find user_id
     const customerId = subscription.customer;
+    
+    console.log(`Processing subscription change for customer: ${customerId}`);
+    
     const customer = await stripe.customers.retrieve(customerId);
     
     if (!customer || customer.deleted) {
       console.error('No customer found or customer was deleted');
       return;
     }
+    
+    console.log(`Customer email: ${customer.email}`);
     
     // Get user by email
     const { data: userData, error: userError } = await supabase
@@ -108,17 +125,24 @@ async function handleSubscriptionChange(subscription, supabase, stripe) {
       .eq('email', customer.email)
       .single();
     
-    if (userError || !userData) {
-      // Try to get user from metadata if available
-      let userId = customer.metadata?.supabase_user_id;
-      
-      if (!userId) {
-        console.error('Could not find user with matching email and no metadata found');
-        return;
-      }
+    if (userError) {
+      console.error(`Error fetching user by email: ${userError.message}`);
     }
     
-    const userId = userData?.id || customer.metadata?.supabase_user_id;
+    // Try to get user from metadata if available or use email lookup result
+    let userId = customer.metadata?.supabase_user_id;
+    
+    if (!userId && userData?.id) {
+      userId = userData.id;
+      console.log(`Found user ID from email lookup: ${userId}`);
+    }
+    
+    if (!userId) {
+      console.error('Could not find user ID from metadata or email lookup');
+      return;
+    }
+    
+    console.log(`Updating subscription for user ID: ${userId}`);
     
     // Check if user already has a subscription record
     const { data: existingSubscription, error: subQueryError } = await supabase
@@ -127,6 +151,10 @@ async function handleSubscriptionChange(subscription, supabase, stripe) {
       .eq('user_id', userId)
       .eq('stripe_subscription_id', subscription.id)
       .maybeSingle();
+    
+    if (subQueryError) {
+      console.error(`Error checking existing subscription: ${subQueryError.message}`);
+    }
       
     const subscriptionData = {
       user_id: userId,
@@ -138,6 +166,7 @@ async function handleSubscriptionChange(subscription, supabase, stripe) {
     
     if (existingSubscription) {
       // Update existing record
+      console.log(`Updating existing subscription record: ${existingSubscription.id}`);
       const { error: updateError } = await supabase
         .from('user_subscriptions')
         .update(subscriptionData)
@@ -150,6 +179,7 @@ async function handleSubscriptionChange(subscription, supabase, stripe) {
       }
     } else {
       // Insert new record
+      console.log(`Creating new subscription record for user ${userId}`);
       const { error: insertError } = await supabase
         .from('user_subscriptions')
         .insert(subscriptionData);

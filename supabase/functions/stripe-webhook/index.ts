@@ -70,6 +70,43 @@ serve(async (req) => {
     
     // Handle different types of events
     switch (event.type) {
+      case 'checkout.session.completed':
+        const session = event.data.object;
+        console.log('Processing checkout.session.completed:', session.id);
+        
+        // Extract customer info and subscription details
+        const customerId = session.customer;
+        const subscriptionId = session.subscription;
+        const clientReferenceId = session.client_reference_id;
+        
+        console.log(`Checkout completed - Customer: ${customerId}, Subscription: ${subscriptionId}, User: ${clientReferenceId}`);
+        
+        // Update subscription_sessions table
+        if (clientReferenceId && session.id) {
+          const { error: updateError } = await supabase
+            .from('subscription_sessions')
+            .update({ status: 'completed' })
+            .eq('session_id', session.id)
+            .eq('user_id', clientReferenceId);
+          
+          if (updateError) {
+            console.error(`Error updating subscription session: ${updateError.message}`);
+          } else {
+            console.log(`Updated subscription session ${session.id} to completed`);
+          }
+        }
+        
+        // If subscription is created, handle it
+        if (subscriptionId) {
+          try {
+            const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+            await handleSubscriptionChange(subscription, supabase, stripe);
+          } catch (error) {
+            console.error(`Error processing checkout subscription: ${error.message}`);
+          }
+        }
+        break;
+        
       case 'customer.subscription.created':
       case 'customer.subscription.updated':
       case 'customer.subscription.deleted':

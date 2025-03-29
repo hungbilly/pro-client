@@ -52,6 +52,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setHasAccess(false);
       setIsLoading(false);
       setHasCheckedSubscription(true);
+      console.log('State after no user/session:', { hasAccess: false, isLoading: false, hasCheckedSubscription: true });
       return;
     }
 
@@ -93,6 +94,17 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setIsInTrialPeriod(subscriptionData.status === 'trialing');
         setIsLoading(false);
         setHasCheckedSubscription(true);
+        console.log('State after setting active subscription:', {
+          hasAccess: true,
+          isLoading: false,
+          subscription: {
+            id: subscriptionData.stripe_subscription_id,
+            status: subscriptionData.status,
+            currentPeriodEnd: subscriptionData.current_period_end,
+          },
+          isInTrialPeriod: subscriptionData.status === 'trialing',
+          hasCheckedSubscription: true,
+        });
         return;
       }
 
@@ -128,6 +140,15 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setIsInTrialPeriod(data.isInTrialPeriod);
         setTrialDaysLeft(data.trialDaysLeft);
         setTrialEndDate(data.trialEndDate);
+        console.log('State after edge function:', {
+          hasAccess: data.hasAccess,
+          isLoading: false,
+          subscription: data.subscription,
+          isInTrialPeriod: data.isInTrialPeriod,
+          trialDaysLeft: data.trialDaysLeft,
+          trialEndDate: data.trialEndDate,
+          hasCheckedSubscription: true,
+        });
       } catch (error) {
         console.error('Error checking subscription with edge function:', error.message);
         handleTrialFallback();
@@ -138,6 +159,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     } finally {
       setIsLoading(false);
       setHasCheckedSubscription(true);
+      console.log('State in finally block:', { hasAccess, isLoading: false, hasCheckedSubscription: true });
     }
   }, [user, session]);
 
@@ -162,9 +184,19 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     setTrialEndDate(trialEndDate.toISOString());
     setSubscription(null);
     setHasCheckedSubscription(true);
+    console.log('State after trial fallback:', {
+      hasAccess: isInTrialPeriod,
+      isLoading: false,
+      isInTrialPeriod,
+      trialDaysLeft: Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
+      trialEndDate: trialEndDate.toISOString(),
+      subscription: null,
+      hasCheckedSubscription: true,
+    });
   };
 
   useEffect(() => {
+    console.log('useEffect triggered with user:', user?.id, 'hasCheckedSubscription:', hasCheckedSubscription);
     if (user && !hasCheckedSubscription) {
       console.log('User logged in, checking subscription');
       checkSubscription();
@@ -173,6 +205,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setHasAccess(false);
       setIsLoading(false);
       setHasCheckedSubscription(false);
+      console.log('State after logout:', { hasAccess: false, isLoading: false, hasCheckedSubscription: false });
     }
   }, [user, checkSubscription, hasCheckedSubscription]);
 
@@ -228,7 +261,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     createSubscription,
   };
 
-  console.log('SubscriptionProvider state:', value);
+  console.log('SubscriptionProvider state before render:', value);
 
   return (
     <SubscriptionContext.Provider value={value}>

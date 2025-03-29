@@ -38,22 +38,43 @@ serve(async (req) => {
     const user = userData.user;
     const userId = user.id;
     
-    // Get email from profiles table instead of auth.users
+    // Check profiles table to see if user exists
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
       .select('email')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
       
-    if (profileError || !profileData) {
-      console.error('Error getting profile:', profileError);
-      throw new Error('User profile not found');
-    }
+    let email;
     
-    const email = profileData.email;
+    if (profileError) {
+      console.error('Error getting profile:', profileError);
+      // Don't throw an error, just proceed with the email from auth user
+      email = user.email;
+    } else if (!profileData) {
+      console.log('User profile not found, creating one');
+      // Create a profile record if it doesn't exist
+      const { error: insertError } = await supabase
+        .from('profiles')
+        .insert({
+          id: userId,
+          email: user.email,
+          is_admin: user.user_metadata?.is_admin || false,
+          created_at: user.created_at
+        });
+        
+      if (insertError) {
+        console.error('Error creating profile:', insertError);
+        // Still continue with the email from auth user
+      }
+      
+      email = user.email;
+    } else {
+      email = profileData.email || user.email;
+    }
 
     if (!email) {
-      throw new Error('User email not found in profile');
+      throw new Error('User email not found');
     }
 
     console.log(`Checking subscription for user: ${userId} (${email})`);

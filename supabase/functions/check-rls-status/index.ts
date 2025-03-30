@@ -22,15 +22,21 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
-    // Check the RLS status using the function
-    const { data, error } = await supabaseClient.rpc(
-      'check_rls_status_for_subscriptions'
-    )
+    // Check the RLS status by attempting to query information_schema
+    const { data, error } = await supabaseClient
+      .from('information_schema.tables')
+      .select('rls_enabled')
+      .eq('table_name', 'user_subscriptions')
+      .eq('table_schema', 'public')
+      .single()
 
-    if (error) throw error
+    if (error) {
+      console.error('Error checking RLS via information_schema:', error)
+      throw error
+    }
 
     return new Response(
-      JSON.stringify({ is_enabled: data }),
+      JSON.stringify({ is_enabled: data?.rls_enabled || false }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,

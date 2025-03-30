@@ -24,16 +24,21 @@ serve(async (req) => {
 
     const { enable_rls } = await req.json()
     
-    // Call the RPC function to toggle RLS
-    const { data, error } = await supabaseClient.rpc(
-      'toggle_rls_for_subscriptions',
-      { enable_rls }
-    )
+    // Execute SQL to enable or disable RLS
+    const sql = enable_rls 
+      ? 'ALTER TABLE public.user_subscriptions ENABLE ROW LEVEL SECURITY;'
+      : 'ALTER TABLE public.user_subscriptions DISABLE ROW LEVEL SECURITY;'
+    
+    const { error } = await supabaseClient.rpc('exec_sql', { sql_query: sql })
 
-    if (error) throw error
+    if (error) {
+      console.error('Error executing SQL to toggle RLS:', error)
+      // If the exec_sql function doesn't exist, we can't toggle RLS this way
+      throw new Error(`Could not toggle RLS: ${error.message}. Make sure you have the required permissions and the exec_sql function exists.`)
+    }
 
     return new Response(
-      JSON.stringify({ success: true }),
+      JSON.stringify({ success: true, rls_enabled: enable_rls }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,

@@ -4,9 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, User } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { RefreshCw, User, AlertTriangle } from 'lucide-react';
+import { supabase, handleDeadlockError } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface UserSubscription {
   id: string;
@@ -20,6 +21,7 @@ interface UserSubscription {
 const UserSubscriptionsTable = () => {
   const [subscriptions, setSubscriptions] = useState<UserSubscription[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchSubscriptions();
@@ -28,18 +30,22 @@ const UserSubscriptionsTable = () => {
   const fetchSubscriptions = async () => {
     try {
       setLoading(true);
+      setError(null);
       
-      const { data, error } = await supabase
-        .from('user_subscriptions')
-        .select('*');
+      // Use the deadlock handling utility
+      const data = await handleDeadlockError(async () => {
+        const { data, error } = await supabase
+          .from('user_subscriptions')
+          .select('*');
+        
+        if (error) throw error;
+        return data || [];
+      });
       
-      if (error) {
-        throw error;
-      }
-      
-      setSubscriptions(data || []);
+      setSubscriptions(data);
     } catch (error) {
       console.error('Error fetching subscriptions:', error);
+      setError(`Failed to load subscription data: ${error.message || 'Unknown error'}`);
       toast.error('Failed to load subscription data');
     } finally {
       setLoading(false);
@@ -71,6 +77,14 @@ const UserSubscriptionsTable = () => {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {error && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
         {loading ? (
           <div className="py-4 text-center">Loading subscriptions data...</div>
         ) : (

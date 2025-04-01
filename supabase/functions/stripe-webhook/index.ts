@@ -75,26 +75,46 @@ serve(async (req) => {
         
         if (clientReferenceId && subscriptionId) {
           try {
-            // Store subscription data in the database
-            const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-            
-            if (subscription) {
-              const { error: insertError } = await supabase
-                .from('user_subscriptions')
-                .upsert({
-                  user_id: clientReferenceId,
-                  stripe_customer_id: customerId,
-                  stripe_subscription_id: subscriptionId,
-                  status: subscription.status,
-                  current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-                  trial_end_date: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
-                });
+            // Check if a record already exists for this user and subscription
+            const { data: existingSubscription, error: checkError } = await supabase
+              .from('user_subscriptions')
+              .select('id')
+              .eq('user_id', clientReferenceId)
+              .eq('stripe_subscription_id', subscriptionId)
+              .maybeSingle();
               
-              if (insertError) {
-                console.error(`Error updating subscription record: ${insertError.message}`);
-              } else {
-                console.log(`Subscription record updated for user ${clientReferenceId}`);
+            if (checkError) {
+              console.error(`Error checking existing subscription: ${checkError.message}`);
+            }
+            
+            // Only proceed if no record exists for this subscription
+            if (!existingSubscription) {
+              // Store subscription data in the database
+              const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+              
+              if (subscription) {
+                const { error: insertError } = await supabase
+                  .from('user_subscriptions')
+                  .upsert({
+                    user_id: clientReferenceId,
+                    stripe_customer_id: customerId,
+                    stripe_subscription_id: subscriptionId,
+                    status: subscription.status,
+                    current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+                    trial_end_date: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
+                  }, {
+                    onConflict: 'stripe_subscription_id',
+                    ignoreDuplicates: true
+                  });
+                
+                if (insertError) {
+                  console.error(`Error updating subscription record: ${insertError.message}`);
+                } else {
+                  console.log(`Subscription record updated for user ${clientReferenceId}`);
+                }
               }
+            } else {
+              console.log(`Subscription ${subscriptionId} already exists for user ${clientReferenceId}, skipping insertion`);
             }
           } catch (error) {
             console.error(`Error retrieving subscription: ${error.message}`);
@@ -133,6 +153,20 @@ serve(async (req) => {
           
           const userId = userData.id;
           
+          // Check if a record already exists for this user and subscription
+          const { data: existingSubscription, error: checkError } = await supabase
+            .from('user_subscriptions')
+            .select('id, updated_at')
+            .eq('user_id', userId)
+            .eq('stripe_subscription_id', subscription.id)
+            .maybeSingle();
+            
+          if (checkError) {
+            console.error(`Error checking existing subscription: ${checkError.message}`);
+          }
+          
+          // If no record exists or the record is old, update it
+          // Using upsert with onConflict for idempotency
           const { error: upsertError } = await supabase
             .from('user_subscriptions')
             .upsert({
@@ -142,6 +176,10 @@ serve(async (req) => {
               status: subscription.status,
               current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
               trial_end_date: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
+              updated_at: new Date().toISOString(), // Force update of the updated_at field
+            }, {
+              onConflict: 'stripe_subscription_id',
+              ignoreDuplicates: false // We want to update if it exists
             });
             
           if (upsertError) {
@@ -201,6 +239,18 @@ serve(async (req) => {
             
             const invoiceUserId = invoiceUserData.id;
             
+            // Check if a record already exists for this user and subscription
+            const { data: existingInvoiceSubscription, error: checkInvoiceError } = await supabase
+              .from('user_subscriptions')
+              .select('id')
+              .eq('user_id', invoiceUserId)
+              .eq('stripe_subscription_id', invoice.subscription)
+              .maybeSingle();
+              
+            if (checkInvoiceError) {
+              console.error(`Error checking existing subscription for invoice: ${checkInvoiceError.message}`);
+            }
+            
             // Update the subscription in the database
             const { error: invoiceUpsertError } = await supabase
               .from('user_subscriptions')
@@ -211,6 +261,10 @@ serve(async (req) => {
                 status: invoiceSubscription.status,
                 current_period_end: new Date(invoiceSubscription.current_period_end * 1000).toISOString(),
                 trial_end_date: invoiceSubscription.trial_end ? new Date(invoiceSubscription.trial_end * 1000).toISOString() : null,
+                updated_at: new Date().toISOString(), // Force update of the updated_at field
+              }, {
+                onConflict: 'stripe_subscription_id',
+                ignoreDuplicates: false // We want to update if it exists
               });
               
             if (invoiceUpsertError) {

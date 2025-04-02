@@ -49,25 +49,48 @@ const UserSubscriptionsTable = () => {
       
       setSubscriptions(data);
 
-      // Check for duplicates
-      const userSubscriptions: {[key: string]: number} = {};
+      // Check for duplicates by stripe_subscription_id
+      const subIdMap: {[key: string]: number} = {};
       data.forEach((sub: UserSubscription) => {
-        if (!userSubscriptions[sub.user_id]) {
-          userSubscriptions[sub.user_id] = 1;
-        } else {
-          userSubscriptions[sub.user_id]++;
+        if (sub.stripe_subscription_id) {
+          if (!subIdMap[sub.stripe_subscription_id]) {
+            subIdMap[sub.stripe_subscription_id] = 1;
+          } else {
+            subIdMap[sub.stripe_subscription_id]++;
+          }
         }
       });
 
-      // Filter to only users with more than one subscription
-      const duplicatesOnly = Object.entries(userSubscriptions)
+      // Filter to only subscription IDs with more than one record
+      const duplicateSubIds = Object.entries(subIdMap)
+        .filter(([_, count]) => count > 1)
+        .reduce((acc, [subId, count]) => {
+          acc[subId] = count;
+          return acc;
+        }, {} as {[key: string]: number});
+
+      // Also check for users with multiple active subscriptions
+      const userSubscriptions: {[key: string]: number} = {};
+      data.forEach((sub: UserSubscription) => {
+        if (sub.status === 'active') {
+          if (!userSubscriptions[sub.user_id]) {
+            userSubscriptions[sub.user_id] = 1;
+          } else {
+            userSubscriptions[sub.user_id]++;
+          }
+        }
+      });
+
+      // Filter to only users with more than one active subscription
+      const usersWithMultipleActive = Object.entries(userSubscriptions)
         .filter(([_, count]) => count > 1)
         .reduce((acc, [userId, count]) => {
           acc[userId] = count;
           return acc;
         }, {} as {[key: string]: number});
 
-      setDuplicates(duplicatesOnly);
+      // Combine both types of duplicates
+      setDuplicates({...duplicateSubIds, ...usersWithMultipleActive});
       
     } catch (error) {
       console.error('Error fetching subscriptions:', error);
@@ -87,40 +110,102 @@ const UserSubscriptionsTable = () => {
     try {
       setCleaningUp(true);
       
-      // Get all user IDs with duplicates
-      const userIds = Object.keys(duplicates);
+      // First, find duplicate subscription records by stripe_subscription_id
+      const { data: duplicateRecords, error: findError } = await supabase
+        .from('user_subscriptions')
+        .select('stripe_subscription_id, count(*)')
+        .not('stripe_subscription_id', 'is', null)
+        .group('stripe_subscription_id')
+        .having('count(*) > 1');
+        
+      if (findError) {
+        throw findError;
+      }
       
-      for (const userId of userIds) {
-        // Get all subscriptions for this user
-        const { data: userSubs } = await supabase
+      console.log('Found subscription IDs with duplicates:', duplicateRecords);
+      
+      // For each subscription ID with duplicates, keep only the newest record
+      for (const record of duplicateRecords) {
+        const subId = record.stripe_subscription_id;
+        
+        // Get all records for this subscription ID, ordered by created_at desc
+        const { data: subRecords } = await supabase
           .from('user_subscriptions')
           .select('*')
-          .eq('user_id', userId)
+          .eq('stripe_subscription_id', subId)
           .order('created_at', { ascending: false });
+          
+        if (!subRecords || subRecords.length <= 1) continue;
         
-        if (!userSubs || userSubs.length <= 1) continue;
+        // Keep the newest record, delete the rest
+        const [keep, ...duplicatesToRemove] = subRecords;
         
-        // Keep the newest subscription (first one due to desc ordering)
-        const [keep, ...duplicatesToRemove] = userSubs;
-        
-        // Delete all but the most recent one
         if (duplicatesToRemove.length > 0) {
           const idsToRemove = duplicatesToRemove.map(sub => sub.id);
+          
+          console.log(`Keeping record ${keep.id} for subscription ${subId} and removing ${idsToRemove.length} duplicates`);
           
           const { error: deleteError } = await supabase
             .from('user_subscriptions')
             .delete()
             .in('id', idsToRemove);
-          
+            
           if (deleteError) {
-            throw deleteError;
+            console.error(`Error deleting duplicate records for ${subId}:`, deleteError);
           }
-          
-          console.log(`Removed ${idsToRemove.length} duplicate subscriptions for user ${userId}`);
         }
       }
       
-      toast.success('Duplicate subscriptions have been removed');
+      // Now, find users with multiple active subscriptions
+      const { data: usersWithMultipleActive, error: findUsersError } = await supabase
+        .from('user_subscriptions')
+        .select('user_id, count(*)')
+        .eq('status', 'active')
+        .group('user_id')
+        .having('count(*) > 1');
+        
+      if (findUsersError) {
+        throw findUsersError;
+      }
+      
+      console.log('Found users with multiple active subscriptions:', usersWithMultipleActive);
+      
+      // For each user with multiple active subscriptions, keep only the newest one
+      for (const record of usersWithMultipleActive) {
+        const userId = record.user_id;
+        
+        // Get all active subscriptions for this user, ordered by created_at desc
+        const { data: activeSubRecords } = await supabase
+          .from('user_subscriptions')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('status', 'active')
+          .order('created_at', { ascending: false });
+          
+        if (!activeSubRecords || activeSubRecords.length <= 1) continue;
+        
+        // Keep the newest active subscription, mark the rest as inactive
+        const [keep, ...subsToUpdate] = activeSubRecords;
+        
+        if (subsToUpdate.length > 0) {
+          const idsToUpdate = subsToUpdate.map(sub => sub.id);
+          
+          console.log(`Keeping active subscription ${keep.id} for user ${userId} and marking ${idsToUpdate.length} others as inactive`);
+          
+          for (const id of idsToUpdate) {
+            const { error: updateError } = await supabase
+              .from('user_subscriptions')
+              .update({ status: 'inactive' })
+              .eq('id', id);
+              
+            if (updateError) {
+              console.error(`Error updating subscription ${id} to inactive:`, updateError);
+            }
+          }
+        }
+      }
+      
+      toast.success('Duplicate subscriptions have been cleaned up');
       fetchSubscriptions(); // Refresh the list
     } catch (error) {
       console.error('Error cleaning up duplicates:', error);
@@ -183,8 +268,9 @@ const UserSubscriptionsTable = () => {
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Duplicate Subscriptions Detected</AlertTitle>
             <AlertDescription>
-              Found {duplicateCount} duplicate subscription records across {Object.keys(duplicates).length} users. 
-              Use the "Clean Duplicates" button to keep only the most recent subscription for each user.
+              Found {duplicateCount} duplicate subscription records. 
+              These may include duplicate stripe_subscription_id values or users with multiple active subscriptions.
+              Use the "Clean Duplicates" button to resolve these issues.
             </AlertDescription>
           </Alert>
         )}
@@ -212,43 +298,55 @@ const UserSubscriptionsTable = () => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  subscriptions.map((subscription) => (
-                    <TableRow 
-                      key={subscription.id}
-                      className={duplicates[subscription.user_id] > 1 ? "bg-amber-50" : ""}
-                    >
-                      <TableCell className="font-mono text-xs">
-                        {subscription.user_id.substring(0, 8)}...
-                        {duplicates[subscription.user_id] > 1 && (
-                          <Badge variant="warning" className="ml-2">
-                            {duplicates[subscription.user_id]} records
+                  subscriptions.map((subscription) => {
+                    // Check if this is a duplicate record (either by subscription ID or user with multiple active)
+                    const isDuplicate = subscription.stripe_subscription_id && 
+                      duplicates[subscription.stripe_subscription_id] > 1 || 
+                      (subscription.status === 'active' && duplicates[subscription.user_id] > 1);
+                      
+                    return (
+                      <TableRow 
+                        key={subscription.id}
+                        className={isDuplicate ? "bg-amber-50" : ""}
+                      >
+                        <TableCell className="font-mono text-xs">
+                          {subscription.user_id.substring(0, 8)}...
+                          {subscription.status === 'active' && duplicates[subscription.user_id] > 1 && (
+                            <Badge variant="warning" className="ml-2">
+                              {duplicates[subscription.user_id]} active
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="font-mono text-xs">
+                          {subscription.stripe_subscription_id?.substring(0, 8)}...
+                          {subscription.stripe_subscription_id && duplicates[subscription.stripe_subscription_id] > 1 && (
+                            <Badge variant="warning" className="ml-2">
+                              {duplicates[subscription.stripe_subscription_id]} duplicates
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge 
+                            variant={
+                              subscription.status === 'active' ? 'success' : 
+                              subscription.status === 'trialing' ? 'warning' : 'default'
+                            }
+                          >
+                            {subscription.status || 'N/A'}
                           </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">
-                        {subscription.stripe_subscription_id?.substring(0, 8)}...
-                      </TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant={
-                            subscription.status === 'active' ? 'success' : 
-                            subscription.status === 'trialing' ? 'warning' : 'default'
-                          }
-                        >
-                          {subscription.status || 'N/A'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {formatDate(subscription.trial_end_date)}
-                      </TableCell>
-                      <TableCell>
-                        {formatDate(subscription.current_period_end)}
-                      </TableCell>
-                      <TableCell>
-                        {formatDate(subscription.created_at)}
-                      </TableCell>
-                    </TableRow>
-                  ))
+                        </TableCell>
+                        <TableCell>
+                          {formatDate(subscription.trial_end_date)}
+                        </TableCell>
+                        <TableCell>
+                          {formatDate(subscription.current_period_end)}
+                        </TableCell>
+                        <TableCell>
+                          {formatDate(subscription.created_at)}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>

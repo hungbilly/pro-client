@@ -75,51 +75,61 @@ serve(async (req) => {
         
         if (clientReferenceId && subscriptionId) {
           try {
-            // Check if a record already exists for this subscription ID
+            // First, check if we already have this subscription in our database
             const { data: existingSubscription, error: checkError } = await supabase
               .from('user_subscriptions')
-              .select('id')
+              .select('*')
               .eq('stripe_subscription_id', subscriptionId)
+              .limit(1)
               .maybeSingle();
               
             if (checkError) {
               console.error(`Error checking existing subscription: ${checkError.message}`);
             }
             
-            // Only proceed if no record exists for this subscription ID
-            if (!existingSubscription) {
-              // Store subscription data in the database
+            // If we already have this subscription ID in our database, don't create another record
+            if (existingSubscription) {
+              console.log(`Subscription ${subscriptionId} already exists in database, skipping creation`);
+              
+              // If it's for a different user (shouldn't happen, but just in case), update the user_id
+              if (existingSubscription.user_id !== clientReferenceId) {
+                console.log(`Updating user_id for subscription ${subscriptionId} from ${existingSubscription.user_id} to ${clientReferenceId}`);
+                
+                await supabase
+                  .from('user_subscriptions')
+                  .update({
+                    user_id: clientReferenceId,
+                    updated_at: new Date().toISOString()
+                  })
+                  .eq('id', existingSubscription.id);
+              }
+            } else {
+              // Check for existing active subscriptions for this user
+              const { data: userSubscriptions, error: userSubError } = await supabase
+                .from('user_subscriptions')
+                .select('*')
+                .eq('user_id', clientReferenceId)
+                .eq('status', 'active');
+                
+              if (userSubError) {
+                console.error(`Error checking user subscriptions: ${userSubError.message}`);
+              } else if (userSubscriptions && userSubscriptions.length > 0) {
+                console.log(`User ${clientReferenceId} already has ${userSubscriptions.length} active subscriptions. Marking them as inactive.`);
+                
+                // Mark all existing active subscriptions as inactive
+                for (const sub of userSubscriptions) {
+                  await supabase
+                    .from('user_subscriptions')
+                    .update({ status: 'inactive', updated_at: new Date().toISOString() })
+                    .eq('id', sub.id);
+                }
+              }
+              
+              // Now retrieve the subscription details from Stripe
               const subscription = await stripe.subscriptions.retrieve(subscriptionId);
               
               if (subscription) {
-                // First, determine if the user already has active subscriptions
-                const { data: userSubs, error: userSubsError } = await supabase
-                  .from('user_subscriptions')
-                  .select('id, status')
-                  .eq('user_id', clientReferenceId)
-                  .eq('status', 'active');
-                
-                if (userSubsError) {
-                  console.error(`Error checking existing user subscriptions: ${userSubsError.message}`);
-                }
-                
-                // If user already has active subscriptions, mark them as inactive
-                if (userSubs && userSubs.length > 0) {
-                  console.log(`User ${clientReferenceId} already has ${userSubs.length} active subscriptions. Marking them as inactive.`);
-                  
-                  for (const sub of userSubs) {
-                    const { error: updateError } = await supabase
-                      .from('user_subscriptions')
-                      .update({ status: 'inactive' })
-                      .eq('id', sub.id);
-                    
-                    if (updateError) {
-                      console.error(`Error updating existing subscription: ${updateError.message}`);
-                    }
-                  }
-                }
-                
-                // Now insert the new subscription
+                // Create a new subscription record
                 const { error: insertError } = await supabase
                   .from('user_subscriptions')
                   .insert({
@@ -134,21 +144,18 @@ serve(async (req) => {
                 if (insertError) {
                   console.error(`Error inserting subscription record: ${insertError.message}`);
                 } else {
-                  console.log(`Subscription record created for user ${clientReferenceId}`);
+                  console.log(`Created new subscription record for user ${clientReferenceId}`);
                 }
               }
-            } else {
-              console.log(`Subscription ${subscriptionId} already exists, skipping insertion`);
             }
           } catch (error) {
-            console.error(`Error retrieving subscription: ${error.message}`);
+            console.error(`Error processing checkout session: ${error.message}`);
           }
         }
         break;
         
       case 'customer.subscription.created':
       case 'customer.subscription.updated':
-      case 'customer.subscription.deleted':
         const subscription = event.data.object;
         const customerIdSub = subscription.customer;
         
@@ -163,24 +170,24 @@ serve(async (req) => {
             break;
           }
           
-          // Find user by customer email in profiles table instead of auth.users
+          // Find user by customer email in profiles table
           const { data: userData, error: userError } = await supabase
             .from('profiles')
             .select('id')
             .eq('email', customer.email)
-            .single();
+            .maybeSingle();
             
-          if (userError) {
-            console.error(`Error finding user: ${userError.message}`);
+          if (userError || !userData) {
+            console.error(`Error finding user: ${userError?.message || 'No user found with email ' + customer.email}`);
             break;
           }
           
           const userId = userData.id;
           
-          // Check if this subscription ID already exists
+          // Check if the subscription record already exists
           const { data: existingSub, error: checkSubError } = await supabase
             .from('user_subscriptions')
-            .select('id, status')
+            .select('*')
             .eq('stripe_subscription_id', subscription.id)
             .maybeSingle();
             
@@ -190,7 +197,9 @@ serve(async (req) => {
           
           if (existingSub) {
             // Update the existing subscription
-            const { error: updateError } = await supabase
+            console.log(`Updating existing subscription record for ${subscription.id}`);
+            
+            await supabase
               .from('user_subscriptions')
               .update({
                 status: subscription.status,
@@ -199,43 +208,32 @@ serve(async (req) => {
                 updated_at: new Date().toISOString()
               })
               .eq('id', existingSub.id);
-              
-            if (updateError) {
-              console.error(`Error updating subscription: ${updateError.message}`);
-            } else {
-              console.log(`Updated subscription ${subscription.id} for user ${userId}`);
-            }
           } else {
-            // If status becomes active, check if user has other active subscriptions
+            // Before creating a new subscription record, check for existing active subscriptions
             if (subscription.status === 'active') {
-              // Find all active subscriptions for this user
-              const { data: activeSubs, error: activeSubsError } = await supabase
+              const { data: activeSubscriptions } = await supabase
                 .from('user_subscriptions')
-                .select('id')
+                .select('*')
                 .eq('user_id', userId)
                 .eq('status', 'active');
+              
+              if (activeSubscriptions && activeSubscriptions.length > 0) {
+                console.log(`User ${userId} already has ${activeSubscriptions.length} active subscriptions. Marking them as inactive.`);
                 
-              if (activeSubsError) {
-                console.error(`Error finding active subscriptions: ${activeSubsError.message}`);
-              } else if (activeSubs && activeSubs.length > 0) {
-                // Mark other active subscriptions as inactive
-                console.log(`User ${userId} already has ${activeSubs.length} active subscriptions. Marking them as inactive.`);
-                
-                for (const sub of activeSubs) {
-                  const { error: deactivateError } = await supabase
+                // Mark all existing active subscriptions as inactive
+                for (const sub of activeSubscriptions) {
+                  await supabase
                     .from('user_subscriptions')
-                    .update({ status: 'inactive' })
+                    .update({ status: 'inactive', updated_at: new Date().toISOString() })
                     .eq('id', sub.id);
-                    
-                  if (deactivateError) {
-                    console.error(`Error deactivating subscription: ${deactivateError.message}`);
-                  }
                 }
               }
             }
             
-            // Insert new subscription record
-            const { error: insertError } = await supabase
+            // Create a new subscription record
+            console.log(`Creating new subscription record for user ${userId}`);
+            
+            await supabase
               .from('user_subscriptions')
               .insert({
                 user_id: userId,
@@ -245,15 +243,44 @@ serve(async (req) => {
                 current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
                 trial_end_date: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
               });
-              
-            if (insertError) {
-              console.error(`Error inserting subscription: ${insertError.message}`);
-            } else {
-              console.log(`Created new subscription record for user ${userId}`);
-            }
           }
         } catch (error) {
           console.error(`Error processing subscription event: ${error.message}`);
+        }
+        break;
+        
+      case 'customer.subscription.deleted':
+        const deletedSubscription = event.data.object;
+        console.log(`Processing subscription deletion for subscription: ${deletedSubscription.id}`);
+        
+        try {
+          // Find and update the subscription record
+          const { data: subToUpdate, error: findSubError } = await supabase
+            .from('user_subscriptions')
+            .select('id')
+            .eq('stripe_subscription_id', deletedSubscription.id)
+            .maybeSingle();
+            
+          if (findSubError) {
+            console.error(`Error finding subscription to cancel: ${findSubError.message}`);
+            break;
+          }
+          
+          if (subToUpdate) {
+            await supabase
+              .from('user_subscriptions')
+              .update({
+                status: 'canceled',
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', subToUpdate.id);
+              
+            console.log(`Marked subscription ${deletedSubscription.id} as canceled`);
+          } else {
+            console.log(`No subscription record found for ${deletedSubscription.id}`);
+          }
+        } catch (error) {
+          console.error(`Error processing subscription deletion: ${error.message}`);
         }
         break;
         
@@ -264,127 +291,84 @@ serve(async (req) => {
         
         if (invoice.subscription) {
           try {
-            // Get the subscription details
-            const invoiceSubscription = await stripe.subscriptions.retrieve(invoice.subscription);
-            if (!invoiceSubscription) {
-              console.log(`No subscription found for invoice ${invoice.id}, skipping`);
-              break;
-            }
-            
-            const invoiceCustomerId = invoice.customer;
-            if (!invoiceCustomerId) {
-              console.log(`No customer ID found for invoice ${invoice.id}, skipping`);
-              break;
-            }
-            
-            // Get customer to find the associated user
-            const invoiceCustomer = await stripe.customers.retrieve(invoiceCustomerId);
-            
-            if (!invoiceCustomer || ('deleted' in invoiceCustomer && invoiceCustomer.deleted)) {
-              console.log(`Customer ${invoiceCustomerId} not found or was deleted, skipping`);
-              break;
-            }
-            
-            if (!invoiceCustomer.email) {
-              console.log(`No email found for customer ${invoiceCustomerId}, skipping`);
-              break;
-            }
-            
-            // Find user by customer email
-            const { data: invoiceUserData, error: invoiceUserError } = await supabase
-              .from('profiles')
-              .select('id')
-              .eq('email', invoiceCustomer.email)
-              .single();
-              
-            if (invoiceUserError || !invoiceUserData) {
-              console.error(`Error finding user for invoice: ${invoiceUserError?.message || 'No user found'}`);
-              break;
-            }
-            
-            const invoiceUserId = invoiceUserData.id;
-            
-            // Find subscription record by subscription ID
-            const { data: existingInvoiceSub, error: findSubError } = await supabase
+            // Find the subscription record by subscription ID
+            const { data: invoiceSubscription, error: findInvSubError } = await supabase
               .from('user_subscriptions')
-              .select('id')
+              .select('*')
               .eq('stripe_subscription_id', invoice.subscription)
               .maybeSingle();
               
-            if (findSubError) {
-              console.error(`Error finding subscription record: ${findSubError.message}`);
+            if (findInvSubError) {
+              console.error(`Error finding subscription for invoice: ${findInvSubError.message}`);
+              break;
             }
             
-            if (existingInvoiceSub) {
-              // Update existing subscription
-              const { error: updateSubError } = await supabase
+            if (invoiceSubscription) {
+              // Get updated subscription from Stripe
+              const stripeSubscription = await stripe.subscriptions.retrieve(invoice.subscription);
+              
+              // Update the subscription status and period end
+              await supabase
                 .from('user_subscriptions')
                 .update({
-                  status: invoiceSubscription.status,
-                  current_period_end: new Date(invoiceSubscription.current_period_end * 1000).toISOString(),
-                  trial_end_date: invoiceSubscription.trial_end ? new Date(invoiceSubscription.trial_end * 1000).toISOString() : null,
+                  status: stripeSubscription.status,
+                  current_period_end: new Date(stripeSubscription.current_period_end * 1000).toISOString(),
                   updated_at: new Date().toISOString()
                 })
-                .eq('id', existingInvoiceSub.id);
+                .eq('id', invoiceSubscription.id);
                 
-              if (updateSubError) {
-                console.error(`Error updating subscription from invoice: ${updateSubError.message}`);
-              } else {
-                console.log(`Updated subscription record from invoice for user ${invoiceUserId}`);
-              }
+              console.log(`Updated subscription period end for ${invoice.subscription}`);
             } else {
-              // If this is a new active subscription, deactivate other active ones
-              if (invoiceSubscription.status === 'active') {
-                const { data: activeUserSubs, error: findActivesError } = await supabase
-                  .from('user_subscriptions')
-                  .select('id')
-                  .eq('user_id', invoiceUserId)
-                  .eq('status', 'active');
-                  
-                if (findActivesError) {
-                  console.error(`Error finding active subscriptions: ${findActivesError.message}`);
-                } else if (activeUserSubs && activeUserSubs.length > 0) {
-                  console.log(`Deactivating ${activeUserSubs.length} existing active subscriptions for user ${invoiceUserId}`);
-                  
-                  for (const sub of activeUserSubs) {
-                    const { error: deactivateError } = await supabase
-                      .from('user_subscriptions')
-                      .update({ status: 'inactive' })
-                      .eq('id', sub.id);
-                      
-                    if (deactivateError) {
-                      console.error(`Error deactivating subscription: ${deactivateError.message}`);
-                    }
-                  }
-                }
-              }
-              
-              // Insert new subscription record
-              const { error: insertNewSubError } = await supabase
-                .from('user_subscriptions')
-                .insert({
-                  user_id: invoiceUserId,
-                  stripe_customer_id: invoiceCustomerId,
-                  stripe_subscription_id: invoice.subscription,
-                  status: invoiceSubscription.status,
-                  current_period_end: new Date(invoiceSubscription.current_period_end * 1000).toISOString(),
-                  trial_end_date: invoiceSubscription.trial_end ? new Date(invoiceSubscription.trial_end * 1000).toISOString() : null,
-                });
-                
-              if (insertNewSubError) {
-                console.error(`Error inserting new subscription from invoice: ${insertNewSubError.message}`);
-              } else {
-                console.log(`Created new subscription record from invoice for user ${invoiceUserId}`);
-              }
+              console.log(`No subscription record found for ${invoice.subscription} while processing invoice`);
             }
           } catch (error) {
-            console.error(`Error processing invoice.paid event: ${error.message}`);
+            console.error(`Error processing invoice payment: ${error.message}`);
           }
-        } else {
-          console.log(`Invoice ${invoice.id} is not associated with a subscription, skipping`);
         }
         break;
         
+      case 'invoice.payment_failed':
+        // Handle invoice.payment_failed event
+        const failedInvoice = event.data.object;
+        console.log(`Processing failed invoice payment: ${failedInvoice.id} for subscription: ${failedInvoice.subscription}`);
+        
+        if (failedInvoice.subscription) {
+          try {
+            // Find the subscription record by subscription ID
+            const { data: failedSubRecord, error: findFailedSubError } = await supabase
+              .from('user_subscriptions')
+              .select('*')
+              .eq('stripe_subscription_id', failedInvoice.subscription)
+              .maybeSingle();
+              
+            if (findFailedSubError) {
+              console.error(`Error finding subscription for failed invoice: ${findFailedSubError.message}`);
+              break;
+            }
+            
+            if (failedSubRecord) {
+              // Get updated subscription from Stripe
+              const stripeSubscription = await stripe.subscriptions.retrieve(failedInvoice.subscription);
+              
+              // Update the subscription status
+              await supabase
+                .from('user_subscriptions')
+                .update({
+                  status: stripeSubscription.status, // This will likely be 'past_due' or 'unpaid'
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', failedSubRecord.id);
+                
+              console.log(`Updated subscription status to ${stripeSubscription.status} for ${failedInvoice.subscription}`);
+            } else {
+              console.log(`No subscription record found for ${failedInvoice.subscription} while processing failed invoice`);
+            }
+          } catch (error) {
+            console.error(`Error processing failed invoice payment: ${error.message}`);
+          }
+        }
+        break;
+      
       default:
         console.log(`Unhandled event type: ${event.type}`);
     }

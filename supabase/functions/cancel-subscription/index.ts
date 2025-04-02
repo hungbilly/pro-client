@@ -38,18 +38,14 @@ serve(async (req) => {
     const user = userData.user;
     const userId = user.id;
 
-    // Initialize Stripe
-    const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
-      apiVersion: '2023-10-16',
-    });
+    console.log(`Processing subscription cancellation for user: ${userId}`);
 
     // Get the current subscription for the user
     const { data: subscriptions, error: subError } = await supabase
       .from('user_subscriptions')
       .select('*')
       .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(1);
+      .order('created_at', { ascending: false });
 
     if (subError) {
       console.error('Error getting subscriptions:', subError);
@@ -61,6 +57,9 @@ serve(async (req) => {
         }
       );
     }
+
+    // Log the retrieved subscriptions for debugging
+    console.log(`Found ${subscriptions?.length || 0} subscriptions for user ${userId}:`, subscriptions);
 
     // Check if subscription exists
     if (!subscriptions || subscriptions.length === 0) {
@@ -74,7 +73,10 @@ serve(async (req) => {
       );
     }
 
-    const subscription = subscriptions[0];
+    // Find an active subscription - prioritize any with 'active' status
+    let subscription = subscriptions.find(sub => sub.status === 'active') || subscriptions[0];
+    console.log('Selected subscription for cancellation:', subscription);
+
     const stripeSubscriptionId = subscription.stripe_subscription_id;
 
     // Check if it's a real Stripe subscription or a manual one
@@ -107,7 +109,14 @@ serve(async (req) => {
 
     // For Stripe subscriptions, cancel it in Stripe
     try {
+      // Initialize Stripe
+      const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
+        apiVersion: '2023-10-16',
+      });
+
+      console.log(`Attempting to cancel Stripe subscription: ${stripeSubscriptionId}`);
       const canceledSubscription = await stripe.subscriptions.cancel(stripeSubscriptionId);
+      console.log('Stripe subscription canceled successfully');
       
       // Update the subscription status in our database
       const { error: updateError } = await supabase

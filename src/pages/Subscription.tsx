@@ -1,14 +1,14 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Check, Clock, AlertCircle, Info } from 'lucide-react';
+import { Check, Clock, AlertCircle, Info, AlertTriangle } from 'lucide-react';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { toast } from 'sonner';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const Subscription = () => {
   const navigate = useNavigate();
@@ -19,10 +19,13 @@ const Subscription = () => {
     trialDaysLeft, 
     trialEndDate,
     subscription, 
-    createSubscription 
+    createSubscription,
+    cancelSubscription,
+    isCancelling
   } = useSubscription();
   const [isLoading, setIsLoading] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [showTestInfo, setShowTestInfo] = useState(false);
 
   const handleSubscribe = async (withTrial: boolean = true) => {
@@ -46,6 +49,13 @@ const Subscription = () => {
       toast.error("Could not process subscription request");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleCancelSubscription = async () => {
+    const success = await cancelSubscription();
+    if (success) {
+      setShowCancelDialog(false);
     }
   };
 
@@ -105,6 +115,15 @@ const Subscription = () => {
                 </div>
               </CardHeader>
               <CardContent className="pt-6">
+                {subscription?.status === 'canceled' && (
+                  <Alert variant="warning" className="mb-4">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription>
+                      Your subscription has been canceled but you still have access until the end of your current billing period.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                
                 {isInTrialPeriod ? (
                   <div className="space-y-4">
                     <div className="flex items-center gap-3">
@@ -145,27 +164,79 @@ const Subscription = () => {
                 <Button variant="outline" onClick={() => navigate('/')}>
                   Return to Dashboard
                 </Button>
-                {subscription && !isInTrialPeriod && (
-                  <Button 
-                    variant="ghost" 
-                    onClick={() => window.open('https://billing.stripe.com/p/login/test_5kA5kSdUY9Sn0qA6oo', '_blank')}
-                  >
-                    Manage Billing
-                  </Button>
-                )}
-                {isInTrialPeriod && (
-                  <Button 
-                    variant="default"
-                    onClick={() => handleSubscribe(false)}
-                    disabled={isLoading}
-                  >
-                    {isLoading ? 'Processing...' : 'Subscribe Now'}
-                  </Button>
-                )}
+                <div className="flex gap-2">
+                  {subscription && !isInTrialPeriod && subscription.status !== 'canceled' && (
+                    <Button 
+                      variant="outline" 
+                      onClick={() => window.open('https://billing.stripe.com/p/login/test_5kA5kSdUY9Sn0qA6oo', '_blank')}
+                    >
+                      Manage Billing
+                    </Button>
+                  )}
+                  {isInTrialPeriod ? (
+                    <Button 
+                      variant="default"
+                      onClick={() => handleSubscribe(false)}
+                      disabled={isLoading}
+                    >
+                      {isLoading ? 'Processing...' : 'Subscribe Now'}
+                    </Button>
+                  ) : subscription?.status !== 'canceled' && (
+                    <Button 
+                      variant="destructive"
+                      onClick={() => setShowCancelDialog(true)}
+                      disabled={isCancelling}
+                    >
+                      {isCancelling ? 'Cancelling...' : 'Cancel Subscription'}
+                    </Button>
+                  )}
+                </div>
               </CardFooter>
             </Card>
           </div>
         </div>
+        
+        <Dialog open={showDialog} onOpenChange={setShowDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Completing your subscription</DialogTitle>
+              <DialogDescription>
+                A new tab has been opened to complete your subscription with Stripe. 
+                Once you've completed the payment process, you'll be redirected back to our site.
+                
+                If you don't see the tab, please check if it was blocked by your browser.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-end space-x-2 mt-4">
+              <Button onClick={() => setShowDialog(false)}>
+                Close
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Cancel Subscription</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to cancel your subscription? You will still have access until the end of your current billing period ({formatDate(subscription?.currentPeriodEnd)}).
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowCancelDialog(false)}>
+                Keep Subscription
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={handleCancelSubscription}
+                disabled={isCancelling}
+              >
+                {isCancelling ? 'Cancelling...' : 'Confirm Cancellation'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </PageTransition>
     );
   }
@@ -310,25 +381,6 @@ const Subscription = () => {
           </div>
         </div>
       </div>
-      
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Completing your subscription</DialogTitle>
-            <DialogDescription>
-              A new tab has been opened to complete your subscription with Stripe. 
-              Once you've completed the payment process, you'll be redirected back to our site.
-              
-              If you don't see the tab, please check if it was blocked by your browser.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-end space-x-2 mt-4">
-            <Button onClick={() => setShowDialog(false)}>
-              Close
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </PageTransition>
   );
 };

@@ -27,3 +27,6 @@ port = 54323
 [functions]
 [functions.stripe-webhook]
 verify_jwt = false
+
+[functions.cancel-subscription]
+verify_jwt = true

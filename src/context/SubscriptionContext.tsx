@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
@@ -21,6 +20,8 @@ interface SubscriptionContextType {
   subscription: Subscription | null;
   checkSubscription: () => Promise<void>;
   createSubscription: (withTrial?: boolean) => Promise<string | null>;
+  cancelSubscription: () => Promise<boolean>;
+  isCancelling: boolean;
 }
 
 const SubscriptionContext = createContext<SubscriptionContextType>({
@@ -32,6 +33,8 @@ const SubscriptionContext = createContext<SubscriptionContextType>({
   subscription: null,
   checkSubscription: async () => {},
   createSubscription: async () => null,
+  cancelSubscription: async () => false,
+  isCancelling: false,
 });
 
 export const useSubscription = () => useContext(SubscriptionContext);
@@ -45,6 +48,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [trialEndDate, setTrialEndDate] = useState<string | null>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [hasCheckedSubscription, setHasCheckedSubscription] = useState<boolean>(false);
+  const [isCancelling, setIsCancelling] = useState<boolean>(false);
 
   const checkSubscription = useCallback(async () => {
     if (!user || !session) {
@@ -60,7 +64,6 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setIsLoading(true);
       console.log('Checking subscription for user:', user.id);
       
-      // Log the authenticated user ID from the Supabase client
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       console.log('Authenticated user ID from Supabase client:', currentUser?.id);
       const { data: { session: currentSession } } = await supabase.auth.getSession();
@@ -83,7 +86,6 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         console.log('Found subscription in database:', subscriptionData);
       }
       
-      // Check if subscription is active or trialing in database
       if (subscriptionData && ['active', 'trialing'].includes(subscriptionData.status)) {
         console.log('Setting hasAccess to true for subscription:', subscriptionData);
         setHasAccess(true);
@@ -93,7 +95,6 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
           currentPeriodEnd: subscriptionData.current_period_end,
         });
         
-        // If status is active, ensure we're not in trial period
         if (subscriptionData.status === 'active') {
           setIsInTrialPeriod(false);
           setTrialDaysLeft(0);
@@ -105,7 +106,6 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         } else {
           setIsInTrialPeriod(subscriptionData.status === 'trialing');
           
-          // If trialing, make sure to set the trial days left
           if (subscriptionData.status === 'trialing' && subscriptionData.trial_end_date) {
             const trialEnd = new Date(subscriptionData.trial_end_date);
             const now = new Date();
@@ -158,7 +158,6 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
             currentPeriodEnd: data.subscription.currentPeriodEnd
           });
           
-          // Explicitly disable trial mode if the subscription is active
           if (data.subscription.status === 'active') {
             setIsInTrialPeriod(false);
             setTrialDaysLeft(0);
@@ -237,6 +236,47 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     });
   };
 
+  const cancelSubscription = async (): Promise<boolean> => {
+    if (!user || !session) {
+      toast.error('You must be logged in to cancel your subscription');
+      return false;
+    }
+
+    try {
+      setIsCancelling(true);
+      console.log('Cancelling subscription...');
+      
+      const { data, error } = await supabase.functions.invoke('cancel-subscription', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (error) {
+        console.error('Error cancelling subscription:', error);
+        toast.error('Failed to cancel subscription');
+        return false;
+      }
+
+      console.log('Cancel subscription response:', data);
+      
+      if (data.success) {
+        toast.success('Subscription cancelled successfully');
+        await checkSubscription();
+        return true;
+      } else {
+        toast.error(data.error || 'Failed to cancel subscription');
+        return false;
+      }
+    } catch (error) {
+      console.error('Error cancelling subscription:', error);
+      toast.error('Failed to cancel subscription');
+      return false;
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
   useEffect(() => {
     console.log('useEffect triggered with user:', user?.id, 'hasCheckedSubscription:', hasCheckedSubscription);
     if (user && !hasCheckedSubscription) {
@@ -283,7 +323,6 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         return null;
       }
 
-      // Return the URL rather than redirecting here
       return data.url;
     } catch (error) {
       console.error('Error creating subscription:', error);
@@ -301,6 +340,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     subscription,
     checkSubscription,
     createSubscription,
+    cancelSubscription,
+    isCancelling,
   };
 
   console.log('SubscriptionProvider state before render:', value);

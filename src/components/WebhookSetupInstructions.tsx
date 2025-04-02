@@ -3,14 +3,14 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { InfoIcon, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';  // Import toast from sonner
+import { toast } from 'sonner';
 
 const WebhookSetupInstructions = () => {
   const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-webhook`;
   
   const copyWebhookUrl = () => {
     navigator.clipboard.writeText(webhookUrl);
-    toast.success('Webhook URL copied to clipboard');  // Use toast from sonner
+    toast.success('Webhook URL copied to clipboard');
   };
 
   return (
@@ -41,6 +41,8 @@ const WebhookSetupInstructions = () => {
               <li>customer.subscription.created</li>
               <li>customer.subscription.updated</li>
               <li>customer.subscription.deleted</li>
+              <li>invoice.paid</li>
+              <li>invoice.payment_failed</li>
             </ul>
           </li>
           <li>After creation, copy the Webhook Secret</li>

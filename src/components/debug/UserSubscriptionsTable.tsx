@@ -110,35 +110,36 @@ const UserSubscriptionsTable = () => {
     try {
       setCleaningUp(true);
       
-      // First, find duplicate subscription records by stripe_subscription_id
-      const { data: duplicateRecords, error: findError } = await supabase
+      // Instead of using GROUP BY in SQL, we'll fetch all records and process them in JavaScript
+      const { data: allSubscriptions, error: fetchError } = await supabase
         .from('user_subscriptions')
-        .select('stripe_subscription_id, count(*)')
-        .not('stripe_subscription_id', 'is', null)
-        .group('stripe_subscription_id')
-        .having('count(*) > 1');
+        .select('*')
+        .order('created_at', { ascending: false });
         
-      if (findError) {
-        throw findError;
+      if (fetchError) {
+        throw fetchError;
       }
       
-      console.log('Found subscription IDs with duplicates:', duplicateRecords);
+      // Find duplicate subscription IDs
+      const subIdMap: {[key: string]: UserSubscription[]} = {};
+      allSubscriptions.forEach((sub: UserSubscription) => {
+        if (sub.stripe_subscription_id) {
+          if (!subIdMap[sub.stripe_subscription_id]) {
+            subIdMap[sub.stripe_subscription_id] = [sub];
+          } else {
+            subIdMap[sub.stripe_subscription_id].push(sub);
+          }
+        }
+      });
       
-      // For each subscription ID with duplicates, keep only the newest record
-      for (const record of duplicateRecords) {
-        const subId = record.stripe_subscription_id;
+      // Process each group of duplicates
+      for (const [subId, subs] of Object.entries(subIdMap)) {
+        if (subs.length <= 1) continue;
         
-        // Get all records for this subscription ID, ordered by created_at desc
-        const { data: subRecords } = await supabase
-          .from('user_subscriptions')
-          .select('*')
-          .eq('stripe_subscription_id', subId)
-          .order('created_at', { ascending: false });
-          
-        if (!subRecords || subRecords.length <= 1) continue;
+        console.log(`Found ${subs.length} duplicates for subscription ${subId}`);
         
         // Keep the newest record, delete the rest
-        const [keep, ...duplicatesToRemove] = subRecords;
+        const [keep, ...duplicatesToRemove] = subs;
         
         if (duplicatesToRemove.length > 0) {
           const idsToRemove = duplicatesToRemove.map(sub => sub.id);
@@ -156,36 +157,26 @@ const UserSubscriptionsTable = () => {
         }
       }
       
-      // Now, find users with multiple active subscriptions
-      const { data: usersWithMultipleActive, error: findUsersError } = await supabase
-        .from('user_subscriptions')
-        .select('user_id, count(*)')
-        .eq('status', 'active')
-        .group('user_id')
-        .having('count(*) > 1');
-        
-      if (findUsersError) {
-        throw findUsersError;
-      }
+      // Find users with multiple active subscriptions
+      const userActiveSubsMap: {[key: string]: UserSubscription[]} = {};
+      allSubscriptions.forEach((sub: UserSubscription) => {
+        if (sub.status === 'active') {
+          if (!userActiveSubsMap[sub.user_id]) {
+            userActiveSubsMap[sub.user_id] = [sub];
+          } else {
+            userActiveSubsMap[sub.user_id].push(sub);
+          }
+        }
+      });
       
-      console.log('Found users with multiple active subscriptions:', usersWithMultipleActive);
-      
-      // For each user with multiple active subscriptions, keep only the newest one
-      for (const record of usersWithMultipleActive) {
-        const userId = record.user_id;
+      // Process each user with multiple active subscriptions
+      for (const [userId, activeSubs] of Object.entries(userActiveSubsMap)) {
+        if (activeSubs.length <= 1) continue;
         
-        // Get all active subscriptions for this user, ordered by created_at desc
-        const { data: activeSubRecords } = await supabase
-          .from('user_subscriptions')
-          .select('*')
-          .eq('user_id', userId)
-          .eq('status', 'active')
-          .order('created_at', { ascending: false });
-          
-        if (!activeSubRecords || activeSubRecords.length <= 1) continue;
+        console.log(`Found ${activeSubs.length} active subscriptions for user ${userId}`);
         
-        // Keep the newest active subscription, mark the rest as inactive
-        const [keep, ...subsToUpdate] = activeSubRecords;
+        // Keep the newest active subscription, update the rest to inactive
+        const [keep, ...subsToUpdate] = activeSubs;
         
         if (subsToUpdate.length > 0) {
           const idsToUpdate = subsToUpdate.map(sub => sub.id);

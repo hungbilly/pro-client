@@ -14,12 +14,21 @@ const SubscriptionManagement = () => {
     isInTrialPeriod
   } = useSubscription();
   const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleCancelSubscription = async () => {
-    const success = await cancelSubscription();
-    if (success) {
-      setShowCancelDialog(false);
-      toast.success('Subscription canceled successfully');
+    setError(null);
+    try {
+      const success = await cancelSubscription();
+      if (success) {
+        setShowCancelDialog(false);
+        toast.success('Subscription canceled successfully');
+      } else {
+        setError('Failed to cancel subscription. Please try again later.');
+      }
+    } catch (err) {
+      console.error('Error cancelling subscription:', err);
+      setError('An unexpected error occurred. Please try again later.');
     }
   };
 
@@ -52,6 +61,13 @@ const SubscriptionManagement = () => {
               Are you sure you want to cancel your subscription? You will still have access until the end of your current billing period.
             </DialogDescription>
           </DialogHeader>
+          
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded mb-4">
+              {error}
+            </div>
+          )}
+          
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCancelDialog(false)}>
               Keep Subscription

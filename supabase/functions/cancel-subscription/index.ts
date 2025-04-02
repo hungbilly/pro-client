@@ -44,16 +44,27 @@ serve(async (req) => {
     });
 
     // Get the current subscription for the user
-    const { data: subscription, error: subError } = await supabase
+    const { data: subscriptions, error: subError } = await supabase
       .from('user_subscriptions')
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
+      .limit(1);
 
-    if (subError || !subscription) {
-      console.error('Error getting subscription:', subError);
+    if (subError) {
+      console.error('Error getting subscriptions:', subError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to retrieve subscription information' }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500,
+        }
+      );
+    }
+
+    // Check if subscription exists
+    if (!subscriptions || subscriptions.length === 0) {
+      console.log('No active subscription found for user:', userId);
       return new Response(
         JSON.stringify({ error: 'No active subscription found' }),
         { 
@@ -63,6 +74,7 @@ serve(async (req) => {
       );
     }
 
+    const subscription = subscriptions[0];
     const stripeSubscriptionId = subscription.stripe_subscription_id;
 
     // Check if it's a real Stripe subscription or a manual one

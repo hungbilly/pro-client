@@ -670,6 +670,24 @@ export type Database = {
         }
         Relationships: []
       }
+      stripe_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id: string
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+        }
+        Relationships: []
+      }
       subscription_sessions: {
         Row: {
           created_at: string

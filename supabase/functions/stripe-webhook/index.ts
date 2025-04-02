@@ -1,7 +1,6 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
-import Stripe from 'https://esm.sh/stripe@12.18.0?dts';
+import Stripe from 'https://esm.sh/stripe@15.12.0?dts';
 
 // CORS headers for preflight requests
 const corsHeaders = {
@@ -44,7 +43,6 @@ serve(async (req) => {
     // Verify webhook signature using the asynchronous version
     let event;
     try {
-      // Use constructEventAsync instead of constructEvent
       event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
     } catch (err) {
       console.error(`Webhook signature verification failed: ${err.message}`);
@@ -56,6 +54,21 @@ serve(async (req) => {
 
     console.log(`Webhook event received: ${event.type}`);
 
+    // Check for idempotency
+    const { data: existingEvent } = await supabase
+      .from('stripe_events')
+      .select('id')
+      .eq('id', event.id)
+      .single();
+
+    if (existingEvent) {
+      console.log(`Event ${event.id} already processed`);
+      return new Response(
+        JSON.stringify({ received: true, message: 'Event already processed' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Handle different event types
     switch (event.type) {
       case 'checkout.session.completed':
@@ -63,14 +76,27 @@ serve(async (req) => {
         break;
       case 'customer.subscription.created':
       case 'customer.subscription.updated':
-        await handleSubscriptionUpdate(event.data.object, supabase);
+      case 'invoice.paid':
+        await handleSubscriptionUpdate(event.data.object, event.type, supabase);
         break;
       case 'customer.subscription.deleted':
         await handleSubscriptionDeleted(event.data.object, supabase);
         break;
-      // Add additional cases as needed
       default:
         console.log(`Unhandled event type: ${event.type}`);
+    }
+
+    // Record the event as processed
+    const { error: insertEventError } = await supabase
+      .from('stripe_events')
+      .insert({
+        id: event.id,
+        event_type: event.type,
+      });
+
+    if (insertEventError) {
+      console.error('Error recording event:', insertEventError);
+      throw insertEventError;
     }
 
     return new Response(
@@ -170,15 +196,15 @@ async function handleCheckoutSessionCompleted(session, supabase) {
 }
 
 // Helper function to handle subscription update events
-async function handleSubscriptionUpdate(subscription, supabase) {
-  console.log('Processing subscription update', subscription);
+async function handleSubscriptionUpdate(data, eventType, supabase) {
+  console.log('Processing subscription update', data);
 
   try {
-    const subscriptionId = subscription.id;
-    const customerId = subscription.customer;
+    const subscriptionId = data.id;
+    const customerId = data.customer;
     
     // Extract user ID from metadata if available
-    let userId = subscription.metadata?.user_id;
+    let userId = data.metadata?.user_id;
     
     // If no user ID in metadata, look it up from existing records
     if (!userId) {
@@ -213,11 +239,11 @@ async function handleSubscriptionUpdate(subscription, supabase) {
       const { error: updateError } = await supabase
         .from('user_subscriptions')
         .update({
-          status: subscription.status,
-          current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+          status: data.status,
+          current_period_end: new Date(data.current_period_end * 1000).toISOString(),
           updated_at: new Date().toISOString(),
-          trial_end_date: subscription.trial_end 
-            ? new Date(subscription.trial_end * 1000).toISOString() 
+          trial_end_date: data.trial_end 
+            ? new Date(data.trial_end * 1000).toISOString() 
             : null
         })
         .eq('stripe_subscription_id', subscriptionId);
@@ -236,10 +262,10 @@ async function handleSubscriptionUpdate(subscription, supabase) {
           user_id: userId,
           stripe_customer_id: customerId,
           stripe_subscription_id: subscriptionId,
-          status: subscription.status,
-          current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-          trial_end_date: subscription.trial_end 
-            ? new Date(subscription.trial_end * 1000).toISOString() 
+          status: data.status,
+          current_period_end: new Date(data.current_period_end * 1000).toISOString(),
+          trial_end_date: data.trial_end 
+            ? new Date(data.trial_end * 1000).toISOString() 
             : null
         });
 

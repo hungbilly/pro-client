@@ -8,6 +8,7 @@ import PackageSettings from '@/components/PackageSettings';
 import ContractTemplateSettings from '@/components/ContractTemplateSettings';
 import CompanyProvider from '@/context/CompanyContext';
 import SubscriptionStatus from '@/components/SubscriptionStatus';
+import SubscriptionManagement from '@/components/SubscriptionManagement'; // New component
 
 const Settings = () => {
   console.log("Settings page rendering");
@@ -68,6 +69,9 @@ const Settings = () => {
                 <h2 className="text-xl font-semibold mb-4">Billing Information</h2>
                 <div className="mb-6">
                   <SubscriptionStatus />
+                </div>
+                <div className="mt-6">
+                  <SubscriptionManagement />
                 </div>
                 <h3 className="text-lg font-medium mt-8 mb-3">Payment History</h3>
                 <p className="text-muted-foreground">Payment history will be available in a future update.</p>

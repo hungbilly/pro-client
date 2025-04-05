@@ -1,9 +1,8 @@
-
 import React, { useState } from 'react';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Check, Clock, AlertCircle, Loader2, RefreshCw, Bug } from 'lucide-react';
+import { Check, Clock, AlertCircle, Loader2, RefreshCw, Bug, CalendarX } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -94,7 +93,6 @@ const SubscriptionStatus = () => {
   const handleShowDebug = async () => {
     setIsLoadingDebug(true);
     try {
-      // Query only the user_subscriptions table without joining to users
       const { data, error } = await supabase
         .from('user_subscriptions')
         .select('*');
@@ -113,6 +111,13 @@ const SubscriptionStatus = () => {
       setIsLoadingDebug(false);
     }
   };
+
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return 'N/A';
+    return format(new Date(dateString), 'MMMM d, yyyy');
+  };
+
+  const isPendingCancellation = subscription?.status === 'active' && subscription?.cancel_at;
 
   if (isLoading) {
     return (
@@ -172,11 +177,20 @@ const SubscriptionStatus = () => {
                 <p className="text-sm text-green-700">
                   Status: {subscription.status}
                 </p>
-                {subscription.currentPeriodEnd && (
+
+                {isPendingCancellation ? (
+                  <div className="mt-2 flex items-center gap-1.5 text-amber-700 bg-amber-50 px-2.5 py-1 rounded border border-amber-200">
+                    <CalendarX className="h-4 w-4" />
+                    <p className="text-sm">
+                      Your subscription will end on {formatDate(subscription.cancel_at)}
+                    </p>
+                  </div>
+                ) : (
                   <p className="text-sm text-green-700 mt-1">
-                    Next billing date: {format(new Date(subscription.currentPeriodEnd), 'MMMM d, yyyy')}
+                    Next billing date: {formatDate(subscription.currentPeriodEnd)}
                   </p>
                 )}
+                
                 <p className="text-sm text-green-700 mt-1">
                   Price: HK$50/month
                 </p>
@@ -195,7 +209,7 @@ const SubscriptionStatus = () => {
                 </p>
                 {trialEndDate && (
                   <p className="text-sm text-amber-700 mt-1">
-                    Trial ends on {format(new Date(trialEndDate), 'MMMM d, yyyy')}
+                    Trial ends on {formatDate(trialEndDate)}
                   </p>
                 )}
               </div>

@@ -9,6 +9,7 @@ interface Subscription {
   id: string;
   status: SubscriptionStatus;
   currentPeriodEnd: string;
+  cancel_at?: string | null;
 }
 
 interface SubscriptionContextType {
@@ -93,6 +94,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
           id: subscriptionData.stripe_subscription_id,
           status: subscriptionData.status as SubscriptionStatus,
           currentPeriodEnd: subscriptionData.current_period_end,
+          cancel_at: subscriptionData.cancel_at,
         });
         
         if (subscriptionData.status === 'active') {
@@ -125,6 +127,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
             id: subscriptionData.stripe_subscription_id,
             status: subscriptionData.status,
             currentPeriodEnd: subscriptionData.current_period_end,
+            cancel_at: subscriptionData.cancel_at,
           },
           isInTrialPeriod: subscriptionData.status === 'trialing',
           hasCheckedSubscription: true,
@@ -155,7 +158,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
           setSubscription({
             id: data.subscription.id,
             status: data.subscription.status as SubscriptionStatus,
-            currentPeriodEnd: data.subscription.currentPeriodEnd
+            currentPeriodEnd: data.subscription.currentPeriodEnd,
+            cancel_at: data.subscription.cancel_at
           });
           
           if (data.subscription.status === 'active') {

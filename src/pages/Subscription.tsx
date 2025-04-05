@@ -4,7 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Check, Clock, AlertCircle, Info, AlertTriangle } from 'lucide-react';
+import { Check, Clock, AlertCircle, Info, AlertTriangle, CalendarX } from 'lucide-react';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -28,6 +28,8 @@ const Subscription = () => {
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [showTestInfo, setShowTestInfo] = useState(false);
 
+  const isPendingCancellation = subscription?.status === 'active' && subscription?.cancel_at;
+
   const handleSubscribe = async (withTrial: boolean = true) => {
     if (!user) {
       toast.error("You must be logged in to subscribe");
@@ -39,9 +41,7 @@ const Subscription = () => {
     try {
       const url = await createSubscription(withTrial);
       if (url) {
-        // Open the Stripe checkout URL in a new tab
         window.open(url, '_blank');
-        // Show a dialog to guide the user
         setShowDialog(true);
       }
     } catch (error) {
@@ -123,6 +123,15 @@ const Subscription = () => {
                     </AlertDescription>
                   </Alert>
                 )}
+
+                {isPendingCancellation && (
+                  <Alert variant="warning" className="mb-4">
+                    <CalendarX className="h-4 w-4" />
+                    <AlertDescription>
+                      Your subscription is scheduled to be canceled on {formatDate(subscription.cancel_at)}. You will continue to have access until this date.
+                    </AlertDescription>
+                  </Alert>
+                )}
                 
                 {isInTrialPeriod ? (
                   <div className="space-y-4">
@@ -153,8 +162,14 @@ const Subscription = () => {
                         <p className="capitalize">{subscription?.status || 'Active'}</p>
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-gray-500">Next Payment</p>
-                        <p>{formatDate(subscription?.currentPeriodEnd || null)}</p>
+                        <p className="text-sm font-medium text-gray-500">
+                          {isPendingCancellation ? 'Access Until' : 'Next Payment'}
+                        </p>
+                        <p>
+                          {isPendingCancellation 
+                            ? formatDate(subscription?.cancel_at || null)
+                            : formatDate(subscription?.currentPeriodEnd || null)}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -165,7 +180,7 @@ const Subscription = () => {
                   Return to Dashboard
                 </Button>
                 <div className="flex gap-2">
-                  {subscription && !isInTrialPeriod && subscription.status !== 'canceled' && (
+                  {subscription && !isInTrialPeriod && (
                     <Button 
                       variant="outline" 
                       onClick={() => window.open('https://billing.stripe.com/p/login/test_5kA5kSdUY9Sn0qA6oo', '_blank')}
@@ -181,7 +196,7 @@ const Subscription = () => {
                     >
                       {isLoading ? 'Processing...' : 'Subscribe Now'}
                     </Button>
-                  ) : subscription?.status !== 'canceled' && (
+                  ) : subscription?.status !== 'canceled' && !isPendingCancellation && (
                     <Button 
                       variant="destructive"
                       onClick={() => setShowCancelDialog(true)}

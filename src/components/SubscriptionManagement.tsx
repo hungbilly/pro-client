@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { toast } from 'sonner';
+import { CalendarX } from 'lucide-react';
+import { format } from 'date-fns';
 
 const SubscriptionManagement = () => {
   const { 
@@ -32,7 +34,16 @@ const SubscriptionManagement = () => {
     }
   };
 
-  if (!hasAccess || isInTrialPeriod) {
+  // Check if subscription is scheduled for cancellation
+  const isPendingCancellation = subscription?.status === 'active' && subscription?.cancel_at;
+
+  // Format date for display
+  const formatDate = (dateString?: string | null) => {
+    if (!dateString) return '';
+    return format(new Date(dateString), 'MMMM d, yyyy');
+  };
+
+  if (!hasAccess || isInTrialPeriod || !subscription) {
     return null;
   }
 
@@ -40,17 +51,30 @@ const SubscriptionManagement = () => {
     <>
       <div className="bg-gray-50 p-4 rounded-lg border">
         <h3 className="text-lg font-medium mb-2">Manage Subscription</h3>
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-gray-600">Cancel your current subscription</p>
-          <Button 
-            variant="destructive" 
-            size="sm" 
-            onClick={() => setShowCancelDialog(true)}
-            disabled={isCancelling}
-          >
-            {isCancelling ? 'Cancelling...' : 'Cancel Subscription'}
-          </Button>
-        </div>
+        
+        {isPendingCancellation ? (
+          <div className="flex items-center gap-2 text-amber-700 bg-amber-50 p-3 rounded border border-amber-200">
+            <CalendarX className="h-5 w-5 shrink-0" />
+            <div>
+              <p className="font-medium">Subscription Cancellation Scheduled</p>
+              <p className="text-sm">
+                Your subscription will remain active until {formatDate(subscription.cancel_at)}, after which it will be canceled.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-gray-600">Cancel your current subscription</p>
+            <Button 
+              variant="destructive" 
+              size="sm" 
+              onClick={() => setShowCancelDialog(true)}
+              disabled={isCancelling}
+            >
+              {isCancelling ? 'Cancelling...' : 'Cancel Subscription'}
+            </Button>
+          </div>
+        )}
       </div>
 
       <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>

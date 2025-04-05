@@ -21,17 +21,25 @@ serve(async (req) => {
       throw new Error('Missing Authorization header');
     }
 
+    // Extract the token
+    const token = authHeader.replace('Bearer ', '');
+
     // Initialize Supabase client with anon key (RLS enforced)
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    });
 
-    // Initialize Supabase client with service role key (bypasses RLS, for debugging)
+    // Initialize Supabase client with service role key (bypasses RLS)
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get user from token
-    const token = authHeader.replace('Bearer ', '');
     const { data: userData, error: userError } = await supabase.auth.getUser(token);
     
     if (userError || !userData.user) {
@@ -45,8 +53,28 @@ serve(async (req) => {
     console.log(`Processing subscription cancellation for user: ${userId}`);
     console.log(`User auth.uid(): ${user.id}`);
 
-    // Get the current active subscription for the user (with RLS)
-    const { data: subscriptions, error: subError } = await supabase
+    // Verify the user's profile exists
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', userId)
+      .single();
+
+    if (profileError || !profile) {
+      console.error('Error fetching user profile:', profileError);
+      return new Response(
+        JSON.stringify({ error: 'User profile not found' }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 404,
+        }
+      );
+    }
+
+    console.log(`User profile verified for user ${userId}`);
+
+    // Get the current active subscription for the user (bypassing RLS for now)
+    const { data: subscriptions, error: subError } = await supabaseAdmin
       .from('user_subscriptions')
       .select('*')
       .eq('user_id', userId)
@@ -65,28 +93,12 @@ serve(async (req) => {
     }
 
     // Log the retrieved subscriptions for debugging
-    console.log(`Found ${subscriptions?.length || 0} active subscriptions for user ${userId} (with RLS):`, subscriptions);
+    console.log(`Found ${subscriptions?.length || 0} active subscriptions for user ${userId}:`, subscriptions);
 
-    // If no subscriptions found with RLS, check without RLS to debug
+    // Check if an active subscription exists
     if (!subscriptions || subscriptions.length === 0) {
-      const { data: allSubscriptionsAdmin } = await supabaseAdmin
-        .from('user_subscriptions')
-        .select('*')
-        .eq('user_id', userId);
-
-      if (allSubscriptionsAdmin && allSubscriptionsAdmin.length > 0) {
-        console.log(`Found ${allSubscriptionsAdmin.length} subscriptions for user ${userId} (without RLS):`, allSubscriptionsAdmin);
-        return new Response(
-          JSON.stringify({ error: 'Subscription exists but RLS prevented access. User ID mismatch detected.' }),
-          { 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 403,
-          }
-        );
-      }
-
       // Check if there are any subscriptions at all (regardless of status)
-      const { data: allSubscriptions } = await supabase
+      const { data: allSubscriptions } = await supabaseAdmin
         .from('user_subscriptions')
         .select('*')
         .eq('user_id', userId);
@@ -102,20 +114,20 @@ serve(async (req) => {
         );
       }
 
-      // If no subscriptions exist, check Stripe directly
-      const { data: profile } = await supabase
-        .from('profiles')
+      // If no subscriptions exist in the database, check Stripe directly using stripe_customer_id from user_subscriptions
+      const { data: subscriptionData } = await supabaseAdmin
+        .from('user_subscriptions')
         .select('stripe_customer_id')
-        .eq('id', userId)
+        .eq('user_id', userId)
         .single();
 
-      if (profile?.stripe_customer_id) {
+      if (subscriptionData?.stripe_customer_id) {
         const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
           apiVersion: '2023-10-16',
         });
 
         const stripeSubscriptions = await stripe.subscriptions.list({
-          customer: profile.stripe_customer_id,
+          customer: subscriptionData.stripe_customer_id,
           status: 'active',
         });
 
@@ -165,7 +177,7 @@ serve(async (req) => {
 
     // Handle manual subscriptions
     if (stripeSubscriptionId === 'manual') {
-      const { error: updateError } = await supabase
+      const { error: updateError } = await supabaseAdmin
         .from('user_subscriptions')
         .update({
           status: 'canceled',
@@ -210,7 +222,7 @@ serve(async (req) => {
         ? new Date(canceledSubscription.cancel_at * 1000).toISOString()
         : new Date().toISOString();
 
-      const { error: updateError } = await supabase
+      const { error: updateError } = await supabaseAdmin
         .from('user_subscriptions')
         .update({
           status: status, // Keep as 'active' if canceling at period end

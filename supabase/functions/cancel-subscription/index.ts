@@ -8,6 +8,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Configuration: Set to true to cancel at the end of the billing period, false for immediate cancellation
+const CANCEL_AT_PERIOD_END = true;
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -210,17 +213,28 @@ serve(async (req) => {
       });
 
       console.log(`Attempting to cancel Stripe subscription: ${stripeSubscriptionId}`);
-      // Cancel at the end of the billing period (optional, set to false for immediate cancellation)
-      const canceledSubscription = await stripe.subscriptions.cancel(stripeSubscriptionId, {
-        at_period_end: true, // Set to false for immediate cancellation
-      });
-      console.log('Stripe subscription canceled successfully');
+
+      let canceledSubscription;
+      let cancelDate;
+
+      if (CANCEL_AT_PERIOD_END) {
+        // Schedule cancellation at the end of the billing period
+        canceledSubscription = await stripe.subscriptions.update(stripeSubscriptionId, {
+          cancel_at_period_end: true,
+        });
+        console.log('Stripe subscription scheduled for cancellation at period end');
+        cancelDate = canceledSubscription.cancel_at
+          ? new Date(canceledSubscription.cancel_at * 1000).toISOString()
+          : null;
+      } else {
+        // Cancel immediately
+        canceledSubscription = await stripe.subscriptions.cancel(stripeSubscriptionId);
+        console.log('Stripe subscription canceled immediately');
+        cancelDate = new Date().toISOString();
+      }
 
       // Update the subscription status in the database
       const status = canceledSubscription.cancel_at_period_end ? 'active' : 'canceled';
-      const cancelDate = canceledSubscription.cancel_at
-        ? new Date(canceledSubscription.cancel_at * 1000).toISOString()
-        : new Date().toISOString();
 
       const { error: updateError } = await supabaseAdmin
         .from('user_subscriptions')

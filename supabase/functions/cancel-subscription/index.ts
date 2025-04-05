@@ -169,7 +169,7 @@ serve(async (req) => {
         JSON.stringify({ 
           success: true, 
           message: 'Subscription is already canceled',
-          cancelDate: subscription.updated_at,
+          cancelDate: subscription.updated_at || new Date().toISOString(),
         }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -236,15 +236,19 @@ serve(async (req) => {
       // Update the subscription status in the database
       const status = canceledSubscription.cancel_at_period_end ? 'active' : 'canceled';
 
+      const updateData = {
+        status: status, // Keep as 'active' if canceling at period end
+        updated_at: new Date().toISOString(),
+      };
+
+      // Only include cancel_at if it exists in the Stripe response
+      if (canceledSubscription.cancel_at) {
+        updateData.cancel_at = new Date(canceledSubscription.cancel_at * 1000).toISOString();
+      }
+
       const { error: updateError } = await supabaseAdmin
         .from('user_subscriptions')
-        .update({
-          status: status, // Keep as 'active' if canceling at period end
-          updated_at: new Date().toISOString(),
-          cancel_at: canceledSubscription.cancel_at
-            ? new Date(canceledSubscription.cancel_at * 1000).toISOString()
-            : null,
-        })
+        .update(updateData)
         .eq('id', subscription.id);
 
       if (updateError) {
@@ -258,7 +262,7 @@ serve(async (req) => {
           message: canceledSubscription.cancel_at_period_end
             ? 'Subscription will be canceled at the end of the billing period'
             : 'Subscription canceled successfully',
-          cancelDate: cancelDate,
+          cancelDate: cancelDate || new Date().toISOString(),
         }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },

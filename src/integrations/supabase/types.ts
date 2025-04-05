@@ -753,6 +753,7 @@ export type Database = {
       }
       user_subscriptions: {
         Row: {
+          cancel_at: string | null
           created_at: string
           current_period_end: string
           id: string
@@ -764,6 +765,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          cancel_at?: string | null
           created_at?: string
           current_period_end: string
           id?: string
@@ -775,6 +777,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          cancel_at?: string | null
           created_at?: string
           current_period_end?: string
           id?: string

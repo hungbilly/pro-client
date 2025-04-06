@@ -35,14 +35,14 @@ const InvoiceView = () => {
   const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null);
   const invoiceRef = useRef<HTMLDivElement>(null);
 
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const { selectedCompanyId, selectedCompany } = useCompanyContext();
   const { idOrViewLink } = useParams<{ idOrViewLink: string }>();
   const location = useLocation();
 
   const isClientView = useMemo(() => 
-    !location.pathname.includes('/admin') && !isAdmin, 
-    [location.pathname, isAdmin]
+    !location.pathname.includes('/admin') && !user, 
+    [location.pathname, user]
   );
 
   const formatCurrency = useCallback((amount: number) => {

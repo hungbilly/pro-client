@@ -781,30 +781,28 @@ const InvoiceView = () => {
           </CardContent>
           
           <CardFooter className="justify-end gap-2 flex-wrap pt-4 border-t">
-            {!isClientView && (
-              <>
-                <Button
-                  variant="outline"
-                  onClick={handleCopyInvoiceLink}
-                >
-                  <LinkIcon className="h-4 w-4 mr-2" />
-                  Copy Invoice Link
-                </Button>
-                <Button
-                  variant="default"
-                  onClick={handleDownloadInvoice}
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Download Invoice
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={handleDebugPdf}
-                >
-                  <Bug className="h-4 w-4 mr-2" />
-                  Debug PDF
-                </Button>
-              </>
+            <Button
+              variant="outline"
+              onClick={handleCopyInvoiceLink}
+            >
+              <LinkIcon className="h-4 w-4 mr-2" />
+              Copy Invoice Link
+            </Button>
+            <Button
+              variant="default"
+              onClick={handleDownloadInvoice}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Download Invoice
+            </Button>
+            {!isClientView && isAdmin && (
+              <Button
+                variant="outline"
+                onClick={handleDebugPdf}
+              >
+                <Bug className="h-4 w-4 mr-2" />
+                Debug PDF
+              </Button>
             )}
           </CardFooter>
         </Card>

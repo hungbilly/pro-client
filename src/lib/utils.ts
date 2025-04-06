@@ -12,3 +12,22 @@ export function formatCurrency(amount: number, currency: string = 'USD'): string
     currency: currency,
   }).format(amount);
 }
+
+/**
+ * Formats a date to Google Calendar compatible format
+ * @param date JavaScript Date object
+ * @param removeTimezone Whether to remove timezone info (for all-day events)
+ * @returns Formatted date string for Google Calendar URL
+ */
+export function formatDateForGoogleCalendar(date: Date, removeTimezone: boolean = false): string {
+  if (removeTimezone) {
+    // Format: YYYYMMDD (for all-day events)
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}${month}${day}`;
+  }
+  
+  // Format: YYYYMMDDTHHmmssZ (for events with specific times)
+  return date.toISOString().replace(/[-:]/g, '').replace(/\.\d+/g, '');
+}

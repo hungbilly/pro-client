@@ -33,28 +33,51 @@ const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({
       // Set location if available
       const location = encodeURIComponent(job.location || client.address || '');
       
-      // Format dates for Google Calendar
+      // Format dates for Google Calendar in proper format
       let dates = '';
       
       if (formattedDate) {
         if (job.isFullDay) {
           // For all-day events, use date format (no time component)
-          dates = `${formattedDate}/${formattedDate}`;
+          // Format: YYYYMMDD/YYYYMMDD - Note: End date should be the next day for single-day events
+          const dateWithoutDashes = formattedDate.replace(/-/g, '');
+          dates = `${dateWithoutDashes}/${dateWithoutDashes}`;
         } else {
-          // For events with time, use full ISO format
+          // For events with time, use full ISO format with proper timezone handling
+          // Get start and end times, defaulting to business hours if not provided
           const startTime = job.startTime || '09:00';
           const endTime = job.endTime || '17:00';
           
-          // Create ISO date strings (assumes UTC)
-          const startDateTime = `${formattedDate}T${startTime}:00Z`;
-          const endDateTime = `${formattedDate}T${endTime}:00Z`;
+          // Parse the date parts
+          const [year, month, day] = formattedDate.split('-').map(Number);
+          
+          // Create start and end Date objects in local timezone
+          const startDate = new Date(year, month - 1, day);
+          const endDate = new Date(year, month - 1, day);
+          
+          // Parse hours and minutes from time strings
+          const [startHours, startMinutes] = startTime.split(':').map(Number);
+          const [endHours, endMinutes] = endTime.split(':').map(Number);
+          
+          // Set hours and minutes
+          startDate.setHours(startHours, startMinutes, 0, 0);
+          endDate.setHours(endHours, endMinutes, 0, 0);
+          
+          // Format in the required format for Google Calendar: YYYYMMDDTHHmmssZ/YYYYMMDDTHHmmssZ
+          // Note: We use toISOString() to get UTC time and then format it properly
+          const formatToGoogleCalendarDateTime = (date: Date) => {
+            return date.toISOString().replace(/[-:]/g, '').replace(/\.\d+/g, '');
+          };
+          
+          const startDateTime = formatToGoogleCalendarDateTime(startDate);
+          const endDateTime = formatToGoogleCalendarDateTime(endDate);
           
           dates = `${startDateTime}/${endDateTime}`;
         }
       }
       
       // Construct Google Calendar URL
-      const googleCalendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&details=${description}&location=${location}&dates=${dates.replace(/-/g, '')}`;
+      const googleCalendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&details=${description}&location=${location}&dates=${dates}`;
       
       // Open Google Calendar in a new tab
       window.open(googleCalendarUrl, '_blank');

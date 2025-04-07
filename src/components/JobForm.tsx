@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Client, Job } from '@/types';
@@ -188,7 +187,7 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
     if (onSuccess) {
       onSuccess();
     } else if (newJob) {
-      navigate(`/client/${client?.id}`);
+      navigate(`/job/${newJob.id}`);
     }
   };
 

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Client, Job } from '@/types';
@@ -17,7 +18,7 @@ import { cn } from '@/lib/utils';
 import { useCompany } from './CompanySelector';
 import { Checkbox } from '@/components/ui/checkbox';
 import JobWarningDialog from './JobWarningDialog';
-import AddToCalendarDialog from './AddToCalendarDialog';
+import { AddToCalendarDialog } from './AddToCalendarDialog';
 import { useQuery } from '@tanstack/react-query';
 
 interface JobFormProps {

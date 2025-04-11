@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -384,7 +383,6 @@ const CalendarTest = () => {
                   mode="single"
                   selected={event.date}
                   onSelect={(date) => handleInputChange('date', date)}
-                  className="w-full"
                 />
               </div>
               

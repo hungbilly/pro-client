@@ -45,7 +45,7 @@ const GoogleCalendarIntegration: React.FC = () => {
           console.error('Error fetching integration:', error);
           toast.error('Failed to fetch integration status');
         } else {
-          setIntegration(data || null);
+          setIntegration(data as CalendarIntegration || null);
         }
       } catch (error) {
         console.error('Exception when fetching integration:', error);
@@ -140,7 +140,7 @@ const GoogleCalendarIntegration: React.FC = () => {
       </CardHeader>
       <CardContent>
         {integration ? (
-          <Alert variant="success" className="bg-green-50 border-green-200">
+          <Alert className="bg-green-50 border-green-200">
             <CheckCircle2 className="h-4 w-4 text-green-600" />
             <AlertTitle className="text-green-800">Connected</AlertTitle>
             <AlertDescription className="text-green-700">

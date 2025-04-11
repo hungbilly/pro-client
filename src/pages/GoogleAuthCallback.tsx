@@ -48,7 +48,7 @@ const GoogleAuthCallback: React.FC = () => {
         expiresAt.setSeconds(expiresAt.getSeconds() + expires_in);
         
         // Store the tokens in the database
-        const { error } = await supabase
+        const { error: upsertError } = await supabase
           .from('user_integrations')
           .upsert({
             user_id: user.id,
@@ -59,8 +59,8 @@ const GoogleAuthCallback: React.FC = () => {
             expires_at: expiresAt.toISOString()
           }, { onConflict: 'user_id,provider' });
           
-        if (error) {
-          throw error;
+        if (upsertError) {
+          throw upsertError;
         }
         
         toast.success('Successfully connected to Google Calendar');

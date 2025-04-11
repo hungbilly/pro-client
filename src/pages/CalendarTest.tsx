@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { formatDateForGoogleCalendar } from '@/lib/utils';
 import { AddToCalendarDialog } from '@/components/AddToCalendarDialog';
+import { Job, Client } from '@/types';
 
 interface CalendarEvent {
   id?: string;
@@ -324,6 +324,34 @@ const CalendarTest = () => {
     setShowCalendarDialog(false);
   };
 
+  // Create a compliant Job object that matches the expected type
+  const jobForDialog: Job = {
+    id: 'test-job-id',
+    clientId: 'test-client-id',
+    companyId: 'test-company-id',
+    title: event.title,
+    description: event.description || '',
+    status: 'active',
+    date: event.date ? format(event.date, 'yyyy-MM-dd') : '',
+    location: event.location,
+    isFullDay: event.isFullDay,
+    startTime: event.startTime,
+    endTime: event.endTime,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  // Create a compliant Client object that matches the expected type
+  const clientForDialog: Client = {
+    id: 'test-client-id',
+    name: 'Test Client',
+    email: 'test@example.com',
+    phone: '555-1234',
+    address: event.location || '123 Test Street',
+    createdAt: new Date().toISOString(),
+    notes: 'Test client for calendar integration'
+  };
+
   return (
     <div className="container mx-auto py-8 px-4">
       <div className="mb-8 flex items-center">
@@ -529,23 +557,8 @@ const CalendarTest = () => {
       <AddToCalendarDialog 
         isOpen={showCalendarDialog}
         onClose={handleCalendarDialogClose}
-        job={{
-          id: 'test-job-id',
-          title: event.title,
-          description: event.description,
-          date: event.date ? format(event.date, 'yyyy-MM-dd') : '',
-          location: event.location,
-          isFullDay: event.isFullDay,
-          startTime: event.startTime,
-          endTime: event.endTime,
-        }}
-        client={{
-          id: 'test-client-id',
-          name: 'Test Client',
-          email: 'test@example.com',
-          phone: '555-1234',
-          address: event.location || '123 Test Street',
-        }}
+        job={jobForDialog}
+        client={clientForDialog}
       />
     </div>
   );

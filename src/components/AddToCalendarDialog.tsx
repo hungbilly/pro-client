@@ -4,8 +4,26 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/components/ui/button';
 import { Calendar, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
-import { Client, Job } from '@/types';
 import { formatDateForGoogleCalendar } from '@/lib/utils';
+
+interface Job {
+  id: string;
+  title: string;
+  description: string;
+  date: string;
+  location?: string;
+  isFullDay?: boolean;
+  startTime?: string;
+  endTime?: string;
+}
+
+interface Client {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+}
 
 interface AddToCalendarDialogProps {
   isOpen: boolean;
@@ -14,7 +32,7 @@ interface AddToCalendarDialogProps {
   client: Client | null;
 }
 
-const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({ 
+export const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({ 
   isOpen, 
   onClose, 
   job, 
@@ -66,20 +84,8 @@ const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({
           endDateLocal.setHours(endHours, endMinutes, 0, 0);
           
           // Format dates in the way Google Calendar expects
-          // Format: YYYYMMDDTHHMMSS for each date/time
-          const formatLocalDateTime = (date: Date) => {
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            const hours = String(date.getHours()).padStart(2, '0');
-            const minutes = String(date.getMinutes()).padStart(2, '0');
-            const seconds = '00';
-            
-            return `${year}${month}${day}T${hours}${minutes}${seconds}`;
-          };
-          
-          const startDateTimeString = formatLocalDateTime(startDateLocal);
-          const endDateTimeString = formatLocalDateTime(endDateLocal);
+          const startDateTimeString = formatDateForGoogleCalendar(startDateLocal);
+          const endDateTimeString = formatDateForGoogleCalendar(endDateLocal);
           
           dates = `${startDateTimeString}/${endDateTimeString}`;
         }
@@ -141,5 +147,3 @@ const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({
     </Dialog>
   );
 };
-
-export default AddToCalendarDialog;

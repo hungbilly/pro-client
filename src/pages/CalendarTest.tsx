@@ -1,16 +1,18 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Calendar, CalendarCheck, CalendarX, Clock, Edit, Plus, Trash } from 'lucide-react';
+import { Calendar, CalendarCheck, CalendarX, Clock, Edit, Plus, Trash, ExternalLink } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { formatDateForGoogleCalendar } from '@/lib/utils';
+import { AddToCalendarDialog } from '@/components/AddToCalendarDialog';
 
 interface CalendarEvent {
   id?: string;
@@ -38,6 +40,7 @@ const CalendarTest = () => {
   });
   const [calendarEventId, setCalendarEventId] = useState<string>('');
   const [logs, setLogs] = useState<string[]>([]);
+  const [showCalendarDialog, setShowCalendarDialog] = useState(false);
 
   const addLog = (message: string) => {
     setLogs(prev => [message, ...prev.slice(0, 9)]);
@@ -118,6 +121,9 @@ const CalendarTest = () => {
       
       toast.success('Calendar event created');
       addLog(`Event created with ID: ${data.eventId}`);
+
+      // Show the calendar dialog after successful creation
+      setShowCalendarDialog(true);
     } catch (error) {
       console.error('Error creating calendar event:', error);
       toast.error('Failed to create calendar event');
@@ -314,6 +320,10 @@ const CalendarTest = () => {
     }
   };
 
+  const handleCalendarDialogClose = () => {
+    setShowCalendarDialog(false);
+  };
+
   return (
     <div className="container mx-auto py-8 px-4">
       <div className="mb-8 flex items-center">
@@ -476,7 +486,7 @@ const CalendarTest = () => {
                 className="flex-1"
                 variant="secondary"
               >
-                <CalendarCheck className="mr-2 h-4 w-4" />
+                <ExternalLink className="mr-2 h-4 w-4" />
                 Open in Google Calendar
               </Button>
             </CardFooter>
@@ -514,6 +524,29 @@ const CalendarTest = () => {
           </Card>
         </div>
       </div>
+      
+      {/* Google Calendar Dialog */}
+      <AddToCalendarDialog 
+        isOpen={showCalendarDialog}
+        onClose={handleCalendarDialogClose}
+        job={{
+          id: 'test-job-id',
+          title: event.title,
+          description: event.description,
+          date: event.date ? format(event.date, 'yyyy-MM-dd') : '',
+          location: event.location,
+          isFullDay: event.isFullDay,
+          startTime: event.startTime,
+          endTime: event.endTime,
+        }}
+        client={{
+          id: 'test-client-id',
+          name: 'Test Client',
+          email: 'test@example.com',
+          phone: '555-1234',
+          address: event.location || '123 Test Street',
+        }}
+      />
     </div>
   );
 };

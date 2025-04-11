@@ -1,101 +1,52 @@
-
 import React from 'react';
-import { Route, Routes as ReactRoutes } from 'react-router-dom';
-import Index from './pages/Index';
-import Auth from './pages/Auth';
-import NotFound from './pages/NotFound';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import AppLayout from './layout/AppLayout';
+import Dashboard from './pages/Dashboard';
 import Clients from './pages/Clients';
-import ClientDetail from './pages/ClientDetail';
-import ClientNew from './pages/ClientNew';
-import ClientEdit from './pages/ClientEdit';
-import InvoiceView from './pages/InvoiceView';
-import InvoiceCreate from './pages/InvoiceCreate';
-import ProtectedRoute from './components/ProtectedRoute';
-import Settings from './pages/Settings';
 import Jobs from './pages/Jobs';
-import JobDetail from './pages/JobDetail';
-import JobCreate from './pages/JobCreate';
-import JobEdit from './pages/JobEdit';
-import AppLayout from './components/AppLayout';
-import Accounts from './pages/Accounts';
-import AuthCallback from './pages/AuthCallback';
 import Invoices from './pages/Invoices';
-import InvoicePdfView from './pages/InvoicePdfView';
-import Subscription from './pages/Subscription';
-import SubscriptionSuccess from './pages/SubscriptionSuccess';
-import SubscriptionCancel from './pages/SubscriptionCancel';
-import SubscriptionGuard from './components/SubscriptionGuard';
-import Admin from './pages/Admin';
-import AdminLayout from './components/AdminLayout';
-import Debug from './pages/Debug';
+import Settings from './pages/Settings';
+import Auth from './pages/Auth';
+import AuthCallback from './pages/AuthCallback';
 import CalendarTest from './pages/CalendarTest';
+import ScrollToTop from './components/ScrollToTop';
+import Admin from './pages/Admin';
+import ProtectedRoute from './components/ProtectedRoute';
+import { useAuth } from '@/context/AuthContext';
+import GoogleAuthCallback from './pages/GoogleAuthCallback';
 
 const Routes = () => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
   return (
-    <ReactRoutes>
-      {/* Auth routes outside of the layout */}
-      <Route path="/auth" element={<Auth />} />
-      <Route path="/auth/callback" element={<AuthCallback />} />
-      
-      {/* Admin routes with admin layout */}
-      <Route element={<ProtectedRoute adminOnly={true}><AdminLayout /></ProtectedRoute>}>
-        <Route path="/admin" element={<Admin />} />
-        <Route path="/debug" element={<Debug />} />
-        <Route path="/admin/calendar-test" element={<CalendarTest />} />
-      </Route>
-      
-      {/* Subscription routes */}
-      <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-        <Route path="/subscription" element={<Subscription />} />
-        <Route path="/subscription/success" element={<SubscriptionSuccess />} />
-        <Route path="/subscription/cancel" element={<SubscriptionCancel />} />
-      </Route>
-      
-      {/* Public invoice views without AppLayout for client view */}
-      <Route path="/invoice/:idOrViewLink" element={<InvoiceView />} />
-      <Route path="/invoice/pdf/:viewLink" element={<InvoicePdfView />} />
-      
-      {/* Protected routes with layout that require subscription */}
-      <Route element={<ProtectedRoute><SubscriptionGuard><AppLayout /></SubscriptionGuard></ProtectedRoute>}>
-        <Route path="/" element={<Index />} />
-        <Route path="/clients" element={<Clients />} />
-        <Route path="/client/new" element={<ClientNew />} />
-        <Route path="/client/:id" element={<ClientDetail />} />
-        <Route path="/client/:id/edit" element={<ClientEdit />} />
-        
-        {/* Job routes */}
-        <Route path="/jobs" element={<Jobs />} />
-        <Route path="/job/new" element={<JobCreate />} />
-        <Route path="/job/:id" element={<JobDetail />} />
-        <Route path="/job/:id/edit" element={<JobEdit />} />
-        
-        {/* Client-specific job routes */}
-        <Route path="/client/:clientId/job/new" element={<JobCreate />} />
-        <Route path="/client/:clientId/job/create" element={<JobCreate />} />
-        
-        {/* Invoice routes */}
-        <Route path="/invoices" element={<Invoices />} />
-        <Route path="/invoice/:id/edit" element={<InvoiceCreate />} />
-        <Route path="/client/:clientId/invoice/new" element={<InvoiceCreate />} />
-        <Route path="/client/:clientId/invoice/create" element={<InvoiceCreate />} />
-        <Route path="/client/:clientId/invoice/:invoiceId/edit" element={<InvoiceCreate />} />
-        
-        {/* Job-related invoice routes */}
-        <Route path="/job/:jobId/invoice/new" element={<InvoiceCreate />} />
-        <Route path="/job/:jobId/invoice/create" element={<InvoiceCreate />} />
-        <Route path="/job/:jobId/invoice/:invoiceId/edit" element={<InvoiceCreate />} />
-        
-        {/* Admin invoice view (wrapped in AppLayout) */}
-        <Route path="/invoice/:id/admin" element={<InvoiceView />} />
-        
-        {/* Account routes */}
-        <Route path="/account" element={<Accounts />} />
-        
-        <Route path="/settings" element={<Settings />} />
-      </Route>
-      
-      <Route path="*" element={<NotFound />} />
-    </ReactRoutes>
+    <BrowserRouter>
+      <ScrollToTop />
+      <React.Suspense fallback={<div>Loading...</div>}>
+        <Routes>
+          <Route path="/" element={<AppLayout />}>
+            <Route index element={<Dashboard />} />
+            <Route path="clients" element={<Clients />} />
+            <Route path="jobs" element={<Jobs />} />
+            <Route path="invoices" element={<Invoices />} />
+            <Route path="settings" element={<Settings />} />
+            <Route path="calendar-test" element={<CalendarTest />} />
+            <Route path="admin" element={<ProtectedRoute adminOnly={true}><Admin /></ProtectedRoute>} />
+          </Route>
+
+          {/* Auth Related Routes */}
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route path="/auth/google-callback" element={<GoogleAuthCallback />} />
+
+          {/* Catch-all route for handling unknown paths */}
+          <Route path="*" element={<div>Page not found</div>} />
+        </Routes>
+      </React.Suspense>
+    </BrowserRouter>
   );
 };
 

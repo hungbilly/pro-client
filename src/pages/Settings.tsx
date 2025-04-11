@@ -8,7 +8,8 @@ import PackageSettings from '@/components/PackageSettings';
 import ContractTemplateSettings from '@/components/ContractTemplateSettings';
 import CompanyProvider from '@/context/CompanyContext';
 import SubscriptionStatus from '@/components/SubscriptionStatus';
-import SubscriptionManagement from '@/components/SubscriptionManagement'; // New component
+import SubscriptionManagement from '@/components/SubscriptionManagement';
+import GoogleCalendarIntegration from '@/components/GoogleCalendarIntegration';
 
 const Settings = () => {
   console.log("Settings page rendering");
@@ -25,6 +26,7 @@ const Settings = () => {
               <TabsTrigger value="packages">Products & Packages</TabsTrigger>
               <TabsTrigger value="templates">Invoice Templates</TabsTrigger>
               <TabsTrigger value="contracts">Contract Templates</TabsTrigger>
+              <TabsTrigger value="integrations">Integrations</TabsTrigger>
               <TabsTrigger value="account">Account</TabsTrigger>
               <TabsTrigger value="notifications">Notifications</TabsTrigger>
               <TabsTrigger value="billing">Billing</TabsTrigger>
@@ -47,6 +49,15 @@ const Settings = () => {
             <TabsContent value="contracts" className="space-y-4">
               <div className="rounded-lg border p-6">
                 <ContractTemplateSettings />
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="integrations" className="space-y-4">
+              <div className="rounded-lg border p-6">
+                <h2 className="text-xl font-semibold mb-4">External Integrations</h2>
+                <div className="space-y-6">
+                  <GoogleCalendarIntegration />
+                </div>
               </div>
             </TabsContent>
             

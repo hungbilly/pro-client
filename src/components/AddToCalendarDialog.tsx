@@ -5,25 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Calendar, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDateForGoogleCalendar } from '@/lib/utils';
-
-interface Job {
-  id: string;
-  title: string;
-  description: string;
-  date: string;
-  location?: string;
-  isFullDay?: boolean;
-  startTime?: string;
-  endTime?: string;
-}
-
-interface Client {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  address: string;
-}
+import { Job, Client } from '@/types';
 
 interface AddToCalendarDialogProps {
   isOpen: boolean;

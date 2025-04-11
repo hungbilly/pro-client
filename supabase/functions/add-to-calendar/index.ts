@@ -53,9 +53,9 @@ serve(async (req) => {
 
   try {
     // Get request data
-    const { jobId, clientId, invoiceId } = await req.json();
+    const { jobId, clientId, invoiceId, testMode, testData } = await req.json();
     
-    if ((!jobId && !invoiceId) || !clientId) {
+    if ((!jobId && !invoiceId && !testMode) || (!testMode && !clientId)) {
       return new Response(
         JSON.stringify({ error: 'Missing required parameters' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -65,64 +65,73 @@ serve(async (req) => {
     // Initialize Supabase client
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
-    // Fetch data based on whether it's a job or invoice
-    let eventData;
+    // Fetch data based on whether it's a test, job or invoice
+    let eventData, clientData;
     
-    if (jobId) {
-      // Fetch job data
-      const { data: job, error: jobError } = await supabase
-        .from('jobs')
+    if (testMode && testData) {
+      // Use provided test data
+      eventData = testData.event;
+      clientData = testData.client;
+    } else {
+      // Fetch real data from database
+      if (jobId) {
+        // Fetch job data
+        const { data: job, error: jobError } = await supabase
+          .from('jobs')
+          .select('*')
+          .eq('id', jobId)
+          .single();
+          
+        if (jobError || !job) {
+          console.error('Error fetching job:', jobError);
+          return new Response(
+            JSON.stringify({ error: 'Failed to fetch job data' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        eventData = job;
+      } else if (invoiceId) {
+        // Fetch invoice data
+        const { data: invoice, error: invoiceError } = await supabase
+          .from('invoices')
+          .select('*')
+          .eq('id', invoiceId)
+          .single();
+          
+        if (invoiceError || !invoice) {
+          console.error('Error fetching invoice:', invoiceError);
+          return new Response(
+            JSON.stringify({ error: 'Failed to fetch invoice data' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        eventData = invoice;
+      }
+      
+      // Fetch client data
+      const { data: client, error: clientError } = await supabase
+        .from('clients')
         .select('*')
-        .eq('id', jobId)
+        .eq('id', clientId)
         .single();
         
-      if (jobError || !job) {
-        console.error('Error fetching job:', jobError);
+      if (clientError || !client) {
+        console.error('Error fetching client:', clientError);
         return new Response(
-          JSON.stringify({ error: 'Failed to fetch job data' }),
+          JSON.stringify({ error: 'Failed to fetch client data' }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       
-      eventData = job;
-    } else if (invoiceId) {
-      // Fetch invoice data (existing functionality)
-      const { data: invoice, error: invoiceError } = await supabase
-        .from('invoices')
-        .select('*')
-        .eq('id', invoiceId)
-        .single();
-        
-      if (invoiceError || !invoice) {
-        console.error('Error fetching invoice:', invoiceError);
-        return new Response(
-          JSON.stringify({ error: 'Failed to fetch invoice data' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      eventData = invoice;
-    }
-    
-    // Fetch client data
-    const { data: client, error: clientError } = await supabase
-      .from('clients')
-      .select('*')
-      .eq('id', clientId)
-      .single();
-      
-    if (clientError || !client) {
-      console.error('Error fetching client:', clientError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to fetch client data' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      clientData = client;
     }
     
     // Determine event details based on the data source (job or invoice)
     let eventDate, eventStartTime, eventEndTime, eventSummary, eventLocation, eventDescription;
     
-    if (jobId) {
+    if (jobId || testMode) {
       // Check if there's a job date
       if (!eventData.date) {
         return new Response(
@@ -140,9 +149,9 @@ serve(async (req) => {
       // For all-day events
       const isFullDay = eventData.isFullDay === true;
       
-      eventSummary = `Job: ${eventData.title} - ${client.name}`;
-      eventLocation = eventData.location || client.address;
-      eventDescription = `${eventData.description || 'Job session'} for ${client.name}.\n\nClient Contact:\nEmail: ${client.email}\nPhone: ${client.phone}`;
+      eventSummary = `${eventData.title} - ${clientData.name}`;
+      eventLocation = eventData.location || clientData.address;
+      eventDescription = `${eventData.description || 'Job session'} for ${clientData.name}.\n\nClient Contact:\nEmail: ${clientData.email}\nPhone: ${clientData.phone}`;
       
       // Format date/time for Google Calendar
       // For full-day events, we use date only format
@@ -257,7 +266,6 @@ serve(async (req) => {
         );
       }
     } else if (invoiceId) {
-      // Existing invoice event creation logic
       // Check if there's a shooting date
       if (!eventData.shooting_date) {
         return new Response(
@@ -273,9 +281,9 @@ serve(async (req) => {
       
       // Create event object
       const event = {
-        summary: `Photo Shoot - ${client.name} - Invoice #${eventData.number}`,
-        location: client.address,
-        description: `Photo shooting session for ${client.name}.\n\nClient Contact:\nEmail: ${client.email}\nPhone: ${client.phone}\n\nInvoice #${eventData.number}`,
+        summary: `Photo Shoot - ${clientData.name} - Invoice #${eventData.number}`,
+        location: clientData.address,
+        description: `Photo shooting session for ${clientData.name}.\n\nClient Contact:\nEmail: ${clientData.email}\nPhone: ${clientData.phone}\n\nInvoice #${eventData.number}`,
         start: {
           dateTime: formattedStartDate,
           timeZone: 'UTC',
@@ -326,7 +334,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in add-to-calendar function:', error);
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({ error: 'Internal server error', message: error instanceof Error ? error.message : String(error) }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

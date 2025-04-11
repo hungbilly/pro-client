@@ -28,6 +28,7 @@ import SubscriptionGuard from './components/SubscriptionGuard';
 import Admin from './pages/Admin';
 import AdminLayout from './components/AdminLayout';
 import Debug from './pages/Debug';
+import CalendarTest from './pages/CalendarTest';
 
 const Routes = () => {
   return (
@@ -40,6 +41,7 @@ const Routes = () => {
       <Route element={<ProtectedRoute adminOnly={true}><AdminLayout /></ProtectedRoute>}>
         <Route path="/admin" element={<Admin />} />
         <Route path="/debug" element={<Debug />} />
+        <Route path="/admin/calendar-test" element={<CalendarTest />} />
       </Route>
       
       {/* Subscription routes */}

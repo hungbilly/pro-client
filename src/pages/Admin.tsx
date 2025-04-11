@@ -1,12 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Shield, Users } from 'lucide-react';
+import { Shield, Users, Calendar } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
 
 interface UserSubscription {
   id: string;
@@ -69,6 +70,31 @@ const Admin = () => {
       <div className="mb-8 flex items-center">
         <Shield className="mr-3 h-10 w-10 text-purple-600" />
         <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <Card className="bg-gradient-to-br from-purple-50 to-blue-50">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Calendar className="mr-2 h-5 w-5 text-purple-600" />
+              Calendar Test Tools
+            </CardTitle>
+            <CardDescription>
+              Test and debug Google Calendar integration
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="mb-4 text-sm text-gray-600">
+              This tool allows you to test Google Calendar event creation, updates, and deletion.
+            </p>
+            <Button asChild>
+              <Link to="/admin/calendar-test" className="inline-flex items-center">
+                <Calendar className="mr-2 h-4 w-4" />
+                Open Calendar Test Page
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
 
       <Card className="mb-8">

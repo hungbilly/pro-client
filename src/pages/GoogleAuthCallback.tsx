@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -25,6 +24,9 @@ const GoogleAuthCallback: React.FC = () => {
         const errorParam = urlParams.get('error');
         const errorDescription = urlParams.get('error_description');
         
+        // Default Supabase redirect URI
+        const supabaseRedirectUri = `https://htjvyzmuqsrjpesdurni.supabase.co/auth/v1/callback`;
+        
         // Collect details for debugging
         const callbackDetails = {
           hasCode: Boolean(code),
@@ -33,7 +35,7 @@ const GoogleAuthCallback: React.FC = () => {
           hasError: Boolean(errorParam),
           errorParam,
           errorDescription,
-          redirectUri: `${window.location.origin}/auth/google/callback`,
+          redirectUri: supabaseRedirectUri,
           currentUrl: window.location.href,
           timestamp: new Date().toISOString()
         };
@@ -69,7 +71,7 @@ const GoogleAuthCallback: React.FC = () => {
         const response = await supabase.functions.invoke('google-auth-exchange', {
           body: { 
             code, 
-            redirectUri: `${window.location.origin}/auth/google/callback` 
+            redirectUri: supabaseRedirectUri
           }
         });
         

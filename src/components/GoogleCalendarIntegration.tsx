@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -26,6 +25,9 @@ const GoogleCalendarIntegration: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<any>(null);
   const [apiCallsHistory, setApiCallsHistory] = useState<any[]>([]);
+
+  // Default Supabase redirect URI
+  const supabaseRedirectUri = `https://htjvyzmuqsrjpesdurni.supabase.co/auth/v1/callback`;
 
   // Utility function to add to API call history
   const addToApiHistory = (callType: string, data: any) => {
@@ -132,7 +134,8 @@ const GoogleCalendarIntegration: React.FC = () => {
           queryParams: {
             access_type: 'offline',
             prompt: 'consent'
-          }
+          },
+          redirectTo: supabaseRedirectUri
         }
       });
       
@@ -219,7 +222,7 @@ const GoogleCalendarIntegration: React.FC = () => {
               access_token: integration.access_token ? "***" : null,
               refresh_token: integration.refresh_token ? "***" : null,
             } : null,
-            defaultRedirectUri: `https://htjvyzmuqsrjpesdurni.supabase.co/auth/v1/callback`,
+            defaultRedirectUri: supabaseRedirectUri,
             apiCalls: apiCallsHistory,
             origin: window.location.origin,
             currentUrl: window.location.href,
@@ -239,7 +242,7 @@ const GoogleCalendarIntegration: React.FC = () => {
                 access_token: integration.access_token ? "***" : null,
                 refresh_token: integration.refresh_token ? "***" : null,
               } : null,
-              defaultRedirectUri: `https://htjvyzmuqsrjpesdurni.supabase.co/auth/v1/callback`,
+              defaultRedirectUri: supabaseRedirectUri,
               apiCalls: apiCallsHistory,
               origin: window.location.origin,
               currentUrl: window.location.href,
@@ -264,9 +267,6 @@ const GoogleCalendarIntegration: React.FC = () => {
       </div>
     );
   }
-
-  // Default Supabase redirect URI
-  const supabaseRedirectUri = `https://htjvyzmuqsrjpesdurni.supabase.co/auth/v1/callback`;
 
   return (
     <Card>

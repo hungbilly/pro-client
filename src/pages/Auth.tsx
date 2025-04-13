@@ -77,7 +77,6 @@ const Auth = () => {
         });
 
         if (error) {
-          // Improve error message for authentication failures
           if (error.message.includes('Invalid login credentials')) {
             throw new Error('Invalid username/password combination');
           }
@@ -117,12 +116,14 @@ const Auth = () => {
       setLoading(true);
       setErrorMessage(null);
       
+      const supabaseRedirectUri = `https://htjvyzmuqsrjpesdurni.supabase.co/auth/v1/callback`;
+      
       console.log('Starting Google sign-in process...');
       
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`
+          redirectTo: supabaseRedirectUri
         }
       });
       

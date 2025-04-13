@@ -13,6 +13,7 @@ import { format } from 'date-fns';
 import { formatDateForGoogleCalendar } from '@/lib/utils';
 import { AddToCalendarDialog } from '@/components/AddToCalendarDialog';
 import { Job, Client } from '@/types';
+import { useAuth } from '@/context/AuthContext';
 
 interface CalendarEvent {
   id?: string;
@@ -27,6 +28,7 @@ interface CalendarEvent {
 }
 
 const CalendarTest = () => {
+  const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [eventType, setEventType] = useState<'job' | 'invoice'>('job');
   const [event, setEvent] = useState<CalendarEvent>({
@@ -60,7 +62,6 @@ const CalendarTest = () => {
       setIsLoading(true);
       addLog(`Creating calendar event: ${event.title}`);
       
-      // Create a fake client for testing purposes
       const testClient = {
         id: "test-client-id",
         name: "Test Client",
@@ -69,10 +70,8 @@ const CalendarTest = () => {
         address: event.location || "123 Test Street"
       };
 
-      // Format date for API
       const formattedDate = format(event.date, 'yyyy-MM-dd');
       
-      // Create a test job/invoice object for the API
       const testObject = {
         title: event.title,
         description: event.description,
@@ -83,14 +82,12 @@ const CalendarTest = () => {
         endTime: event.isFullDay ? undefined : event.endTime,
       };
       
-      // Get the current session
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
         throw new Error('No active session');
       }
       
-      // Call the edge function
       const { data, error } = await supabase.functions.invoke('add-to-calendar', {
         headers: {
           Authorization: `Bearer ${session.access_token}`,
@@ -103,7 +100,8 @@ const CalendarTest = () => {
           testData: {
             event: testObject,
             client: testClient
-          }
+          },
+          userId: user?.id
         }
       });
       
@@ -111,18 +109,28 @@ const CalendarTest = () => {
         throw error;
       }
       
+      if (data?.error === 'Calendar integration not set up') {
+        addLog(`Error: ${data.message}`);
+        toast.error(data.message || 'Calendar integration not set up', {
+          description: 'Please connect your Google Calendar in the Settings page',
+          action: {
+            label: 'Go to Settings',
+            onClick: () => window.location.href = '/settings'
+          }
+        });
+        return;
+      }
+      
       if (!data.success) {
         throw new Error(data.message || 'Failed to create calendar event');
       }
       
-      // Store the Google Calendar event ID for later use
       setCalendarEventId(data.eventId);
       setEvent(prev => ({ ...prev, calendarEventId: data.eventId }));
       
       toast.success('Calendar event created');
       addLog(`Event created with ID: ${data.eventId}`);
 
-      // Show the calendar dialog after successful creation
       setShowCalendarDialog(true);
     } catch (error) {
       console.error('Error creating calendar event:', error);
@@ -143,17 +151,14 @@ const CalendarTest = () => {
       setIsLoading(true);
       addLog(`Updating calendar event: ${event.calendarEventId}`);
       
-      // Get the current session
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
         throw new Error('No active session');
       }
 
-      // Format date for API
       const formattedDate = format(event.date!, 'yyyy-MM-dd');
       
-      // Create a test client for testing purposes
       const testClient = {
         id: "test-client-id",
         name: "Test Client",
@@ -162,7 +167,6 @@ const CalendarTest = () => {
         address: event.location || "123 Test Street"
       };
       
-      // Create a test job/invoice object for the API
       const testObject = {
         title: event.title,
         description: event.description,
@@ -174,7 +178,6 @@ const CalendarTest = () => {
         calendarEventId: event.calendarEventId
       };
       
-      // Call the edge function
       const { data, error } = await supabase.functions.invoke('update-calendar-event', {
         headers: {
           Authorization: `Bearer ${session.access_token}`,
@@ -185,7 +188,8 @@ const CalendarTest = () => {
           testData: {
             event: testObject,
             client: testClient
-          }
+          },
+          userId: user?.id
         }
       });
       
@@ -218,20 +222,19 @@ const CalendarTest = () => {
       setIsLoading(true);
       addLog(`Deleting calendar event: ${event.calendarEventId}`);
       
-      // Get the current session
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
         throw new Error('No active session');
       }
       
-      // Call the edge function
       const { data, error } = await supabase.functions.invoke('delete-calendar-event', {
         headers: {
           Authorization: `Bearer ${session.access_token}`,
         },
         body: {
-          eventId: event.calendarEventId
+          eventId: event.calendarEventId,
+          userId: user?.id
         }
       });
       
@@ -264,40 +267,31 @@ const CalendarTest = () => {
     }
     
     try {
-      // Format date objects for Google Calendar URL
       const formattedDate = event.date ? format(event.date, 'yyyy-MM-dd') : '';
       
-      // Set default title and description
       const title = encodeURIComponent(event.title);
       const description = encodeURIComponent(event.description);
       
-      // Set location if available
       const location = encodeURIComponent(event.location);
       
       let dates = '';
       
       if (formattedDate) {
         if (event.isFullDay) {
-          // For all-day events
           const dateWithoutDashes = formattedDate.replace(/-/g, '');
           dates = `${dateWithoutDashes}/${dateWithoutDashes}`;
         } else {
-          // For events with time
           const [year, month, day] = formattedDate.split('-').map(Number);
           
-          // Create local date objects
           const startDateLocal = new Date(year, month - 1, day);
           const endDateLocal = new Date(year, month - 1, day);
           
-          // Parse hours and minutes from time strings
           const [startHours, startMinutes] = event.startTime.split(':').map(Number);
           const [endHours, endMinutes] = event.endTime.split(':').map(Number);
           
-          // Set hours and minutes
           startDateLocal.setHours(startHours, startMinutes, 0, 0);
           endDateLocal.setHours(endHours, endMinutes, 0, 0);
           
-          // Format using the utility function
           const startDateTimeString = formatDateForGoogleCalendar(startDateLocal);
           const endDateTimeString = formatDateForGoogleCalendar(endDateLocal);
           
@@ -305,10 +299,8 @@ const CalendarTest = () => {
         }
       }
       
-      // Construct Google Calendar URL
       const googleCalendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&details=${description}&location=${location}&dates=${dates}&ctz=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}`;
       
-      // Open Google Calendar in a new tab
       window.open(googleCalendarUrl, '_blank');
       addLog(`Opening calendar URL: ${googleCalendarUrl}`);
       
@@ -324,7 +316,6 @@ const CalendarTest = () => {
     setShowCalendarDialog(false);
   };
 
-  // Create a compliant Job object that matches the expected type
   const jobForDialog: Job = {
     id: 'test-job-id',
     clientId: 'test-client-id',
@@ -341,7 +332,6 @@ const CalendarTest = () => {
     updatedAt: new Date().toISOString()
   };
 
-  // Create a compliant Client object that matches the expected type
   const clientForDialog: Client = {
     id: 'test-client-id',
     name: 'Test Client',
@@ -553,7 +543,6 @@ const CalendarTest = () => {
         </div>
       </div>
       
-      {/* Google Calendar Dialog */}
       <AddToCalendarDialog 
         isOpen={showCalendarDialog}
         onClose={handleCalendarDialogClose}

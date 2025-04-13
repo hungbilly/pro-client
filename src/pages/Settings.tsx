@@ -10,6 +10,9 @@ import CompanyProvider from '@/context/CompanyContext';
 import SubscriptionStatus from '@/components/SubscriptionStatus';
 import SubscriptionManagement from '@/components/SubscriptionManagement';
 import GoogleCalendarIntegration from '@/components/GoogleCalendarIntegration';
+import { Button } from '@/components/ui/button';
+import { Link } from 'react-router-dom';
+import { Bug } from 'lucide-react';
 
 const Settings = () => {
   console.log("Settings page rendering");
@@ -17,7 +20,15 @@ const Settings = () => {
   return (
     <PageTransition>
       <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-bold mb-6">Settings</h1>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-3xl font-bold">Settings</h1>
+          <Link to="/admin/google-oauth-diagnostic">
+            <Button variant="outline" size="sm" className="flex items-center gap-2">
+              <Bug className="h-4 w-4" />
+              Google OAuth Diagnostic
+            </Button>
+          </Link>
+        </div>
         
         <CompanyProvider>
           <Tabs defaultValue="company" className="space-y-4">

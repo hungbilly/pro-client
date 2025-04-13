@@ -30,6 +30,7 @@ import Admin from './pages/Admin';
 import AdminLayout from './components/AdminLayout';
 import Debug from './pages/Debug';
 import CalendarTest from './pages/CalendarTest';
+import GoogleOAuthDiagnostic from './pages/GoogleOAuthDiagnostic';
 
 const Routes = () => {
   return (
@@ -44,6 +45,7 @@ const Routes = () => {
         <Route path="/admin" element={<Admin />} />
         <Route path="/debug" element={<Debug />} />
         <Route path="/admin/calendar-test" element={<CalendarTest />} />
+        <Route path="/admin/google-oauth-diagnostic" element={<GoogleOAuthDiagnostic />} />
       </Route>
       
       {/* Subscription routes */}

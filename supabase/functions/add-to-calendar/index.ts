@@ -44,12 +44,17 @@ async function getAccessToken(userId: string, supabase: any) {
       throw new Error('Error fetching Google Calendar integration');
     }
     
-    if (!data || data.length === 0 || !data[0].refresh_token) {
-      console.error('No integration or refresh token found for user:', userId);
+    if (!data || data.length === 0) {
+      console.error('No integration found for user:', userId);
       throw new Error('No Google Calendar integration found. Please connect your Google Calendar account first.');
     }
     
     const integrationData = data[0];
+    
+    if (!integrationData.refresh_token) {
+      console.error('Found integration but missing refresh token for user:', userId);
+      throw new Error('Invalid Google Calendar integration. Please reconnect your Google Calendar account.');
+    }
     
     console.log('Retrieved integration data:', { 
       integrationId: integrationData.id,
@@ -158,6 +163,8 @@ serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
     // Check if the user has a valid integration
+    let integrationExists = false;
+    
     try {
       const { data, error } = await supabase
         .from('user_integrations')
@@ -166,7 +173,17 @@ serve(async (req) => {
         .eq('provider', 'google_calendar')
         .limit(1);
         
-      if (error || !data || data.length === 0) {
+      if (error) {
+        console.error('Error checking for integration existence:', error);
+        throw error;
+      }
+      
+      integrationExists = !!(data && data.length > 0);
+      
+      if (integrationExists) {
+        console.log(`Found calendar integration with ID: ${data[0].id}`);
+      } else {
+        console.log('No calendar integration found for user:', userId);
         return new Response(
           JSON.stringify({ 
             success: false, 
@@ -176,10 +193,9 @@ serve(async (req) => {
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      
-      console.log(`Found calendar integration with ID: ${data[0].id}`);
     } catch (error) {
       console.error('Error checking for integration existence:', error);
+      // Continue and let getAccessToken handle detailed errors
     }
     
     // Get access token using the provided userId
@@ -189,25 +205,13 @@ serve(async (req) => {
       console.log('Got access token for calendar API');
     } catch (error: any) {
       // Return a clearer error message if no integration is found
-      if (error.message && error.message.includes('No Google Calendar integration found')) {
-        return new Response(
-          JSON.stringify({ 
-            success: false, 
-            error: 'Calendar integration not set up', 
-            message: 'Please set up your Google Calendar integration in the settings page first.'
-          }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      // For other errors, return the original error
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'Authentication error', 
-          message: error.message 
+          error: 'Calendar integration error', 
+          message: error.message || 'Error accessing Google Calendar integration'
         }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
@@ -373,6 +377,8 @@ serve(async (req) => {
           },
         };
         
+        console.log('Creating event with data:', JSON.stringify(event));
+        
         // Insert event to Google Calendar using OAuth2 access token
         const calendarResponse = await fetch(
           'https://www.googleapis.com/calendar/v3/calendars/primary/events',
@@ -396,6 +402,7 @@ serve(async (req) => {
         }
         
         const calendarData = await calendarResponse.json();
+        console.log('Successfully created event:', calendarData.id);
         
         return new Response(
           JSON.stringify({ 

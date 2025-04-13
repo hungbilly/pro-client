@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -20,6 +21,9 @@ const Auth = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  
+  // Default Supabase redirect URI - ensure consistency throughout the app
+  const supabaseRedirectUri = `https://htjvyzmuqsrjpesdurni.supabase.co/auth/v1/callback`;
   
   useEffect(() => {
     const checkForLogoutRedirect = async () => {
@@ -116,9 +120,8 @@ const Auth = () => {
       setLoading(true);
       setErrorMessage(null);
       
-      const supabaseRedirectUri = `https://htjvyzmuqsrjpesdurni.supabase.co/auth/v1/callback`;
-      
       console.log('Starting Google sign-in process...');
+      console.log('Using redirect URI:', supabaseRedirectUri);
       
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',

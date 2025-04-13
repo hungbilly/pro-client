@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -26,7 +27,7 @@ const GoogleCalendarIntegration: React.FC = () => {
   const [debugInfo, setDebugInfo] = useState<any>(null);
   const [apiCallsHistory, setApiCallsHistory] = useState<any[]>([]);
 
-  // Default Supabase redirect URI
+  // Default Supabase redirect URI - this should be consistent across the application
   const supabaseRedirectUri = `https://htjvyzmuqsrjpesdurni.supabase.co/auth/v1/callback`;
 
   // Utility function to add to API call history
@@ -137,6 +138,13 @@ const GoogleCalendarIntegration: React.FC = () => {
           },
           redirectTo: supabaseRedirectUri
         }
+      });
+      
+      addToApiHistory('initiate-oauth', {
+        success: !error,
+        error: error?.message,
+        hasRedirectUrl: Boolean(data?.url),
+        redirectToUri: supabaseRedirectUri
       });
       
       if (error) {

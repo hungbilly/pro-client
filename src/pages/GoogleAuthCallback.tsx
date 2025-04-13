@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -17,7 +18,7 @@ const GoogleAuthCallback: React.FC = () => {
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        // Get the code and error from the URL
+        // Get the code, state and error from the URL
         const urlParams = new URLSearchParams(window.location.search);
         const code = urlParams.get('code');
         const stateParam = urlParams.get('state');
@@ -32,6 +33,7 @@ const GoogleAuthCallback: React.FC = () => {
           hasCode: Boolean(code),
           codeLength: code ? code.length : 0,
           hasState: Boolean(stateParam),
+          stateValue: stateParam ? stateParam.substring(0, 8) + '...' : null,
           hasError: Boolean(errorParam),
           errorParam,
           errorDescription,
@@ -58,6 +60,14 @@ const GoogleAuthCallback: React.FC = () => {
           return;
         }
         
+        // Check for missing state
+        if (!stateParam) {
+          setError('OAuth state parameter missing');
+          toast.error('Authentication error: missing state parameter');
+          setTimeout(() => navigate('/settings'), 3000);
+          return;
+        }
+        
         // Check for missing user
         if (!user) {
           setError('You must be logged in to connect Google Calendar');
@@ -71,7 +81,8 @@ const GoogleAuthCallback: React.FC = () => {
         const response = await supabase.functions.invoke('google-auth-exchange', {
           body: { 
             code, 
-            redirectUri: supabaseRedirectUri
+            redirectUri: supabaseRedirectUri,
+            state: stateParam
           }
         });
         

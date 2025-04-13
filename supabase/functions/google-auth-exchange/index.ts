@@ -23,7 +23,7 @@ serve(async (req) => {
     console.log(`GOOGLE_CLIENT_ID configured: ${Boolean(GOOGLE_CLIENT_ID)}`);
     console.log(`GOOGLE_CLIENT_SECRET configured: ${Boolean(GOOGLE_CLIENT_SECRET)}`);
     
-    const { code, redirectUri } = await req.json();
+    const { code, redirectUri, state } = await req.json();
     const effectiveRedirectUri = redirectUri || DEFAULT_REDIRECT_URI;
     
     // Enhanced diagnostic logging
@@ -33,6 +33,8 @@ serve(async (req) => {
       redirectUriReceived: Boolean(redirectUri),
       effectiveRedirectUri,
       usingDefaultRedirectUri: !redirectUri || redirectUri === DEFAULT_REDIRECT_URI,
+      stateReceived: Boolean(state),
+      stateLength: state ? state.length : 0,
       clientIdSet: Boolean(GOOGLE_CLIENT_ID),
       clientSecretSet: Boolean(GOOGLE_CLIENT_SECRET),
       timestamp: new Date().toISOString(),
@@ -42,6 +44,9 @@ serve(async (req) => {
     // Add potential issue detection
     if (!code) {
       diagnosticInfo.potentialIssues.push('No authorization code received');
+    }
+    if (!state) {
+      diagnosticInfo.potentialIssues.push('No state parameter received');
     }
     if (!GOOGLE_CLIENT_ID) {
       diagnosticInfo.potentialIssues.push('GOOGLE_CLIENT_ID is not set');
@@ -56,6 +61,17 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           error: 'Missing required parameters', 
+          diagnosticInfo 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!state) {
+      console.error("Missing required state parameter");
+      return new Response(
+        JSON.stringify({ 
+          error: 'Missing OAuth state parameter', 
           diagnosticInfo 
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -81,6 +97,7 @@ serve(async (req) => {
       code_prefix: code.substring(0, 5) + '...',
       redirect_uri: effectiveRedirectUri,
       client_id_prefix: GOOGLE_CLIENT_ID.substring(0, 5) + '...',
+      state_prefix: state.substring(0, 5) + '...',
     });
 
     // Exchange the authorization code for access and refresh tokens

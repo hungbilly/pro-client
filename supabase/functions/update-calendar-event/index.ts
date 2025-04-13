@@ -116,16 +116,27 @@ serve(async (req) => {
     const authHeader = req.headers.get('Authorization');
     console.log('Authorization header present:', Boolean(authHeader));
     
-    const { eventId, userId, jobData } = await req.json();
+    const { eventId, userId, jobData, testMode, testData } = await req.json();
     
     console.log(`Attempting to update event: ${eventId} for user: ${userId}`);
     
-    if (!eventId || !userId || !jobData) {
+    if (!eventId || !userId) {
       return new Response(
-        JSON.stringify({ error: 'Missing required parameters' }),
+        JSON.stringify({ error: 'Missing required parameters: eventId or userId' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    if (!jobData && !testData) {
+      return new Response(
+        JSON.stringify({ error: 'Missing required parameters: jobData or testData' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Determine which data to use (test mode or real job data)
+    const eventData = testMode && testData ? testData.event : jobData;
+    console.log('Using event data:', JSON.stringify(eventData));
 
     // Get access token for the user
     let accessToken;
@@ -142,38 +153,38 @@ serve(async (req) => {
     
     // Create event object from job data
     let event;
-    if (jobData.is_full_day === true) {
+    if (eventData.is_full_day === true) {
       // Format for all-day events
       event = {
-        summary: jobData.title,
-        location: jobData.location,
-        description: jobData.description,
+        summary: eventData.title,
+        location: eventData.location,
+        description: eventData.description,
         start: {
-          date: jobData.date,
+          date: eventData.date,
           timeZone: 'UTC',
         },
         end: {
-          date: jobData.date,
+          date: eventData.date,
           timeZone: 'UTC',
         },
       };
       console.log('Created all-day event object for update');
     } else {
       // Format for specific time events
-      const startTime = jobData.start_time || '09:00:00';
-      const endTime = jobData.end_time || '17:00:00';
+      const startTime = eventData.start_time || '09:00:00';
+      const endTime = eventData.end_time || '17:00:00';
       
       // Ensure times include seconds
       const normalizedStartTime = startTime.length === 5 ? `${startTime}:00` : startTime;
       const normalizedEndTime = endTime.length === 5 ? `${endTime}:00` : endTime;
       
-      const formattedStartDate = `${jobData.date}T${normalizedStartTime}`;
-      const formattedEndDate = `${jobData.date}T${normalizedEndTime}`;
+      const formattedStartDate = `${eventData.date}T${normalizedStartTime}`;
+      const formattedEndDate = `${eventData.date}T${normalizedEndTime}`;
       
       event = {
-        summary: jobData.title,
-        location: jobData.location,
-        description: jobData.description,
+        summary: eventData.title,
+        location: eventData.location,
+        description: eventData.description,
         start: {
           dateTime: formattedStartDate,
           timeZone: 'UTC',
@@ -187,6 +198,7 @@ serve(async (req) => {
     }
     
     console.log("Using access token:", accessToken ? "Token present" : "No token");
+    console.log("Updating Google Calendar event with ID:", eventId);
     
     // Update event in Google Calendar
     const calendarResponse = await fetch(
@@ -201,17 +213,45 @@ serve(async (req) => {
       }
     );
     
+    // Log the full response from Google Calendar API for debugging
+    const responseText = await calendarResponse.text();
+    console.log(`Google Calendar API response status: ${calendarResponse.status}`);
+    console.log(`Google Calendar API response body: ${responseText}`);
+    
     if (!calendarResponse.ok) {
-      const errorData = await calendarResponse.json();
-      console.error('Google Calendar API error:', errorData);
+      let errorDetails;
+      try {
+        errorDetails = JSON.parse(responseText);
+      } catch (e) {
+        errorDetails = { rawText: responseText };
+      }
+      
+      console.error('Google Calendar API error:', errorDetails);
       return new Response(
-        JSON.stringify({ error: 'Failed to update calendar event', details: errorData }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ 
+          error: 'Failed to update calendar event', 
+          details: errorDetails,
+          status: calendarResponse.status
+        }),
+        { status: calendarResponse.status || 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
-    const calendarData = await calendarResponse.json();
-    console.log('Successfully updated event:', calendarData.id);
+    // Parse the response as JSON
+    let calendarData;
+    try {
+      calendarData = JSON.parse(responseText);
+      console.log('Successfully updated event:', calendarData.id);
+    } catch (e) {
+      console.error('Failed to parse response as JSON:', e);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Failed to parse Google Calendar response',
+          rawResponse: responseText
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     
     // Return success response
     return new Response(

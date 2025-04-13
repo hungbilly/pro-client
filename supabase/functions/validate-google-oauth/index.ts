@@ -18,14 +18,13 @@ serve(async (req) => {
     // Get environment variables
     const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID');
     const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET');
-    const GOOGLE_REDIRECT_URI = Deno.env.get('GOOGLE_REDIRECT_URI');
     
     // Check request info
     const origin = req.headers.get('origin');
     const referer = req.headers.get('referer');
     
-    // Guess what the redirect URI should be
-    const guessedRedirectUri = origin ? `${origin}/auth/google/callback` : null;
+    // Default Supabase redirect URI
+    const supabaseRedirectUri = `https://htjvyzmuqsrjpesdurni.supabase.co/auth/v1/callback`;
     
     // Full validation results
     const validation = {
@@ -43,10 +42,9 @@ serve(async (req) => {
         status: Boolean(GOOGLE_CLIENT_SECRET) ? 'ok' : 'missing'
       },
       redirectUri: {
-        configured: Boolean(GOOGLE_REDIRECT_URI),
-        value: GOOGLE_REDIRECT_URI || null,
-        guessedValue: guessedRedirectUri,
-        status: Boolean(GOOGLE_REDIRECT_URI) ? 'ok' : 'missing'
+        configured: true, // Always true since we're using the default Supabase URI
+        value: supabaseRedirectUri,
+        status: 'ok'
       },
       requestInfo: {
         origin,
@@ -72,23 +70,15 @@ serve(async (req) => {
       });
     }
     
-    if (!GOOGLE_REDIRECT_URI) {
-      validation.recommendations.push({
-        priority: 'high',
-        action: 'Set GOOGLE_REDIRECT_URI in Supabase secrets',
-        details: `Should be set to: ${guessedRedirectUri || 'https://your-app-url/auth/google/callback'}`
-      });
-    }
-    
     // Add Google Cloud Console configuration tips
     validation.recommendations.push({
       priority: 'medium',
       action: 'Verify Google Cloud Console configuration',
-      details: 'Ensure your OAuth 2.0 client has the correct redirect URI added to Authorized redirect URIs'
+      details: `Ensure your OAuth 2.0 client has this redirect URI added to Authorized redirect URIs: ${supabaseRedirectUri}`
     });
     
     // Overall status
-    const allRequiredSecretsSet = Boolean(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET && GOOGLE_REDIRECT_URI);
+    const allRequiredSecretsSet = Boolean(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET);
     validation.overallStatus = allRequiredSecretsSet ? 'ready' : 'incomplete';
     
     return new Response(

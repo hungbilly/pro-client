@@ -8,10 +8,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { Calendar, LogOut, AlertTriangle, CheckCircle2, Bug, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 
-// Define the redirect URI for Google OAuth
-const REDIRECT_URI = `${window.location.origin}/auth/google/callback`;
-const SCOPES = ["https://www.googleapis.com/auth/calendar", "https://www.googleapis.com/auth/calendar.events"].join(" ");
-
 interface CalendarIntegration {
   id: string;
   user_id: string;
@@ -119,40 +115,49 @@ const GoogleCalendarIntegration: React.FC = () => {
     fetchIntegration();
   }, [user]);
 
-  const initiateGoogleAuth = () => {
+  const initiateGoogleAuth = async () => {
     if (!clientId) {
       toast.error('Google OAuth is not properly configured');
       return;
     }
     
-    // Construct the OAuth URL
-    const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
-    
-    // Add query parameters
-    authUrl.searchParams.append('client_id', clientId);
-    authUrl.searchParams.append('redirect_uri', REDIRECT_URI);
-    authUrl.searchParams.append('response_type', 'code');
-    authUrl.searchParams.append('scope', SCOPES);
-    authUrl.searchParams.append('access_type', 'offline');
-    authUrl.searchParams.append('prompt', 'consent');
-    
-    if (user) {
-      // Store user ID in state parameter for verification
-      const stateValue = JSON.stringify({ userId: user.id });
-      authUrl.searchParams.append('state', btoa(stateValue));
+    try {
+      setLoading(true);
+      console.log('Starting Google sign-in process using Supabase...');
+      
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          scopes: 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events',
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent'
+          }
+        }
+      });
+      
+      if (error) {
+        console.error('OAuth error:', error);
+        toast.error(`Authentication failed: ${error.message}`);
+        setError(error.message);
+        return;
+      }
+      
+      if (data && data.url) {
+        console.log('Redirecting to Google auth URL:', data.url);
+        window.location.href = data.url;
+      } else {
+        console.error('No redirect URL received from Supabase');
+        setError('Failed to initiate Google sign-in. No redirect URL received.');
+        toast.error('Failed to initiate authentication');
+      }
+    } catch (error: any) {
+      console.error('Google auth error:', error);
+      setError(error.message || 'Google authentication failed');
+      toast.error(error.message || 'Google authentication failed');
+    } finally {
+      setLoading(false);
     }
-    
-    console.log('Google OAuth URL:', authUrl.toString());
-    
-    // Log the auth initiation event
-    addToApiHistory('initiate-auth', { 
-      redirectUri: REDIRECT_URI,
-      clientIdLength: clientId.length,
-      fullAuthUrl: authUrl.toString()
-    });
-    
-    // Redirect to Google OAuth
-    window.location.href = authUrl.toString();
   };
 
   const disconnectGoogleCalendar = async () => {
@@ -214,7 +219,7 @@ const GoogleCalendarIntegration: React.FC = () => {
               access_token: integration.access_token ? "***" : null,
               refresh_token: integration.refresh_token ? "***" : null,
             } : null,
-            redirectUri: REDIRECT_URI,
+            defaultRedirectUri: `https://htjvyzmuqsrjpesdurni.supabase.co/auth/v1/callback`,
             apiCalls: apiCallsHistory,
             origin: window.location.origin,
             currentUrl: window.location.href,
@@ -234,7 +239,7 @@ const GoogleCalendarIntegration: React.FC = () => {
                 access_token: integration.access_token ? "***" : null,
                 refresh_token: integration.refresh_token ? "***" : null,
               } : null,
-              redirectUri: REDIRECT_URI,
+              defaultRedirectUri: `https://htjvyzmuqsrjpesdurni.supabase.co/auth/v1/callback`,
               apiCalls: apiCallsHistory,
               origin: window.location.origin,
               currentUrl: window.location.href,
@@ -260,6 +265,9 @@ const GoogleCalendarIntegration: React.FC = () => {
     );
   }
 
+  // Default Supabase redirect URI
+  const supabaseRedirectUri = `https://htjvyzmuqsrjpesdurni.supabase.co/auth/v1/callback`;
+
   return (
     <Card>
       <CardHeader>
@@ -279,7 +287,7 @@ const GoogleCalendarIntegration: React.FC = () => {
             <AlertDescription>
               {error}
               <div className="text-xs mt-2">
-                Redirect URI: <code className="bg-gray-100 px-1">{REDIRECT_URI}</code>
+                Default redirect URI: <code className="bg-gray-100 px-1">{supabaseRedirectUri}</code>
               </div>
             </AlertDescription>
           </Alert>
@@ -292,7 +300,7 @@ const GoogleCalendarIntegration: React.FC = () => {
             <AlertDescription>
               Google OAuth is not properly configured. Please ask your administrator to set up the integration.
               <div className="text-xs mt-2">
-                Redirect URI: <code className="bg-gray-100 px-1">{REDIRECT_URI}</code>
+                Default redirect URI: <code className="bg-gray-100 px-1">{supabaseRedirectUri}</code>
               </div>
             </AlertDescription>
           </Alert>
@@ -314,7 +322,7 @@ const GoogleCalendarIntegration: React.FC = () => {
             <AlertDescription className="text-yellow-700">
               Connect your account to Google Calendar to enable automatic event creation and management.
               <div className="text-xs mt-2">
-                Remember to configure your Google OAuth settings to use this redirect URI: <code className="bg-gray-100 px-1">{REDIRECT_URI}</code>
+                Using Supabase's default redirect URI: <code className="bg-gray-100 px-1">{supabaseRedirectUri}</code>
               </div>
             </AlertDescription>
           </Alert>
@@ -325,7 +333,7 @@ const GoogleCalendarIntegration: React.FC = () => {
           <ul className="text-xs space-y-1 text-gray-700">
             <li>• Set <code className="bg-gray-100 px-1">GOOGLE_CLIENT_ID</code> and <code className="bg-gray-100 px-1">GOOGLE_CLIENT_SECRET</code> secrets in Supabase</li>
             <li>• Add <code className="bg-gray-100 px-1">{window.location.origin}</code> to Authorized JavaScript origins</li>
-            <li>• Add <code className="bg-gray-100 px-1">{REDIRECT_URI}</code> to Authorized redirect URIs</li>
+            <li>• Add <code className="bg-gray-100 px-1">{supabaseRedirectUri}</code> to Authorized redirect URIs</li>
           </ul>
         </div>
       </CardContent>

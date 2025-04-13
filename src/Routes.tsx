@@ -19,7 +19,6 @@ import JobEdit from './pages/JobEdit';
 import AppLayout from './components/AppLayout';
 import Accounts from './pages/Accounts';
 import AuthCallback from './pages/AuthCallback';
-import GoogleAuthCallback from './pages/GoogleAuthCallback';
 import Invoices from './pages/Invoices';
 import InvoicePdfView from './pages/InvoicePdfView';
 import Subscription from './pages/Subscription';
@@ -38,7 +37,6 @@ const Routes = () => {
       {/* Auth routes outside of the layout */}
       <Route path="/auth" element={<Auth />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
-      <Route path="/auth/google/callback" element={<GoogleAuthCallback />} />
       
       {/* Admin routes with admin layout */}
       <Route element={<ProtectedRoute adminOnly={true}><AdminLayout /></ProtectedRoute>}>

@@ -44,6 +44,9 @@ const GoogleOAuthDiagnostic: React.FC = () => {
     toast.success('Copied to clipboard');
   };
 
+  // Default Supabase redirect URI
+  const supabaseRedirectUri = `https://htjvyzmuqsrjpesdurni.supabase.co/auth/v1/callback`;
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'ok': return 'text-green-600';
@@ -86,6 +89,13 @@ const GoogleOAuthDiagnostic: React.FC = () => {
           Refresh
         </Button>
       </div>
+
+      <Alert variant="info" className="mb-6 bg-blue-50 border-blue-200">
+        <AlertTitle className="text-blue-800">Using Default Supabase Redirect URI</AlertTitle>
+        <AlertDescription className="text-blue-700">
+          Configuration is set to use the default Supabase redirect URI: <code className="bg-gray-100 px-1">{supabaseRedirectUri}</code>
+        </AlertDescription>
+      </Alert>
 
       {error && (
         <Alert variant="destructive" className="mb-6">
@@ -191,18 +201,12 @@ const GoogleOAuthDiagnostic: React.FC = () => {
                   <p className="flex items-center gap-2">
                     <span className="font-medium">Status:</span> 
                     <span className={getStatusColor(diagnosticData.redirectUri.status)}>
-                      {diagnosticData.redirectUri.configured ? 'Configured' : 'Not Configured'}
+                      Using Default Supabase URI
                     </span>
                   </p>
-                  {diagnosticData.redirectUri.configured ? (
-                    <p className="text-sm break-all">
-                      <span className="font-medium">Value:</span> {diagnosticData.redirectUri.value}
-                    </p>
-                  ) : (
-                    <p className="text-sm break-all">
-                      <span className="font-medium">Suggested Value:</span> {diagnosticData.redirectUri.guessedValue}
-                    </p>
-                  )}
+                  <p className="text-sm break-all">
+                    <span className="font-medium">Value:</span> {diagnosticData.redirectUri.value}
+                  </p>
                 </div>
               </div>
 

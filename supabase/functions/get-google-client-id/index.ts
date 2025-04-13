@@ -8,7 +8,6 @@ const corsHeaders = {
 
 // Get environment variables
 const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID');
-const REDIRECT_URI = Deno.env.get('GOOGLE_REDIRECT_URI');
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -19,19 +18,20 @@ serve(async (req) => {
   try {
     console.log("get-google-client-id function called");
     console.log(`GOOGLE_CLIENT_ID configured: ${Boolean(GOOGLE_CLIENT_ID)}`);
-    console.log(`REDIRECT_URI configured: ${Boolean(REDIRECT_URI)}`);
     
     // Additional diagnostic logging
     console.log('Detailed Configuration Check:');
     console.log(`- Client ID Length: ${GOOGLE_CLIENT_ID ? GOOGLE_CLIENT_ID.length : 'N/A'}`);
     console.log(`- Client ID Prefix: ${GOOGLE_CLIENT_ID ? GOOGLE_CLIENT_ID.substring(0, 5) + '...' : 'N/A'}`);
-    console.log(`- Redirect URI: ${REDIRECT_URI || 'NOT SET'}`);
+    
+    // Default Supabase redirect URI
+    const supabaseRedirectUri = `https://htjvyzmuqsrjpesdurni.supabase.co/auth/v1/callback`;
     
     // Check for common configuration issues
     const diagnosticInfo = {
       clientIdSet: Boolean(GOOGLE_CLIENT_ID),
       clientIdLength: GOOGLE_CLIENT_ID ? GOOGLE_CLIENT_ID.length : 0,
-      redirectUriSet: Boolean(REDIRECT_URI),
+      redirectUri: supabaseRedirectUri,
       requestOrigin: req.headers.get('origin') || null,
       requestReferer: req.headers.get('referer') || null,
       timestamp: new Date().toISOString(),
@@ -42,14 +42,11 @@ serve(async (req) => {
     if (!GOOGLE_CLIENT_ID) {
       diagnosticInfo.potentialIssues.push('GOOGLE_CLIENT_ID is not set in Supabase secrets');
     }
-    if (!REDIRECT_URI) {
-      diagnosticInfo.potentialIssues.push('GOOGLE_REDIRECT_URI is not set in Supabase secrets');
-    }
     
     return new Response(
       JSON.stringify({ 
         clientId: GOOGLE_CLIENT_ID || null,
-        redirectUri: REDIRECT_URI || null,
+        redirectUri: supabaseRedirectUri,
         diagnosticInfo,
         error: !GOOGLE_CLIENT_ID ? 'Google client ID not configured' : null
       }),
@@ -67,4 +64,3 @@ serve(async (req) => {
     );
   }
 });
-

@@ -42,7 +42,6 @@ const Routes = () => {
       <Route element={<ProtectedRoute adminOnly={true}><AdminLayout /></ProtectedRoute>}>
         <Route path="/admin" element={<Admin />} />
         <Route path="/debug" element={<Debug />} />
-        <Route path="/admin/calendar-test" element={<CalendarTest />} />
         <Route path="/admin/google-oauth-diagnostic" element={<GoogleOAuthDiagnostic />} />
       </Route>
       
@@ -51,6 +50,11 @@ const Routes = () => {
         <Route path="/subscription" element={<Subscription />} />
         <Route path="/subscription/success" element={<SubscriptionSuccess />} />
         <Route path="/subscription/cancel" element={<SubscriptionCancel />} />
+      </Route>
+      
+      {/* Calendar test route (protected but with regular AppLayout) */}
+      <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+        <Route path="/calendar-test" element={<CalendarTest />} />
       </Route>
       
       {/* Public invoice views without AppLayout for client view */}

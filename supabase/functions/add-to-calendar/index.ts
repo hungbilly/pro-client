@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
@@ -11,9 +12,10 @@ const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID');
 const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 
 // Function to get a valid OAuth2 access token from the user's integration
-async function getAccessToken(userId: string, supabase: any) {
+async function getAccessToken(userId: string, authHeader: string | null) {
   try {
     // Check if environment variables are set
     if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
@@ -27,6 +29,24 @@ async function getAccessToken(userId: string, supabase: any) {
     }
     
     console.log(`Looking for calendar integration for user: ${userId}`);
+    
+    // Create client with user's JWT if available, otherwise use service role key
+    let supabase;
+    if (authHeader) {
+      // Create authenticated client using the user's JWT token
+      supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        global: {
+          headers: {
+            Authorization: authHeader,
+          }
+        }
+      });
+      console.log('Created authenticated supabase client with user JWT');
+    } else {
+      // Fall back to service role key for admin operations
+      supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      console.log('Created supabase client with service role key');
+    }
     
     // Get the user's Google Calendar integration
     const { data, error } = await supabase
@@ -130,6 +150,10 @@ serve(async (req) => {
   }
 
   try {
+    // Extract the authorization header for RLS to work
+    const authHeader = req.headers.get('Authorization');
+    console.log('Authorization header present:', Boolean(authHeader));
+    
     // Get request data
     const { jobId, clientId, invoiceId, testMode, testData, userId } = await req.json();
     
@@ -139,7 +163,8 @@ serve(async (req) => {
       hasInvoiceId: Boolean(invoiceId),
       isTestMode: Boolean(testMode),
       hasTestData: Boolean(testData),
-      userId
+      userId,
+      hasAuthHeader: Boolean(authHeader)
     });
     
     if (!userId) {
@@ -160,8 +185,23 @@ serve(async (req) => {
       );
     }
 
-    // Initialize Supabase client
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // Initialize Supabase client with auth header if available
+    let supabase;
+    if (authHeader) {
+      // Create authenticated client using the user's JWT token
+      supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        global: {
+          headers: {
+            Authorization: authHeader,
+          }
+        }
+      });
+      console.log('Created authenticated supabase client with user JWT');
+    } else {
+      // Fall back to service role key for admin operations
+      supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      console.log('Created supabase client with service role key (fallback)');
+    }
     
     // Check if the user has a valid integration
     let integrationExists = false;
@@ -202,7 +242,7 @@ serve(async (req) => {
     // Get access token using the provided userId
     let accessToken;
     try {
-      accessToken = await getAccessToken(userId, supabase);
+      accessToken = await getAccessToken(userId, authHeader);
       console.log('Got access token for calendar API');
     } catch (error: any) {
       // Return a clearer error message if no integration is found
@@ -292,7 +332,7 @@ serve(async (req) => {
         );
       }
       
-      eventDate = eventData.date; // e.g., "2025-04-13"
+      eventDate = eventData.date; // e.g., "2025-04-14"
       
       // Set default times if not specified
       eventStartTime = eventData.startTime || '09:00:00'; // e.g., "09:00:00"
@@ -301,7 +341,7 @@ serve(async (req) => {
       // For all-day events
       const isFullDay = eventData.isFullDay === true;
       
-      eventSummary = `${eventData.title} - ${clientData.name}`; // "ttt - Test Client"
+      eventSummary = `${eventData.title} - ${clientData.name}`; // "ggg - Test Client"
       eventLocation = eventData.location || clientData.address; // "123 Test Street"
       eventDescription = `${eventData.description || 'Job session'} for ${clientData.name}.\n\nClient Contact:\nEmail: ${clientData.email}\nPhone: ${clientData.phone}`;
       
@@ -316,11 +356,11 @@ serve(async (req) => {
           location: eventLocation,
           description: eventDescription,
           start: {
-            date: startDate, // "2025-04-13"
+            date: startDate, // "2025-04-14"
             timeZone: 'UTC',
           },
           end: {
-            date: startDate, // "2025-04-13"
+            date: startDate, // "2025-04-14"
             timeZone: 'UTC',
           },
         };

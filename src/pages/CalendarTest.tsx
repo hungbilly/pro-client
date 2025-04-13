@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,6 +28,13 @@ interface CalendarEvent {
   startTime: string;
   endTime: string;
   calendarEventId?: string;
+}
+
+interface IntegrationDetails {
+  id: string;
+  created_at?: string;
+  updated_at?: string;
+  expires_at?: string;
 }
 
 const CalendarTest = () => {
@@ -73,7 +79,7 @@ const CalendarTest = () => {
         addLog(`Error checking integration: ${error.message}`);
         setHasIntegration(false);
         setIntegrationDetails(null);
-        return;
+        return false;
       }
       
       setLastCheckedIntegration(new Date());
@@ -95,16 +101,20 @@ const CalendarTest = () => {
         } else {
           addLog(`Token valid for ${Math.floor(minutesUntilExpiry / 60)} hours`);
         }
+        
+        return true;
       } else {
         setHasIntegration(false);
         setIntegrationDetails(null);
         addLog('No Google Calendar integration found');
+        return false;
       }
     } catch (error) {
       console.error('Exception checking integration:', error);
       addLog(`Exception checking integration: ${error instanceof Error ? error.message : String(error)}`);
       setHasIntegration(false);
       setIntegrationDetails(null);
+      return false;
     } finally {
       setIsCheckingIntegration(false);
     }
@@ -127,6 +137,18 @@ const CalendarTest = () => {
     
     if (!user) {
       toast.error('You must be logged in');
+      return;
+    }
+
+    const hasValidIntegration = await checkIntegration();
+    if (!hasValidIntegration) {
+      toast.error('Calendar integration not set up', {
+        description: 'Please connect your Google Calendar in the Settings page',
+        action: {
+          label: 'Go to Settings',
+          onClick: () => window.location.href = '/settings'
+        }
+      });
       return;
     }
 
@@ -183,17 +205,9 @@ const CalendarTest = () => {
         throw error;
       }
       
-      if (data?.error === 'Calendar integration not set up') {
-        addLog(`Error: ${data.message}`);
-        setHasIntegration(false);
-        toast.error(data.message || 'Calendar integration not set up', {
-          description: 'Please connect your Google Calendar in the Settings page',
-          action: {
-            label: 'Go to Settings',
-            onClick: () => window.location.href = '/settings'
-          }
-        });
-        return;
+      if (data?.error) {
+        addLog(`Error: ${data.message || data.error}`);
+        throw new Error(data.message || data.error);
       }
       
       if (!data.success) {

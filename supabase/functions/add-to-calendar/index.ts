@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
@@ -20,6 +21,10 @@ async function getAccessToken(userId: string, supabase: any) {
       console.error('Missing Google OAuth credentials in environment variables:',
         { clientIdExists: Boolean(GOOGLE_CLIENT_ID), clientSecretExists: Boolean(GOOGLE_CLIENT_SECRET) });
       throw new Error('Missing Google OAuth2 credentials');
+    }
+    
+    if (!userId) {
+      throw new Error('User ID is required to access calendar integration');
     }
     
     console.log(`Looking for calendar integration for user: ${userId}`);
@@ -47,6 +52,7 @@ async function getAccessToken(userId: string, supabase: any) {
     const integrationData = data[0];
     
     console.log('Retrieved integration data:', { 
+      integrationId: integrationData.id,
       hasAccessToken: Boolean(integrationData.access_token),
       hasRefreshToken: Boolean(integrationData.refresh_token),
       expiresAt: integrationData.expires_at,
@@ -151,9 +157,34 @@ serve(async (req) => {
     // Initialize Supabase client
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
+    // Check if the user has a valid integration
+    try {
+      const { data, error } = await supabase
+        .from('user_integrations')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('provider', 'google_calendar')
+        .limit(1);
+        
+      if (error || !data || data.length === 0) {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Calendar integration not set up', 
+            message: 'Please set up your Google Calendar integration in the settings page first.'
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      console.log(`Found calendar integration with ID: ${data[0].id}`);
+    } catch (error) {
+      console.error('Error checking for integration existence:', error);
+    }
+    
+    // Get access token using the provided userId
     let accessToken;
     try {
-      // Get access token using the provided userId
       accessToken = await getAccessToken(userId, supabase);
       console.log('Got access token for calendar API');
     } catch (error: any) {

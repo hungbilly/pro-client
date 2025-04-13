@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -27,13 +26,9 @@ const GoogleCalendarIntegration: React.FC = () => {
   const [debugInfo, setDebugInfo] = useState<any>(null);
   const [apiCallsHistory, setApiCallsHistory] = useState<any[]>([]);
 
-  // Current URL origin - use this for redirects
   const origin = window.location.origin;
-  
-  // Application redirect URL - where we want users to land after authentication
   const appRedirectUrl = `${origin}/settings`;
 
-  // Utility function to add to API call history
   const addToApiHistory = (callType: string, data: any) => {
     setApiCallsHistory(prev => [
       ...prev, 
@@ -45,7 +40,6 @@ const GoogleCalendarIntegration: React.FC = () => {
     ]);
   };
 
-  // Fetch the client ID from server
   useEffect(() => {
     const fetchClientId = async () => {
       try {
@@ -81,7 +75,6 @@ const GoogleCalendarIntegration: React.FC = () => {
     fetchClientId();
   }, []);
 
-  // Fetch user's Google Calendar integration status
   useEffect(() => {
     const fetchIntegration = async () => {
       if (!user) return;
@@ -135,7 +128,6 @@ const GoogleCalendarIntegration: React.FC = () => {
       console.log('Starting Google Calendar integration process...');
       console.log('Application redirect URL:', appRedirectUrl);
       
-      // Generate a state parameter that includes the user ID to maintain context
       const stateParam = JSON.stringify({
         userId: user.id,
         purpose: 'calendar_integration',
@@ -143,7 +135,6 @@ const GoogleCalendarIntegration: React.FC = () => {
         timestamp: new Date().getTime()
       });
       
-      // Call the edge function to create a Google auth URL that doesn't affect user session
       const { data, error } = await supabase.functions.invoke('create-google-calendar-auth-url', {
         body: {
           redirectUrl: appRedirectUrl,
@@ -191,7 +182,6 @@ const GoogleCalendarIntegration: React.FC = () => {
       setLoading(true);
       addToApiHistory('disconnect-start', { integrationId: integration.id });
       
-      // Call revoke token endpoint if needed
       if (integration.access_token) {
         try {
           await fetch(`https://accounts.google.com/o/oauth2/revoke?token=${integration.access_token}`, {
@@ -206,7 +196,6 @@ const GoogleCalendarIntegration: React.FC = () => {
         }
       }
       
-      // Remove from database
       const { error } = await supabase
         .from('user_integrations')
         .delete()
@@ -245,28 +234,27 @@ const GoogleCalendarIntegration: React.FC = () => {
       redirectUrl: appRedirectUrl
     };
     
-    // Fixed: Use the object form of toast instead of using title property
-    toast({
-      description: (
-        <div className="max-h-96 overflow-y-auto">
-          <pre className="text-xs whitespace-pre-wrap bg-gray-100 p-2 rounded">
-            {JSON.stringify(debugData, null, 2)}
-          </pre>
-          <Button 
-            variant="secondary"
-            size="sm"
-            className="mt-2"
-            onClick={() => {
-              navigator.clipboard.writeText(JSON.stringify(debugData, null, 2));
-              toast.success("Debug info copied to clipboard");
-            }}
-          >
-            <Copy className="h-4 w-4 mr-2" /> Copy Debug Data
-          </Button>
-        </div>
-      ),
-      duration: 15000,
-    });
+    toast(
+      <div className="max-h-96 overflow-y-auto">
+        <pre className="text-xs whitespace-pre-wrap bg-gray-100 p-2 rounded">
+          {JSON.stringify(debugData, null, 2)}
+        </pre>
+        <Button 
+          variant="secondary"
+          size="sm"
+          className="mt-2"
+          onClick={() => {
+            navigator.clipboard.writeText(JSON.stringify(debugData, null, 2));
+            toast.success("Debug info copied to clipboard");
+          }}
+        >
+          <Copy className="h-4 w-4 mr-2" /> Copy Debug Data
+        </Button>
+      </div>,
+      {
+        duration: 15000,
+      }
+    );
   };
 
   if (loading) {
@@ -339,7 +327,6 @@ const GoogleCalendarIntegration: React.FC = () => {
           <ul className="text-xs space-y-1 text-gray-700">
             <li>• Set <code className="bg-gray-100 px-1">GOOGLE_CLIENT_ID</code> and <code className="bg-gray-100 px-1">GOOGLE_CLIENT_SECRET</code> secrets in Supabase</li>
             <li>• Add <code className="bg-gray-100 px-1">{origin}</code> to Authorized JavaScript origins</li>
-            {/* Fixed: Use string concatenation to avoid accessing protected property */}
             <li>• Add <code className="bg-gray-100 px-1">{`${origin}/functions/v1/handle-google-calendar-callback`}</code> to Authorized redirect URIs</li>
           </ul>
         </div>
@@ -366,7 +353,6 @@ const GoogleCalendarIntegration: React.FC = () => {
           </Button>
         )}
         
-        {/* Debug button */}
         <Button
           variant="outline"
           size="sm"

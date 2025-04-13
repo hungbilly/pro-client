@@ -8,6 +8,7 @@ const corsHeaders = {
 
 // Get environment variables
 const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID');
+const REDIRECT_URI = Deno.env.get('GOOGLE_REDIRECT_URI');
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -16,11 +17,14 @@ serve(async (req) => {
   }
 
   try {
-    // Return the client ID
+    // Return the client ID and redirect URI for debugging
     return new Response(
       JSON.stringify({ 
         clientId: GOOGLE_CLIENT_ID || null,
-        error: GOOGLE_CLIENT_ID ? null : 'Google client ID not configured'
+        redirectUri: REDIRECT_URI || null,
+        error: !GOOGLE_CLIENT_ID ? 'Google client ID not configured' : null,
+        // Add origin information for debugging
+        requestOrigin: req.headers.get('origin') || null,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

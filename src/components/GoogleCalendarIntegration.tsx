@@ -5,7 +5,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Calendar, LogOut, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Calendar, LogOut, AlertTriangle, CheckCircle2, Bug } from 'lucide-react';
 import { toast } from 'sonner';
 
 // Define the redirect URI for Google OAuth
@@ -27,19 +27,34 @@ const GoogleCalendarIntegration: React.FC = () => {
   const [integration, setIntegration] = useState<CalendarIntegration | null>(null);
   const [loading, setLoading] = useState(true);
   const [clientId, setClientId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<any>(null);
 
   // Fetch the client ID from server
   useEffect(() => {
     const fetchClientId = async () => {
       try {
+        setLoading(true);
         const { data, error } = await supabase.functions.invoke('get-google-client-id');
+        
         if (error) {
           console.error('Error fetching Google client ID:', error);
-        } else if (data && data.clientId) {
-          setClientId(data.clientId);
+          setError(`Error fetching Google client ID: ${error.message}`);
+        } else if (data) {
+          console.log('Google Auth config:', data);
+          setDebugInfo(data);
+          
+          if (data.clientId) {
+            setClientId(data.clientId);
+          } else {
+            setError('Google OAuth is not properly configured: Missing client ID');
+          }
         }
       } catch (error) {
         console.error('Exception when fetching Google client ID:', error);
+        setError(`Exception when fetching Google client ID: ${error instanceof Error ? error.message : String(error)}`);
+      } finally {
+        setLoading(false);
       }
     };
     
@@ -99,6 +114,8 @@ const GoogleCalendarIntegration: React.FC = () => {
       authUrl.searchParams.append('state', btoa(stateValue));
     }
     
+    console.log('Google OAuth URL:', authUrl.toString());
+    
     // Redirect to Google OAuth
     window.location.href = authUrl.toString();
   };
@@ -142,6 +159,19 @@ const GoogleCalendarIntegration: React.FC = () => {
     }
   };
 
+  const showDebugInfo = () => {
+    if (debugInfo) {
+      toast.info(
+        <pre className="text-xs whitespace-pre-wrap">
+          {JSON.stringify(debugInfo, null, 2)}
+        </pre>,
+        {
+          duration: 10000,
+        }
+      );
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -162,7 +192,17 @@ const GoogleCalendarIntegration: React.FC = () => {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {!clientId && (
+        {error && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Configuration Error</AlertTitle>
+            <AlertDescription>
+              {error}
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {!error && !clientId && (
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Configuration Error</AlertTitle>
@@ -191,7 +231,7 @@ const GoogleCalendarIntegration: React.FC = () => {
           </Alert>
         )}
       </CardContent>
-      <CardFooter>
+      <CardFooter className="flex flex-wrap gap-2">
         {clientId && integration ? (
           <Button 
             variant="destructive" 
@@ -212,6 +252,17 @@ const GoogleCalendarIntegration: React.FC = () => {
             Connect to Google Calendar
           </Button>
         )}
+        
+        {/* Debug button - normally would remove this in production */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={showDebugInfo}
+          className="ml-auto flex items-center gap-2"
+        >
+          <Bug className="h-4 w-4" />
+          Debug Info
+        </Button>
       </CardFooter>
     </Card>
   );

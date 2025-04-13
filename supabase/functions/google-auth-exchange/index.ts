@@ -9,6 +9,7 @@ const corsHeaders = {
 // Get environment variables
 const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID');
 const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET');
+const EXPECTED_REDIRECT_URI = Deno.env.get('GOOGLE_REDIRECT_URI');
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -32,6 +33,12 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    
+    // Log for debugging
+    console.log(`Exchange request received. Using redirect URI: ${redirectUri}`);
+    if (EXPECTED_REDIRECT_URI) {
+      console.log(`Expected redirect URI from env: ${EXPECTED_REDIRECT_URI}`);
+    }
 
     // Exchange the authorization code for access and refresh tokens
     const tokenRequestBody = new URLSearchParams({
@@ -42,6 +49,8 @@ serve(async (req) => {
       grant_type: 'authorization_code',
     });
 
+    console.log('Sending token request to Google...');
+    
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: {
@@ -53,13 +62,25 @@ serve(async (req) => {
     if (!tokenResponse.ok) {
       const errorData = await tokenResponse.json();
       console.error('Google token exchange error:', errorData);
+      
+      // Provide detailed error information
       return new Response(
-        JSON.stringify({ error: 'Failed to exchange token', details: errorData }),
+        JSON.stringify({ 
+          error: 'Failed to exchange token', 
+          details: errorData,
+          request: {
+            redirect_uri: redirectUri,
+            client_id_provided: Boolean(GOOGLE_CLIENT_ID),
+            // Don't include the actual secret
+            client_secret_provided: Boolean(GOOGLE_CLIENT_SECRET)
+          }
+        }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     const tokenData = await tokenResponse.json();
+    console.log('Token exchange successful');
     
     return new Response(
       JSON.stringify(tokenData),
@@ -68,7 +89,10 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in google-auth-exchange function:', error);
     return new Response(
-      JSON.stringify({ error: 'Internal server error', message: error instanceof Error ? error.message : String(error) }),
+      JSON.stringify({ 
+        error: 'Internal server error', 
+        message: error instanceof Error ? error.message : String(error) 
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

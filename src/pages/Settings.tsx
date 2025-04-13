@@ -26,15 +26,17 @@ const Settings = () => {
     const source = searchParams.get('source');
     
     if (source === 'calendar') {
-      if (success) {
+      if (success === 'true') {
+        console.log("Calendar integration successful");
         toast.success('Successfully connected to Google Calendar');
       } else if (error) {
+        console.error("Calendar integration error:", error);
         toast.error(`Failed to connect: ${error}`);
       }
     }
     
     // Clear the URL parameters after processing
-    if (success || error) {
+    if ((success || error) && window.history.replaceState) {
       const newUrl = window.location.pathname;
       window.history.replaceState({}, '', newUrl);
     }

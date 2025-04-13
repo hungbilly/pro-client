@@ -27,19 +27,22 @@ const GoogleCalendarIntegration: React.FC = () => {
   const [debugInfo, setDebugInfo] = useState<any>(null);
   const [apiCallsHistory, setApiCallsHistory] = useState<any[]>([]);
 
-  // Default Supabase redirect URI - this should be consistent across the application
-  const supabaseRedirectUri = `https://htjvyzmuqsrjpesdurni.supabase.co/auth/v1/callback`;
+  // Current URL origin - use this for redirects
+  const origin = window.location.origin;
   
   // Application redirect URL - where we want users to land after authentication
-  const appRedirectUrl = `${window.location.origin}/settings`;
+  const appRedirectUrl = `${origin}/settings`;
 
   // Utility function to add to API call history
   const addToApiHistory = (callType: string, data: any) => {
-    setApiCallsHistory(prev => [...prev, { 
-      type: callType, 
-      timestamp: new Date().toISOString(), 
-      data
-    }]);
+    setApiCallsHistory(prev => [
+      ...prev, 
+      { 
+        type: callType, 
+        timestamp: new Date().toISOString(), 
+        data 
+      }
+    ]);
   };
 
   // Fetch the client ID from server
@@ -136,6 +139,7 @@ const GoogleCalendarIntegration: React.FC = () => {
       const stateParam = JSON.stringify({
         userId: user.id,
         purpose: 'calendar_integration',
+        redirectTo: appRedirectUrl,
         timestamp: new Date().getTime()
       });
       
@@ -150,7 +154,10 @@ const GoogleCalendarIntegration: React.FC = () => {
       addToApiHistory('initiate-calendar-oauth', {
         success: !error,
         error: error?.message,
-        hasRedirectUrl: Boolean(data?.url)
+        hasRedirectUrl: Boolean(data?.url),
+        requestOrigin: origin,
+        redirectUrl: appRedirectUrl,
+        timestamp: new Date().toISOString()
       });
       
       if (error) {
@@ -223,55 +230,43 @@ const GoogleCalendarIntegration: React.FC = () => {
   };
 
   const showDebugInfo = () => {
-    toast.info(
-      <div className="max-h-96 overflow-y-auto">
-        <h3 className="font-bold mb-2">Debug Information</h3>
-        <pre className="text-xs whitespace-pre-wrap">
-          {JSON.stringify({
-            clientId: clientId ? `${clientId.substring(0, 6)}...` : null,
-            clientIdLength: clientId?.length || 0,
-            debugInfo,
-            integration: integration ? {
-              ...integration,
-              access_token: integration.access_token ? "***" : null,
-              refresh_token: integration.refresh_token ? "***" : null,
-            } : null,
-            defaultRedirectUri: supabaseRedirectUri,
-            apiCalls: apiCallsHistory,
-            origin: window.location.origin,
-            currentUrl: window.location.href,
-          }, null, 2)}
-        </pre>
-        <Button 
-          variant="secondary"
-          size="sm"
-          className="mt-2"
-          onClick={() => {
-            const debugData = {
-              clientId: clientId ? `${clientId.substring(0, 6)}...` : null,
-              clientIdLength: clientId?.length || 0,
-              debugInfo,
-              integration: integration ? {
-                ...integration,
-                access_token: integration.access_token ? "***" : null,
-                refresh_token: integration.refresh_token ? "***" : null,
-              } : null,
-              defaultRedirectUri: supabaseRedirectUri,
-              apiCalls: apiCallsHistory,
-              origin: window.location.origin,
-              currentUrl: window.location.href,
-            };
-            navigator.clipboard.writeText(JSON.stringify(debugData, null, 2));
-            toast.success("Debug info copied to clipboard");
-          }}
-        >
-          <Copy className="h-4 w-4 mr-2" /> Copy All Debug Data
-        </Button>
-      </div>,
-      {
-        duration: 15000,
-      }
-    );
+    const debugData = {
+      clientId: clientId ? `${clientId.substring(0, 6)}...` : null,
+      clientIdLength: clientId?.length || 0,
+      debugInfo,
+      integration: integration ? {
+        ...integration,
+        access_token: integration.access_token ? "***" : null,
+        refresh_token: integration.refresh_token ? "***" : null,
+      } : null,
+      apiCalls: apiCallsHistory,
+      origin: origin,
+      currentUrl: window.location.href,
+      redirectUrl: appRedirectUrl
+    };
+    
+    toast({
+      title: "Debug Information",
+      description: (
+        <div className="max-h-96 overflow-y-auto">
+          <pre className="text-xs whitespace-pre-wrap bg-gray-100 p-2 rounded">
+            {JSON.stringify(debugData, null, 2)}
+          </pre>
+          <Button 
+            variant="secondary"
+            size="sm"
+            className="mt-2"
+            onClick={() => {
+              navigator.clipboard.writeText(JSON.stringify(debugData, null, 2));
+              toast.success("Debug info copied to clipboard");
+            }}
+          >
+            <Copy className="h-4 w-4 mr-2" /> Copy Debug Data
+          </Button>
+        </div>
+      ),
+      duration: 15000,
+    });
   };
 
   if (loading) {
@@ -313,9 +308,6 @@ const GoogleCalendarIntegration: React.FC = () => {
             <AlertTitle>Configuration Error</AlertTitle>
             <AlertDescription>
               Google OAuth is not properly configured. Please ask your administrator to set up the integration.
-              <div className="text-xs mt-2">
-                Default redirect URI: <code className="bg-gray-100 px-1">{supabaseRedirectUri}</code>
-              </div>
             </AlertDescription>
           </Alert>
         )}
@@ -346,9 +338,8 @@ const GoogleCalendarIntegration: React.FC = () => {
           <h3 className="text-sm font-medium mb-2">Setup Requirements:</h3>
           <ul className="text-xs space-y-1 text-gray-700">
             <li>• Set <code className="bg-gray-100 px-1">GOOGLE_CLIENT_ID</code> and <code className="bg-gray-100 px-1">GOOGLE_CLIENT_SECRET</code> secrets in Supabase</li>
-            <li>• Add <code className="bg-gray-100 px-1">{window.location.origin}</code> to Authorized JavaScript origins</li>
-            <li>• Add <code className="bg-gray-100 px-1">{supabaseRedirectUri}</code> to Authorized redirect URIs</li>
-            <li>• Add <code className="bg-gray-100 px-1">{appRedirectUrl}</code> to Authorized redirect URIs</li>
+            <li>• Add <code className="bg-gray-100 px-1">{origin}</code> to Authorized JavaScript origins</li>
+            <li>• Add <code className="bg-gray-100 px-1">{`${supabase.supabaseUrl}/functions/v1/handle-google-calendar-callback`}</code> to Authorized redirect URIs</li>
           </ul>
         </div>
       </CardContent>

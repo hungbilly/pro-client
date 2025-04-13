@@ -7,15 +7,49 @@ const GOOGLE_CLIENT_SECRET = Deno.env.get("GOOGLE_CLIENT_SECRET") || "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
+// CORS headers for browser requests
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Content-Type': 'application/json'
+};
+
 serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+  
   try {
     // Parse the URL and extract query parameters
     const url = new URL(req.url);
     const code = url.searchParams.get("code");
     const stateParam = url.searchParams.get("state");
-    const redirectTo = url.searchParams.get("redirect_to") || "/settings";
     const error = url.searchParams.get("error");
     
+    // Default to settings page if no redirect specified
+    let redirectTo = "/settings";
+    
+    // Try to extract redirectTo from state if present
+    if (stateParam) {
+      try {
+        const parsedState = JSON.parse(stateParam);
+        if (parsedState.redirectTo) {
+          redirectTo = parsedState.redirectTo;
+          console.log("Found custom redirect in state:", redirectTo);
+        }
+      } catch (e) {
+        console.error("Error parsing state parameter:", e);
+        // Continue with default redirect
+      }
+    }
+    
+    // Ensure redirectTo starts with a slash if not a full URL
+    if (!redirectTo.startsWith('http') && !redirectTo.startsWith('/')) {
+      redirectTo = '/' + redirectTo;
+    }
+    
+    // Handle errors from Google
     if (error) {
       console.error("Google OAuth error:", error);
       // Redirect to the frontend with error information
@@ -27,8 +61,9 @@ serve(async (req) => {
       });
     }
     
+    // Check for required parameters
     if (!code || !stateParam) {
-      console.error("Missing code or state parameter");
+      console.error("Missing code or state parameter", { code: Boolean(code), state: Boolean(stateParam) });
       return new Response("", {
         status: 302,
         headers: {
@@ -38,11 +73,12 @@ serve(async (req) => {
     }
     
     // Parse the state parameter to get user ID
-    let parsedState: { userId?: string; purpose?: string };
+    let parsedState: { userId?: string; purpose?: string; redirectTo?: string };
     try {
       parsedState = JSON.parse(stateParam);
+      console.log("Successfully parsed state:", JSON.stringify(parsedState));
     } catch (e) {
-      console.error("Invalid state parameter:", e);
+      console.error("Invalid state parameter:", e, "Raw state:", stateParam);
       return new Response("", {
         status: 302,
         headers: {
@@ -53,8 +89,9 @@ serve(async (req) => {
     
     const { userId, purpose } = parsedState;
     
+    // Validate state parameters
     if (!userId || purpose !== "calendar_integration") {
-      console.error("Invalid or missing userId in state parameter");
+      console.error("Invalid or missing userId in state parameter", { userId, purpose });
       return new Response("", {
         status: 302,
         headers: {
@@ -64,6 +101,7 @@ serve(async (req) => {
     }
 
     // Exchange the authorization code for tokens
+    console.log("Exchanging code for tokens");
     const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
       headers: {
@@ -107,9 +145,11 @@ serve(async (req) => {
     expiresAt.setSeconds(expiresAt.getSeconds() + expires_in);
 
     // Create a Supabase client with the service role key
+    console.log("Creating Supabase client");
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     // Store the tokens in the database
+    console.log("Storing tokens in database for user:", userId);
     const { error: dbError } = await supabase
       .from("user_integrations")
       .upsert({
@@ -131,6 +171,8 @@ serve(async (req) => {
       });
     }
 
+    console.log("Successfully stored tokens, redirecting to:", redirectTo);
+    
     // Redirect back to the application with success message
     return new Response("", {
       status: 302,

@@ -122,33 +122,35 @@ const GoogleCalendarIntegration: React.FC = () => {
   }, [user]);
 
   const initiateGoogleAuth = async () => {
-    if (!clientId) {
-      toast.error('Google OAuth is not properly configured');
+    if (!clientId || !user) {
+      toast.error('Google OAuth is not properly configured or you\'re not logged in');
       return;
     }
     
     try {
       setLoading(true);
-      console.log('Starting Google sign-in process using Supabase...');
+      console.log('Starting Google Calendar integration process...');
       console.log('Application redirect URL:', appRedirectUrl);
       
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          scopes: 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events',
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent'
-          },
-          redirectTo: appRedirectUrl
+      // Generate a state parameter that includes the user ID to maintain context
+      const stateParam = JSON.stringify({
+        userId: user.id,
+        purpose: 'calendar_integration',
+        timestamp: new Date().getTime()
+      });
+      
+      // Call the edge function to create a Google auth URL that doesn't affect user session
+      const { data, error } = await supabase.functions.invoke('create-google-calendar-auth-url', {
+        body: {
+          redirectUrl: appRedirectUrl,
+          state: stateParam
         }
       });
       
-      addToApiHistory('initiate-oauth', {
+      addToApiHistory('initiate-calendar-oauth', {
         success: !error,
         error: error?.message,
-        hasRedirectUrl: Boolean(data?.url),
-        redirectToAppUrl: appRedirectUrl
+        hasRedirectUrl: Boolean(data?.url)
       });
       
       if (error) {
@@ -162,8 +164,8 @@ const GoogleCalendarIntegration: React.FC = () => {
         console.log('Redirecting to Google auth URL:', data.url);
         window.location.href = data.url;
       } else {
-        console.error('No redirect URL received from Supabase');
-        setError('Failed to initiate Google sign-in. No redirect URL received.');
+        console.error('No redirect URL received');
+        setError('Failed to initiate Google Calendar integration. No redirect URL received.');
         toast.error('Failed to initiate authentication');
       }
     } catch (error: any) {

@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import CompanySettings from '@/components/CompanySettings';
@@ -11,11 +11,34 @@ import SubscriptionStatus from '@/components/SubscriptionStatus';
 import SubscriptionManagement from '@/components/SubscriptionManagement';
 import GoogleCalendarIntegration from '@/components/GoogleCalendarIntegration';
 import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Bug } from 'lucide-react';
+import { toast } from 'sonner';
 
 const Settings = () => {
   console.log("Settings page rendering");
+  const [searchParams] = useSearchParams();
+  
+  useEffect(() => {
+    // Handle calendar integration results
+    const success = searchParams.get('success');
+    const error = searchParams.get('error');
+    const source = searchParams.get('source');
+    
+    if (source === 'calendar') {
+      if (success) {
+        toast.success('Successfully connected to Google Calendar');
+      } else if (error) {
+        toast.error(`Failed to connect: ${error}`);
+      }
+    }
+    
+    // Clear the URL parameters after processing
+    if (success || error) {
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [searchParams]);
   
   return (
     <PageTransition>

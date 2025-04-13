@@ -34,3 +34,8 @@ verify_jwt = false
 [functions.cancel-subscription]
 verify_jwt = true
 
+[functions.add-to-calendar]
+verify_jwt = true
+
+[functions.update-calendar-event]
+verify_jwt = true

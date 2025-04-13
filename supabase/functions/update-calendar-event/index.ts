@@ -12,9 +12,28 @@ const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID');
 const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 
 // Function to get a valid OAuth2 access token from the user's integration
-async function getAccessTokenForUser(userId: string, supabase: any) {
+async function getAccessTokenForUser(userId: string, authHeader: string | null) {
+  // Create client with user's JWT if available, otherwise use service role key
+  let supabase;
+  if (authHeader) {
+    // Create authenticated client using the user's JWT token
+    supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: {
+        headers: {
+          Authorization: authHeader,
+        }
+      }
+    });
+    console.log('Created authenticated supabase client with user JWT');
+  } else {
+    // Fall back to service role key for admin operations
+    supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    console.log('Created supabase client with service role key');
+  }
+
   // Get the user's Google Calendar integration
   const { data, error } = await supabase
     .from('user_integrations')
@@ -93,7 +112,13 @@ serve(async (req) => {
   }
 
   try {
+    // Extract the authorization header for RLS to work
+    const authHeader = req.headers.get('Authorization');
+    console.log('Authorization header present:', Boolean(authHeader));
+    
     const { eventId, userId, jobData } = await req.json();
+    
+    console.log(`Attempting to update event: ${eventId} for user: ${userId}`);
     
     if (!eventId || !userId || !jobData) {
       return new Response(
@@ -102,14 +127,13 @@ serve(async (req) => {
       );
     }
 
-    // Initialize Supabase client
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    
     // Get access token for the user
     let accessToken;
     try {
-      accessToken = await getAccessTokenForUser(userId, supabase);
+      accessToken = await getAccessTokenForUser(userId, authHeader);
+      console.log('Successfully acquired access token');
     } catch (error: any) {
+      console.error('Error getting access token:', error.message);
       return new Response(
         JSON.stringify({ error: 'Authentication error', message: error.message }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -133,12 +157,18 @@ serve(async (req) => {
           timeZone: 'UTC',
         },
       };
+      console.log('Created all-day event object for update');
     } else {
       // Format for specific time events
       const startTime = jobData.start_time || '09:00:00';
       const endTime = jobData.end_time || '17:00:00';
-      const formattedStartDate = `${jobData.date}T${startTime}`;
-      const formattedEndDate = `${jobData.date}T${endTime}`;
+      
+      // Ensure times include seconds
+      const normalizedStartTime = startTime.length === 5 ? `${startTime}:00` : startTime;
+      const normalizedEndTime = endTime.length === 5 ? `${endTime}:00` : endTime;
+      
+      const formattedStartDate = `${jobData.date}T${normalizedStartTime}`;
+      const formattedEndDate = `${jobData.date}T${normalizedEndTime}`;
       
       event = {
         summary: jobData.title,
@@ -153,6 +183,7 @@ serve(async (req) => {
           timeZone: 'UTC',
         },
       };
+      console.log('Created timed event object for update with normalized times');
     }
     
     console.log("Using access token:", accessToken ? "Token present" : "No token");
@@ -180,6 +211,7 @@ serve(async (req) => {
     }
     
     const calendarData = await calendarResponse.json();
+    console.log('Successfully updated event:', calendarData.id);
     
     // Return success response
     return new Response(

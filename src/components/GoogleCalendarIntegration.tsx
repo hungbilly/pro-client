@@ -8,8 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Calendar, LogOut, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 
-// Define the client ID for Google OAuth
-const GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID"; // Replace with your Google Client ID
+// Define the redirect URI for Google OAuth
 const REDIRECT_URI = `${window.location.origin}/auth/google/callback`;
 const SCOPES = ["https://www.googleapis.com/auth/calendar", "https://www.googleapis.com/auth/calendar.events"].join(" ");
 
@@ -27,6 +26,25 @@ const GoogleCalendarIntegration: React.FC = () => {
   const { user } = useAuth();
   const [integration, setIntegration] = useState<CalendarIntegration | null>(null);
   const [loading, setLoading] = useState(true);
+  const [clientId, setClientId] = useState<string | null>(null);
+
+  // Fetch the client ID from server
+  useEffect(() => {
+    const fetchClientId = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('get-google-client-id');
+        if (error) {
+          console.error('Error fetching Google client ID:', error);
+        } else if (data && data.clientId) {
+          setClientId(data.clientId);
+        }
+      } catch (error) {
+        console.error('Exception when fetching Google client ID:', error);
+      }
+    };
+    
+    fetchClientId();
+  }, []);
 
   // Fetch user's Google Calendar integration status
   useEffect(() => {
@@ -59,11 +77,16 @@ const GoogleCalendarIntegration: React.FC = () => {
   }, [user]);
 
   const initiateGoogleAuth = () => {
+    if (!clientId) {
+      toast.error('Google OAuth is not properly configured');
+      return;
+    }
+    
     // Construct the OAuth URL
     const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
     
     // Add query parameters
-    authUrl.searchParams.append('client_id', GOOGLE_CLIENT_ID);
+    authUrl.searchParams.append('client_id', clientId);
     authUrl.searchParams.append('redirect_uri', REDIRECT_URI);
     authUrl.searchParams.append('response_type', 'code');
     authUrl.searchParams.append('scope', SCOPES);
@@ -139,7 +162,17 @@ const GoogleCalendarIntegration: React.FC = () => {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {integration ? (
+        {!clientId && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Configuration Error</AlertTitle>
+            <AlertDescription>
+              Google OAuth is not properly configured. Please ask your administrator to set up the integration.
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {clientId && integration ? (
           <Alert className="bg-green-50 border-green-200">
             <CheckCircle2 className="h-4 w-4 text-green-600" />
             <AlertTitle className="text-green-800">Connected</AlertTitle>
@@ -148,7 +181,7 @@ const GoogleCalendarIntegration: React.FC = () => {
               Event management is enabled.
             </AlertDescription>
           </Alert>
-        ) : (
+        ) : clientId && (
           <Alert variant="warning" className="bg-yellow-50 border-yellow-200">
             <AlertTriangle className="h-4 w-4 text-yellow-600" />
             <AlertTitle className="text-yellow-800">Not Connected</AlertTitle>
@@ -159,7 +192,7 @@ const GoogleCalendarIntegration: React.FC = () => {
         )}
       </CardContent>
       <CardFooter>
-        {integration ? (
+        {clientId && integration ? (
           <Button 
             variant="destructive" 
             onClick={disconnectGoogleCalendar} 
@@ -169,7 +202,7 @@ const GoogleCalendarIntegration: React.FC = () => {
             <LogOut className="h-4 w-4" />
             Disconnect Calendar
           </Button>
-        ) : (
+        ) : clientId && (
           <Button 
             onClick={initiateGoogleAuth} 
             disabled={loading}

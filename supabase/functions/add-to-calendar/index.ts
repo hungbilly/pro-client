@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
@@ -361,9 +360,13 @@ serve(async (req) => {
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       } else {
+        // Ensure startTime and endTime include seconds
+        const normalizedStartTime = eventStartTime.length === 5 ? `${eventStartTime}:00` : eventStartTime; // "09:00:00"
+        const normalizedEndTime = eventEndTime.length === 5 ? `${eventEndTime}:00` : eventEndTime; // "17:00:00"
+        
         // Format start and end times for non-full-day events
-        const formattedStartDate = `${eventDate}T${eventStartTime}Z`; // "2025-04-13T09:00:00Z"
-        const formattedEndDate = `${eventDate}T${eventEndTime}Z`; // "2025-04-13T17:00:00Z"
+        const formattedStartDate = `${eventDate}T${normalizedStartTime}Z`; // "2025-04-14T09:00:00Z"
+        const formattedEndDate = `${eventDate}T${normalizedEndTime}Z`; // "2025-04-14T17:00:00Z"
         
         // Create event object with start/end times
         const event = {

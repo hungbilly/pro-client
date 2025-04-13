@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Copy, AlertTriangle, CheckCircle2, RefreshCw, ExternalLink } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 
 const GoogleOAuthDiagnostic: React.FC = () => {
   const [loading, setLoading] = useState(true);
@@ -41,7 +41,10 @@ const GoogleOAuthDiagnostic: React.FC = () => {
 
   const copyToClipboard = (text: any) => {
     navigator.clipboard.writeText(JSON.stringify(text, null, 2));
-    toast.success('Copied to clipboard');
+    toast({
+      title: "Copied",
+      description: "Diagnostic information copied to clipboard",
+    });
   };
 
   // Default Supabase redirect URI
@@ -90,7 +93,7 @@ const GoogleOAuthDiagnostic: React.FC = () => {
         </Button>
       </div>
 
-      <Alert variant="info" className="mb-6 bg-blue-50 border-blue-200">
+      <Alert variant="default" className="mb-6 bg-blue-50 border-blue-200">
         <AlertTitle className="text-blue-800">Using Default Supabase Redirect URI</AlertTitle>
         <AlertDescription className="text-blue-700">
           Configuration is set to use the default Supabase redirect URI: <code className="bg-gray-100 px-1">{supabaseRedirectUri}</code>

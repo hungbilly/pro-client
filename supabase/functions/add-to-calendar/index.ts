@@ -44,6 +44,8 @@ async function getAccessToken(userId: string, supabase: any) {
       throw new Error('Error fetching Google Calendar integration');
     }
     
+    console.log('Query result:', { dataLength: data?.length, data });
+    
     if (!data || data.length === 0) {
       console.error('No integration found for user:', userId);
       throw new Error('No Google Calendar integration found. Please connect your Google Calendar account first.');
@@ -291,21 +293,20 @@ serve(async (req) => {
         );
       }
       
-      eventDate = eventData.date;
+      eventDate = eventData.date; // e.g., "2025-04-13"
       
       // Set default times if not specified
-      eventStartTime = eventData.startTime || '09:00:00';
-      eventEndTime = eventData.endTime || '17:00:00';
+      eventStartTime = eventData.startTime || '09:00:00'; // e.g., "09:00:00"
+      eventEndTime = eventData.endTime || '17:00:00'; // e.g., "17:00:00"
       
       // For all-day events
       const isFullDay = eventData.isFullDay === true;
       
-      eventSummary = `${eventData.title} - ${clientData.name}`;
-      eventLocation = eventData.location || clientData.address;
+      eventSummary = `${eventData.title} - ${clientData.name}`; // "ttt - Test Client"
+      eventLocation = eventData.location || clientData.address; // "123 Test Street"
       eventDescription = `${eventData.description || 'Job session'} for ${clientData.name}.\n\nClient Contact:\nEmail: ${clientData.email}\nPhone: ${clientData.phone}`;
       
       // Format date/time for Google Calendar
-      // For full-day events, we use date only format
       if (isFullDay) {
         // Format as YYYY-MM-DD for all-day events
         const startDate = eventDate;
@@ -316,14 +317,16 @@ serve(async (req) => {
           location: eventLocation,
           description: eventDescription,
           start: {
-            date: startDate,
+            date: startDate, // "2025-04-13"
             timeZone: 'UTC',
           },
           end: {
-            date: startDate, // Same day end for a single day event
+            date: startDate, // "2025-04-13"
             timeZone: 'UTC',
           },
         };
+        
+        console.log('Creating all-day event with data:', JSON.stringify(event));
         
         // Insert event to Google Calendar using OAuth2 access token
         const calendarResponse = await fetch(
@@ -359,8 +362,8 @@ serve(async (req) => {
         );
       } else {
         // Format start and end times for non-full-day events
-        const formattedStartDate = `${eventDate}T${eventStartTime}-00:00`;
-        const formattedEndDate = `${eventDate}T${eventEndTime}-00:00`;
+        const formattedStartDate = `${eventDate}T${eventStartTime}Z`; // "2025-04-13T09:00:00Z"
+        const formattedEndDate = `${eventDate}T${eventEndTime}Z`; // "2025-04-13T17:00:00Z"
         
         // Create event object with start/end times
         const event = {
@@ -424,8 +427,8 @@ serve(async (req) => {
       
       // Format shooting date (YYYY-MM-DD to RFC3339 format)
       const shootingDate = new Date(eventData.shooting_date);
-      const formattedStartDate = `${shootingDate.toISOString().split('T')[0]}T09:00:00-00:00`; // Default to 9 AM
-      const formattedEndDate = `${shootingDate.toISOString().split('T')[0]}T17:00:00-00:00`;   // Default to 5 PM
+      const formattedStartDate = `${shootingDate.toISOString().split('T')[0]}T09:00:00Z`; // Default to 9 AM
+      const formattedEndDate = `${shootingDate.toISOString().split('T')[0]}T17:00:00Z`;   // Default to 5 PM
       
       // Create event object
       const event = {
@@ -441,6 +444,8 @@ serve(async (req) => {
           timeZone: 'UTC',
         },
       };
+      
+      console.log('Creating event with data:', JSON.stringify(event));
       
       // Insert event to Google Calendar using OAuth2 access token
       const calendarResponse = await fetch(

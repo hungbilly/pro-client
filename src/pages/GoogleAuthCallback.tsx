@@ -6,12 +6,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Copy } from 'lucide-react';
 
 const GoogleAuthCallback: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [details, setDetails] = useState<any>(null);
+  const [exchangeResponse, setExchangeResponse] = useState<any>(null);
   
   useEffect(() => {
     const handleCallback = async () => {
@@ -26,19 +28,22 @@ const GoogleAuthCallback: React.FC = () => {
         // Collect details for debugging
         const callbackDetails = {
           hasCode: Boolean(code),
+          codeLength: code ? code.length : 0,
           hasState: Boolean(stateParam),
           hasError: Boolean(errorParam),
           errorParam,
           errorDescription,
           redirectUri: `${window.location.origin}/auth/google/callback`,
           currentUrl: window.location.href,
+          timestamp: new Date().toISOString()
         };
         setDetails(callbackDetails);
+        console.log("Google Auth callback details:", callbackDetails);
         
         // If there's an error in the URL, display it
         if (errorParam) {
           const errorMessage = errorDescription || errorParam;
-          console.error('Google OAuth error:', errorMessage);
+          console.error('Google OAuth error from URL:', errorMessage);
           setError(`Google OAuth error: ${errorMessage}`);
           return;
         }
@@ -60,6 +65,7 @@ const GoogleAuthCallback: React.FC = () => {
         }
         
         // Call our exchange token edge function
+        console.log("Calling token exchange function with code length:", code.length);
         const response = await supabase.functions.invoke('google-auth-exchange', {
           body: { 
             code, 
@@ -67,9 +73,13 @@ const GoogleAuthCallback: React.FC = () => {
           }
         });
         
+        // Store the response for debugging
+        setExchangeResponse(response);
+        console.log("Token exchange response:", response);
+        
         if (response.error) {
           console.error('Token exchange error:', response.error);
-          setError(`Token exchange error: ${response.error.message}`);
+          setError(`Token exchange error: ${response.error.message || JSON.stringify(response.error)}`);
           return;
         }
         
@@ -97,6 +107,7 @@ const GoogleAuthCallback: React.FC = () => {
           }, { onConflict: 'user_id,provider' });
           
         if (upsertError) {
+          console.error('Database error storing tokens:', upsertError);
           throw upsertError;
         }
         
@@ -111,6 +122,11 @@ const GoogleAuthCallback: React.FC = () => {
     
     handleCallback();
   }, [navigate, user]);
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(JSON.stringify(text, null, 2));
+    toast.success('Copied to clipboard');
+  };
   
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
@@ -129,9 +145,38 @@ const GoogleAuthCallback: React.FC = () => {
             
             {details && (
               <div className="mt-4 text-left">
-                <p className="text-sm font-bold mb-1">Debug information:</p>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-sm font-bold">Callback Details:</p>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => copyToClipboard(details)}
+                    className="h-6 gap-1"
+                  >
+                    <Copy size={12} /> Copy
+                  </Button>
+                </div>
                 <pre className="text-xs bg-gray-100 p-2 rounded overflow-x-auto">
                   {JSON.stringify(details, null, 2)}
+                </pre>
+              </div>
+            )}
+            
+            {exchangeResponse && (
+              <div className="mt-4 text-left">
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-sm font-bold">API Response:</p>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => copyToClipboard(exchangeResponse)}
+                    className="h-6 gap-1"
+                  >
+                    <Copy size={12} /> Copy
+                  </Button>
+                </div>
+                <pre className="text-xs bg-gray-100 p-2 rounded overflow-x-auto max-h-40 overflow-y-auto">
+                  {JSON.stringify(exchangeResponse, null, 2)}
                 </pre>
               </div>
             )}

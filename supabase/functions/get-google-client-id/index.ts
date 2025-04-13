@@ -17,14 +17,21 @@ serve(async (req) => {
   }
 
   try {
+    console.log("get-google-client-id function called");
+    console.log(`GOOGLE_CLIENT_ID configured: ${Boolean(GOOGLE_CLIENT_ID)}`);
+    console.log(`REDIRECT_URI configured: ${Boolean(REDIRECT_URI)}`);
+    
     // Return the client ID and redirect URI for debugging
     return new Response(
       JSON.stringify({ 
         clientId: GOOGLE_CLIENT_ID || null,
         redirectUri: REDIRECT_URI || null,
         error: !GOOGLE_CLIENT_ID ? 'Google client ID not configured' : null,
-        // Add origin information for debugging
+        // Add more diagnostic information
+        clientIdLength: GOOGLE_CLIENT_ID ? GOOGLE_CLIENT_ID.length : 0,
         requestOrigin: req.headers.get('origin') || null,
+        requestReferer: req.headers.get('referer') || null,
+        timestamp: new Date().toISOString()
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

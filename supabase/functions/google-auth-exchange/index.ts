@@ -18,9 +18,15 @@ serve(async (req) => {
   }
 
   try {
+    console.log("google-auth-exchange function called");
+    console.log(`GOOGLE_CLIENT_ID configured: ${Boolean(GOOGLE_CLIENT_ID)}`);
+    console.log(`GOOGLE_CLIENT_SECRET configured: ${Boolean(GOOGLE_CLIENT_SECRET)}`);
+    console.log(`EXPECTED_REDIRECT_URI configured: ${Boolean(EXPECTED_REDIRECT_URI)}`);
+    
     const { code, redirectUri } = await req.json();
     
     if (!code || !redirectUri) {
+      console.error("Missing required parameters:", { hasCode: Boolean(code), hasRedirectUri: Boolean(redirectUri) });
       return new Response(
         JSON.stringify({ error: 'Missing required parameters' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -28,16 +34,25 @@ serve(async (req) => {
     }
 
     if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+      console.error("Missing OAuth credentials:", { 
+        hasClientId: Boolean(GOOGLE_CLIENT_ID), 
+        hasClientSecret: Boolean(GOOGLE_CLIENT_SECRET) 
+      });
       return new Response(
         JSON.stringify({ error: 'Missing Google OAuth credentials on server' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
-    // Log for debugging
+    // Log detailed information for debugging
     console.log(`Exchange request received. Using redirect URI: ${redirectUri}`);
+    console.log(`Client ID length: ${GOOGLE_CLIENT_ID.length}`);
+    console.log(`Client secret length: ${GOOGLE_CLIENT_SECRET.length}`);
+    console.log(`Auth code length: ${code.length}`);
+    
     if (EXPECTED_REDIRECT_URI) {
       console.log(`Expected redirect URI from env: ${EXPECTED_REDIRECT_URI}`);
+      console.log(`URIs match: ${redirectUri === EXPECTED_REDIRECT_URI}`);
     }
 
     // Exchange the authorization code for access and refresh tokens
@@ -50,6 +65,12 @@ serve(async (req) => {
     });
 
     console.log('Sending token request to Google...');
+    // Log the token request params (without revealing full values)
+    console.log({
+      code_prefix: code.substring(0, 5) + '...',
+      redirect_uri: redirectUri,
+      client_id_prefix: GOOGLE_CLIENT_ID.substring(0, 5) + '...',
+    });
     
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
@@ -70,9 +91,14 @@ serve(async (req) => {
           details: errorData,
           request: {
             redirect_uri: redirectUri,
+            redirect_uri_env: EXPECTED_REDIRECT_URI || null,
+            redirect_uris_match: redirectUri === EXPECTED_REDIRECT_URI,
             client_id_provided: Boolean(GOOGLE_CLIENT_ID),
+            client_id_length: GOOGLE_CLIENT_ID ? GOOGLE_CLIENT_ID.length : 0,
             // Don't include the actual secret
-            client_secret_provided: Boolean(GOOGLE_CLIENT_SECRET)
+            client_secret_provided: Boolean(GOOGLE_CLIENT_SECRET),
+            client_secret_length: GOOGLE_CLIENT_SECRET ? GOOGLE_CLIENT_SECRET.length : 0,
+            code_length: code ? code.length : 0
           }
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -91,7 +117,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         error: 'Internal server error', 
-        message: error instanceof Error ? error.message : String(error) 
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

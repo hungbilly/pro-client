@@ -245,8 +245,8 @@ const GoogleCalendarIntegration: React.FC = () => {
       redirectUrl: appRedirectUrl
     };
     
+    // Fixed: Use the object form of toast instead of using title property
     toast({
-      title: "Debug Information",
       description: (
         <div className="max-h-96 overflow-y-auto">
           <pre className="text-xs whitespace-pre-wrap bg-gray-100 p-2 rounded">
@@ -339,7 +339,8 @@ const GoogleCalendarIntegration: React.FC = () => {
           <ul className="text-xs space-y-1 text-gray-700">
             <li>• Set <code className="bg-gray-100 px-1">GOOGLE_CLIENT_ID</code> and <code className="bg-gray-100 px-1">GOOGLE_CLIENT_SECRET</code> secrets in Supabase</li>
             <li>• Add <code className="bg-gray-100 px-1">{origin}</code> to Authorized JavaScript origins</li>
-            <li>• Add <code className="bg-gray-100 px-1">{`${supabase.supabaseUrl}/functions/v1/handle-google-calendar-callback`}</code> to Authorized redirect URIs</li>
+            {/* Fixed: Use string concatenation to avoid accessing protected property */}
+            <li>• Add <code className="bg-gray-100 px-1">{`${origin}/functions/v1/handle-google-calendar-callback`}</code> to Authorized redirect URIs</li>
           </ul>
         </div>
       </CardContent>

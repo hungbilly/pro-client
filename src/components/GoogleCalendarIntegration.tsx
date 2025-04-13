@@ -27,6 +27,7 @@ const GoogleCalendarIntegration: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<any>(null);
   const [apiCallsHistory, setApiCallsHistory] = useState<any[]>([]);
+  const [initialCheckComplete, setInitialCheckComplete] = useState(false);
 
   const origin = window.location.origin;
   const appRedirectUrl = `${origin}/settings`;
@@ -69,8 +70,6 @@ const GoogleCalendarIntegration: React.FC = () => {
         console.error('Exception when fetching Google client ID:', error);
         setError(`Exception when fetching Google client ID: ${error instanceof Error ? error.message : String(error)}`);
         addToApiHistory('get-google-client-id-error', { error });
-      } finally {
-        setLoading(false);
       }
     };
     
@@ -118,6 +117,7 @@ const GoogleCalendarIntegration: React.FC = () => {
         addToApiHistory('fetch-integration-exception', { error });
       } finally {
         setLoading(false);
+        setInitialCheckComplete(true);
       }
     };
 
@@ -316,7 +316,8 @@ const GoogleCalendarIntegration: React.FC = () => {
       origin: origin,
       currentUrl: window.location.href,
       redirectUrl: appRedirectUrl,
-      userId: user?.id
+      userId: user?.id,
+      initialCheckComplete
     };
     
     toast(
@@ -342,11 +343,22 @@ const GoogleCalendarIntegration: React.FC = () => {
     );
   };
 
-  if (loading) {
+  // Show skeleton while initial fetching is happening
+  if (loading && !initialCheckComplete) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <div className="animate-spin h-6 w-6 border-2 border-primary rounded-full border-t-transparent"></div>
-      </div>
+      <Card className="animate-pulse">
+        <CardHeader>
+          <div className="h-6 w-3/4 bg-muted rounded mb-2"></div>
+          <div className="h-4 w-1/2 bg-muted rounded"></div>
+        </CardHeader>
+        <CardContent>
+          <div className="h-24 bg-muted rounded mb-4"></div>
+        </CardContent>
+        <CardFooter className="flex justify-between">
+          <div className="h-9 w-40 bg-muted rounded"></div>
+          <div className="h-9 w-20 bg-muted rounded"></div>
+        </CardFooter>
+      </Card>
     );
   }
 

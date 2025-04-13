@@ -27,6 +27,12 @@ serve(async (req) => {
     const stateParam = url.searchParams.get("state");
     const error = url.searchParams.get("error");
     
+    console.log("Google callback received:", { 
+      hasCode: Boolean(code), 
+      hasState: Boolean(stateParam), 
+      error 
+    });
+    
     // Default to settings page if no redirect specified
     let redirectTo = "/settings";
     
@@ -123,7 +129,7 @@ serve(async (req) => {
       return new Response("", {
         status: 302,
         headers: {
-          Location: `${redirectTo}?error=${encodeURIComponent("Failed to exchange authorization code")}&source=calendar`,
+          Location: `${redirectTo}?error=${encodeURIComponent("Failed to exchange authorization code: " + JSON.stringify(tokenData))}&source=calendar`,
         },
       });
     }
@@ -185,7 +191,7 @@ serve(async (req) => {
     return new Response("", {
       status: 302,
       headers: {
-        Location: `/settings?error=${encodeURIComponent("Internal server error")}&source=calendar`,
+        Location: `/settings?error=${encodeURIComponent("Internal server error: " + String(error))}&source=calendar`,
       },
     });
   }

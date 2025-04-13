@@ -28,5 +28,9 @@ port = 54323
 [functions.stripe-webhook]
 verify_jwt = false
 
+[functions.handle-google-calendar-callback]
+verify_jwt = false
+
 [functions.cancel-subscription]
 verify_jwt = true
+

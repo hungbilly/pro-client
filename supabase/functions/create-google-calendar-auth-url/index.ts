@@ -43,7 +43,9 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           error: "Google OAuth credentials not configured",
-          details: "GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET environment variables are not set"
+          details: "GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET environment variables are not set",
+          clientIdPresent: Boolean(GOOGLE_CLIENT_ID),
+          clientSecretPresent: Boolean(GOOGLE_CLIENT_SECRET)
         }),
         { status: 500, headers: corsHeaders }
       );
@@ -91,11 +93,13 @@ serve(async (req) => {
     });
     
     const googleAuthUrl = `https://accounts.google.com/o/oauth2/auth?${params.toString()}`;
-    console.log("Generated Google auth URL, redirecting to:", googleAuthUrl.substring(0, 100) + "...");
+    console.log("Generated Google auth URL:", googleAuthUrl);
+    console.log("Redirect URI:", `${SUPABASE_URL}/functions/v1/handle-google-calendar-callback`);
 
     return new Response(
       JSON.stringify({
         url: googleAuthUrl,
+        redirectUri: `${SUPABASE_URL}/functions/v1/handle-google-calendar-callback`,
       }),
       { headers: corsHeaders }
     );

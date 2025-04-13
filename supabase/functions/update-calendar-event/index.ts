@@ -10,8 +10,8 @@ const corsHeaders = {
 // Get environment variables
 const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID');
 const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET');
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || 'https://htjvyzmuqsrjpesdurni.supabase.co';
-const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh0anZ5em11cXNyanBlc2R1cm5pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE0MDg0NTIsImV4cCI6MjA1Njk4NDQ1Mn0.AtFzj0Ail1PgKmXJcPWyWnXqC6EbMP0UOlH4m_rhkq8';
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
+const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
 
 // Function to get a valid OAuth2 access token from the user's integration
 async function getAccessTokenForUser(userId: string, supabase: any) {
@@ -24,6 +24,7 @@ async function getAccessTokenForUser(userId: string, supabase: any) {
     .single();
   
   if (error || !data) {
+    console.error("No integration found:", error);
     throw new Error('No Google Calendar integration found for this user');
   }
   
@@ -36,6 +37,7 @@ async function getAccessTokenForUser(userId: string, supabase: any) {
   
   if (now.getTime() > expiresAt.getTime() - expirationBuffer) {
     // Token needs refresh
+    console.log("Token expired, needs refresh");
     if (!data.refresh_token) {
       throw new Error('No refresh token available');
     }
@@ -57,7 +59,9 @@ async function getAccessTokenForUser(userId: string, supabase: any) {
     });
     
     if (!refreshResponse.ok) {
-      throw new Error('Failed to refresh access token');
+      const errorData = await refreshResponse.json();
+      console.error("Token refresh failed:", errorData);
+      throw new Error(`Failed to refresh access token: ${JSON.stringify(errorData)}`);
     }
     
     const refreshData = await refreshResponse.json();
@@ -78,6 +82,7 @@ async function getAccessTokenForUser(userId: string, supabase: any) {
   }
   
   // Current token is still valid
+  console.log("Using existing valid token");
   return data.access_token;
 }
 
@@ -149,6 +154,8 @@ serve(async (req) => {
         },
       };
     }
+    
+    console.log("Using access token:", accessToken ? "Token present" : "No token");
     
     // Update event in Google Calendar
     const calendarResponse = await fetch(

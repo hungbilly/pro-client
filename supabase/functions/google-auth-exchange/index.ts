@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -25,10 +24,44 @@ serve(async (req) => {
     
     const { code, redirectUri } = await req.json();
     
+    // Enhanced diagnostic logging
+    const diagnosticInfo = {
+      authCodeReceived: Boolean(code),
+      authCodeLength: code ? code.length : 0,
+      redirectUriReceived: Boolean(redirectUri),
+      clientIdSet: Boolean(GOOGLE_CLIENT_ID),
+      clientSecretSet: Boolean(GOOGLE_CLIENT_SECRET),
+      expectedRedirectUriSet: Boolean(EXPECTED_REDIRECT_URI),
+      redirectUriMatch: redirectUri === EXPECTED_REDIRECT_URI,
+      timestamp: new Date().toISOString(),
+      potentialIssues: []
+    };
+    
+    // Add potential issue detection
+    if (!code) {
+      diagnosticInfo.potentialIssues.push('No authorization code received');
+    }
+    if (!redirectUri) {
+      diagnosticInfo.potentialIssues.push('No redirect URI received');
+    }
+    if (!GOOGLE_CLIENT_ID) {
+      diagnosticInfo.potentialIssues.push('GOOGLE_CLIENT_ID is not set');
+    }
+    if (!GOOGLE_CLIENT_SECRET) {
+      diagnosticInfo.potentialIssues.push('GOOGLE_CLIENT_SECRET is not set');
+    }
+    if (EXPECTED_REDIRECT_URI && redirectUri !== EXPECTED_REDIRECT_URI) {
+      diagnosticInfo.potentialIssues.push('Redirect URI mismatch');
+    }
+
+    // Validate required parameters
     if (!code || !redirectUri) {
       console.error("Missing required parameters:", { hasCode: Boolean(code), hasRedirectUri: Boolean(redirectUri) });
       return new Response(
-        JSON.stringify({ error: 'Missing required parameters' }),
+        JSON.stringify({ 
+          error: 'Missing required parameters', 
+          diagnosticInfo 
+        }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -39,21 +72,20 @@ serve(async (req) => {
         hasClientSecret: Boolean(GOOGLE_CLIENT_SECRET) 
       });
       return new Response(
-        JSON.stringify({ error: 'Missing Google OAuth credentials on server' }),
+        JSON.stringify({ 
+          error: 'Missing Google OAuth credentials on server',
+          diagnosticInfo 
+        }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
-    // Log detailed information for debugging
-    console.log(`Exchange request received. Using redirect URI: ${redirectUri}`);
-    console.log(`Client ID length: ${GOOGLE_CLIENT_ID.length}`);
-    console.log(`Client secret length: ${GOOGLE_CLIENT_SECRET.length}`);
-    console.log(`Auth code length: ${code.length}`);
-    
-    if (EXPECTED_REDIRECT_URI) {
-      console.log(`Expected redirect URI from env: ${EXPECTED_REDIRECT_URI}`);
-      console.log(`URIs match: ${redirectUri === EXPECTED_REDIRECT_URI}`);
-    }
+    // Log token request details with sensitive info masked
+    console.log('Preparing token exchange request', {
+      code_prefix: code.substring(0, 5) + '...',
+      redirect_uri: redirectUri,
+      client_id_prefix: GOOGLE_CLIENT_ID.substring(0, 5) + '...',
+    });
 
     // Exchange the authorization code for access and refresh tokens
     const tokenRequestBody = new URLSearchParams({
@@ -84,22 +116,12 @@ serve(async (req) => {
       const errorData = await tokenResponse.json();
       console.error('Google token exchange error:', errorData);
       
-      // Provide detailed error information
+      // Detailed error response
       return new Response(
         JSON.stringify({ 
           error: 'Failed to exchange token', 
           details: errorData,
-          request: {
-            redirect_uri: redirectUri,
-            redirect_uri_env: EXPECTED_REDIRECT_URI || null,
-            redirect_uris_match: redirectUri === EXPECTED_REDIRECT_URI,
-            client_id_provided: Boolean(GOOGLE_CLIENT_ID),
-            client_id_length: GOOGLE_CLIENT_ID ? GOOGLE_CLIENT_ID.length : 0,
-            // Don't include the actual secret
-            client_secret_provided: Boolean(GOOGLE_CLIENT_SECRET),
-            client_secret_length: GOOGLE_CLIENT_SECRET ? GOOGLE_CLIENT_SECRET.length : 0,
-            code_length: code ? code.length : 0
-          }
+          diagnosticInfo 
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -109,7 +131,10 @@ serve(async (req) => {
     console.log('Token exchange successful');
     
     return new Response(
-      JSON.stringify(tokenData),
+      JSON.stringify({ 
+        ...tokenData, 
+        diagnosticInfo 
+      }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {

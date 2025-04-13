@@ -9,40 +9,103 @@ const corsHeaders = {
 // Get environment variables
 const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID');
 const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET');
-const GOOGLE_REFRESH_TOKEN = Deno.env.get('GOOGLE_REFRESH_TOKEN');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || 'https://htjvyzmuqsrjpesdurni.supabase.co';
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh0anZ5em11cXNyanBlc2R1cm5pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE0MDg0NTIsImV4cCI6MjA1Njk4NDQ1Mn0.AtFzj0Ail1PgKmXJcPWyWnXqC6EbMP0UOlH4m_rhkq8';
 
-// Function to get a valid OAuth2 access token using refresh token
+// Function to get a valid OAuth2 access token using user's integration
 async function getAccessToken() {
-  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_REFRESH_TOKEN) {
-    throw new Error('Missing Google OAuth2 credentials');
+  try {
+    // Check if environment variables are set
+    if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+      console.error('Missing Google OAuth credentials in environment variables:',
+        { clientIdExists: Boolean(GOOGLE_CLIENT_ID), clientSecretExists: Boolean(GOOGLE_CLIENT_SECRET) });
+      throw new Error('Missing Google OAuth2 credentials');
+    }
+    
+    // Initialize Supabase client for getting user data
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+    // Get the user's integration data
+    const { data, error } = await supabase
+      .from('user_integrations')
+      .select('*')
+      .eq('provider', 'google_calendar')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+    
+    if (error) {
+      console.error('Error fetching user integration:', error);
+      throw new Error('No Google Calendar integration found');
+    }
+    
+    if (!data || !data.refresh_token) {
+      console.error('No refresh token found in integration data');
+      throw new Error('Missing refresh token for Google Calendar');
+    }
+    
+    console.log('Retrieved integration data:', { 
+      hasAccessToken: Boolean(data.access_token),
+      hasRefreshToken: Boolean(data.refresh_token),
+      expiresAt: data.expires_at
+    });
+    
+    // Check if token needs refresh
+    const expiresAt = new Date(data.expires_at);
+    const now = new Date();
+    const expirationBuffer = 300000; // 5 minutes in milliseconds
+    
+    if (now.getTime() > expiresAt.getTime() - expirationBuffer) {
+      // Token needs refresh
+      console.log('Token expired, refreshing...');
+      
+      const tokenEndpoint = 'https://oauth2.googleapis.com/token';
+      const params = new URLSearchParams({
+        client_id: GOOGLE_CLIENT_ID,
+        client_secret: GOOGLE_CLIENT_SECRET,
+        refresh_token: data.refresh_token,
+        grant_type: 'refresh_token'
+      });
+
+      const response = await fetch(tokenEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: params.toString(),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('OAuth token refresh error:', errorData);
+        throw new Error('Failed to refresh access token');
+      }
+
+      const tokenData = await response.json();
+      
+      // Update the token in the database
+      const newExpiresAt = new Date();
+      newExpiresAt.setSeconds(newExpiresAt.getSeconds() + tokenData.expires_in);
+      
+      await supabase
+        .from('user_integrations')
+        .update({
+          access_token: tokenData.access_token,
+          expires_at: newExpiresAt.toISOString(),
+        })
+        .eq('id', data.id);
+        
+      return tokenData.access_token;
+    }
+    
+    // Current token is still valid
+    console.log('Using existing valid token');
+    return data.access_token;
+    
+  } catch (error) {
+    console.error('Error in getAccessToken:', error);
+    throw error;
   }
-  
-  const tokenEndpoint = 'https://oauth2.googleapis.com/token';
-  const params = new URLSearchParams({
-    client_id: GOOGLE_CLIENT_ID,
-    client_secret: GOOGLE_CLIENT_SECRET,
-    refresh_token: GOOGLE_REFRESH_TOKEN,
-    grant_type: 'refresh_token'
-  });
-
-  const response = await fetch(tokenEndpoint, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: params.toString(),
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json();
-    console.error('OAuth token error:', errorData);
-    throw new Error('Failed to get access token');
-  }
-
-  const data = await response.json();
-  return data.access_token;
 }
 
 serve(async (req) => {
@@ -72,6 +135,7 @@ serve(async (req) => {
       // Use provided test data
       eventData = testData.event;
       clientData = testData.client;
+      console.log('Using test data:', { event: eventData, client: clientData });
     } else {
       // Fetch real data from database
       if (jobId) {
@@ -176,6 +240,7 @@ serve(async (req) => {
         
         // Get fresh access token for Google Calendar API
         const accessToken = await getAccessToken();
+        console.log('Got access token for calendar API');
         
         // Insert event to Google Calendar using OAuth2 access token
         const calendarResponse = await fetch(
@@ -231,6 +296,7 @@ serve(async (req) => {
         
         // Get fresh access token for Google Calendar API
         const accessToken = await getAccessToken();
+        console.log('Got access token for calendar API');
         
         // Insert event to Google Calendar using OAuth2 access token
         const calendarResponse = await fetch(
@@ -296,6 +362,7 @@ serve(async (req) => {
       
       // Get fresh access token for Google Calendar API
       const accessToken = await getAccessToken();
+      console.log('Got access token for calendar API');
       
       // Insert event to Google Calendar using OAuth2 access token
       const calendarResponse = await fetch(

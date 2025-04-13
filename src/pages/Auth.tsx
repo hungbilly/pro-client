@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -24,6 +23,9 @@ const Auth = () => {
   
   // Default Supabase redirect URI - ensure consistency throughout the app
   const supabaseRedirectUri = `https://htjvyzmuqsrjpesdurni.supabase.co/auth/v1/callback`;
+  
+  // Application home page URL - where we want users to land after authentication
+  const appHomeUrl = `${window.location.origin}/`;
   
   useEffect(() => {
     const checkForLogoutRedirect = async () => {
@@ -121,12 +123,12 @@ const Auth = () => {
       setErrorMessage(null);
       
       console.log('Starting Google sign-in process...');
-      console.log('Using redirect URI:', supabaseRedirectUri);
+      console.log('Using application redirect URL:', appHomeUrl);
       
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: supabaseRedirectUri
+          redirectTo: appHomeUrl
         }
       });
       

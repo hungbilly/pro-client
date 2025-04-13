@@ -29,6 +29,9 @@ const GoogleCalendarIntegration: React.FC = () => {
 
   // Default Supabase redirect URI - this should be consistent across the application
   const supabaseRedirectUri = `https://htjvyzmuqsrjpesdurni.supabase.co/auth/v1/callback`;
+  
+  // Application redirect URL - where we want users to land after authentication
+  const appRedirectUrl = `${window.location.origin}/settings`;
 
   // Utility function to add to API call history
   const addToApiHistory = (callType: string, data: any) => {
@@ -127,6 +130,7 @@ const GoogleCalendarIntegration: React.FC = () => {
     try {
       setLoading(true);
       console.log('Starting Google sign-in process using Supabase...');
+      console.log('Application redirect URL:', appRedirectUrl);
       
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -136,7 +140,7 @@ const GoogleCalendarIntegration: React.FC = () => {
             access_type: 'offline',
             prompt: 'consent'
           },
-          redirectTo: supabaseRedirectUri
+          redirectTo: appRedirectUrl
         }
       });
       
@@ -144,7 +148,7 @@ const GoogleCalendarIntegration: React.FC = () => {
         success: !error,
         error: error?.message,
         hasRedirectUrl: Boolean(data?.url),
-        redirectToUri: supabaseRedirectUri
+        redirectToAppUrl: appRedirectUrl
       });
       
       if (error) {
@@ -295,7 +299,7 @@ const GoogleCalendarIntegration: React.FC = () => {
             <AlertDescription>
               {error}
               <div className="text-xs mt-2">
-                Default redirect URI: <code className="bg-gray-100 px-1">{supabaseRedirectUri}</code>
+                Redirect after auth: <code className="bg-gray-100 px-1">{appRedirectUrl}</code>
               </div>
             </AlertDescription>
           </Alert>
@@ -330,7 +334,7 @@ const GoogleCalendarIntegration: React.FC = () => {
             <AlertDescription className="text-yellow-700">
               Connect your account to Google Calendar to enable automatic event creation and management.
               <div className="text-xs mt-2">
-                Using Supabase's default redirect URI: <code className="bg-gray-100 px-1">{supabaseRedirectUri}</code>
+                You'll be redirected back to: <code className="bg-gray-100 px-1">{appRedirectUrl}</code>
               </div>
             </AlertDescription>
           </Alert>
@@ -342,6 +346,7 @@ const GoogleCalendarIntegration: React.FC = () => {
             <li>• Set <code className="bg-gray-100 px-1">GOOGLE_CLIENT_ID</code> and <code className="bg-gray-100 px-1">GOOGLE_CLIENT_SECRET</code> secrets in Supabase</li>
             <li>• Add <code className="bg-gray-100 px-1">{window.location.origin}</code> to Authorized JavaScript origins</li>
             <li>• Add <code className="bg-gray-100 px-1">{supabaseRedirectUri}</code> to Authorized redirect URIs</li>
+            <li>• Add <code className="bg-gray-100 px-1">{appRedirectUrl}</code> to Authorized redirect URIs</li>
           </ul>
         </div>
       </CardContent>

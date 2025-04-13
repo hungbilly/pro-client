@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Calendar, CalendarCheck, CalendarX, Clock, Edit, Plus, Trash, ExternalLink } from 'lucide-react';
+import { Calendar, CalendarCheck, CalendarX, Clock, Edit, Plus, Trash, ExternalLink, AlertCircle } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
@@ -14,6 +14,8 @@ import { formatDateForGoogleCalendar } from '@/lib/utils';
 import { AddToCalendarDialog } from '@/components/AddToCalendarDialog';
 import { Job, Client } from '@/types';
 import { useAuth } from '@/context/AuthContext';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Link } from 'react-router-dom';
 
 interface CalendarEvent {
   id?: string;
@@ -43,10 +45,48 @@ const CalendarTest = () => {
   const [calendarEventId, setCalendarEventId] = useState<string>('');
   const [logs, setLogs] = useState<string[]>([]);
   const [showCalendarDialog, setShowCalendarDialog] = useState(false);
+  const [hasIntegration, setHasIntegration] = useState<boolean | null>(null);
+  const [isCheckingIntegration, setIsCheckingIntegration] = useState(true);
 
   const addLog = (message: string) => {
     setLogs(prev => [message, ...prev.slice(0, 9)]);
   };
+
+  useEffect(() => {
+    if (!user) return;
+    
+    const checkIntegration = async () => {
+      try {
+        setIsCheckingIntegration(true);
+        const { data, error } = await supabase
+          .from('user_integrations')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('provider', 'google_calendar');
+        
+        if (error) {
+          console.error('Error checking integration:', error);
+          addLog(`Error checking integration: ${error.message}`);
+          setHasIntegration(false);
+          return;
+        }
+        
+        setHasIntegration(Boolean(data && data.length > 0));
+        if (data && data.length > 0) {
+          addLog('Google Calendar integration found');
+        } else {
+          addLog('No Google Calendar integration found');
+        }
+      } catch (error) {
+        console.error('Exception checking integration:', error);
+        setHasIntegration(false);
+      } finally {
+        setIsCheckingIntegration(false);
+      }
+    };
+    
+    checkIntegration();
+  }, [user]);
 
   const handleInputChange = (field: keyof CalendarEvent, value: any) => {
     setEvent(prev => ({ ...prev, [field]: value }));
@@ -111,6 +151,7 @@ const CalendarTest = () => {
       
       if (data?.error === 'Calendar integration not set up') {
         addLog(`Error: ${data.message}`);
+        setHasIntegration(false);
         toast.error(data.message || 'Calendar integration not set up', {
           description: 'Please connect your Google Calendar in the Settings page',
           action: {
@@ -341,6 +382,96 @@ const CalendarTest = () => {
     createdAt: new Date().toISOString(),
     notes: 'Test client for calendar integration'
   };
+
+  if (isCheckingIntegration) {
+    return (
+      <div className="container mx-auto py-8 px-4">
+        <div className="mb-8 flex items-center">
+          <Calendar className="mr-3 h-10 w-10 text-purple-600" />
+          <h1 className="text-3xl font-bold">Calendar API Test</h1>
+        </div>
+        <div className="flex items-center justify-center p-12">
+          <div className="animate-spin h-8 w-8 border-4 border-primary rounded-full border-t-transparent"></div>
+          <span className="ml-3 text-lg">Checking calendar integration...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (hasIntegration === false) {
+    return (
+      <div className="container mx-auto py-8 px-4">
+        <div className="mb-8 flex items-center">
+          <Calendar className="mr-3 h-10 w-10 text-purple-600" />
+          <h1 className="text-3xl font-bold">Calendar API Test</h1>
+        </div>
+        
+        <Alert variant="destructive" className="mb-8">
+          <AlertCircle className="h-5 w-5" />
+          <AlertTitle>Google Calendar Integration Required</AlertTitle>
+          <AlertDescription>
+            <p className="mb-4">You haven't set up Google Calendar integration yet. Please connect your account in the Settings page first.</p>
+            <Link to="/settings">
+              <Button variant="outline">
+                Go to Settings
+              </Button>
+            </Link>
+          </AlertDescription>
+        </Alert>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>Setting Up Google Calendar Integration</CardTitle>
+              <CardDescription>
+                Follow these steps to connect your Google Calendar
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <ol className="list-decimal pl-5 space-y-2">
+                <li>Go to the Settings page</li>
+                <li>Navigate to the "Integrations" tab</li>
+                <li>Click on "Connect to Google Calendar"</li>
+                <li>Follow the Google authentication prompts</li>
+                <li>Return to this page after connecting</li>
+              </ol>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>Activity Log</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[200px] overflow-y-auto border rounded-md p-3 bg-slate-50">
+                {logs.length === 0 ? (
+                  <p className="text-center text-gray-500 py-10">No activity yet</p>
+                ) : (
+                  <div className="space-y-2">
+                    {logs.map((log, index) => (
+                      <div key={index} className="p-2 bg-white rounded border">
+                        <div className="text-xs text-gray-500 pb-1">
+                          {new Date().toLocaleTimeString()}
+                        </div>
+                        <div className="text-sm font-mono whitespace-pre-wrap break-words">
+                          {log}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Link to="/settings" className="w-full">
+                <Button className="w-full">Go to Settings</Button>
+              </Link>
+            </CardFooter>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-8 px-4">

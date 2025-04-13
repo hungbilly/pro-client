@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PageTransition from '@/components/ui-custom/PageTransition';
@@ -12,7 +11,7 @@ import SubscriptionManagement from '@/components/SubscriptionManagement';
 import GoogleCalendarIntegration from '@/components/GoogleCalendarIntegration';
 import { Button } from '@/components/ui/button';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Bug } from 'lucide-react';
+import { Bug, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 
 const Settings = () => {
@@ -47,12 +46,20 @@ const Settings = () => {
       <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-3xl font-bold">Settings</h1>
-          <Link to="/admin/google-oauth-diagnostic">
-            <Button variant="outline" size="sm" className="flex items-center gap-2">
-              <Bug className="h-4 w-4" />
-              Google OAuth Diagnostic
-            </Button>
-          </Link>
+          <div className="flex gap-2">
+            <Link to="/calendar-test">
+              <Button variant="outline" size="sm" className="flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Test Calendar
+              </Button>
+            </Link>
+            <Link to="/admin/google-oauth-diagnostic">
+              <Button variant="outline" size="sm" className="flex items-center gap-2">
+                <Bug className="h-4 w-4" />
+                Google OAuth Diagnostic
+              </Button>
+            </Link>
+          </div>
         </div>
         
         <CompanyProvider>

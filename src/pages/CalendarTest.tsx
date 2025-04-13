@@ -1,10 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Calendar, CalendarCheck, CalendarX, Clock, Edit, Plus, Trash, ExternalLink, AlertCircle } from 'lucide-react';
+import { Calendar, CalendarCheck, CalendarX, Clock, Edit, Plus, Trash, ExternalLink, AlertCircle, RefreshCw } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
@@ -16,6 +17,7 @@ import { Job, Client } from '@/types';
 import { useAuth } from '@/context/AuthContext';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Link } from 'react-router-dom';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface CalendarEvent {
   id?: string;
@@ -47,44 +49,69 @@ const CalendarTest = () => {
   const [showCalendarDialog, setShowCalendarDialog] = useState(false);
   const [hasIntegration, setHasIntegration] = useState<boolean | null>(null);
   const [isCheckingIntegration, setIsCheckingIntegration] = useState(true);
+  const [lastCheckedIntegration, setLastCheckedIntegration] = useState<Date | null>(null);
+  const [integrationDetails, setIntegrationDetails] = useState<any>(null);
 
   const addLog = (message: string) => {
-    setLogs(prev => [message, ...prev.slice(0, 9)]);
+    const timestamp = new Date().toLocaleTimeString();
+    setLogs(prev => [`[${timestamp}] ${message}`, ...prev.slice(0, 49)]);
+  };
+
+  const checkIntegration = async () => {
+    try {
+      setIsCheckingIntegration(true);
+      addLog('Checking Google Calendar integration status...');
+      
+      const { data, error } = await supabase
+        .from('user_integrations')
+        .select('id, created_at, updated_at, expires_at')
+        .eq('user_id', user?.id)
+        .eq('provider', 'google_calendar');
+      
+      if (error) {
+        console.error('Error checking integration:', error);
+        addLog(`Error checking integration: ${error.message}`);
+        setHasIntegration(false);
+        setIntegrationDetails(null);
+        return;
+      }
+      
+      setLastCheckedIntegration(new Date());
+      
+      if (data && data.length > 0) {
+        setHasIntegration(true);
+        setIntegrationDetails(data[0]);
+        addLog('Google Calendar integration found');
+        addLog(`Integration ID: ${data[0].id}`);
+        
+        // Check if token will expire soon
+        const expiresAt = new Date(data[0].expires_at);
+        const now = new Date();
+        const timeUntilExpiry = expiresAt.getTime() - now.getTime();
+        const minutesUntilExpiry = Math.floor(timeUntilExpiry / (1000 * 60));
+        
+        if (minutesUntilExpiry < 60) {
+          addLog(`⚠️ Token expires in ${minutesUntilExpiry} minutes`);
+        } else {
+          addLog(`Token valid for ${Math.floor(minutesUntilExpiry / 60)} hours`);
+        }
+      } else {
+        setHasIntegration(false);
+        setIntegrationDetails(null);
+        addLog('No Google Calendar integration found');
+      }
+    } catch (error) {
+      console.error('Exception checking integration:', error);
+      addLog(`Exception checking integration: ${error instanceof Error ? error.message : String(error)}`);
+      setHasIntegration(false);
+      setIntegrationDetails(null);
+    } finally {
+      setIsCheckingIntegration(false);
+    }
   };
 
   useEffect(() => {
     if (!user) return;
-    
-    const checkIntegration = async () => {
-      try {
-        setIsCheckingIntegration(true);
-        const { data, error } = await supabase
-          .from('user_integrations')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('provider', 'google_calendar');
-        
-        if (error) {
-          console.error('Error checking integration:', error);
-          addLog(`Error checking integration: ${error.message}`);
-          setHasIntegration(false);
-          return;
-        }
-        
-        setHasIntegration(Boolean(data && data.length > 0));
-        if (data && data.length > 0) {
-          addLog('Google Calendar integration found');
-        } else {
-          addLog('No Google Calendar integration found');
-        }
-      } catch (error) {
-        console.error('Exception checking integration:', error);
-        setHasIntegration(false);
-      } finally {
-        setIsCheckingIntegration(false);
-      }
-    };
-    
     checkIntegration();
   }, [user]);
 
@@ -95,6 +122,11 @@ const CalendarTest = () => {
   const createCalendarEvent = async () => {
     if (!event.title || !event.date) {
       toast.error('Title and date are required');
+      return;
+    }
+    
+    if (!user) {
+      toast.error('You must be logged in');
       return;
     }
 
@@ -128,6 +160,8 @@ const CalendarTest = () => {
         throw new Error('No active session');
       }
       
+      addLog(`Using user ID: ${user.id}`);
+      
       const { data, error } = await supabase.functions.invoke('add-to-calendar', {
         headers: {
           Authorization: `Bearer ${session.access_token}`,
@@ -141,7 +175,7 @@ const CalendarTest = () => {
             event: testObject,
             client: testClient
           },
-          userId: user?.id
+          userId: user.id
         }
       });
       
@@ -188,6 +222,11 @@ const CalendarTest = () => {
       return;
     }
     
+    if (!user) {
+      toast.error('You must be logged in');
+      return;
+    }
+    
     try {
       setIsLoading(true);
       addLog(`Updating calendar event: ${event.calendarEventId}`);
@@ -230,7 +269,7 @@ const CalendarTest = () => {
             event: testObject,
             client: testClient
           },
-          userId: user?.id
+          userId: user.id
         }
       });
       
@@ -259,6 +298,11 @@ const CalendarTest = () => {
       return;
     }
     
+    if (!user) {
+      toast.error('You must be logged in');
+      return;
+    }
+    
     try {
       setIsLoading(true);
       addLog(`Deleting calendar event: ${event.calendarEventId}`);
@@ -275,7 +319,7 @@ const CalendarTest = () => {
         },
         body: {
           eventId: event.calendarEventId,
-          userId: user?.id
+          userId: user.id
         }
       });
       
@@ -450,9 +494,6 @@ const CalendarTest = () => {
                   <div className="space-y-2">
                     {logs.map((log, index) => (
                       <div key={index} className="p-2 bg-white rounded border">
-                        <div className="text-xs text-gray-500 pb-1">
-                          {new Date().toLocaleTimeString()}
-                        </div>
                         <div className="text-sm font-mono whitespace-pre-wrap break-words">
                           {log}
                         </div>
@@ -475,175 +516,238 @@ const CalendarTest = () => {
 
   return (
     <div className="container mx-auto py-8 px-4">
-      <div className="mb-8 flex items-center">
-        <Calendar className="mr-3 h-10 w-10 text-purple-600" />
-        <h1 className="text-3xl font-bold">Calendar API Test</h1>
+      <div className="mb-8 flex items-center justify-between">
+        <div className="flex items-center">
+          <Calendar className="mr-3 h-10 w-10 text-purple-600" />
+          <h1 className="text-3xl font-bold">Calendar API Test</h1>
+        </div>
+        
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={checkIntegration}
+          disabled={isCheckingIntegration}
+          className="flex items-center gap-2"
+        >
+          <RefreshCw className={`h-4 w-4 ${isCheckingIntegration ? 'animate-spin' : ''}`} />
+          Refresh Status
+        </Button>
       </div>
+      
+      {integrationDetails && (
+        <Alert className="mb-6 bg-green-50 border-green-200">
+          <CalendarCheck className="h-5 w-5 text-green-600" />
+          <AlertTitle className="text-green-800">Integration Active</AlertTitle>
+          <AlertDescription className="text-green-700">
+            <p>Google Calendar integration is active and working.</p>
+            <div className="text-xs mt-2">
+              <p>Integration ID: <code className="bg-green-100 px-1">{integrationDetails.id}</code></p>
+              <p>Last checked: {lastCheckedIntegration?.toLocaleTimeString()}</p>
+              <p>Token expires: {new Date(integrationDetails.expires_at).toLocaleString()}</p>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Plus className="mr-2 h-5 w-5" />
-                Create Calendar Event
-              </CardTitle>
-              <CardDescription>
-                Test Google Calendar API integration
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="eventType">Event Type</Label>
-                <Select value={eventType} onValueChange={(value) => setEventType(value as 'job' | 'invoice')}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select event type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="job">Job</SelectItem>
-                    <SelectItem value="invoice">Invoice</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            
-              <div>
-                <Label htmlFor="title">Event Title</Label>
-                <Input
-                  id="title"
-                  value={event.title}
-                  onChange={(e) => handleInputChange('title', e.target.value)}
-                  placeholder="Event title"
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={event.description}
-                  onChange={(e) => handleInputChange('description', e.target.value)}
-                  placeholder="Event description"
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="location">Location</Label>
-                <Input
-                  id="location"
-                  value={event.location}
-                  onChange={(e) => handleInputChange('location', e.target.value)}
-                  placeholder="Event location"
-                />
-              </div>
-              
-              <div>
-                <Label>Date</Label>
-                <DatePicker
-                  mode="single"
-                  selected={event.date}
-                  onSelect={(date) => handleInputChange('date', date)}
-                />
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="isFullDay"
-                  checked={event.isFullDay}
-                  onChange={(e) => handleInputChange('isFullDay', e.target.checked)}
-                  className="rounded border-gray-300"
-                />
-                <Label htmlFor="isFullDay">Full Day Event</Label>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
+      <Tabs defaultValue="create-event">
+        <TabsList className="mb-4">
+          <TabsTrigger value="create-event">Create Events</TabsTrigger>
+          <TabsTrigger value="activity-log">Activity Log</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="create-event">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Plus className="mr-2 h-5 w-5" />
+                  Create Calendar Event
+                </CardTitle>
+                <CardDescription>
+                  Test Google Calendar API integration
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <div>
-                  <Label htmlFor="startTime">Start Time</Label>
-                  <div className="flex items-center">
-                    <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="startTime"
-                      type="time"
-                      value={event.startTime}
-                      onChange={(e) => handleInputChange('startTime', e.target.value)}
-                      disabled={event.isFullDay}
-                    />
-                  </div>
+                  <Label htmlFor="eventType">Event Type</Label>
+                  <Select value={eventType} onValueChange={(value) => setEventType(value as 'job' | 'invoice')}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select event type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="job">Job</SelectItem>
+                      <SelectItem value="invoice">Invoice</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              
+                <div>
+                  <Label htmlFor="title">Event Title</Label>
+                  <Input
+                    id="title"
+                    value={event.title}
+                    onChange={(e) => handleInputChange('title', e.target.value)}
+                    placeholder="Event title"
+                  />
                 </div>
                 
                 <div>
-                  <Label htmlFor="endTime">End Time</Label>
-                  <div className="flex items-center">
-                    <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="endTime"
-                      type="time"
-                      value={event.endTime}
-                      onChange={(e) => handleInputChange('endTime', e.target.value)}
-                      disabled={event.isFullDay}
-                    />
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    value={event.description}
+                    onChange={(e) => handleInputChange('description', e.target.value)}
+                    placeholder="Event description"
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="location">Location</Label>
+                  <Input
+                    id="location"
+                    value={event.location}
+                    onChange={(e) => handleInputChange('location', e.target.value)}
+                    placeholder="Event location"
+                  />
+                </div>
+                
+                <div>
+                  <Label>Date</Label>
+                  <DatePicker
+                    mode="single"
+                    selected={event.date}
+                    onSelect={(date) => handleInputChange('date', date)}
+                  />
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="isFullDay"
+                    checked={event.isFullDay}
+                    onChange={(e) => handleInputChange('isFullDay', e.target.checked)}
+                    className="rounded border-gray-300"
+                  />
+                  <Label htmlFor="isFullDay">Full Day Event</Label>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="startTime">Start Time</Label>
+                    <div className="flex items-center">
+                      <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="startTime"
+                        type="time"
+                        value={event.startTime}
+                        onChange={(e) => handleInputChange('startTime', e.target.value)}
+                        disabled={event.isFullDay}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="endTime">End Time</Label>
+                    <div className="flex items-center">
+                      <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="endTime"
+                        type="time"
+                        value={event.endTime}
+                        onChange={(e) => handleInputChange('endTime', e.target.value)}
+                        disabled={event.isFullDay}
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
-              
-              {event.calendarEventId && (
-                <div className="bg-slate-50 p-3 rounded-md">
-                  <Label>Calendar Event ID</Label>
-                  <div className="mt-1 flex items-center gap-2">
-                    <Input 
-                      value={event.calendarEventId} 
-                      readOnly 
-                      className="font-mono text-sm"
-                    />
+                
+                {event.calendarEventId && (
+                  <div className="bg-slate-50 p-3 rounded-md">
+                    <Label>Calendar Event ID</Label>
+                    <div className="mt-1 flex items-center gap-2">
+                      <Input 
+                        value={event.calendarEventId} 
+                        readOnly 
+                        className="font-mono text-sm"
+                      />
+                    </div>
                   </div>
-                </div>
-              )}
-            </CardContent>
-            <CardFooter className="flex flex-wrap gap-2">
-              <Button 
-                onClick={createCalendarEvent} 
-                disabled={isLoading}
-                className="flex-1"
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Create Event
-              </Button>
-              
-              <Button 
-                onClick={updateCalendarEvent} 
-                disabled={isLoading || !event.calendarEventId}
-                className="flex-1"
-                variant="outline"
-              >
-                <Edit className="mr-2 h-4 w-4" />
-                Update Event
-              </Button>
-              
-              <Button 
-                onClick={deleteCalendarEvent} 
-                disabled={isLoading || !event.calendarEventId}
-                className="flex-1"
-                variant="outline"
-              >
-                <Trash className="mr-2 h-4 w-4" />
-                Delete Event
-              </Button>
-              
-              <Button 
-                onClick={generateGoogleCalendarUrl} 
-                disabled={isLoading}
-                className="flex-1"
-                variant="secondary"
-              >
-                <ExternalLink className="mr-2 h-4 w-4" />
-                Open in Google Calendar
-              </Button>
-            </CardFooter>
-          </Card>
-        </div>
+                )}
+              </CardContent>
+              <CardFooter className="flex flex-wrap gap-2">
+                <Button 
+                  onClick={createCalendarEvent} 
+                  disabled={isLoading}
+                  className="flex-1"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create Event
+                </Button>
+                
+                <Button 
+                  onClick={updateCalendarEvent} 
+                  disabled={isLoading || !event.calendarEventId}
+                  className="flex-1"
+                  variant="outline"
+                >
+                  <Edit className="mr-2 h-4 w-4" />
+                  Update Event
+                </Button>
+                
+                <Button 
+                  onClick={deleteCalendarEvent} 
+                  disabled={isLoading || !event.calendarEventId}
+                  className="flex-1"
+                  variant="outline"
+                >
+                  <Trash className="mr-2 h-4 w-4" />
+                  Delete Event
+                </Button>
+                
+                <Button 
+                  onClick={generateGoogleCalendarUrl} 
+                  disabled={isLoading}
+                  className="flex-1"
+                  variant="secondary"
+                >
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  Open in Google Calendar
+                </Button>
+              </CardFooter>
+            </Card>
+            
+            <div className="lg:block hidden">
+              <Card className="h-full">
+                <CardHeader>
+                  <CardTitle>Activity Log</CardTitle>
+                  <CardDescription>
+                    API operation results and debug information
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[400px] overflow-y-auto border rounded-md p-3 bg-slate-50">
+                    {logs.length === 0 ? (
+                      <p className="text-center text-gray-500 py-10">No activity yet</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {logs.map((log, index) => (
+                          <div key={index} className="p-2 bg-white rounded border">
+                            <div className="text-sm font-mono whitespace-pre-wrap break-words">
+                              {log}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </TabsContent>
         
-        <div>
-          <Card className="h-full">
+        <TabsContent value="activity-log">
+          <Card>
             <CardHeader>
               <CardTitle>Activity Log</CardTitle>
               <CardDescription>
@@ -651,16 +755,13 @@ const CalendarTest = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="h-[400px] overflow-y-auto border rounded-md p-3 bg-slate-50">
+              <div className="h-[500px] overflow-y-auto border rounded-md p-3 bg-slate-50">
                 {logs.length === 0 ? (
                   <p className="text-center text-gray-500 py-10">No activity yet</p>
                 ) : (
                   <div className="space-y-2">
                     {logs.map((log, index) => (
                       <div key={index} className="p-2 bg-white rounded border">
-                        <div className="text-xs text-gray-500 pb-1">
-                          {new Date().toLocaleTimeString()}
-                        </div>
                         <div className="text-sm font-mono whitespace-pre-wrap break-words">
                           {log}
                         </div>
@@ -671,8 +772,8 @@ const CalendarTest = () => {
               </div>
             </CardContent>
           </Card>
-        </div>
-      </div>
+        </TabsContent>
+      </Tabs>
       
       <AddToCalendarDialog 
         isOpen={showCalendarDialog}

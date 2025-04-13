@@ -9,11 +9,11 @@ const corsHeaders = {
 // Get environment variables
 const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID');
 const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET');
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || 'https://htjvyzmuqsrjpesdurni.supabase.co';
-const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh0anZ5em11cXNyanBlc2R1cm5pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE0MDg0NTIsImV4cCI6MjA1Njk4NDQ1Mn0.AtFzj0Ail1PgKmXJcPWyWnXqC6EbMP0UOlH4m_rhkq8';
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
+const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
 
-// Function to get a valid OAuth2 access token using user's integration
-async function getAccessToken(userId) {
+// Function to get a valid OAuth2 access token from the user's integration
+async function getAccessToken(userId: string, supabase: any) {
   try {
     // Check if environment variables are set
     if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
@@ -22,13 +22,13 @@ async function getAccessToken(userId) {
       throw new Error('Missing Google OAuth2 credentials');
     }
     
-    // Initialize Supabase client for getting user data
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    console.log(`Looking for calendar integration for user: ${userId}`);
     
-    // Get the user's integration data - don't use single() here to avoid PGRST116 error
+    // Get the user's Google Calendar integration
     const { data, error } = await supabase
       .from('user_integrations')
       .select('*')
+      .eq('user_id', userId)
       .eq('provider', 'google_calendar')
       .order('created_at', { ascending: false })
       .limit(1);
@@ -40,7 +40,7 @@ async function getAccessToken(userId) {
     }
     
     if (!data || data.length === 0 || !data[0].refresh_token) {
-      console.error('No integration or refresh token found');
+      console.error('No integration or refresh token found for user:', userId);
       throw new Error('No Google Calendar integration found. Please connect your Google Calendar account first.');
     }
     
@@ -49,7 +49,8 @@ async function getAccessToken(userId) {
     console.log('Retrieved integration data:', { 
       hasAccessToken: Boolean(integrationData.access_token),
       hasRefreshToken: Boolean(integrationData.refresh_token),
-      expiresAt: integrationData.expires_at
+      expiresAt: integrationData.expires_at,
+      userId: integrationData.user_id
     });
     
     // Check if token needs refresh
@@ -120,6 +121,26 @@ serve(async (req) => {
     // Get request data
     const { jobId, clientId, invoiceId, testMode, testData, userId } = await req.json();
     
+    console.log('Function called with:', { 
+      hasJobId: Boolean(jobId),
+      hasClientId: Boolean(clientId), 
+      hasInvoiceId: Boolean(invoiceId),
+      isTestMode: Boolean(testMode),
+      hasTestData: Boolean(testData),
+      userId
+    });
+    
+    if (!userId) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Missing user ID', 
+          message: 'User ID is required to access calendar integration.' 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
     if ((!jobId && !invoiceId && !testMode) || (!testMode && !clientId)) {
       return new Response(
         JSON.stringify({ error: 'Missing required parameters' }),
@@ -130,11 +151,12 @@ serve(async (req) => {
     // Initialize Supabase client
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
+    let accessToken;
     try {
-      // Get access token - pass userId if provided
-      const accessToken = await getAccessToken(userId);
+      // Get access token using the provided userId
+      accessToken = await getAccessToken(userId, supabase);
       console.log('Got access token for calendar API');
-    } catch (error) {
+    } catch (error: any) {
       // Return a clearer error message if no integration is found
       if (error.message && error.message.includes('No Google Calendar integration found')) {
         return new Response(
@@ -148,13 +170,19 @@ serve(async (req) => {
       }
       
       // For other errors, return the original error
-      throw error;
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Authentication error', 
+          message: error.message 
+        }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
     
     // Fetch data based on whether it's a test, job or invoice
     let eventData, clientData;
     
-    // ... keep existing code (fetching job/invoice/client data)
     if (testMode && testData) {
       // Use provided test data
       eventData = testData.event;
@@ -216,8 +244,6 @@ serve(async (req) => {
       clientData = client;
     }
     
-    // ... keep existing code (determining event details and Google Calendar API interaction)
-    
     // Determine event details based on the data source (job or invoice)
     let eventDate, eventStartTime, eventEndTime, eventSummary, eventLocation, eventDescription;
     
@@ -263,10 +289,6 @@ serve(async (req) => {
             timeZone: 'UTC',
           },
         };
-        
-        // Get fresh access token for Google Calendar API
-        const accessToken = await getAccessToken(userId);
-        console.log('Got access token for calendar API');
         
         // Insert event to Google Calendar using OAuth2 access token
         const calendarResponse = await fetch(
@@ -319,10 +341,6 @@ serve(async (req) => {
             timeZone: 'UTC',
           },
         };
-        
-        // Get fresh access token for Google Calendar API
-        const accessToken = await getAccessToken(userId);
-        console.log('Got access token for calendar API');
         
         // Insert event to Google Calendar using OAuth2 access token
         const calendarResponse = await fetch(
@@ -385,10 +403,6 @@ serve(async (req) => {
           timeZone: 'UTC',
         },
       };
-      
-      // Get fresh access token for Google Calendar API
-      const accessToken = await getAccessToken(userId);
-      console.log('Got access token for calendar API');
       
       // Insert event to Google Calendar using OAuth2 access token
       const calendarResponse = await fetch(

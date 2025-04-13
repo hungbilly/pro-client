@@ -1,16 +1,14 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const GOOGLE_CLIENT_ID = Deno.env.get("GOOGLE_CLIENT_ID") || "";
-const GOOGLE_CLIENT_SECRET = Deno.env.get("GOOGLE_CLIENT_SECRET") || "";
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
-const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") || "";
+// Get environment variables
+const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID');
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 
 // CORS headers for browser requests
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Content-Type': 'application/json'
 };
 
 serve(async (req) => {
@@ -18,99 +16,63 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
-  
+
   try {
-    // Parse request body
-    let body;
+    const { redirectUrl, state } = await req.json();
+    
+    if (!GOOGLE_CLIENT_ID) {
+      return new Response(
+        JSON.stringify({ error: 'GOOGLE_CLIENT_ID not configured' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    console.log('Creating Google Calendar auth URL with state:', state);
+    
+    // Validate that state includes user ID
+    let stateObj;
     try {
-      body = await req.json();
-    } catch (e) {
-      console.error("Failed to parse request body:", e);
+      stateObj = JSON.parse(state);
+      if (!stateObj.userId) {
+        return new Response(
+          JSON.stringify({ error: 'Missing userId in state parameter' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      console.log(`Creating auth URL for user: ${stateObj.userId}`);
+    } catch (error) {
       return new Response(
-        JSON.stringify({
-          error: "Invalid JSON in request body",
-          details: e.message
-        }),
-        { status: 400, headers: corsHeaders }
+        JSON.stringify({ error: 'Invalid state parameter, must be valid JSON' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Build the redirect URL
+    const callbackUrl = `${SUPABASE_URL}/functions/v1/handle-google-calendar-callback`;
     
-    const { redirectUrl, state } = body;
-
-    // Check for required environment variables
-    if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
-      console.error("Missing Google OAuth credentials");
-      return new Response(
-        JSON.stringify({
-          error: "Google OAuth credentials not configured",
-          details: "GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET environment variables are not set",
-          clientIdPresent: Boolean(GOOGLE_CLIENT_ID),
-          clientSecretPresent: Boolean(GOOGLE_CLIENT_SECRET)
-        }),
-        { status: 500, headers: corsHeaders }
-      );
-    }
-
-    // Validate the redirect URL
-    if (!redirectUrl) {
-      console.error("Missing redirect URL");
-      return new Response(
-        JSON.stringify({ 
-          error: "Missing redirect URL",
-          details: "The redirectUrl parameter is required" 
-        }),
-        { status: 400, headers: corsHeaders }
-      );
-    }
-
-    // Validate state parameter
-    if (!state) {
-      console.error("Missing state parameter");
-      return new Response(
-        JSON.stringify({ 
-          error: "Missing state parameter",
-          details: "The state parameter is required for security purposes" 
-        }),
-        { status: 400, headers: corsHeaders }
-      );
-    }
-
-    // Create Google OAuth URL for Calendar specific scopes
-    const scopes = [
-      "https://www.googleapis.com/auth/calendar",
-      "https://www.googleapis.com/auth/calendar.events",
-    ];
+    // Google OAuth2 authorization URL
+    const authUrl = new URL('https://accounts.google.com/o/oauth2/auth');
     
-    // We use encodeURIComponent properly for each parameter
-    const params = new URLSearchParams({
-      client_id: GOOGLE_CLIENT_ID,
-      redirect_uri: `${SUPABASE_URL}/functions/v1/handle-google-calendar-callback`,
-      response_type: "code",
-      scope: scopes.join(" "),
-      access_type: "offline",
-      prompt: "consent",
-      state: state,
-    });
+    // Add all required parameters
+    authUrl.searchParams.append('client_id', GOOGLE_CLIENT_ID);
+    authUrl.searchParams.append('redirect_uri', callbackUrl);
+    authUrl.searchParams.append('response_type', 'code');
+    authUrl.searchParams.append('scope', 'https://www.googleapis.com/auth/calendar');
+    authUrl.searchParams.append('access_type', 'offline');
+    authUrl.searchParams.append('prompt', 'consent'); // Force to always get a refresh token
+    authUrl.searchParams.append('state', state);
     
-    const googleAuthUrl = `https://accounts.google.com/o/oauth2/auth?${params.toString()}`;
-    console.log("Generated Google auth URL:", googleAuthUrl);
-    console.log("Redirect URI:", `${SUPABASE_URL}/functions/v1/handle-google-calendar-callback`);
-
+    console.log('Generated auth URL with redirect:', callbackUrl);
+    
     return new Response(
-      JSON.stringify({
-        url: googleAuthUrl,
-        redirectUri: `${SUPABASE_URL}/functions/v1/handle-google-calendar-callback`,
-      }),
-      { headers: corsHeaders }
+      JSON.stringify({ url: authUrl.toString() }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error("Error creating Google auth URL:", error);
+    console.error('Error creating Google Calendar auth URL:', error);
     return new Response(
-      JSON.stringify({
-        error: error.message || "Failed to create Google auth URL",
-        stack: error.stack || "No stack trace available"
-      }),
-      { status: 500, headers: corsHeaders }
+      JSON.stringify({ error: 'Failed to create authorization URL', details: error instanceof Error ? error.message : String(error) }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });

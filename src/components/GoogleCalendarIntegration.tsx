@@ -5,8 +5,9 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Calendar, LogOut, AlertTriangle, CheckCircle2, Bug, Copy } from 'lucide-react';
+import { Calendar, LogOut, AlertTriangle, CheckCircle2, Bug, Copy, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
+import { Link } from 'react-router-dom';
 
 interface CalendarIntegration {
   id: string;
@@ -99,12 +100,17 @@ const GoogleCalendarIntegration: React.FC = () => {
             console.log("User has Google Calendar integration", {
               hasAccessToken: Boolean(data.access_token),
               hasRefreshToken: Boolean(data.refresh_token),
-              tokenExpiry: data.expires_at
+              tokenExpiry: data.expires_at,
+              userId: data.user_id
             });
           } else {
             console.log("User does not have Google Calendar integration");
           }
-          addToApiHistory('fetch-integration', { success: true, hasIntegration: Boolean(data) });
+          addToApiHistory('fetch-integration', { 
+            success: true, 
+            hasIntegration: Boolean(data),
+            userId: user.id
+          });
         }
       } catch (error) {
         console.error('Exception when fetching integration:', error);
@@ -128,6 +134,7 @@ const GoogleCalendarIntegration: React.FC = () => {
       setLoading(true);
       console.log('Starting Google Calendar integration process...');
       console.log('Application redirect URL:', appRedirectUrl);
+      console.log('Current user ID:', user.id);
       
       const stateParam = JSON.stringify({
         userId: user.id,
@@ -149,6 +156,7 @@ const GoogleCalendarIntegration: React.FC = () => {
         hasRedirectUrl: Boolean(data?.url),
         requestOrigin: origin,
         redirectUrl: appRedirectUrl,
+        userId: user.id,
         timestamp: new Date().toISOString()
       });
       
@@ -181,7 +189,10 @@ const GoogleCalendarIntegration: React.FC = () => {
     
     try {
       setLoading(true);
-      addToApiHistory('disconnect-start', { integrationId: integration.id });
+      addToApiHistory('disconnect-start', { 
+        integrationId: integration.id,
+        userId: user.id 
+      });
       
       if (integration.access_token) {
         try {
@@ -219,6 +230,78 @@ const GoogleCalendarIntegration: React.FC = () => {
     }
   };
 
+  const testCalendarIntegration = async () => {
+    try {
+      if (!user || !integration) {
+        toast.error("No active integration to test");
+        return;
+      }
+      
+      const testEvent = {
+        title: "Test Integration Event",
+        description: "This is a test event to verify the integration is working properly.",
+        date: new Date().toISOString().split('T')[0],
+        isFullDay: false,
+        startTime: "10:00",
+        endTime: "10:30",
+        location: "Integration Test"
+      };
+
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('No active session');
+      }
+      
+      addToApiHistory('test-integration-start', { 
+        userId: user.id,
+        event: testEvent,
+        hasIntegration: Boolean(integration)
+      });
+      
+      const { data, error } = await supabase.functions.invoke('add-to-calendar', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: {
+          testMode: true,
+          testData: {
+            event: testEvent,
+            client: {
+              id: "test-client-id",
+              name: "Test Client",
+              email: "test@example.com",
+              phone: "555-1234",
+              address: "Test Address"
+            }
+          },
+          userId: user.id
+        }
+      });
+      
+      addToApiHistory('test-integration-response', { data, error });
+      
+      if (error) {
+        toast.error(`Test failed: ${error.message}`);
+        return;
+      }
+      
+      if (data.error) {
+        toast.error(`Test failed: ${data.message || data.error}`);
+        return;
+      }
+      
+      if (data.success) {
+        toast.success('Test successful! Event created in your Google Calendar.');
+      } else {
+        toast.error('Test failed: No event was created');
+      }
+    } catch (error) {
+      console.error('Error testing integration:', error);
+      toast.error(`Test failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
   const showDebugInfo = () => {
     const debugData = {
       clientId: clientId ? `${clientId.substring(0, 6)}...` : null,
@@ -232,7 +315,8 @@ const GoogleCalendarIntegration: React.FC = () => {
       apiCalls: apiCallsHistory,
       origin: origin,
       currentUrl: window.location.href,
-      redirectUrl: appRedirectUrl
+      redirectUrl: appRedirectUrl,
+      userId: user?.id
     };
     
     toast(
@@ -308,6 +392,9 @@ const GoogleCalendarIntegration: React.FC = () => {
             <AlertDescription className="text-green-700">
               Your account is connected to Google Calendar. 
               Event management is enabled.
+              <div className="text-xs mt-2 text-green-600">
+                User ID: <code className="bg-green-100 px-1">{integration.user_id}</code>
+              </div>
             </AlertDescription>
           </Alert>
         ) : clientId && (
@@ -323,7 +410,7 @@ const GoogleCalendarIntegration: React.FC = () => {
           </Alert>
         )}
         
-        <div className="mt-4 border border-dashed border-gray-300 p-3 rounded-md bg-gray-50">
+        <div className="mt-4 border border-dashed border-gray-300 p-3 rounded-md">
           <h3 className="text-sm font-medium mb-2">Setup Requirements:</h3>
           <ul className="text-xs space-y-1 text-gray-700">
             <li>• Set <code className="bg-gray-100 px-1">GOOGLE_CLIENT_ID</code> and <code className="bg-gray-100 px-1">GOOGLE_CLIENT_SECRET</code> secrets in Supabase</li>
@@ -334,15 +421,36 @@ const GoogleCalendarIntegration: React.FC = () => {
       </CardContent>
       <CardFooter className="flex flex-wrap gap-2">
         {clientId && integration ? (
-          <Button 
-            variant="destructive" 
-            onClick={disconnectGoogleCalendar} 
-            disabled={loading}
-            className="flex items-center gap-2"
-          >
-            <LogOut className="h-4 w-4" />
-            Disconnect Calendar
-          </Button>
+          <>
+            <Button 
+              variant="destructive" 
+              onClick={disconnectGoogleCalendar} 
+              disabled={loading}
+              className="flex items-center gap-2"
+            >
+              <LogOut className="h-4 w-4" />
+              Disconnect Calendar
+            </Button>
+            <Button 
+              variant="secondary" 
+              onClick={testCalendarIntegration} 
+              disabled={loading}
+              className="flex items-center gap-2"
+            >
+              <Calendar className="h-4 w-4" />
+              Test Integration
+            </Button>
+            <Link to="/calendar-test" className="ml-auto">
+              <Button 
+                variant="outline"
+                size="sm" 
+                className="flex items-center gap-2"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Open Calendar Test Page
+              </Button>
+            </Link>
+          </>
         ) : clientId && (
           <Button 
             onClick={initiateGoogleAuth} 
@@ -358,9 +466,9 @@ const GoogleCalendarIntegration: React.FC = () => {
           variant="outline"
           size="sm"
           onClick={showDebugInfo}
-          className="ml-auto flex items-center gap-2"
+          className={clientId && integration ? "" : "ml-auto"}
         >
-          <Bug className="h-4 w-4" />
+          <Bug className="h-4 w-4 mr-2" />
           Debug Info
         </Button>
       </CardFooter>

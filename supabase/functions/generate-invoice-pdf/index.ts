@@ -1,5 +1,6 @@
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import jspdf from 'https://esm.sh/jspdf@2.5.1';
+import jspdf from 'https://esm.sh/jspdf@2.5.2';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import autoTable from 'https://esm.sh/jspdf-autotable@3.8.0';
 

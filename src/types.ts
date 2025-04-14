@@ -54,17 +54,18 @@ export interface Invoice {
   number: string;
   issueDate: string;
   dueDate: string;
-  status: 'draft' | 'sent' | 'paid' | 'overdue' | 'accepted';
+  status: InvoiceStatus;
   totalAmount: number;
   amount: number;
   notes?: string;
   contractTerms?: string;
-  contractStatus?: 'pending' | 'accepted';
+  contractStatus?: ContractStatus;
   date: string;
   viewLink: string;
   paymentSchedules?: PaymentSchedule[];
   shootingDate?: string;
   pdfUrl?: string;
+  items: InvoiceItem[];
 }
 
 export interface InvoiceItem {
@@ -102,4 +103,17 @@ export interface PaymentSchedule {
   percentage: number;
   status: PaymentStatus;
   paymentDate?: string;
+}
+
+export interface CompanyClientView {
+  id: string;
+  company_id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  website?: string;
+  logo_url?: string;
+  created_at: string;
+  updated_at: string;
 }

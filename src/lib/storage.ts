@@ -1,5 +1,5 @@
 
-import { Client, Job as JobType, Invoice, InvoiceItem, PaymentSchedule } from '@/types';
+import { Client, Job, Invoice, InvoiceItem, PaymentSchedule, InvoiceStatus, ContractStatus, PaymentStatus } from '@/types';
 import { supabase, logError, logDebug } from '@/integrations/supabase/client';
 
 export const getClients = async (companyId: string): Promise<Client[]> => {
@@ -27,6 +27,7 @@ export const getClients = async (companyId: string): Promise<Client[]> => {
       address: client.address,
       notes: client.notes,
       createdAt: client.created_at,
+      updatedAt: client.updated_at
     })) || [];
   } catch (error) {
     logError('Failed to fetch clients:', error);
@@ -61,6 +62,7 @@ export const getClient = async (id: string): Promise<Client | null> => {
       address: data.address,
       notes: data.notes,
       createdAt: data.created_at,
+      updatedAt: data.updated_at
     };
   } catch (error) {
     logError(`Failed to fetch client with ID ${id}:`, error);
@@ -104,6 +106,7 @@ export const saveClient = async (clientData: Omit<Client, 'id' | 'createdAt' | '
       address: data.address,
       notes: data.notes,
       createdAt: data.created_at,
+      updatedAt: data.updated_at
     };
   } catch (error) {
     logError('Failed to save client:', error);
@@ -158,7 +161,7 @@ export const deleteClient = async (id: string): Promise<void> => {
   }
 };
 
-export const getJobs = async (companyId: string): Promise<JobType[]> => {
+export const getJobs = async (companyId: string): Promise<Job[]> => {
   try {
     const { data, error } = await supabase
       .from('jobs')
@@ -180,7 +183,7 @@ export const getJobs = async (companyId: string): Promise<JobType[]> => {
       companyId: job.company_id,
       title: job.title,
       description: job.description,
-      status: job.status as JobType['status'],
+      status: job.status as Job['status'],
       date: job.date,
       location: job.location,
       startTime: job.start_time,
@@ -196,7 +199,7 @@ export const getJobs = async (companyId: string): Promise<JobType[]> => {
   }
 };
 
-export const getJob = async (id: string): Promise<JobType | null> => {
+export const getJob = async (id: string): Promise<Job | null> => {
   try {
     const { data, error } = await supabase
       .from('jobs')
@@ -220,7 +223,7 @@ export const getJob = async (id: string): Promise<JobType | null> => {
       companyId: data.company_id,
       title: data.title,
       description: data.description,
-      status: data.status as JobType['status'],
+      status: data.status as Job['status'],
       date: data.date,
       location: data.location,
       startTime: data.start_time,
@@ -236,7 +239,7 @@ export const getJob = async (id: string): Promise<JobType | null> => {
   }
 };
 
-export const saveJob = async (jobData: Omit<JobType, 'id' | 'createdAt' | 'updatedAt'>): Promise<JobType | null> => {
+export const saveJob = async (jobData: Omit<Job, 'id' | 'createdAt' | 'updatedAt'>): Promise<Job | null> => {
   try {
     // Map camelCase TypeScript interface to snake_case database columns
     const dbData = {
@@ -274,7 +277,7 @@ export const saveJob = async (jobData: Omit<JobType, 'id' | 'createdAt' | 'updat
       companyId: data.company_id,
       title: data.title,
       description: data.description,
-      status: data.status as JobType['status'],
+      status: data.status as Job['status'],
       date: data.date,
       location: data.location,
       startTime: data.start_time,
@@ -290,7 +293,7 @@ export const saveJob = async (jobData: Omit<JobType, 'id' | 'createdAt' | 'updat
   }
 };
 
-export const updateJob = async (job: JobType): Promise<void> => {
+export const updateJob = async (job: Job): Promise<void> => {
   try {
     // Map camelCase TypeScript interface to snake_case database columns
     const dbData = {
@@ -414,15 +417,16 @@ export const getInvoice = async (id: string): Promise<Invoice | null> => {
       issueDate: invoiceData.date,
       date: invoiceData.date,
       dueDate: invoiceData.due_date,
-      status: invoiceData.status,
+      status: invoiceData.status as InvoiceStatus,
       totalAmount: invoiceData.amount,
       amount: invoiceData.amount,
       notes: invoiceData.notes,
       contractTerms: invoiceData.contract_terms,
-      contractStatus: invoiceData.contract_status as 'pending' | 'accepted',
+      contractStatus: invoiceData.contract_status as ContractStatus,
       viewLink: invoiceData.view_link,
       shootingDate: invoiceData.shooting_date,
-      pdfUrl: invoiceData.pdf_url
+      pdfUrl: invoiceData.pdf_url,
+      items: []
     };
 
     // Map invoice items
@@ -460,6 +464,53 @@ export const getInvoice = async (id: string): Promise<Invoice | null> => {
   }
 };
 
+export const getInvoices = async (companyId?: string): Promise<Invoice[]> => {
+  try {
+    let query = supabase
+      .from('invoices')
+      .select('*')
+      .order('date', { ascending: false });
+    
+    if (companyId) {
+      query = query.eq('company_id', companyId);
+    }
+    
+    const { data, error } = await query;
+
+    if (error) {
+      logError('Error fetching invoices:', error);
+      throw error;
+    }
+
+    // Map to Invoice interface with empty items array
+    const invoices: Invoice[] = data.map(invoice => ({
+      id: invoice.id,
+      clientId: invoice.client_id,
+      companyId: invoice.company_id,
+      jobId: invoice.job_id,
+      number: invoice.number,
+      issueDate: invoice.date,
+      date: invoice.date,
+      dueDate: invoice.due_date,
+      status: invoice.status as InvoiceStatus,
+      totalAmount: invoice.amount,
+      amount: invoice.amount,
+      notes: invoice.notes,
+      contractTerms: invoice.contract_terms,
+      contractStatus: invoice.contract_status as ContractStatus,
+      viewLink: invoice.view_link,
+      shootingDate: invoice.shooting_date,
+      pdfUrl: invoice.pdf_url,
+      items: []
+    }));
+
+    return invoices;
+  } catch (error) {
+    logError('Failed to fetch invoices:', error);
+    return [];
+  }
+};
+
 export const getInvoicesByDate = async (dateFilter?: string): Promise<Invoice[]> => {
   try {
     let query = supabase
@@ -488,12 +539,12 @@ export const getInvoicesByDate = async (dateFilter?: string): Promise<Invoice[]>
       issueDate: invoice.date,
       date: invoice.date,
       dueDate: invoice.due_date,
-      status: invoice.status,
+      status: invoice.status as InvoiceStatus,
       totalAmount: invoice.amount,
       amount: invoice.amount,
       notes: invoice.notes,
       contractTerms: invoice.contract_terms,
-      contractStatus: invoice.contract_status as 'pending' | 'accepted',
+      contractStatus: invoice.contract_status as ContractStatus,
       viewLink: invoice.view_link,
       shootingDate: invoice.shooting_date,
       pdfUrl: invoice.pdf_url,
@@ -731,6 +782,222 @@ export const deleteInvoice = async (id: string): Promise<boolean> => {
     return true;
   } catch (error) {
     logError(`Failed to delete invoice with ID ${id}:`, error);
+    return false;
+  }
+};
+
+// Add missing functions needed by other components
+export const getClientInvoices = async (clientId: string): Promise<Invoice[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('invoices')
+      .select('*')
+      .eq('client_id', clientId)
+      .order('date', { ascending: false });
+
+    if (error) {
+      logError(`Error fetching invoices for client ID ${clientId}:`, error);
+      throw error;
+    }
+
+    // Map to Invoice interface
+    const invoices: Invoice[] = data.map(invoice => ({
+      id: invoice.id,
+      clientId: invoice.client_id,
+      companyId: invoice.company_id,
+      jobId: invoice.job_id,
+      number: invoice.number,
+      issueDate: invoice.date,
+      date: invoice.date,
+      dueDate: invoice.due_date,
+      status: invoice.status as InvoiceStatus,
+      totalAmount: invoice.amount,
+      amount: invoice.amount,
+      notes: invoice.notes,
+      contractTerms: invoice.contract_terms,
+      contractStatus: invoice.contract_status as ContractStatus,
+      viewLink: invoice.view_link,
+      shootingDate: invoice.shooting_date,
+      pdfUrl: invoice.pdf_url,
+      items: []
+    }));
+
+    return invoices;
+  } catch (error) {
+    logError(`Failed to fetch invoices for client ID ${clientId}:`, error);
+    return [];
+  }
+};
+
+export const getClientJobs = async (clientId: string): Promise<Job[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('jobs')
+      .select('*')
+      .eq('client_id', clientId)
+      .order('date', { ascending: false });
+
+    if (error) {
+      logError(`Error fetching jobs for client ID ${clientId}:`, error);
+      throw error;
+    }
+
+    // Map snake_case database columns to camelCase TypeScript interface
+    return data?.map(job => ({
+      id: job.id,
+      clientId: job.client_id,
+      companyId: job.company_id,
+      title: job.title,
+      description: job.description,
+      status: job.status as Job['status'],
+      date: job.date,
+      location: job.location,
+      startTime: job.start_time,
+      endTime: job.end_time,
+      isFullDay: job.is_full_day,
+      createdAt: job.created_at,
+      updatedAt: job.updated_at,
+      calendarEventId: job.calendar_event_id
+    })) || [];
+  } catch (error) {
+    logError(`Failed to fetch jobs for client ID ${clientId}:`, error);
+    return [];
+  }
+};
+
+export const getJobInvoices = async (jobId: string): Promise<Invoice[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('invoices')
+      .select('*')
+      .eq('job_id', jobId)
+      .order('date', { ascending: false });
+
+    if (error) {
+      logError(`Error fetching invoices for job ID ${jobId}:`, error);
+      throw error;
+    }
+
+    // Map to Invoice interface
+    const invoices: Invoice[] = data.map(invoice => ({
+      id: invoice.id,
+      clientId: invoice.client_id,
+      companyId: invoice.company_id,
+      jobId: invoice.job_id,
+      number: invoice.number,
+      issueDate: invoice.date,
+      date: invoice.date,
+      dueDate: invoice.due_date,
+      status: invoice.status as InvoiceStatus,
+      totalAmount: invoice.amount,
+      amount: invoice.amount,
+      notes: invoice.notes,
+      contractTerms: invoice.contract_terms,
+      contractStatus: invoice.contract_status as ContractStatus,
+      viewLink: invoice.view_link,
+      shootingDate: invoice.shooting_date,
+      pdfUrl: invoice.pdf_url,
+      items: []
+    }));
+
+    return invoices;
+  } catch (error) {
+    logError(`Failed to fetch invoices for job ID ${jobId}:`, error);
+    return [];
+  }
+};
+
+export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | null> => {
+  try {
+    const { data, error } = await supabase
+      .from('invoices')
+      .select('*')
+      .eq('view_link', viewLink)
+      .single();
+      
+    if (error) {
+      logError(`Error fetching invoice with view link ${viewLink}:`, error);
+      throw error;
+    }
+    
+    if (!data) return null;
+    
+    return await getInvoice(data.id);
+  } catch (error) {
+    logError(`Failed to fetch invoice with view link ${viewLink}:`, error);
+    return null;
+  }
+};
+
+export const updateInvoiceStatus = async (
+  invoiceId: string, 
+  newStatus: InvoiceStatus
+): Promise<boolean> => {
+  try {
+    const { error } = await supabase
+      .from('invoices')
+      .update({ status: newStatus })
+      .eq('id', invoiceId);
+      
+    if (error) {
+      logError(`Error updating status for invoice ID ${invoiceId}:`, error);
+      throw error;
+    }
+    
+    return true;
+  } catch (error) {
+    logError(`Failed to update status for invoice ID ${invoiceId}:`, error);
+    return false;
+  }
+};
+
+export const updateContractStatus = async (
+  invoiceId: string,
+  newStatus: ContractStatus
+): Promise<boolean> => {
+  try {
+    const { error } = await supabase
+      .from('invoices')
+      .update({ contract_status: newStatus })
+      .eq('id', invoiceId);
+      
+    if (error) {
+      logError(`Error updating contract status for invoice ID ${invoiceId}:`, error);
+      throw error;
+    }
+    
+    return true;
+  } catch (error) {
+    logError(`Failed to update contract status for invoice ID ${invoiceId}:`, error);
+    return false;
+  }
+};
+
+export const updatePaymentScheduleStatus = async (
+  scheduleId: string,
+  newStatus: PaymentStatus,
+  paymentDate?: string
+): Promise<boolean> => {
+  try {
+    const updateData: { status: PaymentStatus; payment_date?: string } = { status: newStatus };
+    
+    if (newStatus === 'paid' && paymentDate) {
+      updateData.payment_date = paymentDate;
+    }
+    
+    const { error } = await supabase
+      .from('payment_schedules')
+      .update(updateData)
+      .eq('id', scheduleId);
+      
+    if (error) {
+      logError(`Error updating payment schedule ID ${scheduleId}:`, error);
+      throw error;
+    }
+    
+    return true;
+  } catch (error) {
+    logError(`Failed to update payment schedule ID ${scheduleId}:`, error);
     return false;
   }
 };

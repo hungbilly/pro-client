@@ -53,6 +53,7 @@ export interface Invoice {
   jobId?: string;
   number: string;
   issueDate: string;
+  date: string;
   dueDate: string;
   status: InvoiceStatus;
   totalAmount: number;
@@ -60,7 +61,6 @@ export interface Invoice {
   notes?: string;
   contractTerms?: string;
   contractStatus?: ContractStatus;
-  date: string;
   viewLink: string;
   paymentSchedules?: PaymentSchedule[];
   shootingDate?: string;

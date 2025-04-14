@@ -1,4 +1,3 @@
-
 import { Client, Job, Invoice, InvoiceItem, PaymentSchedule, InvoiceStatus, ContractStatus, PaymentStatus } from '@/types';
 import { supabase, logError, logDebug } from '@/integrations/supabase/client';
 
@@ -27,7 +26,7 @@ export const getClients = async (companyId: string): Promise<Client[]> => {
       address: client.address,
       notes: client.notes,
       createdAt: client.created_at,
-      updatedAt: client.updated_at
+      updatedAt: client.updated_at || null
     })) || [];
   } catch (error) {
     logError('Failed to fetch clients:', error);
@@ -62,7 +61,7 @@ export const getClient = async (id: string): Promise<Client | null> => {
       address: data.address,
       notes: data.notes,
       createdAt: data.created_at,
-      updatedAt: data.updated_at
+      updatedAt: data.updated_at || null
     };
   } catch (error) {
     logError(`Failed to fetch client with ID ${id}:`, error);
@@ -327,7 +326,6 @@ export const updateJob = async (job: Job): Promise<void> => {
   }
 };
 
-// Add a function to delete calendar event when job is deleted
 export const deleteJob = async (id: string): Promise<void> => {
   try {
     // Get the job to check if it has a calendar event
@@ -369,7 +367,6 @@ export const deleteJob = async (id: string): Promise<void> => {
   }
 };
 
-// Add the missing invoice-related functions
 export const getInvoice = async (id: string): Promise<Invoice | null> => {
   try {
     const { data: invoiceData, error: invoiceError } = await supabase
@@ -434,6 +431,7 @@ export const getInvoice = async (id: string): Promise<Invoice | null> => {
       const items: InvoiceItem[] = itemsData.map(item => ({
         id: item.id,
         name: item.name,
+        productName: item.name,
         description: item.description,
         quantity: item.quantity,
         rate: item.rate,
@@ -566,7 +564,7 @@ export const saveInvoice = async (invoiceData: Omit<Invoice, 'id' | 'viewLink'>)
       company_id: invoiceData.companyId,
       job_id: invoiceData.jobId,
       number: invoiceData.number,
-      date: invoiceData.date,
+      date: invoiceData.date || invoiceData.issueDate,
       due_date: invoiceData.dueDate,
       status: invoiceData.status,
       amount: invoiceData.amount || invoiceData.totalAmount,
@@ -647,7 +645,7 @@ export const updateInvoice = async (invoice: Invoice): Promise<Invoice | null> =
       company_id: invoice.companyId,
       job_id: invoice.jobId,
       number: invoice.number,
-      date: invoice.date,
+      date: invoice.date || invoice.issueDate,
       due_date: invoice.dueDate,
       status: invoice.status,
       amount: invoice.amount || invoice.totalAmount,
@@ -786,7 +784,6 @@ export const deleteInvoice = async (id: string): Promise<boolean> => {
   }
 };
 
-// Add missing functions needed by other components
 export const getClientInvoices = async (clientId: string): Promise<Invoice[]> => {
   try {
     const { data, error } = await supabase

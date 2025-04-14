@@ -1,813 +1,401 @@
-import React, { useState, useEffect, useMemo, useCallback, memo, useRef } from 'react';
-import { useParams, Link, useLocation } from 'react-router-dom';
-import { 
-  getInvoiceByViewLink, 
-  getClient, 
-  updateInvoiceStatus, 
-  getInvoice, 
-  updateContractStatus,
-  updatePaymentScheduleStatus,
-  getJob
-} from '@/lib/storage';
-import { Invoice, Client, Job, CompanyClientView } from '@/types';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { Invoice, InvoiceStatus, PaymentStatus, PaymentSchedule } from '@/types';
+import { getInvoice, updateInvoiceStatus, updatePaymentScheduleStatus, updateContractStatus } from '@/lib/storage';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Check, Calendar, FileText, DollarSign, Send, MailCheck, FileCheck, Edit, CalendarDays, Package, Building, User, Phone, Mail, MapPin, Download, Copy, Link as LinkIcon, Bug } from 'lucide-react';
-import { toast } from 'sonner';
-import PageTransition from '@/components/ui-custom/PageTransition';
-import { useAuth } from '@/context/AuthContext';
-import { useCompanyContext } from '@/context/CompanyContext';
 import { format } from 'date-fns';
-import { supabase } from "@/integrations/supabase/client";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import RichTextEditor from '@/components/RichTextEditor';
-import PaymentScheduleTable from '@/components/invoice/PaymentScheduleTable';
-import isEqual from 'lodash/isEqual';
+import { ArrowLeft, CheckCircle, Circle, Copy, File, Loader2, Mail, MessageSquare, Send, Share2, XCircle } from 'lucide-react';
+import { toast } from 'sonner';
+import { useCompany } from '@/components/CompanySelector';
+import { useAuth } from '@/context/AuthContext';
+import { generateInvoicePDF } from '@/integrations/supabase/client';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { DatePicker } from "@/components/ui/date-picker"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 
 const InvoiceView = () => {
+  const { invoiceId } = useParams();
+  const navigate = useNavigate();
+  const { selectedCompanyId } = useCompany();
+  const { user } = useAuth();
   const [invoice, setInvoice] = useState<Invoice | null>(null);
-  const [client, setClient] = useState<Client | null>(null);
-  const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null);
-  const invoiceRef = useRef<HTMLDivElement>(null);
-
-  const { isAdmin, user } = useAuth();
-  const { selectedCompanyId, selectedCompany } = useCompanyContext();
-  const { idOrViewLink } = useParams<{ idOrViewLink: string }>();
-  const location = useLocation();
-
-  const isClientView = useMemo(() => 
-    !location.pathname.includes('/admin') && !user, 
-    [location.pathname, user]
-  );
-
-  const formatCurrency = useCallback((amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-    }).format(amount);
-  }, []);
-
-  const [clientViewCompany, setClientViewCompany] = useState<CompanyClientView | null>(null);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState<InvoiceStatus | null>(null);
+  const [updatingPaymentSchedule, setUpdatingPaymentSchedule] = useState<string | null>(null);
+  const [paymentDateDialogOpen, setPaymentDateDialogOpen] = useState(false);
+  const [currentScheduleId, setCurrentScheduleId] = useState<string | null>(null);
+  const [paymentDate, setPaymentDate] = useState<Date | undefined>(undefined);
 
   useEffect(() => {
     const fetchInvoice = async () => {
-      try {
+      if (invoiceId) {
         setLoading(true);
-        let fetchedInvoice: Invoice | null = null;
-        
-        const identifier = idOrViewLink;
-        if (!identifier) {
-          console.log('[InvoiceView] No identifier provided in URL');
-          setError('Invalid URL. Please provide an invoice ID or view link.');
-          return;
-        }
-        
-        console.log('[InvoiceView] Fetching invoice with identifier:', identifier);
-        
-        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
-        
-        if (isUUID) {
-          console.log('[InvoiceView] Identifier looks like a UUID, using getInvoice');
-          fetchedInvoice = await getInvoice(identifier);
-        } else {
-          console.log('[InvoiceView] Identifier does not look like a UUID, using getInvoiceByViewLink');
-          fetchedInvoice = await getInvoiceByViewLink(identifier);
-        }
-        
-        if (!fetchedInvoice) {
-          const urlPath = location.pathname;
-          const lastPartOfUrl = urlPath.split('/').pop() || '';
-          
-          if (lastPartOfUrl && lastPartOfUrl !== identifier) {
-            console.log('[InvoiceView] Trying alternative identifier from URL path:', lastPartOfUrl);
-            
-            const isLastPartUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(lastPartOfUrl);
-            
-            if (isLastPartUUID) {
-              fetchedInvoice = await getInvoice(lastPartOfUrl);
-            } else {
-              fetchedInvoice = await getInvoiceByViewLink(lastPartOfUrl);
-            }
+        try {
+          const fetchedInvoice = await getInvoice(invoiceId);
+          if (fetchedInvoice) {
+            setInvoice(fetchedInvoice);
+          } else {
+            toast.error('Invoice not found');
+            navigate('/');
           }
+        } catch (error) {
+          console.error('Failed to fetch invoice:', error);
+          toast.error('Failed to load invoice data');
+        } finally {
+          setLoading(false);
         }
-        
-        if (!fetchedInvoice) {
-          console.log('[InvoiceView] No invoice found for identifier:', identifier);
-          setError('Invoice not found. Please check the URL or contact support.');
-          return;
-        }
-        
-        console.log('[InvoiceView] Fetched invoice with contract terms:', {
-          id: fetchedInvoice.id,
-          hasContractTerms: !!fetchedInvoice.contractTerms,
-          contractTermsLength: fetchedInvoice.contractTerms?.length || 0,
-          contractStatus: fetchedInvoice.contractStatus,
-          contractTermsPreview: fetchedInvoice.contractTerms?.substring(0, 100)
-        });
-        
-        if (selectedCompanyId && fetchedInvoice.companyId !== selectedCompanyId && !isClientView) {
-          console.log('[InvoiceView] Invoice company mismatch. Expected:', selectedCompanyId, 'Got:', fetchedInvoice.companyId);
-          toast.error("This invoice belongs to a different company");
-          setError('This invoice belongs to a different company.');
-          return;
-        }
-        
-        setInvoice(fetchedInvoice);
-        
-        if (fetchedInvoice.clientId) {
-          const fetchedClient = await getClient(fetchedInvoice.clientId);
-          if (!fetchedClient) {
-            console.log('[InvoiceView] No client found for clientId:', fetchedInvoice.clientId);
-            setError('Client information not found.');
-            return;
-          }
-          
-          setClient(fetchedClient);
-        }
-
-        if (fetchedInvoice.jobId) {
-          const fetchedJob = await getJob(fetchedInvoice.jobId);
-          if (fetchedJob) {
-            setJob(fetchedJob);
-          }
-        }
-        
-        if (isClientView && fetchedInvoice.companyId) {
-          try {
-            console.log('[InvoiceView] Client view - fetching company info from company_clientview for:', fetchedInvoice.companyId);
-            const { data: companyData, error: companyError } = await supabase
-              .from('company_clientview')
-              .select('*')
-              .eq('company_id', fetchedInvoice.companyId)
-              .single();
-            
-            if (companyError) {
-              console.error('[InvoiceView] Error fetching company from clientview:', companyError);
-            } else if (companyData) {
-              console.log('[InvoiceView] Fetched company data for client view:', companyData);
-              setClientViewCompany(companyData as CompanyClientView);
-            }
-          } catch (err) {
-            console.error('[InvoiceView] Failed to fetch company data:', err);
-          }
-        }
-      } catch (err) {
-        console.error('[InvoiceView] Failed to load invoice:', err);
-        setError('Failed to load invoice. Please try again later.');
-      } finally {
-        setLoading(false);
       }
     };
-    
+
     fetchInvoice();
-  }, [idOrViewLink, location.pathname, selectedCompanyId, isClientView]);
+  }, [invoiceId, navigate]);
 
-  const handlePaymentStatusUpdate = useCallback(async (paymentId: string, newStatus: 'paid' | 'unpaid' | 'write-off') => {
-    if (!invoice || !paymentId) return;
-    
-    setUpdatingPaymentId(paymentId);
+  const handleGeneratePdf = async () => {
+    if (!invoice) return;
+
+    setGeneratingPdf(true);
     try {
-      let updatedSchedule;
-      if (newStatus === 'paid') {
-        const today = new Date();
-        const formattedDate = format(today, 'yyyy-MM-dd');
-        updatedSchedule = await updatePaymentScheduleStatus(paymentId, newStatus, formattedDate);
+      const pdfUrl = await generateInvoicePDF(invoice.id);
+      if (pdfUrl) {
+        setInvoice(prev => prev ? { ...prev, pdfUrl } : null);
+        toast.success('PDF generated successfully!');
       } else {
-        updatedSchedule = await updatePaymentScheduleStatus(paymentId, newStatus);
+        toast.error('Failed to generate PDF.');
+      }
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast.error('Failed to generate PDF.');
+    } finally {
+      setGeneratingPdf(false);
+    }
+  };
+
+  const updateInvoiceStatusHandler = async (newStatus: InvoiceStatus) => {
+    if (!invoice) return;
+
+    setUpdatingStatus(newStatus);
+    try {
+      const success = await updateInvoiceStatus(invoice.id, newStatus);
+      if (success) {
+        setInvoice(prev => prev ? { ...prev, status: newStatus } : null);
+        toast.success(`Invoice status updated to ${newStatus}`);
+      } else {
+        toast.error('Failed to update invoice status');
+      }
+    } catch (error) {
+      console.error('Error updating invoice status:', error);
+      toast.error('Failed to update invoice status');
+    } finally {
+      setUpdatingStatus(null);
+    }
+  };
+
+  const updateContractStatusHandler = async () => {
+    if (!invoice) return;
+
+    const newStatus = invoice.contractStatus === 'pending' ? 'accepted' : 'pending';
+
+    try {
+      const success = await updateContractStatus(invoice.id, newStatus);
+      if (success) {
+        setInvoice(prev => prev ? { ...prev, contractStatus: newStatus } : null);
+        toast.success(`Contract status updated to ${newStatus}`);
+      } else {
+        toast.error('Failed to update contract status');
+      }
+    } catch (error) {
+      console.error('Error updating contract status:', error);
+      toast.error('Failed to update contract status');
+    }
+  };
+
+  const copyInvoiceLink = () => {
+    if (!invoice) return;
+    navigator.clipboard.writeText(invoice.viewLink);
+    toast.success('Invoice link copied to clipboard!');
+  };
+
+  const sendInvoiceLink = () => {
+    if (!invoice) return;
+    window.location.href = `mailto:?subject=Invoice Link&body=Here is the link to view your invoice: ${invoice.viewLink}`;
+  };
+
+  const updateScheduleStatus = async (scheduleId: string, status: PaymentStatus) => {
+    if (!invoice) return;
+    
+    try {
+      setUpdatingPaymentSchedule(scheduleId);
+      
+      let paymentDate: string | undefined;
+      if (status === 'paid') {
+        setPaymentDateDialogOpen(true);
+        setCurrentScheduleId(scheduleId);
+        return;  // Wait for dialog to close
       }
       
-      if (!updatedSchedule) {
+      const success = await updatePaymentScheduleStatus(scheduleId, status);
+      if (success) {
+        // Update local state
+        setInvoice(prev => {
+          if (!prev?.paymentSchedules) return prev;
+          
+          const updatedSchedules = prev.paymentSchedules.map(schedule => 
+            schedule.id === scheduleId ? { ...schedule, status, paymentDate } : schedule
+          );
+          
+          return {
+            ...prev,
+            paymentSchedules: updatedSchedules
+          } as Invoice;
+        });
+        
+        toast.success(`Payment status updated to ${status}`);
+      } else {
         toast.error('Failed to update payment status');
-        return;
       }
-      
-      if (invoice.paymentSchedules) {
-        const updatedSchedules = invoice.paymentSchedules.map(schedule => 
-          schedule.id === paymentId ? updatedSchedule : schedule
+    } catch (error) {
+      console.error('Error updating payment schedule status:', error);
+      toast.error('Failed to update payment status');
+    } finally {
+      setUpdatingPaymentSchedule(null);
+    }
+  };
+
+  const handlePaymentDateConfirm = async (date: Date) => {
+    if (!currentScheduleId || !invoice) return;
+    
+    const formattedDate = format(date, 'yyyy-MM-dd');
+    const success = await updatePaymentScheduleStatus(currentScheduleId, 'paid', formattedDate);
+    
+    if (success) {
+      // Update local state
+      setInvoice(prev => {
+        if (!prev?.paymentSchedules) return prev;
+        
+        const updatedSchedules = prev.paymentSchedules.map(schedule => 
+          schedule.id === currentScheduleId ? { ...schedule, status: 'paid' as PaymentStatus, paymentDate: formattedDate } : schedule
         );
         
-        setInvoice(prev => {
-          if (!prev) return prev;
-          if (isEqual(prev.paymentSchedules, updatedSchedules)) {
-            return prev;
-          }
-          return {
-            ...prev,
-            paymentSchedules: updatedSchedules
-          };
-        });
-      }
-    } catch (err) {
-      console.error('Failed to update payment status:', err);
-      toast.error('Error updating payment status');
-    } finally {
-      setUpdatingPaymentId(null);
-    }
-  }, [invoice]);
-
-  const handlePaymentDateUpdate = useCallback(async (paymentId: string, paymentDate: string) => {
-    if (!invoice || !paymentId) return;
-    
-    setUpdatingPaymentId(paymentId);
-    try {
-      const updatedSchedule = await updatePaymentScheduleStatus(
-        paymentId, 
-        'paid',
-        paymentDate
-      );
-      
-      if (!updatedSchedule) {
-        toast.error('Failed to update payment date');
-        return;
-      }
-      
-      if (invoice.paymentSchedules) {
-        const updatedSchedules = invoice.paymentSchedules.map(schedule => 
-          schedule.id === paymentId ? updatedSchedule : schedule
-        );
-        
-        setInvoice(prev => {
-          if (!prev) return prev;
-          if (isEqual(prev.paymentSchedules, updatedSchedules)) {
-            return prev;
-          }
-          return {
-            ...prev,
-            paymentSchedules: updatedSchedules
-          };
-        });
-      }
-    } catch (err) {
-      console.error('Failed to update payment date:', err);
-      toast.error('Error updating payment date');
-    } finally {
-      setUpdatingPaymentId(null);
-    }
-  }, [invoice]);
-
-  const handleCopyInvoiceLink = () => {
-    if (!invoice) return;
-    
-    const baseUrl = window.location.origin;
-    
-    let cleanViewLink = invoice.viewLink;
-    if (cleanViewLink.includes('http') || cleanViewLink.includes('/invoice/')) {
-      const parts = cleanViewLink.split('/');
-      cleanViewLink = parts[parts.length - 1];
-    }
-    
-    const cleanUrl = `${baseUrl}/invoice/${cleanViewLink}`;
-    
-    console.log('Copying invoice link:', cleanUrl);
-    
-    navigator.clipboard.writeText(cleanUrl)
-      .then(() => {
-        toast.success('Invoice link copied to clipboard');
-      })
-      .catch((err) => {
-        console.error('Failed to copy invoice link:', err);
-        toast.error('Failed to copy link to clipboard');
-      });
-  };
-
-  const handleDownloadInvoice = async () => {
-    if (!invoice) return;
-    
-    if (invoice.pdfUrl) {
-      try {
-        const link = document.createElement('a');
-        link.href = invoice.pdfUrl;
-        link.setAttribute('download', `Invoice-${invoice.number}.pdf`);
-        document.body.appendChild(link);
-        link.click();
-        
-        document.body.removeChild(link);
-        toast.success('Invoice downloaded successfully');
-      } catch (err) {
-        console.error('Error during download:', err);
-        toast.error('Failed to download invoice');
-      }
-      return;
-    }
-    
-    try {
-      toast.info('Preparing PDF for download...');
-      
-      const { data, error } = await supabase.functions.invoke('generate-invoice-pdf', {
-        body: { invoiceId: invoice.id }
+        return {
+          ...prev,
+          paymentSchedules: updatedSchedules
+        } as Invoice;
       });
       
-      if (error) {
-        console.error('Error generating PDF:', error);
-        toast.error('Failed to generate invoice PDF');
-        return;
-      }
-      
-      if (data?.pdfUrl) {
-        setInvoice(prev => prev ? { ...prev, pdfUrl: data.pdfUrl } : null);
-        
-        const link = document.createElement('a');
-        link.href = data.pdfUrl;
-        link.setAttribute('download', `Invoice-${invoice.number}.pdf`);
-        document.body.appendChild(link);
-        link.click();
-        
-        document.body.removeChild(link);
-        toast.success('Invoice downloaded successfully');
-      }
-    } catch (err) {
-      console.error('Error downloading invoice:', err);
-      toast.error('Failed to download invoice');
-    }
-  };
-
-  const handleAcceptInvoice = async () => {
-    if (!invoice) return;
-    
-    try {
-      await updateInvoiceStatus(invoice.id, 'accepted');
-      toast.success('Invoice accepted successfully');
-      setInvoice(prev => prev ? { ...prev, status: 'accepted' } : null);
-    } catch (err) {
-      console.error('Failed to accept invoice:', err);
-      toast.error('Error accepting invoice');
-    }
-  };
-
-  const handleAcceptContract = async () => {
-    if (!invoice) return;
-    
-    try {
-      await updateContractStatus(invoice.id, 'accepted');
-      toast.success('Contract terms accepted successfully');
-      setInvoice(prev => prev ? { ...prev, contractStatus: 'accepted' } : null);
-    } catch (err) {
-      console.error('Failed to accept contract:', err);
-      toast.error('Error accepting contract terms');
-    }
-  };
-
-  const handleDebugPdf = async () => {
-    if (!invoice) return;
-    
-    try {
-      toast.info('Generating simplified debug PDF with only company info...');
-      
-      const { data, error } = await supabase.functions.invoke('generate-invoice-pdf', {
-        body: { 
-          invoiceId: invoice.id, 
-          debugMode: true 
-        }
-      });
-      
-      if (error) {
-        console.error('Error generating debug PDF:', error);
-        toast.error('Failed to generate debug PDF');
-        return;
-      }
-      
-      if (data?.pdfUrl) {
-        const debugPdfUrl = data.pdfUrl;
-        
-        const link = document.createElement('a');
-        link.href = debugPdfUrl;
-        link.setAttribute('download', `Invoice-${invoice.number}-debug.pdf`);
-        document.body.appendChild(link);
-        link.click();
-        
-        document.body.removeChild(link);
-        toast.success('Debug PDF downloaded successfully');
-      }
-    } catch (err) {
-      console.error('Error generating debug PDF:', err);
-      toast.error('Failed to generate debug PDF');
-    }
-  };
-
-  const getDisplayCompany = () => {
-    if (isClientView) {
-      return clientViewCompany ? {
-        id: clientViewCompany.id,
-        name: clientViewCompany.name,
-        logo_url: clientViewCompany.logo_url,
-        email: clientViewCompany.email,
-        phone: clientViewCompany.phone,
-        address: clientViewCompany.address,
-        website: clientViewCompany.website
-      } : null;
+      toast.success('Payment marked as paid');
     } else {
-      return selectedCompany;
+      toast.error('Failed to update payment status');
     }
+    
+    setPaymentDateDialogOpen(false);
+    setUpdatingPaymentSchedule(null);
+    setCurrentScheduleId(null);
   };
-
-  const displayCompany = getDisplayCompany();
-
-  useEffect(() => {
-    if (invoice) {
-      console.log('[InvoiceView] Current invoice contract terms:', {
-        hasContractTerms: !!invoice.contractTerms,
-        contractTermsLength: invoice.contractTerms?.length || 0,
-        contractStatus: invoice.contractStatus,
-        contractPreview: invoice.contractTerms?.substring(0, 100)
-      });
-    }
-  }, [invoice]);
 
   if (loading) {
-    return (
-      <PageTransition>
-        <div className="flex justify-center items-center h-screen">
-          Loading invoice...
-        </div>
-      </PageTransition>
-    );
+    return <div className="container py-8">Loading invoice...</div>;
   }
 
-  if (error) {
-    return (
-      <PageTransition>
-        <div className="flex justify-center items-center h-screen">
-          Error: {error}
-        </div>
-      </PageTransition>
-    );
+  if (!invoice) {
+    return <div className="container py-8">Invoice not found.</div>;
   }
-
-  if (!invoice || !client) {
-    return (
-      <PageTransition>
-        <div className="flex justify-center items-center h-screen">
-          Invoice or client not found.
-        </div>
-      </PageTransition>
-    );
-  }
-
-  const statusColors = {
-    draft: 'bg-muted text-muted-foreground',
-    sent: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-    accepted: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-    paid: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-  };
-
-  const contractStatusColor = invoice.contractStatus === 'accepted' 
-    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-    : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
 
   return (
-    <PageTransition>
-      <div className="container-fluid px-4 py-8 max-w-[95%] mx-auto">
-        {!isClientView && (
-          <div className="flex gap-2 mb-4">
-            <Button asChild variant="ghost">
-              <Link to="/">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Dashboard
-              </Link>
-            </Button>
-            
-            {invoice?.jobId && (
-              <Button asChild variant="ghost">
-                <Link to={`/job/${invoice.jobId}`}>
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back to Job
-                </Link>
-              </Button>
-            )}
-            
-            {invoice?.clientId && (
-              <Button asChild variant="ghost">
-                <Link to={`/client/${invoice.clientId}`}>
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back to Client
-                </Link>
-              </Button>
-            )}
-          </div>
-        )}
-        
-        {isClientView && (
-          <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold mb-2">Invoice #{invoice.number}</h1>
-            <p className="text-muted-foreground">
-              Please review and accept this invoice and contract terms.
-            </p>
-          </div>
-        )}
-        
-        <Card className="w-full mx-auto bg-white dark:bg-gray-900 shadow-sm" ref={invoiceRef}>
-          <CardHeader className="pb-0">
-            {!isClientView && (
-              <div className="flex justify-end mb-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => {
-                    if (invoice.jobId) {
-                      window.location.href = `/job/${invoice.jobId}/invoice/${invoice.id}/edit`;
-                    } else {
-                      window.location.href = `/client/${client.id}/invoice/${invoice.id}/edit`;
-                    }
-                  }}
-                  className="flex items-center gap-1"
-                >
-                  <Edit className="h-3 w-3" />
-                  Edit Invoice
-                </Button>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-4">
-              <div className="flex flex-col justify-between">
-                <div className="flex items-start mb-6 h-80">
-                  {displayCompany?.logo_url ? (
-                    <img 
-                      src={displayCompany.logo_url} 
-                      alt={`${displayCompany.name} Logo`}
-                      className="h-full max-h-80 w-auto object-contain" 
-                    />
-                  ) : (
-                    <div className="h-24 w-24 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center text-gray-400">
-                      <Building className="h-14 w-14" />
-                    </div>
-                  )}
-                </div>
-                
-                <div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400">INVOICE</div>
-                  <div className="text-2xl font-bold"># {invoice.number}</div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">INVOICE ISSUE DATE</div>
-                  <div className="text-sm">{new Date(invoice.date).toLocaleDateString()}</div>
-                  <div className="mt-1 flex items-center">
-                    <Badge className={statusColors[invoice.status] || 'bg-gray-100 text-gray-800'}>
-                      {invoice.status.toUpperCase()}
-                    </Badge>
-                    {invoice.contractStatus === 'accepted' && (
-                      <Badge variant="outline" className={`ml-2 flex items-center gap-1 ${contractStatusColor}`}>
-                        <FileCheck className="h-3 w-3" />
-                        Contract Accepted
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              </div>
-              
-              <div className="space-y-4">
-                <div>
-                  <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">FROM</h4>
-                  <div className="font-medium">{displayCompany?.name || 'Company'}</div>
-                  {displayCompany?.email && <div className="text-sm">{displayCompany.email}</div>}
-                  {displayCompany?.phone && <div className="text-sm">{displayCompany.phone}</div>}
-                  {displayCompany?.address && <div className="text-sm">{displayCompany.address}</div>}
-                </div>
-                
-                <div>
-                  <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">INVOICE FOR</h4>
-                  {job && <div className="font-medium">{job.title}</div>}
-                  <div className="text-sm font-medium mt-1">Client: {client.name}</div>
-                  <div className="text-sm grid grid-cols-1 gap-1 mt-1">
-                    {client.email && (
-                      <div className="flex items-center text-gray-600 dark:text-gray-400">
-                        <Mail className="h-3 w-3 mr-1" />
-                        {client.email}
-                      </div>
-                    )}
-                    {client.phone && (
-                      <div className="flex items-center text-gray-600 dark:text-gray-400">
-                        <Phone className="h-3 w-3 mr-1" />
-                        {client.phone}
-                      </div>
-                    )}
-                    {client.address && (
-                      <div className="flex items-center text-gray-600 dark:text-gray-400">
-                        <MapPin className="h-3 w-3 mr-1" />
-                        {client.address}
-                      </div>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="flex items-center space-x-4">
-                  {job?.date && (
-                    <div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">JOB DATE</div>
-                      <div className="text-sm">{job.date}</div>
-                    </div>
-                  )}
-                </div>
+    <div className="container py-8">
+      <Button variant="ghost" asChild>
+        <Link to="/">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Dashboard
+        </Link>
+      </Button>
+      <Card className="w-full max-w-4xl mx-auto mt-4">
+        <CardHeader>
+          <CardTitle>Invoice #{invoice.number}</CardTitle>
+          <CardDescription>
+            View and manage invoice details.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <div className="text-sm font-medium">Client</div>
+              <div>{invoice.clientId}</div>
+            </div>
+            <div>
+              <div className="text-sm font-medium">Date</div>
+              <div>{format(new Date(invoice.date), 'PPP')}</div>
+            </div>
+            <div>
+              <div className="text-sm font-medium">Due Date</div>
+              <div>{format(new Date(invoice.dueDate), 'PPP')}</div>
+            </div>
+            <div>
+              <div className="text-sm font-medium">Status</div>
+              <div>
+                <Badge variant="secondary">
+                  {invoice.status}
+                </Badge>
               </div>
             </div>
-            <Separator className="mt-6" />
-          </CardHeader>
-          
-          <CardContent className="pt-6">
-            <Tabs defaultValue="invoice" className="w-full">
-              <TabsList className="w-full">
-                <TabsTrigger value="invoice" className="flex-1">
-                  Invoice Details
-                  {invoice.status === 'accepted' && (
-                    <span className="ml-2">
-                      <FileCheck className="h-3 w-3 inline text-green-600" />
-                    </span>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="contract" className="flex-1">
-                  Contract Terms
-                  {invoice.contractStatus === 'accepted' && (
-                    <span className="ml-2">
-                      <FileCheck className="h-3 w-3 inline text-green-600" />
-                    </span>
-                  )}
-                </TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="invoice" className="mt-6">
-                {isClientView && ['draft', 'sent'].includes(invoice.status) && (
-                  <Button onClick={handleAcceptInvoice} className="mb-4">
-                    <Check className="h-4 w-4 mr-2" />
-                    Accept Invoice
-                  </Button>
-                )}
-                
-                {invoice.status === 'accepted' && (
-                  <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-md flex items-center gap-2">
-                    <FileCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
-                    <span className="text-green-800 dark:text-green-400">
-                      This invoice has been accepted
-                    </span>
-                  </div>
-                )}
-                
-                <div className="mb-6">
-                  <div className="flex items-center mb-3">
-                    <Package className="h-5 w-5 mr-2" />
-                    <h4 className="text-lg font-semibold">Products / Packages</h4>
-                  </div>
-                  
-                  <div className="border rounded-md p-4 bg-gray-50 dark:bg-gray-900/50">
-                    <div className="hidden md:flex justify-between mb-3 text-sm font-medium text-muted-foreground border-b pb-2">
-                      <div className="flex-1">
-                        <div className="mb-1">Package Name</div>
-                      </div>
-                      <div className="flex-1 pr-4">Description</div>
-                      <div className="flex items-center space-x-6 min-w-[260px] justify-end">
-                        <div className="text-right w-16">Quantity</div>
-                        <div className="text-right w-24">Unit Price</div>
-                        <div className="text-right w-24">Amount</div>
-                      </div>
-                    </div>
-                    
-                    {invoice.items && invoice.items.length > 0 ? (
-                      invoice.items.map((item) => (
-                        <div key={item.id} className="mb-4 pb-4 border-b last:mb-0 last:pb-0 last:border-b-0">
-                          <div className="md:flex md-justify-between md:items-start">
-                            <div className="md:flex-1">
-                              <h5 className="font-medium">{item.name || 'Unnamed Package'}</h5>
-                            </div>
-                            <div className="md:flex-1 md:pr-4">
-                              {item.description && (
-                                <div className="mt-2 text-sm" dangerouslySetInnerHTML={{ __html: item.description }} />
-                              )}
-                            </div>
-                            <div className="mt-2 md:mt-0 flex flex-col md:flex-row md:items-center md:space-x-6 md:min-w-[260px] md:justify-end">
-                              <div className="text-sm text-muted-foreground md:text-right w-16">
-                                <span className="md:hidden">Quantity: </span>
-                                <span>{item.quantity}</span>
-                              </div>
-                              <div className="text-sm text-muted-foreground md:text-right w-24">
-                                <span className="md:hidden">Unit Price: </span>
-                                <span>{formatCurrency(item.rate)}</span>
-                              </div>
-                              <div className="font-medium md:text-right w-24">
-                                <span className="md:hidden">Total: </span>
-                                <span>{formatCurrency(item.amount)}</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))
+            <div>
+              <div className="text-sm font-medium">Contract Status</div>
+              <div>
+                <Badge variant="secondary">
+                  {invoice.contractStatus}
+                </Badge>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div className="text-sm font-medium">Items</div>
+            <ul>
+              {invoice.items.map(item => (
+                <li key={item.id} className="py-2">
+                  {item.description} - ${item.amount}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <div className="text-sm font-medium">Notes</div>
+            <div>{invoice.notes}</div>
+          </div>
+          <div>
+            <div className="text-sm font-medium">Contract Terms</div>
+            <div>{invoice.contractTerms}</div>
+          </div>
+          <div>
+            <div className="text-sm font-medium">Payment Schedules</div>
+            <ul>
+              {invoice.paymentSchedules?.map(schedule => (
+                <li key={schedule.id} className="py-2">
+                  {schedule.description} - Due: {format(new Date(schedule.dueDate), 'PPP')} - {schedule.status}
+                  <Button 
+                    variant="link" 
+                    size="sm"
+                    onClick={() => updateScheduleStatus(schedule.id, schedule.status === 'paid' ? 'unpaid' : 'paid')}
+                    disabled={updatingPaymentSchedule === schedule.id}
+                  >
+                    {updatingPaymentSchedule === schedule.id ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Updating...
+                      </>
+                    ) : schedule.status === 'paid' ? (
+                      <>
+                        <XCircle className="mr-2 h-4 w-4" />
+                        Mark as Unpaid
+                      </>
                     ) : (
-                      <p className="text-muted-foreground">No items in this invoice.</p>
+                      <>
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        Mark as Paid
+                      </>
                     )}
-                    
-                    <div className="mt-4 pt-4 border-t">
-                      <div className="flex justify-between font-medium">
-                        <span>Total</span>
-                        <span>{formatCurrency(invoice.amount)}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <div>
-                  <h4 className="text-lg font-semibold mb-2">Notes</h4>
-                  <div className="border rounded-md">
-                    <RichTextEditor
-                      value={invoice.notes || 'No notes provided.'}
-                      onChange={() => {}}
-                      readOnly={true}
-                    />
-                  </div>
-                </div>
-                
-                <Separator className="my-6" />
-                
-                <div className="mt-6">
-                  <div className="flex items-center mb-3">
-                    <CalendarDays className="h-5 w-5 mr-2" />
-                    <h4 className="text-lg font-semibold">Payment Schedule</h4>
-                  </div>
-                  
-                  {Array.isArray(invoice.paymentSchedules) && invoice.paymentSchedules.length > 0 ? (
-                    <PaymentScheduleTable
-                      paymentSchedules={invoice.paymentSchedules}
-                      amount={invoice.amount}
-                      isClientView={isClientView}
-                      updatingPaymentId={updatingPaymentId}
-                      onUpdateStatus={handlePaymentStatusUpdate}
-                      formatCurrency={formatCurrency}
-                      onUpdatePaymentDate={handlePaymentDateUpdate}
-                    />
-                  ) : (
-                    <div className="text-muted-foreground border rounded-md p-4 bg-gray-50 dark:bg-gray-900/50">
-                      Full payment of {formatCurrency(invoice.amount)} due on {new Date(invoice.dueDate).toLocaleDateString()}
-                    </div>
-                  )}
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="contract" className="mt-6">
-                {isClientView && invoice.contractStatus !== 'accepted' && (
-                  <Button onClick={handleAcceptContract} className="mb-4">
-                    <Check className="h-4 w-4 mr-2" />
-                    Accept Contract Terms
                   </Button>
-                )}
-                  
-                {invoice.contractStatus === 'accepted' && (
-                  <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-md flex items-center gap-2">
-                    <FileCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
-                    <span className="text-green-800 dark:text-green-400">
-                      This contract has been accepted
-                    </span>
-                  </div>
-                )}
-                  
-                <div className="flex items-center mb-3">
-                  <FileText className="h-5 w-5 mr-2" />
-                  <h4 className="text-lg font-semibold">Contract Terms</h4>
-                </div>
-                <div className="border rounded-md">
-                  {invoice.contractTerms ? (
-                    <RichTextEditor
-                      value={invoice.contractTerms}
-                      onChange={() => {}}
-                      readOnly={true}
-                    />
-                  ) : (
-                    <div className="p-4 text-muted-foreground">
-                      No contract terms provided.
-                    </div>
-                  )}
-                </div>
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-          
-          <CardFooter className="justify-end gap-2 flex-wrap pt-4 border-t">
-            <Button
-              variant="outline"
-              onClick={handleCopyInvoiceLink}
-            >
-              <LinkIcon className="h-4 w-4 mr-2" />
-              Copy Invoice Link
+                </li>
+              ))}
+            </ul>
+          </div>
+        </CardContent>
+        <CardFooter className="flex justify-between">
+          <div className="flex gap-2">
+            <Button onClick={copyInvoiceLink}>
+              <Copy className="mr-2 h-4 w-4" />
+              Copy Link
             </Button>
-            <Button
-              variant="default"
-              onClick={handleDownloadInvoice}
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Download Invoice
+            <Button onClick={sendInvoiceLink}>
+              <Mail className="mr-2 h-4 w-4" />
+              Send Link
             </Button>
-            {!isClientView && isAdmin && (
-              <Button
-                variant="outline"
-                onClick={handleDebugPdf}
-              >
-                <Bug className="h-4 w-4 mr-2" />
-                Debug PDF
-              </Button>
-            )}
-          </CardFooter>
-        </Card>
-      </div>
-    </PageTransition>
+            <Button onClick={handleGeneratePdf} disabled={generatingPdf}>
+              {generatingPdf ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Generating PDF...
+                </>
+              ) : (
+                <>
+                  <File className="mr-2 h-4 w-4" />
+                  Generate PDF
+                </>
+              )}
+            </Button>
+          </div>
+          <div className="flex gap-2">
+            <Button onClick={() => updateInvoiceStatusHandler('sent')} disabled={updatingStatus !== null}>
+              {updatingStatus === 'sent' ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                <>
+                  <Send className="mr-2 h-4 w-4" />
+                  Mark as Sent
+                </>
+              )}
+            </Button>
+            <Button onClick={() => updateInvoiceStatusHandler('accepted')} disabled={updatingStatus !== null}>
+              {updatingStatus === 'accepted' ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Mark as Accepted
+                </>
+              )}
+            </Button>
+            <Button onClick={updateContractStatusHandler}>
+              {invoice.contractStatus === 'pending' ? (
+                <>
+                  <Circle className="mr-2 h-4 w-4" />
+                  Accept Contract
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Unaccept Contract
+                </>
+              )}
+            </Button>
+          </div>
+        </CardFooter>
+      </Card>
+
+      <Dialog open={paymentDateDialogOpen} onOpenChange={setPaymentDateDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Enter Payment Date</DialogTitle>
+            <DialogDescription>
+              Select the date when the payment was received.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="paymentDate" className="text-right">
+                Payment Date
+              </Label>
+              <DatePicker
+                id="paymentDate"
+                mode="single"
+                selected={paymentDate}
+                onSelect={setPaymentDate}
+                className="col-span-3"
+              />
+            </div>
+          </div>
+          <Button onClick={() => paymentDate && handlePaymentDateConfirm(paymentDate)}>Mark as Paid</Button>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 };
 

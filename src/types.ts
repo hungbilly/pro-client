@@ -1,3 +1,4 @@
+
 export interface User {
   id: string;
   email: string;
@@ -28,7 +29,6 @@ export interface Client {
   updatedAt?: string;
 }
 
-// Update the Job type to include calendarEventId
 export interface Job {
   id: string;
   clientId: string;
@@ -43,19 +43,63 @@ export interface Job {
   isFullDay?: boolean;
   createdAt: string;
   updatedAt?: string;
-  calendarEventId?: string; // Add this field for calendar integration
+  calendarEventId?: string;
 }
 
 export interface Invoice {
   id: string;
   companyId: string;
   clientId: string;
-  number: number;
+  jobId?: string;
+  number: string;
   issueDate: string;
   dueDate: string;
-  status: 'draft' | 'sent' | 'paid' | 'overdue';
+  status: 'draft' | 'sent' | 'paid' | 'overdue' | 'accepted';
   totalAmount: number;
+  amount: number;
   notes?: string;
-  createdAt: string;
-  updatedAt?: string;
+  contractTerms?: string;
+  contractStatus?: 'pending' | 'accepted';
+  date: string;
+  viewLink: string;
+  paymentSchedules?: PaymentSchedule[];
+  shootingDate?: string;
+  pdfUrl?: string;
+}
+
+export interface InvoiceItem {
+  id: string;
+  name?: string;
+  productName?: string;
+  description: string;
+  quantity: number;
+  rate: number;
+  amount: number;
+  discount?: string;
+  tax?: string;
+}
+
+export interface Package {
+  id: string;
+  name: string;
+  description?: string;
+  price: number;
+  tax_rate?: number;
+  user_id: string;
+  company_id?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export type InvoiceStatus = 'draft' | 'sent' | 'accepted' | 'paid' | 'overdue';
+export type ContractStatus = 'pending' | 'accepted';
+export type PaymentStatus = 'paid' | 'unpaid' | 'write-off';
+
+export interface PaymentSchedule {
+  id: string;
+  description: string;
+  dueDate: string;
+  percentage: number;
+  status: PaymentStatus;
+  paymentDate?: string;
 }

@@ -20,6 +20,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import JobWarningDialog from './JobWarningDialog';
 import { AddToCalendarDialog } from './AddToCalendarDialog';
 import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/context/AuthContext';
 
 interface JobFormProps {
   job?: Job;
@@ -30,6 +32,7 @@ interface JobFormProps {
 const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefinedClientId, onSuccess }) => {
   const { clientId: clientIdParam } = useParams<{ clientId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [client, setClient] = useState<Client | null>(null);
   const [title, setTitle] = useState(existingJob?.title || '');
@@ -44,6 +47,11 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
   const [conflictingJobs, setConflictingJobs] = useState<Job[]>([]);
   const [showCalendarDialog, setShowCalendarDialog] = useState(false);
   const [newJob, setNewJob] = useState<Job | null>(null);
+  const [isAddingToCalendar, setIsAddingToCalendar] = useState(false);
+  const [calendarEventId, setCalendarEventId] = useState<string | null>(existingJob?.calendarEventId || null);
+  const [calendarError, setCalendarError] = useState<string | null>(null);
+  const [hasCalendarIntegration, setHasCalendarIntegration] = useState<boolean | null>(null);
+  const [isCheckingIntegration, setIsCheckingIntegration] = useState(false);
 
   const clientId = predefinedClientId || clientIdParam || existingJob?.clientId || '';
   const { selectedCompany } = useCompany();
@@ -71,7 +79,183 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
     };
 
     fetchClient();
-  }, [clientId, navigate]);
+
+    // Check if user has calendar integration
+    if (user) {
+      checkCalendarIntegration();
+    }
+  }, [clientId, navigate, user]);
+
+  const checkCalendarIntegration = async () => {
+    try {
+      setIsCheckingIntegration(true);
+      
+      const { data, error } = await supabase
+        .from('user_integrations')
+        .select('id')
+        .eq('user_id', user?.id)
+        .eq('provider', 'google_calendar')
+        .limit(1);
+      
+      if (error) {
+        console.error('Error checking integration:', error);
+        setHasCalendarIntegration(false);
+        return;
+      }
+      
+      setHasCalendarIntegration(data && data.length > 0);
+    } catch (error) {
+      console.error('Exception checking integration:', error);
+      setHasCalendarIntegration(false);
+    } finally {
+      setIsCheckingIntegration(false);
+    }
+  };
+
+  const addToCalendar = async (job: Job, client: Client) => {
+    if (!user) {
+      console.error('No user found for calendar integration');
+      return null;
+    }
+    
+    try {
+      setIsAddingToCalendar(true);
+      setCalendarError(null);
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('No active session');
+      }
+      
+      const { data, error } = await supabase.functions.invoke('add-to-calendar', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: {
+          jobId: job.id,
+          clientId: client.id,
+          userId: user.id
+        }
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      if (data?.error) {
+        throw new Error(data.message || data.error);
+      }
+      
+      if (!data.success) {
+        // If the response indicates no integration setup, track this but don't show as error
+        if (data.message?.includes('integration not set up')) {
+          setHasCalendarIntegration(false);
+          return null;
+        }
+        throw new Error(data.message || 'Failed to create calendar event');
+      }
+      
+      return data.eventId;
+    } catch (error) {
+      console.error('Error adding to calendar:', error);
+      setCalendarError(error instanceof Error ? error.message : String(error));
+      return null;
+    } finally {
+      setIsAddingToCalendar(false);
+    }
+  };
+
+  const updateCalendarEvent = async (job: Job, client: Client, eventId: string) => {
+    if (!user) {
+      console.error('No user found for calendar integration');
+      return false;
+    }
+    
+    try {
+      setIsAddingToCalendar(true);
+      setCalendarError(null);
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('No active session');
+      }
+      
+      const { data, error } = await supabase.functions.invoke('update-calendar-event', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: {
+          eventId,
+          jobData: {
+            title: job.title,
+            description: job.description,
+            date: job.date,
+            location: job.location,
+            is_full_day: job.isFullDay,
+            start_time: job.startTime,
+            end_time: job.endTime
+          },
+          userId: user.id
+        }
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to update calendar event');
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error updating calendar event:', error);
+      setCalendarError(error instanceof Error ? error.message : String(error));
+      return false;
+    } finally {
+      setIsAddingToCalendar(false);
+    }
+  };
+
+  const deleteCalendarEvent = async (eventId: string) => {
+    if (!user || !eventId) {
+      console.error('Missing user or calendar event ID');
+      return false;
+    }
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('No active session');
+      }
+      
+      const { data, error } = await supabase.functions.invoke('delete-calendar-event', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: {
+          eventId,
+          userId: user.id
+        }
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to delete calendar event');
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error deleting calendar event:', error);
+      return false;
+    }
+  };
 
   const checkForConflicts = () => {
     if (!date) return false;
@@ -112,6 +296,7 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
 
     try {
       if (existingJob) {
+        // Update existing job
         const updatedJob: Job = {
           id: existingJob.id,
           clientId: client.id,
@@ -125,18 +310,45 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
           endTime: isFullDay ? undefined : endTime,
           isFullDay,
           createdAt: existingJob.createdAt,
-          updatedAt: new Date().toISOString()
+          updatedAt: new Date().toISOString(),
+          calendarEventId: calendarEventId ?? undefined
         };
 
+        // Update the job in the database
         await updateJob(updatedJob);
-        toast.success('Job updated successfully!');
         
-        if (onSuccess) {
-          onSuccess();
+        // If the job has a calendar event ID, update the calendar event
+        if (calendarEventId && hasCalendarIntegration) {
+          const updated = await updateCalendarEvent(updatedJob, client, calendarEventId);
+          if (updated) {
+            toast.success('Job and calendar event updated successfully!');
+          } else {
+            toast.success('Job updated successfully!');
+            if (calendarError) {
+              toast.error(`Calendar event could not be updated: ${calendarError}`);
+            }
+          }
+        } else if (hasCalendarIntegration === true) {
+          // If there's no existing calendar event but user has integration, ask if they want to add it
+          setNewJob(updatedJob);
+          setShowCalendarDialog(true);
         } else {
+          toast.success('Job updated successfully!');
+          
+          if (onSuccess) {
+            onSuccess();
+          } else {
+            navigate(`/job/${existingJob.id}`);
+          }
+        }
+        
+        if (!showCalendarDialog && onSuccess) {
+          onSuccess();
+        } else if (!showCalendarDialog) {
           navigate(`/job/${existingJob.id}`);
         }
       } else {
+        // Create new job
         const newJobData = {
           clientId: client.id,
           companyId: selectedCompany.id,
@@ -154,8 +366,16 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
         setNewJob(savedJob);
         toast.success('Job created successfully!');
         
-        // Show calendar dialog instead of navigating away immediately
-        setShowCalendarDialog(true);
+        // If user has calendar integration, show calendar dialog
+        if (hasCalendarIntegration) {
+          setShowCalendarDialog(true);
+        } else {
+          if (onSuccess) {
+            onSuccess();
+          } else {
+            navigate(`/job/${savedJob.id}`);
+          }
+        }
       }
     } catch (error) {
       console.error('Failed to save/update job:', error);
@@ -182,8 +402,28 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
     setShowWarningDialog(false);
   };
 
-  const handleCalendarDialogClose = () => {
+  const handleCalendarDialogClose = async (shouldAddToCalendar: boolean = false) => {
     setShowCalendarDialog(false);
+    
+    // If the user wants to add the job to their calendar and we have a job object
+    if (shouldAddToCalendar && newJob && client) {
+      try {
+        const eventId = await addToCalendar(newJob, client);
+        
+        if (eventId) {
+          // Update the job with the calendar event ID
+          const updatedJob = { ...newJob, calendarEventId: eventId };
+          await updateJob(updatedJob);
+          toast.success('Job added to calendar successfully!');
+          setCalendarEventId(eventId);
+        } else if (calendarError) {
+          toast.error(`Failed to add job to calendar: ${calendarError}`);
+        }
+      } catch (error) {
+        console.error('Error in calendar dialog action:', error);
+        toast.error('Error adding job to calendar');
+      }
+    }
     
     if (onSuccess) {
       onSuccess();
@@ -368,7 +608,9 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
         </CardContent>
         <CardFooter className="flex justify-between">
           <Button variant="outline" onClick={() => navigate(`/client/${client.id}`)}>Cancel</Button>
-          <Button onClick={handleSubmit}>{existingJob ? 'Update Job' : 'Create Job'}</Button>
+          <Button onClick={handleSubmit} disabled={isAddingToCalendar}>
+            {existingJob ? 'Update Job' : 'Create Job'}
+          </Button>
         </CardFooter>
       </Card>
 
@@ -382,9 +624,10 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
 
       <AddToCalendarDialog
         isOpen={showCalendarDialog}
-        onClose={handleCalendarDialogClose}
+        onClose={() => handleCalendarDialogClose(false)}
         job={newJob}
         client={client}
+        onConfirm={() => handleCalendarDialogClose(true)}
       />
     </>
   );

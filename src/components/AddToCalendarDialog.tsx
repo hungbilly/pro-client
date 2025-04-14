@@ -10,6 +10,7 @@ import { Job, Client } from '@/types';
 interface AddToCalendarDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  onConfirm?: () => void;
   job: Job | null;
   client: Client | null;
 }
@@ -17,6 +18,7 @@ interface AddToCalendarDialogProps {
 export const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({ 
   isOpen, 
   onClose, 
+  onConfirm,
   job, 
   client 
 }) => {
@@ -86,6 +88,15 @@ export const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({
     }
   };
 
+  const handleAddToCalendar = () => {
+    if (onConfirm) {
+      onConfirm();
+    } else {
+      openGoogleCalendar();
+      onClose();
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[450px]">
@@ -118,10 +129,10 @@ export const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({
             Skip
           </Button>
           <Button 
-            onClick={openGoogleCalendar} 
+            onClick={handleAddToCalendar} 
             className="gap-2"
           >
-            Open Google Calendar
+            {onConfirm ? 'Add to Calendar' : 'Open Google Calendar'}
             <ExternalLink className="h-4 w-4" />
           </Button>
         </DialogFooter>

@@ -30,6 +30,8 @@ import AdminLayout from './components/AdminLayout';
 import Debug from './pages/Debug';
 import CalendarTest from './pages/CalendarTest';
 import GoogleOAuthDiagnostic from './pages/GoogleOAuthDiagnostic';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfService from './pages/TermsOfService';
 
 const Routes = () => {
   return (
@@ -37,6 +39,10 @@ const Routes = () => {
       {/* Auth routes outside of the layout */}
       <Route path="/auth" element={<Auth />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
+      
+      {/* Legal pages - publicly accessible without layout */}
+      <Route path="/privacy" element={<PrivacyPolicy />} />
+      <Route path="/terms" element={<TermsOfService />} />
       
       {/* Admin routes with admin layout */}
       <Route element={<ProtectedRoute adminOnly={true}><AdminLayout /></ProtectedRoute>}>

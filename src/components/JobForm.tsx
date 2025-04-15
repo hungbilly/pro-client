@@ -112,7 +112,6 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
 
     try {
       if (existingJob) {
-        // Remove calendar_event_id from job object to prevent errors
         const updatedJob: Job = {
           id: existingJob.id,
           clientId: client.id,

@@ -1,3 +1,4 @@
+
 export interface Client {
   id: string;
   name: string;
@@ -41,7 +42,7 @@ export interface CompanyClientView {
 export interface Job {
   id: string;
   clientId: string;
-  companyId: string;
+  companyId?: string;
   title: string;
   description?: string;
   status: 'active' | 'completed' | 'cancelled';
@@ -52,7 +53,6 @@ export interface Job {
   isFullDay?: boolean;
   createdAt: string;
   updatedAt: string;
-  calendarEventId?: string;
 }
 
 export interface Package {

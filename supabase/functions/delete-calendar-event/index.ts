@@ -10,98 +10,39 @@ const corsHeaders = {
 // Get environment variables
 const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID');
 const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET');
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
-const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+const GOOGLE_REFRESH_TOKEN = Deno.env.get('GOOGLE_REFRESH_TOKEN');
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || 'https://htjvyzmuqsrjpesdurni.supabase.co';
+const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh0anZ5em11cXNyanBlc2R1cm5pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE0MDg0NTIsImV4cCI6MjA1Njk4NDQ1Mn0.AtFzj0Ail1PgKmXJcPWyWnXqC6EbMP0UOlH4m_rhkq8';
 
-// Function to get a valid OAuth2 access token from the user's integration
-async function getAccessTokenForUser(userId: string, authHeader: string | null) {
-  // Create client with user's JWT if available, otherwise use service role key
-  let supabase;
-  if (authHeader) {
-    // Create authenticated client using the user's JWT token
-    supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: {
-        headers: {
-          Authorization: authHeader,
-        }
-      }
-    });
-    console.log('Created authenticated supabase client with user JWT');
-  } else {
-    // Fall back to service role key for admin operations
-    supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    console.log('Created supabase client with service role key');
+// Function to get a valid OAuth2 access token using refresh token
+async function getAccessToken() {
+  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_REFRESH_TOKEN) {
+    throw new Error('Missing Google OAuth2 credentials');
+  }
+  
+  const tokenEndpoint = 'https://oauth2.googleapis.com/token';
+  const params = new URLSearchParams({
+    client_id: GOOGLE_CLIENT_ID,
+    client_secret: GOOGLE_CLIENT_SECRET,
+    refresh_token: GOOGLE_REFRESH_TOKEN,
+    grant_type: 'refresh_token'
+  });
+
+  const response = await fetch(tokenEndpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: params.toString(),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    console.error('OAuth token error:', errorData);
+    throw new Error('Failed to get access token');
   }
 
-  // Get the user's Google Calendar integration
-  const { data, error } = await supabase
-    .from('user_integrations')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('provider', 'google_calendar')
-    .single();
-  
-  if (error || !data) {
-    console.error("No integration found:", error);
-    throw new Error('No Google Calendar integration found for this user');
-  }
-  
-  // Check if token needs refresh
-  const expiresAt = new Date(data.expires_at);
-  const now = new Date();
-  
-  // Add buffer of 5 minutes to ensure token doesn't expire during use
-  const expirationBuffer = 300000; // 5 minutes in milliseconds
-  
-  if (now.getTime() > expiresAt.getTime() - expirationBuffer) {
-    // Token needs refresh
-    console.log("Token expired, needs refresh");
-    if (!data.refresh_token) {
-      throw new Error('No refresh token available');
-    }
-    
-    // Refresh the token
-    const refreshParams = new URLSearchParams({
-      client_id: GOOGLE_CLIENT_ID || '',
-      client_secret: GOOGLE_CLIENT_SECRET || '',
-      refresh_token: data.refresh_token,
-      grant_type: 'refresh_token'
-    });
-    
-    const refreshResponse = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: refreshParams.toString(),
-    });
-    
-    if (!refreshResponse.ok) {
-      const errorData = await refreshResponse.json();
-      console.error("Token refresh failed:", errorData);
-      throw new Error(`Failed to refresh access token: ${JSON.stringify(errorData)}`);
-    }
-    
-    const refreshData = await refreshResponse.json();
-    
-    // Update token in the database
-    const newExpiresAt = new Date();
-    newExpiresAt.setSeconds(newExpiresAt.getSeconds() + refreshData.expires_in);
-    
-    await supabase
-      .from('user_integrations')
-      .update({
-        access_token: refreshData.access_token,
-        expires_at: newExpiresAt.toISOString(),
-      })
-      .eq('id', data.id);
-    
-    return refreshData.access_token;
-  }
-  
-  // Current token is still valid
-  console.log("Using existing valid token");
+  const data = await response.json();
   return data.access_token;
 }
 
@@ -112,44 +53,20 @@ serve(async (req) => {
   }
 
   try {
-    // Extract the authorization header for RLS to work
-    const authHeader = req.headers.get('Authorization');
-    console.log('Authorization header present:', Boolean(authHeader));
+    // Get request data
+    const { eventId } = await req.json();
     
-    const { eventId, userId } = await req.json();
-    
-    console.log(`Attempting to delete event: ${eventId} for user: ${userId}`);
-    
-    if (!eventId || !userId) {
+    if (!eventId) {
       return new Response(
-        JSON.stringify({ 
-          error: 'Missing required parameters', 
-          details: { 
-            eventId: Boolean(eventId), 
-            userId: Boolean(userId) 
-          } 
-        }),
+        JSON.stringify({ error: 'Missing event ID' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Get access token for the user
-    let accessToken;
-    try {
-      accessToken = await getAccessTokenForUser(userId, authHeader);
-      console.log('Successfully acquired access token');
-    } catch (error: any) {
-      console.error('Error getting access token:', error.message);
-      return new Response(
-        JSON.stringify({ error: 'Authentication error', message: error.message }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    // Get access token for Google Calendar API
+    const accessToken = await getAccessToken();
     
     // Delete event from Google Calendar
-    console.log("Using access token:", accessToken ? "Token present" : "No token");
-    console.log("Deleting Google Calendar event with ID:", eventId);
-    
     const calendarResponse = await fetch(
       `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`,
       {
@@ -163,25 +80,18 @@ serve(async (req) => {
     // Check for errors (DELETE request returns empty body on success with 204)
     if (!calendarResponse.ok) {
       let errorText = 'Failed to delete calendar event';
-      let errorDetails = { status: calendarResponse.status };
-      
       try {
-        const errorData = await calendarResponse.text();
+        const errorData = await calendarResponse.json();
         console.error('Google Calendar API error:', errorData);
-        
-        try {
-          errorDetails = JSON.parse(errorData);
-        } catch (e) {
-          errorDetails = { ...errorDetails, rawText: errorData };
-        }
+        errorText = errorData.error?.message || errorText;
       } catch (e) {
         // If parsing fails, use status text
         errorText = calendarResponse.statusText;
       }
       
       return new Response(
-        JSON.stringify({ error: errorText, details: errorDetails }),
-        { status: calendarResponse.status || 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: errorText }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     

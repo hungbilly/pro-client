@@ -21,6 +21,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     // Set up auth state change listener FIRST (critical for proper initialization)
+    console.log('Setting up auth state change listener...');
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, newSession) => {
         console.log('Auth state changed:', event, newSession?.user?.email);
@@ -29,12 +30,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSession(newSession);
         setUser(newSession?.user ?? null);
         setIsAdmin(newSession?.user?.user_metadata?.is_admin || false);
-        setLoading(false);
         
         // Log detailed session info for debugging
         if (newSession) {
           console.log('Session established. User ID:', newSession.user.id);
           console.log('Session expiry:', new Date(newSession.expires_at * 1000).toISOString());
+          console.log('Access token:', newSession.access_token ? `${newSession.access_token.substring(0, 10)}...` : 'missing');
+          console.log('Refresh token:', newSession.refresh_token ? 'present' : 'missing');
         } else {
           console.log('No active session');
         }
@@ -51,9 +53,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         if (error) {
           console.error('Error getting session:', error);
+          // Clear any potentially corrupted session data
+          try {
+            await supabase.auth.signOut({ scope: 'local' });
+            console.log('Cleared potentially corrupted session data');
+          } catch (clearError) {
+            console.error('Error clearing session:', clearError);
+          }
         } else if (currentSession) {
           console.log('Session found for user:', currentSession.user.email);
           console.log('Session expires at:', new Date(currentSession.expires_at * 1000).toISOString());
+          console.log('Access token:', currentSession.access_token ? `${currentSession.access_token.substring(0, 10)}...` : 'missing');
+          console.log('Refresh token:', currentSession.refresh_token ? 'present' : 'missing');
+
+          // Additional validate to confirm session is working
+          try {
+            const { data: userData, error: userError } = await supabase.auth.getUser();
+            if (userError) {
+              console.error('Failed to validate user with current session:', userError);
+              throw userError;
+            }
+            console.log('User validation successful:', userData.user?.email);
+          } catch (validationError) {
+            console.error('Session validation failed, clearing session:', validationError);
+            await supabase.auth.signOut({ scope: 'local' });
+          }
         } else {
           console.log('No current session found');
         }
@@ -67,7 +91,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (currentSession?.user && currentSession.user.app_metadata?.provider === 'google' && 
             !currentSession.user.user_metadata.hasOwnProperty('is_admin')) {
           console.log('Adding is_admin metadata for Google auth user');
-          // Set default admin status for Google auth users if not already set
           try {
             await supabase.auth.updateUser({
               data: { is_admin: false }
@@ -106,7 +129,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
       
-      // Attempt to sign out via Supabase API
+      // Attempt to sign out via Supabase API with global scope to ensure all devices are signed out
       try {
         const { error } = await supabase.auth.signOut({ scope: 'global' });
         if (error) {

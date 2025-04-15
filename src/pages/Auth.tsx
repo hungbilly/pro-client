@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -14,7 +15,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const Auth = () => {
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
@@ -25,18 +26,23 @@ const Auth = () => {
   const appCallbackUrl = `${window.location.origin}/auth/callback`;
   
   useEffect(() => {
+    // Check if we're returning after a logout
     const checkForLogoutRedirect = async () => {
       if (window.location.search.includes('logout')) {
         try {
+          console.log('Detected logout parameter, clearing local storage and session storage');
           window.localStorage.clear();
           window.sessionStorage.clear();
           
           try {
+            // Attempt to explicitly sign out from Supabase - this will clear any remaining session tokens
             await supabase.auth.signOut({ scope: 'global' });
+            console.log('Successfully signed out of Supabase');
           } catch (error) {
             console.log('Already signed out or error signing out:', error);
           }
           
+          // Remove the logout parameter from URL
           window.history.replaceState({}, document.title, window.location.pathname);
         } catch (error) {
           console.error('Error during cleanup:', error);
@@ -48,12 +54,15 @@ const Auth = () => {
   }, []);
   
   useEffect(() => {
+    // If user is already logged in, redirect to home page
     if (user) {
+      console.log('Auth page: User already logged in, redirecting to home');
       navigate('/');
     }
   }, [user, navigate]);
 
   useEffect(() => {
+    // Check for authentication errors in URL
     const urlParams = new URLSearchParams(window.location.search);
     const errorParam = urlParams.get('error');
     const errorDescription = urlParams.get('error_description');
@@ -63,6 +72,7 @@ const Auth = () => {
       setErrorMessage(errorMsg);
       console.error('Auth error from URL params:', { errorParam, errorDescription });
       
+      // Clean up URL parameters
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
@@ -74,6 +84,7 @@ const Auth = () => {
 
     try {
       if (isLogin) {
+        console.log('Attempting to sign in with email:', email);
         const { error, data } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -90,20 +101,29 @@ const Auth = () => {
         toast.success('Successfully signed in!');
         navigate('/');
       } else {
+        console.log('Attempting to sign up with email:', email);
         const { error, data } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: {
               is_admin: false
-            }
+            },
+            emailRedirectTo: appCallbackUrl
           }
         });
 
         if (error) throw error;
         
         console.log('Sign up successful:', data);
-        toast.success('Registration successful! Please check your email for confirmation.');
+        
+        if (data?.user?.identities?.length === 0) {
+          // User already exists
+          toast.error('This email is already registered. Please sign in instead.');
+          setIsLogin(true);
+        } else {
+          toast.success('Registration successful! Please check your email for confirmation.');
+        }
       }
     } catch (error: any) {
       console.error('Auth error:', error);
@@ -125,7 +145,11 @@ const Auth = () => {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: appCallbackUrl
+          redirectTo: appCallbackUrl,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent'
+          }
         }
       });
       
@@ -138,6 +162,8 @@ const Auth = () => {
       
       if (data && data.url) {
         console.log('Redirecting to Google auth URL:', data.url);
+        // We use location.href to do a full page navigation rather than React Router
+        // This ensures cookies and tokens are properly handled
         window.location.href = data.url;
       } else {
         console.error('No redirect URL received from Supabase');

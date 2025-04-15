@@ -33,6 +33,11 @@ const AuthCallback = () => {
         const accessToken = hashParams.get('access_token');
         const refreshToken = hashParams.get('refresh_token');
         
+        // Clear the hash fragment from the URL to prevent issues with subsequent navigation
+        if (window.location.hash) {
+          window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
+        
         if (accessToken) {
           console.log('AuthCallback: Found access token in URL hash, attempting to set session...');
           try {
@@ -45,6 +50,17 @@ const AuthCallback = () => {
               console.error('Session setting error:', error);
               throw error;
             }
+            
+            // Successfully set session, check if it's valid
+            const { data: userData, error: userError } = await supabase.auth.getUser();
+            if (userError) {
+              throw userError;
+            }
+            
+            console.log('Successfully set session from URL params for user:', userData.user?.email);
+            toast.success('Successfully signed in!');
+            navigate('/');
+            return;
           } catch (err) {
             console.error('Error setting session from URL params:', err);
             // Continue to try getting session as fallback
@@ -120,7 +136,9 @@ const AuthCallback = () => {
         ) : (
           <div className="mb-4">Please wait while we complete your sign in...</div>
         )}
-        <div className="animate-pulse h-2 bg-gray-200 rounded"></div>
+        {isProcessing && (
+          <div className="animate-pulse h-2 bg-gray-200 rounded"></div>
+        )}
       </div>
     </div>
   );

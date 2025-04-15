@@ -8,7 +8,7 @@ import { AuthProvider } from './context/AuthContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import SubscriptionProvider from './context/SubscriptionContext';
 
-// Create a client
+// Configure the query client
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {

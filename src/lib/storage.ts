@@ -597,20 +597,53 @@ export const updateJob = async (job: Job): Promise<Job> => {
   }
 };
 
-export const deleteJob = async (id: string): Promise<void> => {
+export const deleteJob = async (jobId: string): Promise<boolean> => {
   try {
+    // Get the job to check if it has a calendar event
+    const job = await getJob(jobId);
+    
+    if (!job) {
+      console.error('Job not found for deletion:', jobId);
+      return false;
+    }
+
+    // Check if the job has a calendar event associated with it
+    if (job.calendarEventId) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          // Call the delete-calendar-event function
+          await supabase.functions.invoke('delete-calendar-event', {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: {
+              eventId: job.calendarEventId,
+              jobId: job.id,
+            },
+          });
+        }
+      } catch (calendarError) {
+        console.error('Error deleting calendar event:', calendarError);
+        // Continue with job deletion even if calendar deletion fails
+      }
+    }
+
+    // Delete the job from Supabase
     const { error } = await supabase
       .from('jobs')
       .delete()
-      .eq('id', id);
-    
+      .eq('id', jobId);
+
     if (error) {
       console.error('Error deleting job:', error);
-      throw new Error(error.message);
+      return false;
     }
+
+    return true;
   } catch (error) {
-    console.error('Error deleting job:', error);
-    throw error;
+    console.error('Error in deleteJob:', error);
+    return false;
   }
 };
 

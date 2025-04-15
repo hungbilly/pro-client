@@ -1,10 +1,10 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Calendar, ExternalLink } from 'lucide-react';
+import { Calendar, Trash, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
-import { formatDateForGoogleCalendar } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 import { Job, Client } from '@/types';
 
 interface AddToCalendarDialogProps {
@@ -12,77 +12,170 @@ interface AddToCalendarDialogProps {
   onClose: () => void;
   job: Job | null;
   client: Client | null;
+  onSuccess?: (calendarEventId: string | null) => void; // Callback to update the job with the event ID
+  onError?: (error: Error) => void; // Callback to handle errors
 }
 
 export const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({ 
   isOpen, 
   onClose, 
   job, 
-  client 
+  client,
+  onSuccess,
+  onError,
 }) => {
-  const openGoogleCalendar = () => {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleAddToCalendar = async () => {
     if (!job || !client) return;
-    
+    setIsLoading(true);
     try {
-      // Format the date and time for Google Calendar URL
-      const formattedDate = job.date || '';
-      
-      // Set default title and description
-      const title = encodeURIComponent(`${job.title} - ${client.name}`);
-      const description = encodeURIComponent(`Job: ${job.description || ''}\n\nClient: ${client.name}\nEmail: ${client.email}\nPhone: ${client.phone}`);
-      
-      // Set location if available
-      const location = encodeURIComponent(job.location || client.address || '');
-      
-      // Format dates for Google Calendar in proper format
-      let dates = '';
-      
-      if (formattedDate) {
-        if (job.isFullDay) {
-          // For all-day events, use date format without time component (YYYYMMDD)
-          // Remove dashes from the date
-          const dateWithoutDashes = formattedDate.replace(/-/g, '');
-          dates = `${dateWithoutDashes}/${dateWithoutDashes}`;
-        } else {
-          // For events with time, properly handle timezone conversion
-          
-          // Get start and end times, defaulting to business hours if not provided
-          const startTime = job.startTime || '09:00';
-          const endTime = job.endTime || '17:00';
-          
-          // Parse the date parts
-          const [year, month, day] = formattedDate.split('-').map(Number);
-          
-          // Create local date objects for start and end times
-          const startDateLocal = new Date(year, month - 1, day);
-          const endDateLocal = new Date(year, month - 1, day);
-          
-          // Parse hours and minutes from time strings
-          const [startHours, startMinutes] = startTime.split(':').map(Number);
-          const [endHours, endMinutes] = endTime.split(':').map(Number);
-          
-          // Set hours and minutes to the local date objects
-          startDateLocal.setHours(startHours, startMinutes, 0, 0);
-          endDateLocal.setHours(endHours, endMinutes, 0, 0);
-          
-          // Format dates in the way Google Calendar expects
-          const startDateTimeString = formatDateForGoogleCalendar(startDateLocal);
-          const endDateTimeString = formatDateForGoogleCalendar(endDateLocal);
-          
-          dates = `${startDateTimeString}/${endDateTimeString}`;
-        }
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('No active session');
       }
-      
-      // Construct Google Calendar URL
-      const googleCalendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&details=${description}&location=${location}&dates=${dates}&ctz=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}`;
-      
-      // Open Google Calendar in a new tab
-      window.open(googleCalendarUrl, '_blank');
-      
-      toast.success('Google Calendar opened in new tab');
+
+      const { data, error } = await supabase.functions.invoke('add-to-calendar', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: {
+          jobId: job.id,
+          clientId: client.id,
+          userId: session.user.id
+        },
+      });
+
+      if (error || !data) {
+        throw new Error('Failed to create calendar event');
+      }
+
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to create calendar event');
+      }
+
+      const eventId = data.eventId;
+      if (!eventId) {
+        throw new Error('No event ID returned from calendar creation');
+      }
+
+      toast.success('Calendar event added successfully!');
+      if (onSuccess) {
+        onSuccess(eventId);
+      }
+      onClose();
     } catch (error) {
-      console.error('Error opening Google Calendar:', error);
-      toast.error('Failed to open Google Calendar');
+      console.error('Error adding to calendar:', error);
+      toast.error('Failed to add to calendar');
+      if (onError) {
+        onError(error instanceof Error ? error : new Error(String(error)));
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUpdateCalendarEvent = async () => {
+    if (!job || !client || !job.calendarEventId) return;
+    setIsLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('No active session');
+      }
+
+      const { data, error } = await supabase.functions.invoke('update-calendar-event', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: {
+          eventId: job.calendarEventId,
+          userId: session.user.id,
+          jobData: {
+            title: job.title,
+            description: job.description || '',
+            date: job.date || '',
+            location: job.location || '',
+            start_time: job.startTime || '',
+            end_time: job.endTime || '',
+            is_full_day: job.isFullDay || false
+          }
+        },
+      });
+
+      if (error || !data) {
+        throw new Error('Failed to update calendar event');
+      }
+
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to update calendar event');
+      }
+
+      toast.success('Calendar event updated successfully!');
+      if (onSuccess) {
+        onSuccess(data.eventId);
+      }
+      onClose();
+    } catch (error) {
+      console.error('Error updating calendar event:', error);
+      toast.error('Failed to update calendar event');
+      if (onError) {
+        onError(error instanceof Error ? error : new Error(String(error)));
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteCalendarEvent = async () => {
+    if (!job || !job.calendarEventId) return;
+    setIsLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('No active session');
+      }
+
+      const { data, error } = await supabase.functions.invoke('delete-calendar-event', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: {
+          eventId: job.calendarEventId,
+          jobId: job.id,
+        },
+      });
+
+      if (error || !data) {
+        throw new Error('Failed to delete calendar event');
+      }
+
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to delete calendar event');
+      }
+
+      toast.success('Calendar event deleted successfully!');
+      if (onSuccess) {
+        onSuccess(null); // Clear the calendarEventId
+      }
+      onClose();
+    } catch (error) {
+      console.error('Error deleting calendar event:', error);
+      toast.error('Failed to delete calendar event');
+      if (onError) {
+        onError(error instanceof Error ? error : new Error(String(error)));
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAction = () => {
+    if (!job) return;
+    if (job.calendarEventId) {
+      handleUpdateCalendarEvent();
+    } else {
+      handleAddToCalendar();
     }
   };
 
@@ -92,10 +185,12 @@ export const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-primary" />
-            Add to Google Calendar
+            {job?.calendarEventId ? 'Update Calendar Event' : 'Add to Calendar'}
           </DialogTitle>
           <DialogDescription>
-            Would you like to add this job to your Google Calendar?
+            {job?.calendarEventId
+              ? 'Update or delete this job in your Google Calendar.'
+              : 'Add this job to your Google Calendar.'}
           </DialogDescription>
         </DialogHeader>
         
@@ -113,16 +208,45 @@ export const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({
           </div>
         </div>
         
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Skip
-          </Button>
-          <Button 
-            onClick={openGoogleCalendar} 
+        <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-between sm:space-x-2">
+          <div className="flex space-x-2 mt-3 sm:mt-0">
+            {job?.calendarEventId && (
+              <Button
+                variant="destructive"
+                onClick={handleDeleteCalendarEvent}
+                disabled={isLoading}
+                className="gap-2"
+              >
+                <Trash className="h-4 w-4" />
+                Delete
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              onClick={onClose}
+              disabled={isLoading}
+            >
+              Cancel
+            </Button>
+          </div>
+          <Button
+            onClick={handleAction}
+            disabled={isLoading}
             className="gap-2"
           >
-            Open Google Calendar
-            <ExternalLink className="h-4 w-4" />
+            {isLoading ? (
+              'Processing...'
+            ) : job?.calendarEventId ? (
+              <>
+                <RefreshCw className="h-4 w-4" />
+                Update Event
+              </>
+            ) : (
+              <>
+                <Calendar className="h-4 w-4" />
+                Add to Calendar
+              </>
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -21,11 +21,8 @@ const Auth = () => {
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
-  // Default Supabase redirect URI - ensure consistency throughout the app
-  const supabaseRedirectUri = `https://htjvyzmuqsrjpesdurni.supabase.co/auth/v1/callback`;
-  
   // Application home page URL - where we want users to land after authentication
-  const appHomeUrl = `${window.location.origin}/`;
+  const appCallbackUrl = `${window.location.origin}/auth/callback`;
   
   useEffect(() => {
     const checkForLogoutRedirect = async () => {
@@ -123,12 +120,12 @@ const Auth = () => {
       setErrorMessage(null);
       
       console.log('Starting Google sign-in process...');
-      console.log('Using application redirect URL:', appHomeUrl);
+      console.log('Using callback URL:', appCallbackUrl);
       
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: appHomeUrl
+          redirectTo: appCallbackUrl
         }
       });
       

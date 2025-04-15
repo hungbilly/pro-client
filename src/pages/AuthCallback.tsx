@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 const AuthCallback = () => {
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(true);
 
   useEffect(() => {
     const handleAuthCallback = async () => {
@@ -25,7 +26,32 @@ const AuthCallback = () => {
       }
 
       try {
-        // Get the session to verify if authentication was successful
+        console.log('AuthCallback: Processing authentication callback...');
+        
+        // Process the URL fragment if needed for some auth providers
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const accessToken = hashParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token');
+        
+        if (accessToken) {
+          console.log('AuthCallback: Found access token in URL hash, attempting to set session...');
+          try {
+            // Try to set session from hash params if present
+            const { error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken || '',
+            });
+            if (error) {
+              console.error('Session setting error:', error);
+              throw error;
+            }
+          } catch (err) {
+            console.error('Error setting session from URL params:', err);
+            // Continue to try getting session as fallback
+          }
+        }
+        
+        // Try to get the session - this should work if the URL parameters were already processed by Supabase
         const { data, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -37,7 +63,7 @@ const AuthCallback = () => {
         }
 
         if (data?.session) {
-          console.log('Authentication successful, redirecting to home');
+          console.log('Authentication successful, session found:', data.session.user.email);
           toast.success('Successfully signed in!');
           navigate('/');
         } else {
@@ -45,14 +71,28 @@ const AuthCallback = () => {
           console.log('No session detected yet, waiting...');
           // Check again after a short delay
           setTimeout(async () => {
-            const { data: retryData } = await supabase.auth.getSession();
-            if (retryData?.session) {
-              toast.success('Successfully signed in!');
-              navigate('/');
-            } else {
-              setError('Could not establish a session. Please try logging in again.');
-              toast.error('Authentication failed');
+            try {
+              const { data: retryData, error: retryError } = await supabase.auth.getSession();
+              
+              if (retryError) {
+                throw retryError;
+              }
+              
+              if (retryData?.session) {
+                toast.success('Successfully signed in!');
+                navigate('/');
+              } else {
+                setError('Could not establish a session. Please try logging in again.');
+                toast.error('Authentication failed');
+                navigate('/auth');
+              }
+            } catch (retryErr: any) {
+              console.error('Retry session check error:', retryErr);
+              setError(retryErr.message || 'Authentication failed');
+              toast.error(retryErr.message || 'Authentication failed');
               navigate('/auth');
+            } finally {
+              setIsProcessing(false);
             }
           }, 2000);
         }
@@ -61,6 +101,8 @@ const AuthCallback = () => {
         setError(err.message || 'An unexpected error occurred');
         toast.error(err.message || 'Authentication failed');
         setTimeout(() => navigate('/auth'), 3000);
+      } finally {
+        setIsProcessing(false);
       }
     };
 

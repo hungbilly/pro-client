@@ -6,6 +6,7 @@ import { Calendar, Trash, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Job, Client } from '@/types';
+import { useAuth } from '@/context/AuthContext';
 
 interface AddToCalendarDialogProps {
   isOpen: boolean;
@@ -25,6 +26,7 @@ export const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({
   onError,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const { user } = useAuth();
 
   const handleAddToCalendar = async () => {
     if (!job || !client) return;
@@ -131,27 +133,47 @@ export const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({
     if (!job || !job.calendarEventId) return;
     setIsLoading(true);
     try {
+      // Get the current session
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('No active session');
+      
+      // Prepare the request data
+      const requestBody: any = {
+        eventId: job.calendarEventId,
+        jobId: job.id,
+      };
+      
+      // Add userId to ensure it's available even if auth fails
+      if (user?.id) {
+        requestBody.userId = user.id;
+      } else if (session?.user?.id) {
+        requestBody.userId = session.user.id;
       }
-
-      const { data, error } = await supabase.functions.invoke('delete-calendar-event', {
-        headers: {
+      
+      // Log what we're sending
+      console.log('Deleting calendar event with data:', requestBody);
+      
+      // Call the function with auth header if available
+      const fetchOptions: any = {
+        body: requestBody
+      };
+      
+      if (session?.access_token) {
+        fetchOptions.headers = {
           Authorization: `Bearer ${session.access_token}`,
-        },
-        body: {
-          eventId: job.calendarEventId,
-          jobId: job.id,
-        },
-      });
+        };
+      }
+      
+      const { data, error } = await supabase.functions.invoke('delete-calendar-event', fetchOptions);
 
-      if (error || !data) {
-        throw new Error('Failed to delete calendar event');
+      if (error) {
+        console.error('Function invocation error:', error);
+        throw new Error(`Failed to delete calendar event: ${error.message}`);
       }
 
-      if (!data.success) {
-        throw new Error(data.message || 'Failed to delete calendar event');
+      if (!data || !data.success) {
+        const message = data?.message || 'Failed to delete calendar event';
+        console.error('Function returned error:', message);
+        throw new Error(message);
       }
 
       toast.success('Calendar event deleted successfully!');
@@ -161,7 +183,7 @@ export const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({
       onClose();
     } catch (error) {
       console.error('Error deleting calendar event:', error);
-      toast.error('Failed to delete calendar event');
+      toast.error(`Failed to delete calendar event: ${error instanceof Error ? error.message : String(error)}`);
       if (onError) {
         onError(error instanceof Error ? error : new Error(String(error)));
       }

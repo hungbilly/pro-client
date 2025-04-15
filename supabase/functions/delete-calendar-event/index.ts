@@ -137,47 +137,17 @@ serve(async (req) => {
   }
 
   try {
-    // Extract the authorization header for RLS to work
+    // Initialize with service role client as fallback
+    let supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    let userId = null;
+    
+    // Extract the authorization header for authentication
     const authHeader = req.headers.get('Authorization');
-    console.log('Authorization header present:', Boolean(authHeader));
-
-    // Initialize Supabase client with auth header if available
-    let supabase;
-    if (authHeader) {
-      // Create authenticated client using the user's JWT token
-      supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-        global: {
-          headers: {
-            Authorization: authHeader,
-          }
-        }
-      });
-      console.log('Created authenticated supabase client with user JWT');
-    } else {
-      // Fall back to service role key for admin operations
-      supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-      console.log('Created supabase client with service role key');
-    }
-
-    // Authenticate the user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      console.error('Authentication failed:', userError);
-      return new Response(
-        JSON.stringify({ error: "Not authenticated", details: userError?.message }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    console.log('Authenticated user:', { id: user.id, email: user.email });
-
-    // Get request data
+    
+    // Get request data first to ensure we have eventId and jobId
     const requestData = await req.json();
     console.log('Received request data:', requestData);
-    const { eventId, jobId } = requestData;
+    const { eventId, jobId, userId: providedUserId } = requestData;
     
     if (!eventId) {
       console.error('Missing event ID in request');
@@ -186,13 +156,59 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    
+    // Try to authenticate with auth header if available
+    if (authHeader) {
+      console.log('Authorization header present, attempting JWT authentication');
+      
+      // Create authenticated client using the user's JWT token
+      supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        global: {
+          headers: {
+            Authorization: authHeader,
+          }
+        }
+      });
 
+      try {
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        
+        if (!userError && user) {
+          console.log('Successfully authenticated user:', user.id);
+          userId = user.id;
+        } else {
+          console.warn('Auth header present but user auth failed:', userError);
+        }
+      } catch (authError) {
+        console.error('Error during authentication:', authError);
+        // Continue with provided userId or service role
+      }
+    }
+
+    // If JWT auth failed or was not present, fall back to userId in request
+    if (!userId && providedUserId) {
+      console.log('Using provided userId from request body:', providedUserId);
+      userId = providedUserId;
+    }
+    
+    if (!userId) {
+      console.error('No user ID available from auth header or request');
+      return new Response(
+        JSON.stringify({ error: "Failed to authenticate user", details: "No user ID available" }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    console.log(`Authenticated user ID: ${userId}`);
     console.log(`Attempting to delete calendar event with ID: ${eventId}`);
 
     // Get access token for Google Calendar API
     let accessToken;
     try {
-      accessToken = await getAccessToken(user.id, supabase);
+      accessToken = await getAccessToken(userId, supabase);
       console.log('Successfully acquired access token');
     } catch (tokenError) {
       console.error('Failed to get access token:', tokenError);

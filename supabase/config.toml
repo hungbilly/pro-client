@@ -39,7 +39,3 @@ verify_jwt = true
 
 [functions.update-calendar-event]
 verify_jwt = true
-
-[functions.delete-calendar-event]
-verify_jwt = true
-

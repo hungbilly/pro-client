@@ -598,9 +598,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
           jobId: job?.id || invoice.jobId,
           number,
           amount,
-          totalAmount: amount,
           date: format(date, 'yyyy-MM-dd'),
-          issueDate: format(date, 'yyyy-MM-dd'),
           dueDate: firstPaymentDueDate,
           status,
           contractStatus,
@@ -639,9 +637,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
           jobId: job?.id,
           number,
           amount,
-          totalAmount: amount,
           date: format(date, 'yyyy-MM-dd'),
-          issueDate: format(date, 'yyyy-MM-dd'),
           dueDate: firstPaymentDueDate,
           status,
           contractStatus,
@@ -1314,3 +1310,4 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 };
 
 export default InvoiceForm;
+

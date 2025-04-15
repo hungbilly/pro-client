@@ -137,31 +137,16 @@ serve(async (req) => {
   }
 
   try {
-    // Initialize with service role client as fallback
+    // Initialize supabase client with service role by default
     let supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    let userId = null;
     
-    // Extract the authorization header for authentication
+    // Extract the authorization header
     const authHeader = req.headers.get('Authorization');
+    console.log('Authorization header present:', Boolean(authHeader));
     
-    // Get request data first to ensure we have eventId and jobId
-    const requestData = await req.json();
-    console.log('Received request data:', requestData);
-    const { eventId, jobId, userId: providedUserId } = requestData;
-    
-    if (!eventId) {
-      console.error('Missing event ID in request');
-      return new Response(
-        JSON.stringify({ error: 'Missing event ID' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-    
-    // Try to authenticate with auth header if available
+    // Create authenticated client if auth header is present
     if (authHeader) {
-      console.log('Authorization header present, attempting JWT authentication');
-      
-      // Create authenticated client using the user's JWT token
+      console.log('Creating authenticated client with provided auth header');
       supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         global: {
           headers: {
@@ -169,26 +154,52 @@ serve(async (req) => {
           }
         }
       });
-
+    }
+    
+    // Get request data first to ensure we have eventId and jobId
+    let userId = null;
+    let requestData;
+    
+    try {
+      requestData = await req.json();
+      console.log('Received request data:', requestData);
+      
+      const { eventId, jobId, userId: providedUserId } = requestData;
+      
+      if (providedUserId) {
+        console.log('Using userId from request body:', providedUserId);
+        userId = providedUserId;
+      }
+      
+      if (!eventId) {
+        console.error('Missing event ID in request');
+        return new Response(
+          JSON.stringify({ error: 'Missing event ID' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } catch (parseError) {
+      console.error('Error parsing request JSON:', parseError);
+      return new Response(
+        JSON.stringify({ error: 'Invalid request format' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    // Try to get user from auth if userId is not provided in request
+    if (!userId && authHeader) {
       try {
         const { data: { user }, error: userError } = await supabase.auth.getUser();
         
         if (!userError && user) {
-          console.log('Successfully authenticated user:', user.id);
+          console.log('Successfully authenticated user from header:', user.id);
           userId = user.id;
         } else {
           console.warn('Auth header present but user auth failed:', userError);
         }
       } catch (authError) {
-        console.error('Error during authentication:', authError);
-        // Continue with provided userId or service role
+        console.error('Error during authentication with header:', authError);
       }
-    }
-
-    // If JWT auth failed or was not present, fall back to userId in request
-    if (!userId && providedUserId) {
-      console.log('Using provided userId from request body:', providedUserId);
-      userId = providedUserId;
     }
     
     if (!userId) {
@@ -202,8 +213,8 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Authenticated user ID: ${userId}`);
-    console.log(`Attempting to delete calendar event with ID: ${eventId}`);
+    console.log(`Using user ID: ${userId}`);
+    console.log(`Attempting to delete calendar event with ID: ${requestData.eventId}`);
 
     // Get access token for Google Calendar API
     let accessToken;
@@ -219,9 +230,9 @@ serve(async (req) => {
     }
     
     // Delete event from Google Calendar
-    console.log(`Calling Google Calendar API to delete event: ${eventId}`);
+    console.log(`Calling Google Calendar API to delete event: ${requestData.eventId}`);
     const calendarResponse = await fetch(
-      `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`,
+      `https://www.googleapis.com/calendar/v3/calendars/primary/events/${requestData.eventId}`,
       {
         method: 'DELETE',
         headers: {
@@ -254,14 +265,14 @@ serve(async (req) => {
     console.log('Successfully deleted event from Google Calendar');
     
     // If jobId is provided, update the job to remove the calendar event ID
-    if (jobId) {
+    if (requestData.jobId) {
       try {
-        console.log(`Updating job ${jobId} to remove calendar_event_id`);
+        console.log(`Updating job ${requestData.jobId} to remove calendar_event_id`);
         // Update the job to remove the calendar event ID
         const { error: updateError } = await supabase
           .from('jobs')
           .update({ calendar_event_id: null })
-          .eq('id', jobId);
+          .eq('id', requestData.jobId);
         
         if (updateError) {
           console.error('Error updating job:', updateError);

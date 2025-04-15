@@ -136,40 +136,44 @@ export const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({
       // Get the current session
       const { data: { session } } = await supabase.auth.getSession();
       
-      // Prepare the request data
-      const requestBody: any = {
-        eventId: job.calendarEventId,
-        jobId: job.id,
-      };
+      // Ensure we have a user ID either from context or session
+      const userId = user?.id || session?.user?.id;
       
-      // Add userId to ensure it's available even if auth fails
-      if (user?.id) {
-        requestBody.userId = user.id;
-      } else if (session?.user?.id) {
-        requestBody.userId = session.user.id;
+      if (!userId) {
+        throw new Error('User authentication required');
       }
       
-      // Log what we're sending
+      // Prepare the request data with all possible identifiers
+      const requestBody = {
+        eventId: job.calendarEventId,
+        jobId: job.id,
+        userId: userId
+      };
+      
       console.log('Deleting calendar event with data:', requestBody);
       
-      // Call the function with auth header if available
+      // Set up request options
       const fetchOptions: any = {
         body: requestBody
       };
       
+      // Add auth header if session is available
       if (session?.access_token) {
         fetchOptions.headers = {
           Authorization: `Bearer ${session.access_token}`,
         };
       }
       
+      // Call the function
       const { data, error } = await supabase.functions.invoke('delete-calendar-event', fetchOptions);
 
+      // Handle errors from function invocation
       if (error) {
         console.error('Function invocation error:', error);
         throw new Error(`Failed to delete calendar event: ${error.message}`);
       }
 
+      // Handle errors returned in the response data
       if (!data || !data.success) {
         const message = data?.message || 'Failed to delete calendar event';
         console.error('Function returned error:', message);

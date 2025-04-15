@@ -37,8 +37,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.log('Session expiry:', new Date(newSession.expires_at * 1000).toISOString());
           console.log('Access token:', newSession.access_token ? `${newSession.access_token.substring(0, 10)}...` : 'missing');
           console.log('Refresh token:', newSession.refresh_token ? 'present' : 'missing');
+
+          // Store session in localStorage as a backup (but not the sensitive parts)
+          try {
+            localStorage.setItem('auth_user_id', newSession.user.id);
+            localStorage.setItem('auth_session_active', 'true');
+            localStorage.setItem('auth_session_expiry', String(newSession.expires_at));
+          } catch (e) {
+            console.error('Failed to store auth backup data:', e);
+          }
         } else {
           console.log('No active session');
+          // Clear backup data
+          try {
+            localStorage.removeItem('auth_user_id');
+            localStorage.removeItem('auth_session_active');
+            localStorage.removeItem('auth_session_expiry');
+          } catch (e) {
+            console.error('Failed to clear auth backup data:', e);
+          }
         }
       }
     );
@@ -66,6 +83,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.log('Access token:', currentSession.access_token ? `${currentSession.access_token.substring(0, 10)}...` : 'missing');
           console.log('Refresh token:', currentSession.refresh_token ? 'present' : 'missing');
 
+          // Store session in localStorage as a backup (but not the sensitive parts)
+          try {
+            localStorage.setItem('auth_user_id', currentSession.user.id);
+            localStorage.setItem('auth_session_active', 'true');
+            localStorage.setItem('auth_session_expiry', String(currentSession.expires_at));
+          } catch (e) {
+            console.error('Failed to store auth backup data:', e);
+          }
+
           // Additional validate to confirm session is working
           try {
             const { data: userData, error: userError } = await supabase.auth.getUser();
@@ -80,6 +106,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         } else {
           console.log('No current session found');
+          // Check for backup data
+          try {
+            const hasBackupSession = localStorage.getItem('auth_session_active') === 'true';
+            const backupUserId = localStorage.getItem('auth_user_id');
+            const backupExpiry = localStorage.getItem('auth_session_expiry');
+            
+            if (hasBackupSession && backupUserId && backupExpiry) {
+              const expiryTime = Number(backupExpiry) * 1000;
+              const now = Date.now();
+              
+              if (expiryTime > now) {
+                console.log('Found valid backup session data, attempting refresh...');
+                // We have backup data that's not expired, attempt a refresh
+                try {
+                  await supabase.auth.refreshSession();
+                  console.log('Session refresh attempted');
+                } catch (refreshError) {
+                  console.error('Failed to refresh session:', refreshError);
+                }
+              } else {
+                console.log('Backup session data found but expired');
+                // Clear expired backup data
+                localStorage.removeItem('auth_user_id');
+                localStorage.removeItem('auth_session_active');
+                localStorage.removeItem('auth_session_expiry');
+              }
+            }
+          } catch (e) {
+            console.error('Error checking backup auth data:', e);
+          }
         }
         
         // Don't call setState if unmounted
@@ -128,6 +184,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           localStorage.removeItem(key);
         }
       }
+      
+      // Clear backup auth data
+      localStorage.removeItem('auth_user_id');
+      localStorage.removeItem('auth_session_active');
+      localStorage.removeItem('auth_session_expiry');
       
       // Attempt to sign out via Supabase API with global scope to ensure all devices are signed out
       try {

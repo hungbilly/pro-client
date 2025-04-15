@@ -261,7 +261,8 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
           location,
           startTime: isFullDay ? undefined : startTime,
           endTime: isFullDay ? undefined : endTime,
-          isFullDay
+          isFullDay,
+          calendarEventId: null
         };
 
         const savedJob = await saveJob(newJobData);

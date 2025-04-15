@@ -361,7 +361,8 @@ export const getJobs = async (companyId?: string | null) => {
       endTime: job.end_time || undefined,
       isFullDay: job.is_full_day || false,
       createdAt: job.created_at,
-      updatedAt: job.updated_at
+      updatedAt: job.updated_at,
+      calendarEventId: job.calendar_event_id || null
     })) || [];
   } catch (error) {
     console.error('Error in getJobs:', error);
@@ -395,7 +396,8 @@ export const getJob = async (id: string): Promise<Job | undefined> => {
       endTime: data.end_time || undefined,
       isFullDay: data.is_full_day || false,
       createdAt: data.created_at,
-      updatedAt: data.updated_at
+      updatedAt: data.updated_at,
+      calendarEventId: data.calendar_event_id || null
     };
   } catch (error) {
     console.error('Error fetching job:', error);
@@ -428,7 +430,8 @@ export const getClientJobs = async (clientId: string): Promise<Job[]> => {
       endTime: job.end_time || undefined,
       isFullDay: job.is_full_day || false,
       createdAt: job.created_at,
-      updatedAt: job.updated_at
+      updatedAt: job.updated_at,
+      calendarEventId: job.calendar_event_id || null
     }));
   } catch (error) {
     console.error('Error fetching client jobs:', error);
@@ -513,7 +516,8 @@ export const saveJob = async (job: Omit<Job, 'id' | 'createdAt' | 'updatedAt'>):
         location: job.location,
         start_time: job.startTime,
         end_time: job.endTime,
-        is_full_day: job.isFullDay
+        is_full_day: job.isFullDay,
+        calendar_event_id: job.calendarEventId
       })
       .select()
       .single();
@@ -536,7 +540,8 @@ export const saveJob = async (job: Omit<Job, 'id' | 'createdAt' | 'updatedAt'>):
       endTime: data.end_time || undefined,
       isFullDay: data.is_full_day || false,
       createdAt: data.created_at,
-      updatedAt: data.updated_at
+      updatedAt: data.updated_at,
+      calendarEventId: data.calendar_event_id || null
     };
   } catch (error) {
     console.error('Error saving job:', error);
@@ -558,7 +563,8 @@ export const updateJob = async (job: Job): Promise<Job> => {
         location: job.location,
         start_time: job.startTime,
         end_time: job.endTime,
-        is_full_day: job.isFullDay
+        is_full_day: job.isFullDay,
+        calendar_event_id: job.calendarEventId
       })
       .eq('id', job.id)
       .select()
@@ -582,7 +588,8 @@ export const updateJob = async (job: Job): Promise<Job> => {
       endTime: data.end_time || undefined,
       isFullDay: data.is_full_day || false,
       createdAt: data.created_at,
-      updatedAt: data.updated_at
+      updatedAt: data.updated_at,
+      calendarEventId: data.calendar_event_id || null
     };
   } catch (error) {
     console.error('Error updating job:', error);
@@ -958,7 +965,7 @@ export const saveInvoice = async (invoice: Omit<Invoice, 'id' | 'viewLink'>): Pr
         status: invoice.status,
         contract_status: invoice.contractStatus,
         notes: invoice.notes,
-        contract_terms: invoice.contractTerms,
+        contract_terms: invoice.contract_terms,
         view_link: viewLink
       })
       .select()

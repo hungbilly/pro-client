@@ -14,6 +14,75 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || 'https://htjvyzmuqsrjpesdur
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh0anZ5em11cXNyanBlc2R1cm5pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE0MDg0NTIsImV4cCI6MjA1Njk4NDQ1Mn0.AtFzj0Ail1PgKmXJcPWyWnXqC6EbMP0UOlH4m_rhkq8';
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 
+// Function to decode JWT without verification
+function decodeJWT(token: string) {
+  try {
+    // Get the payload part of the JWT (second part)
+    const base64Payload = token.split('.')[1];
+    // Replace characters that are not valid in base64url to base64
+    const base64 = base64Payload.replace(/-/g, '+').replace(/_/g, '/');
+    // Decode and parse the payload
+    const payload = JSON.parse(atob(base64));
+    return payload;
+  } catch (e) {
+    console.error('Error decoding JWT:', e);
+    return null;
+  }
+}
+
+// Log token information with masking for security
+function logTokenDetails(authHeader: string | null) {
+  if (!authHeader) {
+    console.log('No Authorization header present');
+    return;
+  }
+  
+  try {
+    // Extract the token part (after "Bearer ")
+    const token = authHeader.replace('Bearer ', '');
+    
+    // Mask most of the token for security
+    const maskedToken = token.length > 10 
+      ? `${token.substring(0, 5)}...${token.substring(token.length - 5)}`
+      : '(invalid token format)';
+    
+    console.log(`Auth token present (masked): ${maskedToken}`);
+    console.log(`Token length: ${token.length} characters`);
+    
+    // Try to decode and log structure
+    const decodedToken = decodeJWT(token);
+    if (decodedToken) {
+      console.log('JWT structure:');
+      console.log('- iss:', decodedToken.iss || 'missing');
+      console.log('- aud:', decodedToken.aud || 'missing');
+      console.log('- sub:', decodedToken.sub ? `${decodedToken.sub.substring(0, 5)}...` : 'missing');
+      console.log('- exp present:', !!decodedToken.exp);
+      console.log('- iat present:', !!decodedToken.iat);
+      
+      // Check expiry if present
+      if (decodedToken.exp) {
+        const now = Math.floor(Date.now() / 1000);
+        const isExpired = decodedToken.exp < now;
+        console.log(`- Token ${isExpired ? 'EXPIRED' : 'valid'} (expires ${new Date(decodedToken.exp * 1000).toISOString()})`);
+      }
+      
+      // Check for common JWT fields
+      const missingFields = [];
+      ['iss', 'sub', 'aud', 'exp', 'iat'].forEach(field => {
+        if (!decodedToken[field]) missingFields.push(field);
+      });
+      
+      if (missingFields.length > 0) {
+        console.log(`- Warning: Missing standard JWT fields: ${missingFields.join(', ')}`);
+      }
+    } else {
+      console.log('Could not decode JWT - invalid format');
+    }
+  } catch (e) {
+    console.error('Error analyzing auth token:', e);
+  }
+}
+
 // Function to get a valid OAuth2 access token from the user's integration
 async function getAccessToken(userId: string, supabase: any) {
   try {
@@ -137,12 +206,15 @@ serve(async (req) => {
   }
 
   try {
-    // Initialize supabase client with service role by default
-    let supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    
-    // Extract the authorization header
+    // Extract the authorization header and log detailed info
     const authHeader = req.headers.get('Authorization');
     console.log('Authorization header present:', Boolean(authHeader));
+    
+    // Log detailed token information
+    logTokenDetails(authHeader);
+    
+    // Initialize supabase client with service role by default
+    let supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     
     // Create authenticated client if auth header is present
     if (authHeader) {
@@ -189,7 +261,14 @@ serve(async (req) => {
     // Try to get user from auth if userId is not provided in request
     if (!userId && authHeader) {
       try {
+        console.log('Attempting to get user from auth header');
         const { data: { user }, error: userError } = await supabase.auth.getUser();
+        
+        if (userError) {
+          console.error('Error getting user from auth header:', userError);
+          console.log('Error type:', userError.name);
+          console.log('Error message:', userError.message);
+        }
         
         if (!userError && user) {
           console.log('Successfully authenticated user from header:', user.id);
@@ -198,14 +277,21 @@ serve(async (req) => {
           console.warn('Auth header present but user auth failed:', userError);
         }
       } catch (authError) {
-        console.error('Error during authentication with header:', authError);
+        console.error('Exception during authentication with header:', authError);
+        console.log('Error type:', authError.name);
+        console.log('Error message:', authError.message);
+        console.log('Stack trace:', authError.stack?.substring(0, 500) || 'No stack trace');
       }
     }
     
     if (!userId) {
       console.error('No user ID available from auth header or request');
       return new Response(
-        JSON.stringify({ error: "Failed to authenticate user", details: "No user ID available" }),
+        JSON.stringify({ 
+          error: "Failed to authenticate user", 
+          details: "No user ID available",
+          authHeaderPresent: Boolean(authHeader)
+        }),
         {
           status: 401,
           headers: { ...corsHeaders, "Content-Type": "application/json" },

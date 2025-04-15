@@ -143,6 +143,17 @@ export const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({
         throw new Error('User authentication required');
       }
       
+      // Log session information for debugging
+      if (session) {
+        console.log('Session details:', {
+          hasUser: !!session.user,
+          accessTokenLength: session.access_token?.length,
+          expiresAt: new Date(session.expires_at * 1000).toISOString()
+        });
+      } else {
+        console.log('No active session found');
+      }
+      
       // Prepare the request data with all possible identifiers
       const requestBody = {
         eventId: job.calendarEventId,
@@ -153,16 +164,12 @@ export const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({
       console.log('Deleting calendar event with data:', requestBody);
       
       // Set up request options
-      const fetchOptions: any = {
+      const fetchOptions = {
+        headers: session?.access_token ? {
+          Authorization: `Bearer ${session.access_token}`,
+        } : undefined,
         body: requestBody
       };
-      
-      // Add auth header if session is available
-      if (session?.access_token) {
-        fetchOptions.headers = {
-          Authorization: `Bearer ${session.access_token}`,
-        };
-      }
       
       // Call the function
       const { data, error } = await supabase.functions.invoke('delete-calendar-event', fetchOptions);

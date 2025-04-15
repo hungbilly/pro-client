@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Client, Job } from '@/types';
@@ -20,6 +19,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import JobWarningDialog from './JobWarningDialog';
 import { AddToCalendarDialog } from './AddToCalendarDialog';
 import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/context/AuthContext';
 
 interface JobFormProps {
   job?: Job;
@@ -30,6 +31,7 @@ interface JobFormProps {
 const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefinedClientId, onSuccess }) => {
   const { clientId: clientIdParam } = useParams<{ clientId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [client, setClient] = useState<Client | null>(null);
   const [title, setTitle] = useState(existingJob?.title || '');
@@ -44,6 +46,7 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
   const [conflictingJobs, setConflictingJobs] = useState<Job[]>([]);
   const [showCalendarDialog, setShowCalendarDialog] = useState(false);
   const [newJob, setNewJob] = useState<Job | null>(null);
+  const [calendarEventId, setCalendarEventId] = useState<string | null>(null);
 
   const clientId = predefinedClientId || clientIdParam || existingJob?.clientId || '';
   const { selectedCompany } = useCompany();
@@ -55,6 +58,28 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
       return await getJobs(selectedCompany.id);
     },
     enabled: !!selectedCompany
+  });
+
+  const { data: hasCalendarIntegration, isLoading: checkingIntegration } = useQuery({
+    queryKey: ['calendar-integration', user?.id],
+    queryFn: async () => {
+      if (!user) return false;
+      
+      const { data, error } = await supabase
+        .from('user_integrations')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('provider', 'google_calendar')
+        .limit(1);
+      
+      if (error) {
+        console.error('Error checking calendar integration:', error);
+        return false;
+      }
+      
+      return data && data.length > 0;
+    },
+    enabled: !!user
   });
 
   useEffect(() => {
@@ -90,6 +115,61 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
     }
     
     return false;
+  };
+
+  const addToCalendar = async (job: Job) => {
+    if (!user || !client) return;
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        console.error('No active session for calendar creation');
+        return;
+      }
+      
+      const { data, error } = await supabase.functions.invoke('add-to-calendar', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: {
+          jobId: job.id,
+          clientId: client.id,
+          userId: user.id
+        }
+      });
+      
+      if (error) {
+        console.error('Error adding to calendar:', error);
+        toast.error('Failed to add event to calendar');
+        return;
+      }
+      
+      if (data.success) {
+        toast.success('Added to Google Calendar');
+        setCalendarEventId(data.eventId);
+        
+        if (data.eventId) {
+          try {
+            await supabase
+              .from('jobs')
+              .update({ calendar_event_id: data.eventId })
+              .eq('id', job.id);
+          } catch (updateError) {
+            console.error('Failed to update job with calendar event ID:', updateError);
+          }
+        }
+        
+        return data.eventId;
+      } else if (data.message) {
+        toast.info(data.message);
+      }
+    } catch (error) {
+      console.error('Error in addToCalendar:', error);
+      toast.error('Failed to add event to calendar');
+    }
+    
+    return null;
   };
 
   const processJobSubmission = async () => {
@@ -129,6 +209,39 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
         };
 
         await updateJob(updatedJob);
+        
+        if (hasCalendarIntegration && existingJob.calendarEventId) {
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            
+            if (session) {
+              await supabase.functions.invoke('update-calendar-event', {
+                headers: {
+                  Authorization: `Bearer ${session.access_token}`,
+                },
+                body: {
+                  eventId: existingJob.calendarEventId,
+                  userId: user?.id,
+                  jobData: {
+                    title: title,
+                    description: description,
+                    date: formattedDate,
+                    location: location,
+                    start_time: isFullDay ? undefined : startTime,
+                    end_time: isFullDay ? undefined : endTime,
+                    is_full_day: isFullDay
+                  }
+                }
+              });
+              
+              toast.success('Calendar event updated');
+            }
+          } catch (error) {
+            console.error('Failed to update calendar event:', error);
+            toast.error('Failed to update calendar event');
+          }
+        }
+        
         toast.success('Job updated successfully!');
         
         if (onSuccess) {
@@ -154,8 +267,20 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
         setNewJob(savedJob);
         toast.success('Job created successfully!');
         
-        // Show calendar dialog instead of navigating away immediately
-        setShowCalendarDialog(true);
+        if (hasCalendarIntegration) {
+          const eventId = await addToCalendar(savedJob);
+          if (eventId) {
+            savedJob.calendarEventId = eventId;
+          }
+        }
+        
+        setShowCalendarDialog(!hasCalendarIntegration);
+        
+        if (hasCalendarIntegration && onSuccess) {
+          onSuccess();
+        } else if (hasCalendarIntegration) {
+          navigate(`/job/${savedJob.id}`);
+        }
       }
     } catch (error) {
       console.error('Failed to save/update job:', error);

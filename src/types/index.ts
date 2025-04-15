@@ -53,6 +53,7 @@ export interface Job {
   isFullDay?: boolean;
   createdAt: string;
   updatedAt: string;
+  calendarEventId?: string;
 }
 
 export interface Package {

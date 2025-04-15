@@ -56,14 +56,29 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
 
   const handleDeleteJob = async (jobId: string) => {
     console.log('handleDeleteJob called with jobId:', jobId);
+    
+    const jobToDelete = jobs.find(job => job.id === jobId);
+    console.log('Job to delete:', jobToDelete);
+    
+    if (jobToDelete?.calendarEventId) {
+      console.log('Job has a calendar event that will also be deleted:', jobToDelete.calendarEventId);
+    }
+    
     try {
       console.log('Attempting to delete job with ID:', jobId);
-      await deleteJob(jobId);
-      console.log('Job deleted successfully, calling onJobDelete callback');
-      toast.success('Job deleted successfully.');
-      onJobDelete(jobId);
+      const result = await deleteJob(jobId);
+      console.log('Delete job result:', result);
+      
+      if (result) {
+        console.log('Job deleted successfully, calling onJobDelete callback');
+        toast.success('Job deleted successfully.');
+        onJobDelete(jobId);
+      } else {
+        console.error('Delete job returned false');
+        toast.error('Failed to delete job.');
+      }
     } catch (error) {
-      console.error('Failed to delete job:', error);
+      console.error('Exception in handleDeleteJob:', error);
       toast.error('Failed to delete job.');
     }
   };

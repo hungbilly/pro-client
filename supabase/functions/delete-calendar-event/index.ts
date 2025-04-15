@@ -17,6 +17,8 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '
 // Function to get a valid OAuth2 access token from the user's integration
 async function getAccessToken(userId: string, supabase: any) {
   try {
+    console.log('Starting getAccessToken for user:', userId);
+    
     if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
       console.error('Missing Google OAuth credentials in environment variables:', {
         clientIdExists: Boolean(GOOGLE_CLIENT_ID),
@@ -111,6 +113,7 @@ async function getAccessToken(userId: string, supabase: any) {
         })
         .eq('id', integrationData.id);
 
+      console.log('Token refreshed successfully, returning new access token');
       return tokenData.access_token;
     }
 
@@ -125,8 +128,11 @@ async function getAccessToken(userId: string, supabase: any) {
 }
 
 serve(async (req) => {
+  console.log('delete-calendar-event function invoked');
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
+    console.log('Handling OPTIONS request (CORS preflight)');
     return new Response(null, { headers: corsHeaders });
   }
 
@@ -156,6 +162,7 @@ serve(async (req) => {
     // Authenticate the user
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
+      console.error('Authentication failed:', userError);
       return new Response(
         JSON.stringify({ error: "Not authenticated", details: userError?.message }),
         {
@@ -165,20 +172,38 @@ serve(async (req) => {
       );
     }
 
+    console.log('Authenticated user:', { id: user.id, email: user.email });
+
     // Get request data
-    const { eventId, jobId } = await req.json();
+    const requestData = await req.json();
+    console.log('Received request data:', requestData);
+    const { eventId, jobId } = requestData;
     
     if (!eventId) {
+      console.error('Missing event ID in request');
       return new Response(
         JSON.stringify({ error: 'Missing event ID' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    console.log(`Attempting to delete calendar event with ID: ${eventId}`);
+
     // Get access token for Google Calendar API
-    const accessToken = await getAccessToken(user.id, supabase);
+    let accessToken;
+    try {
+      accessToken = await getAccessToken(user.id, supabase);
+      console.log('Successfully acquired access token');
+    } catch (tokenError) {
+      console.error('Failed to get access token:', tokenError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to get access token', details: tokenError instanceof Error ? tokenError.message : String(tokenError) }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     
     // Delete event from Google Calendar
+    console.log(`Calling Google Calendar API to delete event: ${eventId}`);
     const calendarResponse = await fetch(
       `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`,
       {
@@ -188,6 +213,8 @@ serve(async (req) => {
         }
       }
     );
+    
+    console.log('Google Calendar API response status:', calendarResponse.status);
     
     // Check for errors (DELETE request returns empty body on success with 204)
     if (!calendarResponse.ok) {
@@ -201,15 +228,19 @@ serve(async (req) => {
         errorText = calendarResponse.statusText;
       }
       
+      console.error(`Google Calendar API error: ${errorText} (Status: ${calendarResponse.status})`);
       return new Response(
         JSON.stringify({ error: errorText }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
+    console.log('Successfully deleted event from Google Calendar');
+    
     // If jobId is provided, update the job to remove the calendar event ID
     if (jobId) {
       try {
+        console.log(`Updating job ${jobId} to remove calendar_event_id`);
         // Update the job to remove the calendar event ID
         const { error: updateError } = await supabase
           .from('jobs')
@@ -229,6 +260,7 @@ serve(async (req) => {
     }
     
     // Return success response
+    console.log('Returning success response');
     return new Response(
       JSON.stringify({ 
         success: true, 

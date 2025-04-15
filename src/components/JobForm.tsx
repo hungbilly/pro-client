@@ -205,7 +205,8 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
           endTime: isFullDay ? undefined : endTime,
           isFullDay,
           createdAt: existingJob.createdAt,
-          updatedAt: new Date().toISOString()
+          updatedAt: new Date().toISOString(),
+          calendarEventId: existingJob.calendarEventId
         };
 
         await updateJob(updatedJob);
@@ -271,6 +272,7 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
           const eventId = await addToCalendar(savedJob);
           if (eventId) {
             savedJob.calendarEventId = eventId;
+            await updateJob(savedJob);
           }
         }
         

@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
@@ -522,6 +521,31 @@ serve(async (req) => {
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+    
+    // If the event was created successfully and we got an eventId back,
+    // update the job in the database with the calendar_event_id
+    if (data.eventId) {
+      try {
+        // Check if the calendar_event_id column exists in the jobs table
+        const { error: columnCheckError } = await supabase
+          .from('jobs')
+          .update({ calendar_event_id: data.eventId })
+          .eq('id', jobId)
+          .select();
+        
+        if (columnCheckError) {
+          // If there's an error, it might be because the column doesn't exist
+          console.log('Note: Unable to update job with calendar event ID, this column might not exist yet:', columnCheckError);
+          
+          // Don't throw an error, just continue without updating the job
+        } else {
+          console.log('Successfully updated job with calendar event ID');
+        }
+      } catch (updateError) {
+        console.error('Failed to update job with calendar event ID:', updateError);
+        // Don't throw here, as the calendar event was created successfully
+      }
     }
     
   } catch (error) {

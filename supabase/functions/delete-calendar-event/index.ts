@@ -54,7 +54,7 @@ serve(async (req) => {
 
   try {
     // Get request data
-    const { eventId } = await req.json();
+    const { eventId, jobId } = await req.json();
     
     if (!eventId) {
       return new Response(
@@ -93,6 +93,30 @@ serve(async (req) => {
         JSON.stringify({ error: errorText }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+    
+    // If jobId is provided, update the job to remove the calendar event ID
+    if (jobId) {
+      // Create Supabase client
+      const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      
+      try {
+        // Update the job to remove the calendar event ID
+        const { error: updateError } = await supabase
+          .from('jobs')
+          .update({ calendar_event_id: null })
+          .eq('id', jobId);
+        
+        if (updateError) {
+          console.log('Unable to update job, possibly because calendar_event_id column doesn\'t exist:', updateError);
+          // Continue since the calendar event was deleted successfully
+        } else {
+          console.log('Successfully removed calendar event ID from job');
+        }
+      } catch (error) {
+        console.error('Error updating job:', error);
+        // Continue since the calendar event was deleted successfully
+      }
     }
     
     // Return success response

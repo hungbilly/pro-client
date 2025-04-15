@@ -9,7 +9,7 @@ import {
   updatePaymentScheduleStatus,
   getJob
 } from '@/lib/storage';
-import { Invoice, Client, Job, CompanyClientView } from '@/types';
+import { Invoice, Client, Job, CompanyClientView, PaymentSchedule } from '@/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -173,19 +173,14 @@ const InvoiceView = () => {
     
     setUpdatingPaymentId(paymentId);
     try {
-      let updatedSchedule;
-      if (newStatus === 'paid') {
-        const today = new Date();
-        const formattedDate = format(today, 'yyyy-MM-dd');
-        updatedSchedule = await updatePaymentScheduleStatus(paymentId, newStatus, formattedDate);
-      } else {
-        updatedSchedule = await updatePaymentScheduleStatus(paymentId, newStatus);
-      }
+      const result = await updatePaymentScheduleStatus(paymentId, newStatus, newStatus === 'paid' ? format(new Date(), 'yyyy-MM-dd') : undefined);
       
-      if (!updatedSchedule) {
+      if (!result) {
         toast.error('Failed to update payment status');
         return;
       }
+      
+      const updatedSchedule = result as PaymentSchedule;
       
       if (invoice.paymentSchedules) {
         const updatedSchedules = invoice.paymentSchedules.map(schedule => 
@@ -194,9 +189,6 @@ const InvoiceView = () => {
         
         setInvoice(prev => {
           if (!prev) return prev;
-          if (isEqual(prev.paymentSchedules, updatedSchedules)) {
-            return prev;
-          }
           return {
             ...prev,
             paymentSchedules: updatedSchedules
@@ -216,16 +208,18 @@ const InvoiceView = () => {
     
     setUpdatingPaymentId(paymentId);
     try {
-      const updatedSchedule = await updatePaymentScheduleStatus(
+      const result = await updatePaymentScheduleStatus(
         paymentId, 
         'paid',
         paymentDate
       );
       
-      if (!updatedSchedule) {
+      if (!result) {
         toast.error('Failed to update payment date');
         return;
       }
+      
+      const updatedSchedule = result as PaymentSchedule;
       
       if (invoice.paymentSchedules) {
         const updatedSchedules = invoice.paymentSchedules.map(schedule => 
@@ -234,9 +228,6 @@ const InvoiceView = () => {
         
         setInvoice(prev => {
           if (!prev) return prev;
-          if (isEqual(prev.paymentSchedules, updatedSchedules)) {
-            return prev;
-          }
           return {
             ...prev,
             paymentSchedules: updatedSchedules

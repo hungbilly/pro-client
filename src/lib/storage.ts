@@ -1,5 +1,6 @@
+
 import { supabase } from '@/integrations/supabase/client';
-import { Client, Invoice, InvoiceItem, Job, PaymentSchedule } from '@/types';
+import { Client, Invoice, InvoiceItem, Job, PaymentSchedule, InvoiceStatus, ContractStatus, PaymentStatus } from '@/types';
 import { format } from 'date-fns';
 
 // Job functions
@@ -24,7 +25,7 @@ export const getJob = async (jobId: string): Promise<Job | null> => {
       companyId: data.company_id,
       title: data.title,
       description: data.description,
-      status: data.status,
+      status: data.status as 'active' | 'completed' | 'cancelled',
       date: data.date,
       location: data.location,
       startTime: data.start_time,
@@ -64,7 +65,7 @@ export const getJobs = async (companyId?: string): Promise<Job[]> => {
       companyId: job.company_id,
       title: job.title,
       description: job.description,
-      status: job.status,
+      status: job.status as 'active' | 'completed' | 'cancelled',
       date: job.date,
       location: job.location,
       startTime: job.start_time,
@@ -99,7 +100,7 @@ export const getClientJobs = async (clientId: string): Promise<Job[]> => {
       companyId: job.company_id,
       title: job.title,
       description: job.description,
-      status: job.status,
+      status: job.status as 'active' | 'completed' | 'cancelled',
       date: job.date,
       location: job.location,
       startTime: job.start_time,
@@ -146,7 +147,7 @@ export const saveJob = async (job: Omit<Job, 'id' | 'createdAt' | 'updatedAt'>):
       companyId: data.company_id,
       title: data.title,
       description: data.description,
-      status: data.status,
+      status: data.status as 'active' | 'completed' | 'cancelled',
       date: data.date,
       location: data.location,
       startTime: data.start_time,
@@ -195,7 +196,7 @@ export const updateJob = async (job: Job): Promise<Job> => {
       companyId: data.company_id,
       title: data.title,
       description: data.description,
-      status: data.status,
+      status: data.status as 'active' | 'completed' | 'cancelled',
       date: data.date,
       location: data.location,
       startTime: data.start_time,
@@ -500,7 +501,7 @@ export const getInvoice = async (invoiceId: string): Promise<Invoice | null> => 
       dueDate: schedule.due_date,
       percentage: schedule.percentage,
       description: schedule.description,
-      status: schedule.status || 'unpaid',
+      status: schedule.status as PaymentStatus || 'unpaid',
       paymentDate: schedule.payment_date
     }));
 
@@ -513,14 +514,15 @@ export const getInvoice = async (invoiceId: string): Promise<Invoice | null> => 
       date: invoiceData.date,
       dueDate: invoiceData.due_date,
       amount: invoiceData.amount,
-      status: invoiceData.status,
-      contractStatus: invoiceData.contract_status,
+      status: invoiceData.status as InvoiceStatus,
+      contractStatus: invoiceData.contract_status as ContractStatus,
       notes: invoiceData.notes,
       contractTerms: invoiceData.contract_terms,
       viewLink: invoiceData.view_link,
       shootingDate: invoiceData.shooting_date,
       items,
-      paymentSchedules
+      paymentSchedules,
+      pdfUrl: invoiceData.pdf_url
     };
   } catch (error) {
     console.error('Error in getInvoice:', error);
@@ -575,7 +577,7 @@ export const getInvoices = async (companyId?: string): Promise<Invoice[]> => {
         dueDate: schedule.due_date,
         percentage: schedule.percentage,
         description: schedule.description,
-        status: schedule.status || 'unpaid',
+        status: schedule.status as PaymentStatus || 'unpaid',
         paymentDate: schedule.payment_date
       }));
 
@@ -588,14 +590,15 @@ export const getInvoices = async (companyId?: string): Promise<Invoice[]> => {
         date: invoiceData.date,
         dueDate: invoiceData.due_date,
         amount: invoiceData.amount,
-        status: invoiceData.status,
-        contractStatus: invoiceData.contract_status,
+        status: invoiceData.status as InvoiceStatus,
+        contractStatus: invoiceData.contract_status as ContractStatus,
         notes: invoiceData.notes,
         contractTerms: invoiceData.contract_terms,
         viewLink: invoiceData.view_link,
         shootingDate: invoiceData.shooting_date,
         items,
-        paymentSchedules
+        paymentSchedules,
+        pdfUrl: invoiceData.pdf_url
       });
     }
 
@@ -632,8 +635,8 @@ export const getInvoicesByDate = async (date?: string): Promise<Invoice[]> => {
       date: invoice.date,
       dueDate: invoice.due_date,
       amount: invoice.amount,
-      status: invoice.status,
-      contractStatus: invoice.contract_status,
+      status: invoice.status as InvoiceStatus,
+      contractStatus: invoice.contract_status as ContractStatus,
       notes: invoice.notes,
       contractTerms: invoice.contract_terms,
       viewLink: invoice.view_link,
@@ -689,7 +692,7 @@ export const getClientInvoices = async (clientId: string): Promise<Invoice[]> =>
         dueDate: schedule.due_date,
         percentage: schedule.percentage,
         description: schedule.description,
-        status: schedule.status || 'unpaid',
+        status: schedule.status as PaymentStatus || 'unpaid',
         paymentDate: schedule.payment_date
       }));
 
@@ -702,14 +705,15 @@ export const getClientInvoices = async (clientId: string): Promise<Invoice[]> =>
         date: invoiceData.date,
         dueDate: invoiceData.due_date,
         amount: invoiceData.amount,
-        status: invoiceData.status,
-        contractStatus: invoiceData.contract_status,
+        status: invoiceData.status as InvoiceStatus,
+        contractStatus: invoiceData.contract_status as ContractStatus,
         notes: invoiceData.notes,
         contractTerms: invoiceData.contract_terms,
         viewLink: invoiceData.view_link,
         shootingDate: invoiceData.shooting_date,
         items,
-        paymentSchedules
+        paymentSchedules,
+        pdfUrl: invoiceData.pdf_url
       });
     }
 
@@ -762,7 +766,7 @@ export const getJobInvoices = async (jobId: string): Promise<Invoice[]> => {
         dueDate: schedule.due_date,
         percentage: schedule.percentage,
         description: schedule.description,
-        status: schedule.status || 'unpaid',
+        status: schedule.status as PaymentStatus || 'unpaid',
         paymentDate: schedule.payment_date
       }));
 
@@ -775,14 +779,15 @@ export const getJobInvoices = async (jobId: string): Promise<Invoice[]> => {
         date: invoiceData.date,
         dueDate: invoiceData.due_date,
         amount: invoiceData.amount,
-        status: invoiceData.status,
-        contractStatus: invoiceData.contract_status,
+        status: invoiceData.status as InvoiceStatus,
+        contractStatus: invoiceData.contract_status as ContractStatus,
         notes: invoiceData.notes,
         contractTerms: invoiceData.contract_terms,
         viewLink: invoiceData.view_link,
         shootingDate: invoiceData.shooting_date,
         items,
-        paymentSchedules
+        paymentSchedules,
+        pdfUrl: invoiceData.pdf_url
       });
     }
 
@@ -844,7 +849,7 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
       dueDate: schedule.due_date,
       percentage: schedule.percentage,
       description: schedule.description,
-      status: schedule.status || 'unpaid',
+      status: schedule.status as PaymentStatus || 'unpaid',
       paymentDate: schedule.payment_date
     }));
 
@@ -857,14 +862,15 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
       date: invoiceData.date,
       dueDate: invoiceData.due_date,
       amount: invoiceData.amount,
-      status: invoiceData.status,
-      contractStatus: invoiceData.contract_status,
+      status: invoiceData.status as InvoiceStatus,
+      contractStatus: invoiceData.contract_status as ContractStatus,
       notes: invoiceData.notes,
       contractTerms: invoiceData.contract_terms,
       viewLink: invoiceData.view_link,
       shootingDate: invoiceData.shooting_date,
       items,
-      paymentSchedules
+      paymentSchedules,
+      pdfUrl: invoiceData.pdf_url
     };
   } catch (error) {
     console.error('Error in getInvoiceByViewLink:', error);
@@ -957,14 +963,15 @@ export const saveInvoice = async (invoice: Omit<Invoice, 'id' | 'viewLink'>): Pr
       date: invoiceData.date,
       dueDate: invoiceData.due_date,
       amount: invoiceData.amount,
-      status: invoiceData.status,
-      contractStatus: invoiceData.contract_status,
+      status: invoiceData.status as InvoiceStatus,
+      contractStatus: invoiceData.contract_status as ContractStatus,
       notes: invoiceData.notes,
       contractTerms: invoiceData.contract_terms,
       viewLink: invoiceData.view_link,
       shootingDate: invoiceData.shooting_date,
       items: invoice.items || [],
-      paymentSchedules: invoice.paymentSchedules || []
+      paymentSchedules: invoice.paymentSchedules || [],
+      pdfUrl: invoiceData.pdf_url
     };
   } catch (error) {
     console.error('Error in saveInvoice:', error);
@@ -1111,7 +1118,7 @@ export const deleteInvoice = async (invoiceId: string): Promise<boolean> => {
   }
 };
 
-export const updateInvoiceStatus = async (invoiceId: string, status: string): Promise<boolean> => {
+export const updateInvoiceStatus = async (invoiceId: string, status: InvoiceStatus): Promise<boolean> => {
   try {
     const { error } = await supabase
       .from('invoices')
@@ -1130,7 +1137,7 @@ export const updateInvoiceStatus = async (invoiceId: string, status: string): Pr
   }
 };
 
-export const updateContractStatus = async (invoiceId: string, status: string): Promise<boolean> => {
+export const updateContractStatus = async (invoiceId: string, status: ContractStatus): Promise<boolean> => {
   try {
     const { error } = await supabase
       .from('invoices')
@@ -1149,25 +1156,38 @@ export const updateContractStatus = async (invoiceId: string, status: string): P
   }
 };
 
-export const updatePaymentScheduleStatus = async (scheduleId: string, status: string, paymentDate?: string): Promise<boolean> => {
+export const updatePaymentScheduleStatus = async (scheduleId: string, status: PaymentStatus, paymentDate?: string): Promise<PaymentSchedule | boolean> => {
   try {
-    const updateData: { status: string; payment_date?: string } = { status };
+    const updateData: { status: PaymentStatus; payment_date?: string } = { status };
     
     if (paymentDate) {
       updateData.payment_date = paymentDate;
     }
     
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('payment_schedules')
       .update(updateData)
-      .eq('id', scheduleId);
+      .eq('id', scheduleId)
+      .select()
+      .single();
 
     if (error) {
       console.error('Error updating payment schedule status:', error);
       return false;
     }
 
-    return true;
+    if (!data) {
+      return false;
+    }
+
+    return {
+      id: data.id,
+      dueDate: data.due_date,
+      percentage: data.percentage,
+      description: data.description || '',
+      status: data.status as PaymentStatus,
+      paymentDate: data.payment_date
+    };
   } catch (error) {
     console.error('Error in updatePaymentScheduleStatus:', error);
     return false;

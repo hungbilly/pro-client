@@ -65,7 +65,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const company = useCompany();
+  const { selectedCompany } = useCompany();
 
   const [invoice, setInvoice] = useState<Invoice>(
     propInvoice || {
@@ -87,7 +87,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
       notes: '',
       contractTerms: '', 
       paymentSchedules: [],
-      companyId: company?.id || '',
+      companyId: selectedCompany?.id || '',
       viewLink: generateViewLink(),
     }
   );
@@ -233,7 +233,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
         const newInvoice = { 
           ...invoice, 
           userId: user?.id, 
-          companyId: company?.id || '', 
+          companyId: selectedCompany?.id || '', 
           clientId: propClientId || invoice.clientId, 
           jobId: propJobId || invoice.jobId 
         };

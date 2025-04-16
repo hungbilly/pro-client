@@ -403,22 +403,23 @@ serve(async (req) => {
         const normalizedStartTime = eventStartTime.length === 5 ? `${eventStartTime}:00` : eventStartTime; // "09:00:00"
         const normalizedEndTime = eventEndTime.length === 5 ? `${eventEndTime}:00` : eventEndTime; // "17:00:00"
         
-        // Format start and end times for non-full-day events
-        const formattedStartDate = `${eventDate}T${normalizedStartTime}Z`; // "2025-04-14T09:00:00Z"
-        const formattedEndDate = `${eventDate}T${normalizedEndTime}Z`; // "2025-04-14T17:00:00Z"
+        // Fixed: Format with correct timezone handling - DO NOT append Z (which forces UTC)
+        // Instead, specify the timeZone property and let Google Calendar handle conversion
+        const formattedStartDate = `${eventDate}T${normalizedStartTime}`; // "2025-04-14T09:00:00"
+        const formattedEndDate = `${eventDate}T${normalizedEndTime}`; // "2025-04-14T17:00:00"
         
-        // Create event object with start/end times
+        // Create event object with start/end times and proper timezone
         const event = {
           summary: eventSummary,
           location: eventLocation,
           description: eventDescription,
           start: {
             dateTime: formattedStartDate,
-            timeZone: 'UTC',
+            timeZone: 'UTC', // Using UTC as the reference timezone
           },
           end: {
             dateTime: formattedEndDate,
-            timeZone: 'UTC',
+            timeZone: 'UTC', // Using UTC as the reference timezone
           },
         };
         

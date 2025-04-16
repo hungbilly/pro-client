@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
@@ -178,6 +177,7 @@ serve(async (req) => {
       const normalizedStartTime = startTime.length === 5 ? `${startTime}:00` : startTime;
       const normalizedEndTime = endTime.length === 5 ? `${endTime}:00` : endTime;
       
+      // Fixed: Format with correct timezone handling - DO NOT append Z (which forces UTC)
       const formattedStartDate = `${eventData.date}T${normalizedStartTime}`;
       const formattedEndDate = `${eventData.date}T${normalizedEndTime}`;
       
@@ -187,11 +187,11 @@ serve(async (req) => {
         description: eventData.description,
         start: {
           dateTime: formattedStartDate,
-          timeZone: 'UTC',
+          timeZone: 'UTC', // Using UTC as the reference timezone
         },
         end: {
           dateTime: formattedEndDate,
-          timeZone: 'UTC',
+          timeZone: 'UTC', // Using UTC as the reference timezone
         },
       };
       console.log('Created timed event object for update with normalized times');

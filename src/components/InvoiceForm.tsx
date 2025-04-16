@@ -317,6 +317,10 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     setShowAddProductDialog(true);
   };
 
+  const renderRichTextContent = (content: string) => {
+    return { __html: content };
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -387,73 +391,96 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
         </div>
 
         <div>
-          <div className="flex items-center justify-between mb-4">
-            <Label>Products & Packages</Label>
-            <Button variant="outline" onClick={openAddProductDialog}>
-              <PackageIcon className="mr-2 h-4 w-4" />
-              Add Products & Packages
-            </Button>
+          <div className="flex flex-col space-y-2">
+            <h3 className="text-lg font-medium">Products & Packages</h3>
+            <p className="text-sm text-gray-500">Add products and packages to this invoice.</p>
+            
+            {invoice.items.length === 0 ? (
+              <div className="bg-slate-50 rounded-lg p-8 text-center">
+                <h3 className="text-lg font-medium mb-2">Start Adding Items to your Invoice</h3>
+                <p className="text-muted-foreground mb-6">
+                  You currently don't have any product or package added to
+                  your Invoice. Click the button below to start adding them.
+                </p>
+                <Button onClick={openAddProductDialog} className="bg-green-600 hover:bg-green-700">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Products & Packages
+                </Button>
+              </div>
+            ) : (
+              <div className="border rounded-lg overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[200px]">Item</TableHead>
+                      <TableHead className="w-[350px]">Description</TableHead>
+                      <TableHead>Unit Price</TableHead>
+                      <TableHead>Quantity</TableHead>
+                      <TableHead>Discount</TableHead>
+                      <TableHead>Tax</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead className="w-[100px]"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {invoice.items.map((item, index) => (
+                      <TableRow key={item.id} className="align-top">
+                        <TableCell className="font-medium">
+                          {item.name || item.description.split('\n')[0]}
+                        </TableCell>
+                        <TableCell>
+                          <div 
+                            className="prose prose-sm max-w-none"
+                            dangerouslySetInnerHTML={renderRichTextContent(item.description)}
+                          />
+                        </TableCell>
+                        <TableCell>${item.rate.toFixed(2)}</TableCell>
+                        <TableCell>{item.quantity}</TableCell>
+                        <TableCell>{item.discount || '0%'}</TableCell>
+                        <TableCell>No Tax</TableCell>
+                        <TableCell className="text-right font-medium">
+                          ${(item.quantity * item.rate).toFixed(2)}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center justify-end space-x-1">
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleRemoveItem(item.id)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                
+                <div className="flex justify-between p-4 border-t">
+                  <div>
+                    <Button variant="outline" className="bg-emerald-600 text-white hover:bg-emerald-700" onClick={openAddProductDialog}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Products & Packages
+                    </Button>
+                  </div>
+                  <div className="space-y-2 text-right">
+                    <div className="flex justify-between">
+                      <span className="font-medium mr-8">Subtotal:</span>
+                      <span className="font-medium">${calculateTotal().toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500 mr-8">Discount:</span>
+                      <span className="text-gray-500">None</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-bold mr-8">Total Due:</span>
+                      <span className="font-bold">${calculateTotal().toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-          {invoice.items.length === 0 ? (
-            <div className="bg-slate-50 rounded-lg p-8 text-center">
-              <h3 className="text-lg font-medium mb-2">Start Adding Items to your Invoice</h3>
-              <p className="text-muted-foreground mb-6">
-                You currently don't have any product or package added to
-                your Invoice. Click the button below to start adding them.
-              </p>
-              <Button onClick={openAddProductDialog} className="bg-green-600 hover:bg-green-700">
-                <Plus className="mr-2 h-4 w-4" />
-                Add Products & Packages
-              </Button>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Quantity</TableHead>
-                  <TableHead>Unit Price</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {invoice.items.map((item, index) => (
-                  <TableRow key={item.id}>
-                    <TableCell>
-                      <Input
-                        type="text"
-                        value={item.description}
-                        onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        value={item.quantity}
-                        onChange={(e) => handleItemChange(index, 'quantity', Number(e.target.value))}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        value={item.rate}
-                        onChange={(e) => handleItemChange(index, 'rate', Number(e.target.value))}
-                      />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      ${(item.quantity * item.rate).toFixed(2)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
         </div>
 
         <div>

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
@@ -65,7 +66,7 @@ const QuillEditor: React.FC<QuillEditorProps> = ({
         readOnly={readOnly}
         className={cn(className)}
       />
-      <style jsx global>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         .quill-editor-container .ql-container {
           min-height: 120px;
           font-size: 1rem;
@@ -85,7 +86,7 @@ const QuillEditor: React.FC<QuillEditorProps> = ({
         .quill-editor-container.readOnly .ql-toolbar {
           display: none;
         }
-      `}</style>
+      `}} />
     </div>
   );
 };

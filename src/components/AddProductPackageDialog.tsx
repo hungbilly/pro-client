@@ -9,7 +9,7 @@ import { useCompany } from './CompanySelector';
 import { Package, InvoiceItem } from '@/types';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import RichTextEditor from './RichTextEditor';
+import QuillEditor from './QuillEditor';
 
 interface AddProductPackageDialogProps {
   isOpen: boolean;
@@ -160,11 +160,11 @@ const AddProductPackageDialog: React.FC<AddProductPackageDialogProps> = ({
               </Label>
               <span className="text-sm text-blue-600 cursor-pointer">Insert Message Variable ▾</span>
             </div>
-            <RichTextEditor
+            <QuillEditor
               id="item-description"
               value={customDescription}
               onChange={setCustomDescription}
-              placeholder="Type text here ..."
+              placeholder="Type text here..."
               className="mt-1"
               alwaysShowToolbar={true}
             />

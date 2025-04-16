@@ -18,7 +18,7 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import PackageSelector from './PackageSelector';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import RichTextEditor from './RichTextEditor';
+import QuillEditor from './QuillEditor';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import AddProductPackageDialog from './AddProductPackageDialog';
 
@@ -483,7 +483,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
         <div>
           <Label htmlFor="notes">Notes</Label>
-          <RichTextEditor value={invoice.notes} onChange={(value) => setInvoice(prev => ({ ...prev, notes: value }))} />
+          <QuillEditor value={invoice.notes} onChange={(value) => setInvoice(prev => ({ ...prev, notes: value }))} />
         </div>
 
         <div>
@@ -495,7 +495,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
               </Button>
             </div>
           </div>
-          <RichTextEditor value={invoice.contractTerms || ''} onChange={(value) => setInvoice(prev => ({ ...prev, contractTerms: value }))} />
+          <QuillEditor value={invoice.contractTerms || ''} onChange={(value) => setInvoice(prev => ({ ...prev, contractTerms: value }))} />
         </div>
 
         <div>

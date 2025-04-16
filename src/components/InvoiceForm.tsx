@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Client, Invoice, InvoiceItem, Job, PaymentSchedule } from '@/types';
@@ -96,6 +95,19 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   const [showAddProductDialog, setShowAddProductDialog] = useState(false);
 
   useEffect(() => {
+    console.log("InvoiceForm mounted with props:", { 
+      propInvoice, 
+      propClientId, 
+      propJobId, 
+      propInvoiceId,
+      hasContractTemplates: contractTemplates?.length > 0
+    });
+    console.log("Current invoice state:", invoice);
+    console.log("User:", user);
+    console.log("Selected company:", selectedCompany);
+  }, []);
+
+  useEffect(() => {
     if (propInvoice) {
       setInvoice(propInvoice);
     }
@@ -125,6 +137,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
+    console.log("Input changed:", { name, value });
     setInvoice(prevInvoice => ({
       ...prevInvoice,
       [name]: value,
@@ -191,15 +204,20 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   }, [invoice.items, calculateTotal]);
 
   const handleSubmit = async (e: React.FormEvent) => {
+    console.log("Form submission initiated");
     e.preventDefault();
+    console.log("Default form behavior prevented");
     
     if (!invoice.number) {
+      console.error("Validation failed: Invoice number is required");
       toast.error('Invoice number is required.');
       return;
     }
 
+    console.log("Checking for duplicate invoice number");
     if (checkDuplicateInvoiceNumber) {
       const isDuplicate = await checkDuplicateInvoiceNumber(invoice.number, invoice.id);
+      console.log("Duplicate check result:", isDuplicate);
       if (isDuplicate) {
         setIsNumberValid(false);
         toast.error('Invoice number already exists.');
@@ -210,11 +228,26 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     }
 
     setIsSaving(true);
+    console.log("Setting saving state to true");
+    
     try {
+      console.log("Preparing to save invoice with data:", {
+        id: invoice.id,
+        clientId: invoice.clientId,
+        jobId: invoice.jobId,
+        items: invoice.items.length,
+        status: invoice.status,
+        userId: user?.id,
+        companyId: selectedCompany?.id
+      });
+      
       if (invoice.id) {
+        console.log("Updating existing invoice:", invoice.id);
         await updateInvoice(invoice);
+        console.log("Invoice updated successfully");
         toast.success('Invoice updated successfully!');
       } else {
+        console.log("Creating new invoice");
         const newInvoice = { 
           ...invoice, 
           userId: user?.id, 
@@ -222,21 +255,28 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
           clientId: propClientId || invoice.clientId, 
           jobId: propJobId || invoice.jobId 
         };
+        console.log("New invoice data:", newInvoice);
         await saveInvoice(newInvoice);
+        console.log("Invoice saved successfully");
         toast.success('Invoice saved successfully!');
       }
       
+      console.log("Preparing navigation after save");
       if (invoice.jobId) {
+        console.log("Navigating to job page:", invoice.jobId);
         navigate(`/job/${invoice.jobId}`);
       } else if (invoice.clientId) {
+        console.log("Navigating to client page:", invoice.clientId);
         navigate(`/client/${invoice.clientId}`);
       } else {
+        console.log("Navigating to home page");
         navigate('/');
       }
     } catch (error) {
       console.error('Error saving invoice:', error);
       toast.error('Failed to save invoice.');
     } finally {
+      console.log("Setting saving state to false");
       setIsSaving(false);
     }
   };
@@ -602,8 +642,11 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
         )}
         <div className="flex gap-2">
           <Button 
-            type="submit" 
-            onClick={handleSubmit} 
+            type="button"
+            onClick={(e) => {
+              console.log("Save button clicked");
+              handleSubmit(e);
+            }} 
             disabled={isSaving}
           >
             {isSaving ? (

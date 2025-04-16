@@ -12,7 +12,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useCompanyContext } from '@/context/CompanyContext';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import RichTextEditor from './RichTextEditor';
+import QuillEditor from './QuillEditor';
 
 const PackageSettings = () => {
   const [packages, setPackages] = useState<Package[]>([]);
@@ -314,7 +314,8 @@ const PackageSettings = () => {
             
             <div>
               <Label htmlFor="description">Description</Label>
-              <RichTextEditor
+              <QuillEditor
+                id="description"
                 value={formData.description || ''}
                 onChange={handleRichTextChange}
                 placeholder="Describe what's included in this package"

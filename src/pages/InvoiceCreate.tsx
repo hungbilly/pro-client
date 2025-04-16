@@ -1,5 +1,5 @@
-
-import React, { useEffect, useState } from 'react';
+import React from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import InvoiceForm from '@/components/InvoiceForm';
 import { getInvoice, getClient, getJob } from '@/lib/storage';
@@ -35,32 +35,27 @@ const InvoiceCreate = () => {
     const fetchInvoiceData = async () => {
       setLoading(true);
       try {
-        // Fetch client data if clientId is available
         if (clientId) {
           const clientData = await getClient(clientId);
           setClient(clientData);
         }
 
-        // Fetch job data if jobId is available
         if (jobId) {
           const jobData = await getJob(jobId);
           setJob(jobData);
           
-          // If job has a clientId and we don't have a client yet, fetch the client
           if (jobData && jobData.clientId && !clientId) {
             const clientData = await getClient(jobData.clientId);
             setClient(clientData);
           }
         }
 
-        // Fetch existing invoice if invoiceId is available
         if (invoiceId) {
           logDebug('Fetching invoice with ID:', invoiceId);
           const fetchedInvoice = await getInvoice(invoiceId);
           logDataTransformation('Fetched invoice', fetchedInvoice);
           
           if (fetchedInvoice) {
-            // Validate dates
             if (fetchedInvoice.date) {
               const parsedDate = parseDate(fetchedInvoice.date);
               if (parsedDate) {
@@ -76,13 +71,11 @@ const InvoiceCreate = () => {
             
             setInvoice(fetchedInvoice);
             
-            // If invoice has a clientId and we don't have client data, fetch it
             if (fetchedInvoice.clientId && !client) {
               const clientData = await getClient(fetchedInvoice.clientId);
               setClient(clientData);
             }
             
-            // If invoice has a jobId and we don't have job data, fetch it
             if (fetchedInvoice.jobId && !job) {
               const jobData = await getJob(fetchedInvoice.jobId);
               setJob(jobData);
@@ -90,7 +83,6 @@ const InvoiceCreate = () => {
           } else {
             console.error('Invoice not found for ID:', invoiceId);
             toast.error('Invoice not found');
-            // Navigate back based on available params
             if (jobId) {
               navigate(`/job/${jobId}`);
             } else if (clientId) {
@@ -197,7 +189,6 @@ const InvoiceCreate = () => {
     }
   };
 
-  // Breadcrumb paths for navigation context
   const getBreadcrumbPaths = () => {
     const paths = [
       { label: "Dashboard", path: "/" },
@@ -242,71 +233,68 @@ const InvoiceCreate = () => {
           </div>
         </div>
 
-        {/* Client and Job Information Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          {job && (
-            <Card>
-              <CardContent className="pt-6">
-                <h2 className="font-semibold mb-4">Job</h2>
-                <div className="flex items-center gap-2 mb-4">
-                  <Briefcase className="h-4 w-4" />
-                  <span className="font-medium">{job.title}</span>
+        {job && (
+          <Card>
+            <CardContent className="pt-6">
+              <h2 className="font-semibold mb-4">Job</h2>
+              <div className="flex items-center gap-2 mb-4">
+                <Briefcase className="h-4 w-4" />
+                <span className="font-medium">{job.title}</span>
+              </div>
+              
+              <div className="text-sm text-muted-foreground">
+                {job.description && (
+                  <div className="mb-3">{job.description}</div>
+                )}
+                
+                <div className="flex items-center gap-2 mt-2">
+                  <Calendar className="h-4 w-4" />
+                  <span>
+                    {job.date ? (
+                      format(new Date(job.date), 'PPP')
+                    ) : (
+                      'No date specified'
+                    )}
+                    {job.startTime && job.endTime && (
+                      <span> ({job.startTime} - {job.endTime})</span>
+                    )}
+                  </span>
                 </div>
                 
-                <div className="text-sm text-muted-foreground">
-                  {job.description && (
-                    <div className="mb-3">{job.description}</div>
-                  )}
-                  
-                  <div className="flex items-center gap-2 mt-2">
-                    <Calendar className="h-4 w-4" />
-                    <span>
-                      {job.date ? (
-                        format(new Date(job.date), 'PPP')
-                      ) : (
-                        'No date specified'
-                      )}
-                      {job.start_time && job.end_time && (
-                        <span> ({job.start_time} - {job.end_time})</span>
-                      )}
-                    </span>
+                {job.location && (
+                  <div className="mt-2">
+                    <strong>Location:</strong> {job.location}
                   </div>
-                  
-                  {job.location && (
-                    <div className="mt-2">
-                      <strong>Location:</strong> {job.location}
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-          {client && (
-            <Card>
-              <CardContent className="pt-6">
-                <h2 className="font-semibold mb-4">Client</h2>
-                <div className="flex items-center gap-2 mb-4">
-                  <User className="h-4 w-4" />
-                  <span className="font-medium">{client.name}</span>
+        {client && (
+          <Card>
+            <CardContent className="pt-6">
+              <h2 className="font-semibold mb-4">Client</h2>
+              <div className="flex items-center gap-2 mb-4">
+                <User className="h-4 w-4" />
+                <span className="font-medium">{client.name}</span>
+              </div>
+              
+              <div className="text-sm text-muted-foreground">
+                <div className="flex items-center gap-2 mb-2">
+                  <Mail className="h-4 w-4" />
+                  <span>{client.email}</span>
                 </div>
                 
-                <div className="text-sm text-muted-foreground">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Mail className="h-4 w-4" />
-                    <span>{client.email}</span>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <Phone className="h-4 w-4" />
-                    <span>{client.phone}</span>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <Phone className="h-4 w-4" />
+                  <span>{client.phone}</span>
                 </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-        
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {!job && !client && (
           <div className="mb-6">
             <Card className="bg-amber-50 border-amber-200">

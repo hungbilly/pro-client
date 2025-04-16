@@ -89,7 +89,7 @@ const AddProductPackageDialog: React.FC<AddProductPackageDialogProps> = ({
       quantity: quantity,
       rate: price,
       amount: totalAmount,
-      discount: discount > 0 ? discount : undefined
+      discount: discount > 0 ? discount.toString() : undefined
     };
     
     onPackageSelect([newItem]);

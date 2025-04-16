@@ -90,6 +90,7 @@ const CalendarTest = () => {
         addLog('Google Calendar integration found');
         addLog(`Integration ID: ${data[0].id}`);
         
+        // Check if token will expire soon
         const expiresAt = new Date(data[0].expires_at);
         const now = new Date();
         const timeUntilExpiry = expiresAt.getTime() - now.getTime();
@@ -183,9 +184,6 @@ const CalendarTest = () => {
       
       addLog(`Using user ID: ${user.id}`);
       
-      const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      addLog(`Using user timezone: ${userTimeZone}`);
-      
       const { data, error } = await supabase.functions.invoke('add-to-calendar', {
         headers: {
           Authorization: `Bearer ${session.access_token}`,
@@ -199,8 +197,7 @@ const CalendarTest = () => {
             event: testObject,
             client: testClient
           },
-          userId: user.id,
-          timeZone: userTimeZone
+          userId: user.id
         }
       });
       
@@ -275,9 +272,6 @@ const CalendarTest = () => {
         calendarEventId: event.calendarEventId
       };
       
-      const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      addLog(`Using user timezone: ${userTimeZone}`);
-      
       const { data, error } = await supabase.functions.invoke('update-calendar-event', {
         headers: {
           Authorization: `Bearer ${session.access_token}`,
@@ -289,8 +283,7 @@ const CalendarTest = () => {
             event: testObject,
             client: testClient
           },
-          userId: user.id,
-          timeZone: userTimeZone
+          userId: user.id
         }
       });
       

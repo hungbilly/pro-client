@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
@@ -116,11 +115,7 @@ serve(async (req) => {
     const authHeader = req.headers.get('Authorization');
     console.log('Authorization header present:', Boolean(authHeader));
     
-    const { eventId, userId, jobData, testMode, testData, timeZone } = await req.json();
-    
-    // Get user's timezone, either from the request or fallback to UTC
-    const userTimeZone = timeZone || 'UTC';
-    console.log(`Using time zone: ${userTimeZone}`);
+    const { eventId, userId, jobData, testMode, testData } = await req.json();
     
     console.log(`Attempting to update event: ${eventId} for user: ${userId}`);
     
@@ -165,11 +160,11 @@ serve(async (req) => {
         description: eventData.description,
         start: {
           date: eventData.date,
-          timeZone: userTimeZone,
+          timeZone: 'UTC',
         },
         end: {
           date: eventData.date,
-          timeZone: userTimeZone,
+          timeZone: 'UTC',
         },
       };
       console.log('Created all-day event object for update');
@@ -182,7 +177,7 @@ serve(async (req) => {
       const normalizedStartTime = startTime.length === 5 ? `${startTime}:00` : startTime;
       const normalizedEndTime = endTime.length === 5 ? `${endTime}:00` : endTime;
       
-      // Format without 'Z' suffix to avoid forcing UTC
+      // Fixed: Format with correct timezone handling - DO NOT append Z (which forces UTC)
       const formattedStartDate = `${eventData.date}T${normalizedStartTime}`;
       const formattedEndDate = `${eventData.date}T${normalizedEndTime}`;
       
@@ -192,11 +187,11 @@ serve(async (req) => {
         description: eventData.description,
         start: {
           dateTime: formattedStartDate,
-          timeZone: userTimeZone, // Using user's timezone
+          timeZone: 'UTC', // Using UTC as the reference timezone
         },
         end: {
           dateTime: formattedEndDate,
-          timeZone: userTimeZone, // Using user's timezone
+          timeZone: 'UTC', // Using UTC as the reference timezone
         },
       };
       console.log('Created timed event object for update with normalized times');

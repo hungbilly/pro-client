@@ -79,17 +79,15 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
         id: generateId(), 
         description: '', 
         quantity: 1, 
-        rate: 0, // Using rate instead of unitPrice
-        amount: 0 // Adding amount field
+        rate: 0, 
+        amount: 0 
       }],
       amount: 0,
       status: 'draft',
       notes: '',
-      contractTerms: '', // Using contractTerms instead of terms
+      contractTerms: '', 
       paymentSchedules: [],
       companyId: company?.id || '',
-      contractId: null,
-      contractStatus: null,
       viewLink: generateViewLink(),
     }
   );
@@ -232,7 +230,13 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
         await updateInvoice(invoice);
         toast.success('Invoice updated successfully!');
       } else {
-        const newInvoice = { ...invoice, userId: user?.id, companyId: company?.id, clientId: propClientId || invoice.clientId, jobId: propJobId || invoice.jobId };
+        const newInvoice = { 
+          ...invoice, 
+          userId: user?.id, 
+          companyId: company?.id || '', 
+          clientId: propClientId || invoice.clientId, 
+          jobId: propJobId || invoice.jobId 
+        };
         await saveInvoice(newInvoice);
         toast.success('Invoice saved successfully!');
       }

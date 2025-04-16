@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import JobForm from '@/components/JobForm';
 import ClientSelector from '@/components/ClientSelector';
 import { Card, CardContent } from '@/components/ui/card';
+import { useNavigate } from 'react-router-dom';
 
 interface AddJobModalProps {
   isOpen: boolean;
@@ -14,14 +15,17 @@ interface AddJobModalProps {
 const AddJobModal: React.FC<AddJobModalProps> = ({ isOpen, onClose, clientId: initialClientId }) => {
   const [selectedClientId, setSelectedClientId] = useState<string | null>(initialClientId || null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const navigate = useNavigate();
 
   const handleClientSelect = (clientId: string) => {
     setSelectedClientId(clientId);
   };
 
-  const handleJobSuccess = () => {
+  const handleJobSuccess = (jobId: string) => {
     setIsSubmitting(false);
     onClose();
+    // Navigate to the job details page
+    navigate(`/job/${jobId}`);
   };
 
   // Prevent closing the modal during submission

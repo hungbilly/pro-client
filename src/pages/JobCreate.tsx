@@ -17,13 +17,10 @@ const JobCreate = () => {
     setSelectedClientId(clientId);
   };
 
-  const handleJobSuccess = () => {
+  const handleJobSuccess = (jobId: string) => {
     setIsSubmitting(false);
-    if (selectedClientId) {
-      navigate(`/client/${selectedClientId}`);
-    } else {
-      navigate('/');
-    }
+    // Navigate to the job details page instead of the client page
+    navigate(`/job/${jobId}`);
   };
 
   return (

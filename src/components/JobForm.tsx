@@ -25,7 +25,7 @@ import { useAuth } from '@/context/AuthContext';
 interface JobFormProps {
   job?: Job;
   clientId?: string;
-  onSuccess?: () => void;
+  onSuccess?: (jobId: string) => void;
 }
 
 const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefinedClientId, onSuccess }) => {
@@ -267,7 +267,7 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
         toast.success('Job updated successfully!');
         
         if (onSuccess) {
-          onSuccess();
+          onSuccess(existingJob.id);
         } else {
           navigate(`/job/${existingJob.id}`);
         }
@@ -303,7 +303,7 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
         setShowCalendarDialog(!hasCalendarIntegration);
         
         if (hasCalendarIntegration && onSuccess) {
-          onSuccess();
+          onSuccess(savedJob.id);
         } else if (hasCalendarIntegration) {
           navigate(`/job/${savedJob.id}`);
         }
@@ -345,8 +345,8 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
   const handleCalendarDialogClose = () => {
     setShowCalendarDialog(false);
     
-    if (onSuccess) {
-      onSuccess();
+    if (onSuccess && newJob) {
+      onSuccess(newJob.id);
     } else if (newJob) {
       navigate(`/job/${newJob.id}`);
     }

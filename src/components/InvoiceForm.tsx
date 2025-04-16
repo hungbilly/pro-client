@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Client, Invoice, InvoiceItem, Job, PaymentSchedule } from '@/types';
@@ -45,7 +44,6 @@ interface InvoiceFormProps {
   onInvoiceDeleted?: (invoiceId: string) => void;
 }
 
-// Helper functions first to avoid use-before-declaration errors
 const generateId = () => {
   return Math.random().toString(36).substring(2, 15);
 };
@@ -69,12 +67,12 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
   const [invoice, setInvoice] = useState<Invoice>(
     propInvoice || {
-      id: '', // Set an empty string as default for id
+      id: '', 
       clientId: propClientId || '',
       jobId: propJobId || '',
       number: '',
       date: format(new Date(), 'yyyy-MM-dd'),
-      dueDate: format(new Date(), 'yyyy-MM-dd'), // Keep this for backwards compatibility
+      dueDate: format(new Date(), 'yyyy-MM-dd'),
       items: [{ 
         id: generateId(), 
         description: '', 
@@ -149,17 +147,13 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   const handleItemChange = (index: number, field: string, value: any) => {
     const updatedItems = [...invoice.items];
     
-    // Convert the item to have properties matching InvoiceItem
     const item = updatedItems[index];
     if (field === 'unitPrice') {
-      // Handle unitPrice to rate conversion
       item.rate = value;
     } else {
-      // Set the field directly
       item[field] = value;
     }
     
-    // Update amount based on quantity and rate
     if (field === 'quantity' || field === 'rate' || field === 'unitPrice') {
       item.amount = item.quantity * item.rate;
     }
@@ -188,6 +182,14 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
       const updatedItems = prevInvoice.items.filter(item => item.id !== id);
       return { ...prevInvoice, items: updatedItems };
     });
+  };
+
+  const handlePackageSelect = (items: InvoiceItem[]) => {
+    setInvoice(prevInvoice => ({
+      ...prevInvoice,
+      items: [...prevInvoice.items, ...items],
+    }));
+    toast.success(`Added package items to invoice`);
   };
 
   const calculateTotal = useCallback(() => {
@@ -400,6 +402,13 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
         <div>
           <Label>Items</Label>
+          <div className="mb-3 grid grid-cols-2 gap-2">
+            <PackageSelector onPackageSelect={handlePackageSelect} />
+            <Button variant="outline" className="w-full" onClick={handleAddItem}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Empty Item
+            </Button>
+          </div>
           <Table>
             <TableHeader>
               <TableRow>
@@ -446,10 +455,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
               ))}
             </TableBody>
           </Table>
-          <Button variant="outline" className="mt-2 w-full" onClick={handleAddItem}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Item
-          </Button>
         </div>
 
         <div>
@@ -637,5 +642,4 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   );
 };
 
-// Add default export
 export default InvoiceForm;

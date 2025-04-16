@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Client, Job } from '@/types';
@@ -209,6 +210,9 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
 
     try {
       if (existingJob) {
+        // Check if we're adding a date to a job that didn't have one before
+        const isAddingDate = !existingJob.date && formattedDate;
+        
         const updatedJob: Job = {
           id: existingJob.id,
           clientId: client.id,
@@ -231,6 +235,7 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
         await updateJob(updatedJob);
         
         if (hasCalendarIntegration && existingJob.calendarEventId) {
+          // If we already have a calendar event, update it
           try {
             const { data: { session } } = await supabase.auth.getSession();
             
@@ -261,6 +266,20 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
           } catch (error) {
             console.error('Failed to update calendar event:', error);
             toast.error('Failed to update calendar event');
+          }
+        } else if (hasCalendarIntegration && isAddingDate) {
+          // If we're adding a date and have calendar integration but no calendar event yet,
+          // create one
+          try {
+            const eventId = await addToCalendar(updatedJob);
+            if (eventId) {
+              updatedJob.calendarEventId = eventId;
+              await updateJob(updatedJob);
+              toast.success('Calendar event created');
+            }
+          } catch (error) {
+            console.error('Failed to create calendar event:', error);
+            toast.error('Failed to create calendar event');
           }
         }
         

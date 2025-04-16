@@ -21,6 +21,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import QuillEditor from './QuillEditor';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import AddProductPackageDialog from './AddProductPackageDialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface ContractTemplate {
   id: string;
@@ -93,6 +94,8 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [showAddProductDialog, setShowAddProductDialog] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({});
+  const [isGeneratingInvoiceNumber, setIsGeneratingInvoiceNumber] = useState(false);
 
   useEffect(() => {
     console.log("InvoiceForm mounted with props:", { 
@@ -105,6 +108,10 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     console.log("Current invoice state:", invoice);
     console.log("User:", user);
     console.log("Selected company:", selectedCompany);
+    
+    if (!propInvoice && !invoice.number) {
+      generateInvoiceNumber();
+    }
   }, []);
 
   useEffect(() => {
@@ -135,6 +142,50 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     fetchJob();
   }, [invoice.jobId]);
 
+  const generateInvoiceNumber = async () => {
+    try {
+      setIsGeneratingInvoiceNumber(true);
+      console.log("Generating invoice number");
+      
+      const today = new Date();
+      const datePrefix = format(today, 'yyyyMMdd');
+      
+      const todayInvoices = await getInvoicesByDate(format(today, 'yyyy-MM-dd'));
+      console.log("Today's invoices:", todayInvoices);
+      
+      const sequenceNumbers = todayInvoices
+        .map(inv => {
+          const match = inv.number?.match(new RegExp(`^${datePrefix}-(\\d+)$`));
+          return match ? parseInt(match[1]) : 0;
+        })
+        .filter(num => num > 0);
+      
+      const highestSequence = sequenceNumbers.length > 0 
+        ? Math.max(...sequenceNumbers) 
+        : 0;
+      
+      const newSequence = highestSequence + 1;
+      const newInvoiceNumber = `${datePrefix}-${newSequence}`;
+      console.log("Generated invoice number:", newInvoiceNumber);
+      
+      setInvoice(prev => ({
+        ...prev,
+        number: newInvoiceNumber
+      }));
+      
+      setValidationErrors(prev => ({
+        ...prev,
+        number: ''
+      }));
+      
+    } catch (error) {
+      console.error("Error generating invoice number:", error);
+      toast.error("Failed to generate invoice number");
+    } finally {
+      setIsGeneratingInvoiceNumber(false);
+    }
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     console.log("Input changed:", { name, value });
@@ -142,6 +193,13 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
       ...prevInvoice,
       [name]: value,
     }));
+    
+    if (validationErrors[name]) {
+      setValidationErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
   };
 
   const handleDateChange = (date: Date | undefined, name: string) => {
@@ -203,14 +261,29 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     }));
   }, [invoice.items, calculateTotal]);
 
+  const validateForm = (): boolean => {
+    const errors: {[key: string]: string} = {};
+    
+    if (!invoice.number) {
+      errors.number = 'Invoice number is required';
+    }
+    
+    if (invoice.items.length === 0) {
+      errors.items = 'At least one item is required';
+    }
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     console.log("Form submission initiated");
     e.preventDefault();
     console.log("Default form behavior prevented");
     
-    if (!invoice.number) {
-      console.error("Validation failed: Invoice number is required");
-      toast.error('Invoice number is required.');
+    if (!validateForm()) {
+      console.error("Validation failed", validationErrors);
+      toast.error('Please fix the errors in the form');
       return;
     }
 
@@ -220,6 +293,10 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
       console.log("Duplicate check result:", isDuplicate);
       if (isDuplicate) {
         setIsNumberValid(false);
+        setValidationErrors(prev => ({
+          ...prev,
+          number: 'Invoice number already exists'
+        }));
         toast.error('Invoice number already exists.');
         return;
       } else {
@@ -373,16 +450,33 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
       <CardContent className="grid gap-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <Label htmlFor="number">Invoice Number</Label>
+            <div className="flex justify-between items-center mb-1">
+              <Label htmlFor="number">Invoice Number</Label>
+              {!invoice.id && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={generateInvoiceNumber}
+                  disabled={isGeneratingInvoiceNumber}
+                  className="text-xs h-6 px-2"
+                >
+                  {isGeneratingInvoiceNumber ? 'Generating...' : 'Generate'}
+                </Button>
+              )}
+            </div>
             <Input
               type="text"
               id="number"
               name="number"
               value={invoice.number}
               onChange={handleInputChange}
-              placeholder="INV-001"
+              placeholder="e.g., 20250416-1"
+              className={validationErrors.number ? "border-red-500" : ""}
               required
             />
+            {validationErrors.number && (
+              <p className="text-sm text-red-500 mt-1">{validationErrors.number}</p>
+            )}
             {!isNumberValid && (
               <p className="text-sm text-red-500 mt-1">Invoice number already exists.</p>
             )}
@@ -435,6 +529,15 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
           <div className="flex flex-col space-y-2">
             <h3 className="text-lg font-medium">Products & Packages</h3>
             <p className="text-sm text-gray-500">Add products and packages to this invoice.</p>
+            
+            {validationErrors.items && (
+              <Alert variant="warning" className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  {validationErrors.items}
+                </AlertDescription>
+              </Alert>
+            )}
             
             {invoice.items.length === 0 ? (
               <div className="bg-slate-50 rounded-lg p-8 text-center">

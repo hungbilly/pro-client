@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getInvoices, deleteInvoice } from '@/lib/storage';
 import { Link, useNavigate } from 'react-router-dom';
@@ -57,12 +56,19 @@ const Invoices = () => {
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const queryClient = useQueryClient();
+  const [localInvoices, setLocalInvoices] = useState<any[]>([]);
   
   const { data: invoices = [], isLoading, error } = useQuery({
     queryKey: ['invoices', selectedCompanyId],
     queryFn: () => getInvoices(selectedCompanyId),
     enabled: !!selectedCompanyId,
   });
+
+  useEffect(() => {
+    if (invoices) {
+      setLocalInvoices(invoices);
+    }
+  }, [invoices]);
 
   const { data: clients = [] } = useQuery({
     queryKey: ['clients', selectedCompanyId],
@@ -116,6 +122,7 @@ const Invoices = () => {
 
     try {
       await deleteInvoice(invoiceToDelete);
+      setLocalInvoices(prev => prev.filter(invoice => invoice.id !== invoiceToDelete));
       toast.success("Invoice deleted successfully");
       queryClient.invalidateQueries({ queryKey: ['invoices', selectedCompanyId] });
       setInvoiceToDelete(null);
@@ -128,6 +135,10 @@ const Invoices = () => {
   const confirmDeleteInvoice = (e: React.MouseEvent, invoiceId: string) => {
     e.stopPropagation();
     setInvoiceToDelete(invoiceId);
+  };
+
+  const handleInvoiceDeleted = (invoiceId: string) => {
+    setLocalInvoices(prev => prev.filter(invoice => invoice.id !== invoiceId));
   };
 
   const getStatusColor = (status: string) => {
@@ -145,7 +156,7 @@ const Invoices = () => {
     }
   };
 
-  const filteredInvoices = invoices.filter(invoice => {
+  const filteredInvoices = localInvoices.filter(invoice => {
     const matchesSearch = 
       invoice.number.toLowerCase().includes(searchQuery.toLowerCase()) ||
       getClientName(invoice.clientId).toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -258,7 +269,7 @@ const Invoices = () => {
               <div className="text-center py-4">Loading invoices...</div>
             ) : error ? (
               <div className="text-center py-4 text-red-500">Failed to load invoices</div>
-            ) : invoices.length === 0 ? (
+            ) : localInvoices.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <Receipt className="h-12 w-12 text-muted-foreground mb-4" />
                 <h3 className="text-lg font-medium mb-2">No Invoices Yet</h3>

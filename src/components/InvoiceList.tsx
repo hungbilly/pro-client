@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Invoice, Client } from '@/types';
@@ -26,6 +25,7 @@ interface InvoiceListProps {
   invoices: Invoice[];
   client: Client;
   showCreateButton?: boolean;
+  onInvoiceDeleted?: (invoiceId: string) => void;
 }
 
 const getStatusColor = (status: Invoice['status']) => {
@@ -53,12 +53,17 @@ const getContractStatusColor = (status?: 'pending' | 'accepted') => {
   }
 };
 
-const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateButton = true }) => {
+const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateButton = true, onInvoiceDeleted }) => {
   const [invoiceToDelete, setInvoiceToDelete] = React.useState<string | null>(null);
+  const [localInvoices, setLocalInvoices] = React.useState<Invoice[]>(invoices);
   const queryClient = useQueryClient();
   const { id: jobId } = useParams();
   
-  const sortedInvoices = [...invoices].sort((a, b) => 
+  React.useEffect(() => {
+    setLocalInvoices(invoices);
+  }, [invoices]);
+  
+  const sortedInvoices = [...localInvoices].sort((a, b) => 
     new Date(b.date).getTime() - new Date(a.date).getTime()
   );
 
@@ -81,6 +86,12 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
     try {
       await deleteInvoice(invoiceToDelete);
       toast.success("Invoice deleted successfully");
+      
+      setLocalInvoices(prev => prev.filter(invoice => invoice.id !== invoiceToDelete));
+      
+      if (onInvoiceDeleted) {
+        onInvoiceDeleted(invoiceToDelete);
+      }
       
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['client', client.id] });
@@ -233,7 +244,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
         )}
       </div>
       
-      {sortedInvoices.length === 0 ? (
+      {localInvoices.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-8 text-center">
             <AreaChart className="h-12 w-12 text-muted-foreground mb-4" />

@@ -43,6 +43,7 @@ const Dashboard: React.FC = () => {
   const [clientSearchQuery, setClientSearchQuery] = useState('');
   const [jobSearchQuery, setJobSearchQuery] = useState('');
   const [invoiceSearchQuery, setInvoiceSearchQuery] = useState('');
+  const [localInvoices, setLocalInvoices] = useState<any[]>([]);
   
   const { companies, selectedCompanyId, loading: companyLoading } = useCompany();
   
@@ -147,6 +148,10 @@ const Dashboard: React.FC = () => {
     enabled: !!selectedCompanyId
   });
 
+  React.useEffect(() => {
+    setLocalInvoices(invoices);
+  }, [invoices]);
+
   const { data: jobs = [], isLoading: jobsLoading } = useQuery({
     queryKey: ['jobs', selectedCompanyId],
     queryFn: () => getJobs(selectedCompanyId),
@@ -192,7 +197,7 @@ const Dashboard: React.FC = () => {
       (job.location && job.location.toLowerCase().includes(jobSearchQuery.toLowerCase()))
     );
   
-  const filteredInvoices = [...invoices]
+  const filteredInvoices = [...localInvoices]
     .filter(invoice => 
       invoice.number.toLowerCase().includes(invoiceSearchQuery.toLowerCase()) ||
       clients.find(c => c.id === invoice.clientId)?.name.toLowerCase().includes(invoiceSearchQuery.toLowerCase()) ||
@@ -209,6 +214,10 @@ const Dashboard: React.FC = () => {
 
   const handleInvoiceRowClick = (invoiceId: string) => {
     navigate(`/invoice/${invoiceId}`);
+  };
+
+  const handleInvoiceDeleted = (invoiceId: string) => {
+    setLocalInvoices(prev => prev.filter(invoice => invoice.id !== invoiceId));
   };
 
   const confirmDeleteClient = (e: React.MouseEvent, clientId: string) => {
@@ -512,7 +521,7 @@ const Dashboard: React.FC = () => {
                   <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 </div>
                 
-                {invoices.length === 0 ? (
+                {localInvoices.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-8 text-center">
                     <FilePlus className="h-12 w-12 text-muted-foreground mb-4" />
                     <h3 className="text-lg font-medium mb-2">No Invoices Yet</h3>

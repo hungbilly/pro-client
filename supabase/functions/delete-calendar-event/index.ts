@@ -7,7 +7,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Get environment variables
 const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID');
 const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || 'https://htjvyzmuqsrjpesdurni.supabase.co';
@@ -17,11 +16,8 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '
 // Function to decode JWT without verification
 function decodeJWT(token: string) {
   try {
-    // Get the payload part of the JWT (second part)
     const base64Payload = token.split('.')[1];
-    // Replace characters that are not valid in base64url to base64
     const base64 = base64Payload.replace(/-/g, '+').replace(/_/g, '/');
-    // Decode and parse the payload
     const payload = JSON.parse(atob(base64));
     return payload;
   } catch (e) {
@@ -38,10 +34,7 @@ function logTokenDetails(authHeader: string | null) {
   }
   
   try {
-    // Extract the token part (after "Bearer ")
     const token = authHeader.replace('Bearer ', '');
-    
-    // Mask most of the token for security
     const maskedToken = token.length > 10 
       ? `${token.substring(0, 5)}...${token.substring(token.length - 5)}`
       : '(invalid token format)';
@@ -49,7 +42,6 @@ function logTokenDetails(authHeader: string | null) {
     console.log(`Auth token present (masked): ${maskedToken}`);
     console.log(`Token length: ${token.length} characters`);
     
-    // Try to decode and log structure
     const decodedToken = decodeJWT(token);
     if (decodedToken) {
       console.log('JWT structure:');
@@ -59,14 +51,13 @@ function logTokenDetails(authHeader: string | null) {
       console.log('- exp present:', !!decodedToken.exp);
       console.log('- iat present:', !!decodedToken.iat);
       
-      // Check expiry if present
       if (decodedToken.exp) {
         const now = Math.floor(Date.now() / 1000);
         const isExpired = decodedToken.exp < now;
         console.log(`- Token ${isExpired ? 'EXPIRED' : 'valid'} (expires ${new Date(decodedToken.exp * 1000).toISOString()})`);
+        console.log(`- Current time: ${new Date(now * 1000).toISOString()}`);
       }
       
-      // Check for common JWT fields
       const missingFields = [];
       ['iss', 'sub', 'aud', 'exp', 'iat'].forEach(field => {
         if (!decodedToken[field]) missingFields.push(field);
@@ -83,7 +74,6 @@ function logTokenDetails(authHeader: string | null) {
   }
 }
 
-// Function to get a valid OAuth2 access token from the user's integration
 async function getAccessToken(userId: string, supabase: any) {
   try {
     console.log('Starting getAccessToken for user:', userId);
@@ -137,13 +127,11 @@ async function getAccessToken(userId: string, supabase: any) {
       userId: integrationData.user_id
     });
 
-    // Check if token needs refresh
     const expiresAt = new Date(integrationData.expires_at);
     const now = new Date();
     const expirationBuffer = 300000; // 5 minutes in milliseconds
 
     if (now.getTime() > expiresAt.getTime() - expirationBuffer) {
-      // Token needs refresh
       console.log('Token expired, refreshing...');
 
       const tokenEndpoint = 'https://oauth2.googleapis.com/token';
@@ -170,7 +158,6 @@ async function getAccessToken(userId: string, supabase: any) {
 
       const tokenData = await response.json();
 
-      // Update the token in the database
       const newExpiresAt = new Date();
       newExpiresAt.setSeconds(newExpiresAt.getSeconds() + tokenData.expires_in);
 
@@ -186,10 +173,8 @@ async function getAccessToken(userId: string, supabase: any) {
       return tokenData.access_token;
     }
 
-    // Current token is still valid
     console.log('Using existing valid token');
     return integrationData.access_token;
-
   } catch (error) {
     console.error('Error in getAccessToken:', error);
     throw error;
@@ -199,24 +184,23 @@ async function getAccessToken(userId: string, supabase: any) {
 serve(async (req) => {
   console.log('delete-calendar-event function invoked');
 
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     console.log('Handling OPTIONS request (CORS preflight)');
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Extract the authorization header and log detailed info
     const authHeader = req.headers.get('Authorization');
     console.log('Authorization header present:', Boolean(authHeader));
     
-    // Log detailed token information
     logTokenDetails(authHeader);
-    
-    // Initialize supabase client with service role by default
+
+    // Log Supabase configuration
+    console.log('SUPABASE_URL:', SUPABASE_URL);
+    console.log('SUPABASE_ANON_KEY (masked):', SUPABASE_ANON_KEY.substring(0, 5) + '...');
+
     let supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     
-    // Create authenticated client if auth header is present
     if (authHeader) {
       console.log('Creating authenticated client with provided auth header');
       supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -228,7 +212,6 @@ serve(async (req) => {
       });
     }
     
-    // Get request data first to ensure we have eventId and jobId
     let userId = null;
     let requestData;
     
@@ -258,7 +241,6 @@ serve(async (req) => {
       );
     }
     
-    // Try to get user from auth if userId is not provided in request
     if (!userId && authHeader) {
       try {
         console.log('Attempting to get user from auth header');
@@ -302,7 +284,6 @@ serve(async (req) => {
     console.log(`Using user ID: ${userId}`);
     console.log(`Attempting to delete calendar event with ID: ${requestData.eventId}`);
 
-    // Get access token for Google Calendar API
     let accessToken;
     try {
       accessToken = await getAccessToken(userId, supabase);
@@ -315,7 +296,6 @@ serve(async (req) => {
       );
     }
     
-    // Delete event from Google Calendar
     console.log(`Calling Google Calendar API to delete event: ${requestData.eventId}`);
     const calendarResponse = await fetch(
       `https://www.googleapis.com/calendar/v3/calendars/primary/events/${requestData.eventId}`,
@@ -329,7 +309,6 @@ serve(async (req) => {
     
     console.log('Google Calendar API response status:', calendarResponse.status);
     
-    // Check for errors (DELETE request returns empty body on success with 204)
     if (!calendarResponse.ok) {
       let errorText = 'Failed to delete calendar event';
       try {
@@ -337,7 +316,6 @@ serve(async (req) => {
         console.error('Google Calendar API error:', errorData);
         errorText = errorData.error?.message || errorText;
       } catch (e) {
-        // If parsing fails, use status text
         errorText = calendarResponse.statusText;
       }
       
@@ -350,11 +328,9 @@ serve(async (req) => {
     
     console.log('Successfully deleted event from Google Calendar');
     
-    // If jobId is provided, update the job to remove the calendar event ID
     if (requestData.jobId) {
       try {
         console.log(`Updating job ${requestData.jobId} to remove calendar_event_id`);
-        // Update the job to remove the calendar event ID
         const { error: updateError } = await supabase
           .from('jobs')
           .update({ calendar_event_id: null })
@@ -362,17 +338,14 @@ serve(async (req) => {
         
         if (updateError) {
           console.error('Error updating job:', updateError);
-          // Continue since the calendar event was deleted successfully
         } else {
           console.log('Successfully removed calendar event ID from job');
         }
       } catch (error) {
         console.error('Error updating job:', error);
-        // Continue since the calendar event was deleted successfully
       }
     }
     
-    // Return success response
     console.log('Returning success response');
     return new Response(
       JSON.stringify({ 
@@ -381,7 +354,6 @@ serve(async (req) => {
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
-    
   } catch (error) {
     console.error('Error in delete-calendar-event function:', error);
     return new Response(

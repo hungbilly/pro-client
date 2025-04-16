@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Client, Job } from '@/types';
@@ -54,6 +53,10 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
   
   // Get the company's timezone or fall back to the browser's timezone
   const timezoneToUse = selectedCompany?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+  
+  // Add debug logging for timezone
+  console.log('Company timezone:', selectedCompany?.timezone);
+  console.log('Timezone to use:', timezoneToUse);
 
   const { data: allJobs = [] } = useQuery({
     queryKey: ['all-jobs', selectedCompany?.id],
@@ -193,6 +196,8 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
     }
 
     const formattedDate = date ? format(date, 'yyyy-MM-dd') : undefined;
+    
+    console.log('Saving job with timezone:', timezoneToUse);
 
     try {
       if (existingJob) {
@@ -211,9 +216,10 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
           createdAt: existingJob.createdAt,
           updatedAt: new Date().toISOString(),
           calendarEventId: existingJob.calendarEventId,
-          timezone: timezoneToUse // Use company timezone or browser timezone
+          timezone: timezoneToUse // Explicitly set the timezone
         };
 
+        console.log('Updating job with data:', updatedJob);
         await updateJob(updatedJob);
         
         if (hasCalendarIntegration && existingJob.calendarEventId) {
@@ -270,9 +276,10 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
           endTime: isFullDay ? undefined : endTime,
           isFullDay,
           calendarEventId: null,
-          timezone: timezoneToUse // Use company timezone or browser timezone
+          timezone: timezoneToUse // Explicitly set the timezone
         };
 
+        console.log('Creating new job with data:', newJobData);
         const savedJob = await saveJob(newJobData);
         setNewJob(savedJob);
         toast.success('Job created successfully!');

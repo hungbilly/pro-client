@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Client, Invoice, InvoiceItem, Job, PaymentSchedule, InvoiceStatus, ContractStatus, PaymentStatus } from '@/types';
 import { format } from 'date-fns';
@@ -18,6 +17,8 @@ export const getJob = async (jobId: string): Promise<Job | null> => {
     }
 
     if (!data) return null;
+    
+    console.log('Retrieved job with timezone:', data.timezone);
 
     return {
       id: data.id,
@@ -33,7 +34,8 @@ export const getJob = async (jobId: string): Promise<Job | null> => {
       isFullDay: data.is_full_day,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
-      calendarEventId: data.calendar_event_id
+      calendarEventId: data.calendar_event_id,
+      timezone: data.timezone // Include the timezone in the returned Job object
     };
   } catch (error) {
     console.error('Error in getJob:', error);
@@ -73,7 +75,8 @@ export const getJobs = async (companyId?: string): Promise<Job[]> => {
       isFullDay: job.is_full_day,
       createdAt: job.created_at,
       updatedAt: job.updated_at,
-      calendarEventId: job.calendar_event_id
+      calendarEventId: job.calendar_event_id,
+      timezone: job.timezone // Include the timezone
     }));
   } catch (error) {
     console.error('Error in getJobs:', error);
@@ -108,7 +111,8 @@ export const getClientJobs = async (clientId: string): Promise<Job[]> => {
       isFullDay: job.is_full_day,
       createdAt: job.created_at,
       updatedAt: job.updated_at,
-      calendarEventId: job.calendar_event_id
+      calendarEventId: job.calendar_event_id,
+      timezone: job.timezone // Include the timezone
     }));
   } catch (error) {
     console.error('Error in getClientJobs:', error);
@@ -118,6 +122,9 @@ export const getClientJobs = async (clientId: string): Promise<Job[]> => {
 
 export const saveJob = async (job: Omit<Job, 'id' | 'createdAt' | 'updatedAt'>): Promise<Job> => {
   try {
+    console.log('Saving job to database with data:', job);
+    console.log('Job timezone being saved:', job.timezone);
+    
     const { data, error } = await supabase
       .from('jobs')
       .insert({
@@ -131,7 +138,8 @@ export const saveJob = async (job: Omit<Job, 'id' | 'createdAt' | 'updatedAt'>):
         start_time: job.startTime,
         end_time: job.endTime,
         is_full_day: job.isFullDay,
-        calendar_event_id: job.calendarEventId
+        calendar_event_id: job.calendarEventId,
+        timezone: job.timezone // Ensure timezone is being saved
       })
       .select()
       .single();
@@ -140,6 +148,8 @@ export const saveJob = async (job: Omit<Job, 'id' | 'createdAt' | 'updatedAt'>):
       console.error('Error saving job:', error);
       throw new Error(error.message);
     }
+
+    console.log('Job saved successfully with response:', data);
 
     return {
       id: data.id,
@@ -155,7 +165,8 @@ export const saveJob = async (job: Omit<Job, 'id' | 'createdAt' | 'updatedAt'>):
       isFullDay: data.is_full_day,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
-      calendarEventId: data.calendar_event_id
+      calendarEventId: data.calendar_event_id,
+      timezone: data.timezone // Return the timezone from the response
     };
   } catch (error) {
     console.error('Error in saveJob:', error);
@@ -165,6 +176,9 @@ export const saveJob = async (job: Omit<Job, 'id' | 'createdAt' | 'updatedAt'>):
 
 export const updateJob = async (job: Job): Promise<Job> => {
   try {
+    console.log('Updating job in database with data:', job);
+    console.log('Job timezone being updated:', job.timezone);
+    
     const { data, error } = await supabase
       .from('jobs')
       .update({
@@ -179,6 +193,7 @@ export const updateJob = async (job: Job): Promise<Job> => {
         end_time: job.endTime,
         is_full_day: job.isFullDay,
         calendar_event_id: job.calendarEventId,
+        timezone: job.timezone, // Ensure timezone is being updated
         updated_at: new Date().toISOString()
       })
       .eq('id', job.id)
@@ -189,6 +204,8 @@ export const updateJob = async (job: Job): Promise<Job> => {
       console.error('Error updating job:', error);
       throw new Error(error.message);
     }
+
+    console.log('Job updated successfully with response:', data);
 
     return {
       id: data.id,
@@ -204,7 +221,8 @@ export const updateJob = async (job: Job): Promise<Job> => {
       isFullDay: data.is_full_day,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
-      calendarEventId: data.calendar_event_id
+      calendarEventId: data.calendar_event_id,
+      timezone: data.timezone // Return the timezone from the response
     };
   } catch (error) {
     console.error('Error in updateJob:', error);
@@ -212,7 +230,6 @@ export const updateJob = async (job: Job): Promise<Job> => {
   }
 };
 
-// Keep the existing deleteJob function
 export const deleteJob = async (jobId: string): Promise<boolean> => {
   try {
     console.log('Starting job deletion process for job ID:', jobId);

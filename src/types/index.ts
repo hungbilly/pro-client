@@ -1,3 +1,4 @@
+
 export interface Client {
   id: string;
   name: string;
@@ -19,6 +20,7 @@ export interface Company {
   logo_url?: string;
   country?: string;
   currency?: string;
+  timezone: string;
   is_default: boolean;
   user_id: string;
   created_at: string;

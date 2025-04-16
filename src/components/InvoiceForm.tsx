@@ -20,6 +20,7 @@ import PackageSelector from './PackageSelector';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import RichTextEditor from './RichTextEditor';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import AddProductPackageDialog from './AddProductPackageDialog';
 
 interface ContractTemplate {
   id: string;
@@ -97,6 +98,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [showAddProductDialog, setShowAddProductDialog] = useState(false);
 
   useEffect(() => {
     if (propInvoice) {
@@ -189,7 +191,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
       ...prevInvoice,
       items: [...prevInvoice.items, ...items],
     }));
-    toast.success(`Added package items to invoice`);
   };
 
   const calculateTotal = useCallback(() => {
@@ -331,6 +332,10 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     });
   };
 
+  const openAddProductDialog = () => {
+    setShowAddProductDialog(true);
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -401,60 +406,79 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
         </div>
 
         <div>
-          <Label>Items</Label>
-          <div className="mb-3 grid grid-cols-2 gap-2">
-            <PackageSelector onPackageSelect={handlePackageSelect} />
-            <Button variant="outline" className="w-full" onClick={handleAddItem}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Empty Item
-            </Button>
+          <div className="flex items-center justify-between mb-4">
+            <Label>Products & Packages</Label>
+            <div className="flex space-x-2">
+              <Button variant="outline" onClick={openAddProductDialog}>
+                <PackageIcon className="mr-2 h-4 w-4" />
+                Add Products & Packages
+              </Button>
+              <Button variant="outline" onClick={handleAddItem}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Empty Item
+              </Button>
+            </div>
           </div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Description</TableHead>
-                <TableHead>Quantity</TableHead>
-                <TableHead>Unit Price</TableHead>
-                <TableHead className="text-right">Total</TableHead>
-                <TableHead className="w-[50px]"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {invoice.items.map((item, index) => (
-                <TableRow key={item.id}>
-                  <TableCell>
-                    <Input
-                      type="text"
-                      value={item.description}
-                      onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      type="number"
-                      value={item.quantity}
-                      onChange={(e) => handleItemChange(index, 'quantity', Number(e.target.value))}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      type="number"
-                      value={item.rate}
-                      onChange={(e) => handleItemChange(index, 'rate', Number(e.target.value))}
-                    />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    ${(item.quantity * item.rate).toFixed(2)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
+          {invoice.items.length === 0 ? (
+            <div className="bg-slate-50 rounded-lg p-8 text-center">
+              <h3 className="text-lg font-medium mb-2">Start Adding Items to your Invoice</h3>
+              <p className="text-muted-foreground mb-6">
+                You currently don't have any product or package added to
+                your Invoice. Click the button below to start adding them.
+              </p>
+              <Button onClick={openAddProductDialog}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Products & Packages
+              </Button>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Quantity</TableHead>
+                  <TableHead>Unit Price</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {invoice.items.map((item, index) => (
+                  <TableRow key={item.id}>
+                    <TableCell>
+                      <Input
+                        type="text"
+                        value={item.description}
+                        onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        type="number"
+                        value={item.quantity}
+                        onChange={(e) => handleItemChange(index, 'quantity', Number(e.target.value))}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        type="number"
+                        value={item.rate}
+                        onChange={(e) => handleItemChange(index, 'rate', Number(e.target.value))}
+                      />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      ${(item.quantity * item.rate).toFixed(2)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </div>
 
         <div>
@@ -638,6 +662,12 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AddProductPackageDialog 
+        isOpen={showAddProductDialog}
+        onClose={() => setShowAddProductDialog(false)}
+        onPackageSelect={handlePackageSelect}
+      />
     </Card>
   );
 };

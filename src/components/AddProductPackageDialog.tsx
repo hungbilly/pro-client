@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -10,7 +9,7 @@ import { useCompany } from './CompanySelector';
 import { Package, InvoiceItem } from '@/types';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
+import RichTextEditor from './RichTextEditor';
 
 interface AddProductPackageDialogProps {
   isOpen: boolean;
@@ -31,7 +30,6 @@ const AddProductPackageDialog: React.FC<AddProductPackageDialogProps> = ({
   const [discount, setDiscount] = useState<number>(0);
   const { selectedCompany } = useCompany();
   
-  // Fetch packages for the selected company
   const { data: packages = [], isLoading: isLoadingPackages } = useQuery({
     queryKey: ['packages', selectedCompany?.id],
     queryFn: async () => {
@@ -53,7 +51,6 @@ const AddProductPackageDialog: React.FC<AddProductPackageDialogProps> = ({
     enabled: !!selectedCompany?.id && isOpen,
   });
 
-  // Handle package selection change
   const handlePackageChange = (packageId: string) => {
     setSelectedPackageId(packageId);
     
@@ -67,7 +64,6 @@ const AddProductPackageDialog: React.FC<AddProductPackageDialogProps> = ({
     }
   };
 
-  // Calculate total amount
   const calculateTotal = () => {
     const subtotal = price * quantity;
     const discountAmount = subtotal * (discount / 100);
@@ -97,7 +93,6 @@ const AddProductPackageDialog: React.FC<AddProductPackageDialogProps> = ({
     onClose();
   };
 
-  // Reset form values when dialog closes or opens
   useEffect(() => {
     if (!isOpen) {
       setSelectedPackageId('');
@@ -165,16 +160,16 @@ const AddProductPackageDialog: React.FC<AddProductPackageDialogProps> = ({
               </Label>
               <span className="text-sm text-blue-600 cursor-pointer">Insert Message Variable ▾</span>
             </div>
-            <Textarea 
-              id="item-description" 
+            <RichTextEditor
+              id="item-description"
               value={customDescription}
-              onChange={(e) => setCustomDescription(e.target.value)}
+              onChange={setCustomDescription}
               placeholder="Type text here ..."
               className="mt-1"
-              rows={8}
+              alwaysShowToolbar={true}
             />
             <div className="text-right text-sm text-gray-500 mt-1">
-              0/4000
+              {customDescription ? customDescription.length : 0}/4000
             </div>
           </div>
 

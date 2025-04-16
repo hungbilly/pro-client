@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Client, Job } from '@/types';
@@ -7,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CalendarIcon, Clock, User, Mail, Phone, MapPin } from 'lucide-react';
+import { CalendarIcon, Clock, User, Mail, Phone, MapPin, Globe } from 'lucide-react';
 import { toast } from 'sonner';
 import { getClient, saveJob, updateJob, getJob, getJobs } from '@/lib/storage';
 import { format } from 'date-fns';
@@ -50,6 +51,9 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
 
   const clientId = predefinedClientId || clientIdParam || existingJob?.clientId || '';
   const { selectedCompany } = useCompany();
+  
+  // Get the company's timezone or fall back to the browser's timezone
+  const timezoneToUse = selectedCompany?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   const { data: allJobs = [] } = useQuery({
     queryKey: ['all-jobs', selectedCompany?.id],
@@ -206,7 +210,8 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
           isFullDay,
           createdAt: existingJob.createdAt,
           updatedAt: new Date().toISOString(),
-          calendarEventId: existingJob.calendarEventId
+          calendarEventId: existingJob.calendarEventId,
+          timezone: timezoneToUse // Use company timezone or browser timezone
         };
 
         await updateJob(updatedJob);
@@ -223,6 +228,7 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
                 body: {
                   eventId: existingJob.calendarEventId,
                   userId: user?.id,
+                  timeZone: timezoneToUse,
                   jobData: {
                     title: title,
                     description: description,
@@ -230,7 +236,8 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
                     location: location,
                     start_time: isFullDay ? undefined : startTime,
                     end_time: isFullDay ? undefined : endTime,
-                    is_full_day: isFullDay
+                    is_full_day: isFullDay,
+                    timeZone: timezoneToUse
                   }
                 }
               });
@@ -262,7 +269,8 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
           startTime: isFullDay ? undefined : startTime,
           endTime: isFullDay ? undefined : endTime,
           isFullDay,
-          calendarEventId: null
+          calendarEventId: null,
+          timezone: timezoneToUse // Use company timezone or browser timezone
         };
 
         const savedJob = await saveJob(newJobData);
@@ -490,6 +498,16 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
                     />
                   </div>
                 </div>
+              </div>
+              
+              <div>
+                <div className="flex items-center space-x-2">
+                  <Globe className="h-4 w-4 text-muted-foreground" />
+                  <Label>Time Zone: {timezoneToUse}</Label>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1 ml-6">
+                  Times are in the company's time zone. You can change this in company settings.
+                </p>
               </div>
             </div>
           </form>

@@ -118,6 +118,7 @@ export type Database = {
           logo_url: string | null
           name: string
           phone: string | null
+          timezone: string
           updated_at: string | null
           user_id: string | null
           website: string | null
@@ -133,6 +134,7 @@ export type Database = {
           logo_url?: string | null
           name: string
           phone?: string | null
+          timezone?: string
           updated_at?: string | null
           user_id?: string | null
           website?: string | null
@@ -148,6 +150,7 @@ export type Database = {
           logo_url?: string | null
           name?: string
           phone?: string | null
+          timezone?: string
           updated_at?: string | null
           user_id?: string | null
           website?: string | null
@@ -509,6 +512,7 @@ export type Database = {
           location: string | null
           start_time: string | null
           status: string
+          timezone: string | null
           title: string
           updated_at: string
         }
@@ -525,6 +529,7 @@ export type Database = {
           location?: string | null
           start_time?: string | null
           status?: string
+          timezone?: string | null
           title: string
           updated_at?: string
         }
@@ -541,6 +546,7 @@ export type Database = {
           location?: string | null
           start_time?: string | null
           status?: string
+          timezone?: string | null
           title?: string
           updated_at?: string
         }

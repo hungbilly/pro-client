@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -5,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PlusCircle, Trash2, Check, Upload, X, Image } from 'lucide-react';
+import { PlusCircle, Trash2, Check, Upload, X, Image, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
@@ -13,6 +14,7 @@ import { useCompany } from './CompanySelector';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CountryDropdown } from './ui/country-dropdown';
 import { CurrencyDropdown } from './ui/currency-dropdown';
+import { timezones } from '@/lib/timezones';
 
 interface Company {
   id: string;
@@ -24,6 +26,7 @@ interface Company {
   logo_url?: string;
   country?: string;
   currency?: string;
+  timezone: string;
   is_default: boolean;
 }
 
@@ -44,6 +47,7 @@ const CompanySettings = () => {
   const [logoUrl, setLogoUrl] = useState('');
   const [country, setCountry] = useState('hk');
   const [currency, setCurrency] = useState('hkd');
+  const [timezone, setTimezone] = useState('UTC');
   const [isDefault, setIsDefault] = useState(false);
 
   useEffect(() => {
@@ -65,6 +69,9 @@ const CompanySettings = () => {
     }
   }, [companies, companyContextLoading]);
 
+  // Get user's local timezone for default value when creating a new company
+  const userLocalTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
   const populateFormWithCompany = (company: Company) => {
     setName(company.name);
     setAddress(company.address || '');
@@ -74,6 +81,7 @@ const CompanySettings = () => {
     setLogoUrl(company.logo_url || '');
     setCountry(company.country || 'hk');
     setCurrency(company.currency || 'hkd');
+    setTimezone(company.timezone || 'UTC');
     setIsDefault(company.is_default);
   };
 
@@ -86,6 +94,7 @@ const CompanySettings = () => {
     setLogoUrl('');
     setCountry('hk');
     setCurrency('hkd');
+    setTimezone(userLocalTimezone); // Set to user's local timezone by default for new companies
     setIsDefault(companies.length === 0);
   };
 
@@ -131,6 +140,7 @@ const CompanySettings = () => {
             logo_url: logoUrl,
             country,
             currency,
+            timezone,
             is_default: isDefault
           })
           .select()
@@ -158,6 +168,7 @@ const CompanySettings = () => {
             logo_url: logoUrl,
             country,
             currency,
+            timezone,
             is_default: isDefault,
             updated_at: new Date().toISOString()
           })
@@ -404,7 +415,7 @@ const CompanySettings = () => {
           />
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <Label htmlFor="country">Country</Label>
             <CountryDropdown
@@ -420,6 +431,28 @@ const CompanySettings = () => {
               onChange={setCurrency}
               disabled={isLoading}
             />
+          </div>
+          <div>
+            <Label htmlFor="timezone">Time Zone</Label>
+            <Select
+              value={timezone}
+              onValueChange={setTimezone}
+              disabled={isLoading}
+            >
+              <SelectTrigger className="w-full">
+                <div className="flex items-center">
+                  <Clock className="h-4 w-4 mr-2 opacity-70" />
+                  <SelectValue placeholder="Select timezone" />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                {timezones.map((tz) => (
+                  <SelectItem key={tz.value} value={tz.value}>
+                    {tz.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
         

@@ -1,4 +1,3 @@
-
 export interface Client {
   id: string;
   name: string;
@@ -51,9 +50,10 @@ export interface Job {
   startTime?: string;
   endTime?: string;
   isFullDay?: boolean;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
   calendarEventId?: string | null;
+  timezone?: string;
 }
 
 export interface Package {

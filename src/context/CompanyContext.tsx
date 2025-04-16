@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
@@ -13,6 +14,7 @@ export interface Company {
   logo_url?: string;
   country?: string;
   currency?: string;
+  timezone: string;
   is_default: boolean;
   user_id: string;
 }
@@ -20,9 +22,9 @@ export interface Company {
 interface CompanyContextType {
   companies: Company[];
   selectedCompany: Company | null;
-  selectedCompanyId: string | null; // Add this property
+  selectedCompanyId: string | null; 
   setSelectedCompany: (company: Company) => void;
-  setSelectedCompanyId: (id: string | null) => void; // Add this property
+  setSelectedCompanyId: (id: string | null) => void; 
   loading: boolean;
   refreshCompanies: () => Promise<void>;
   error: Error | null;

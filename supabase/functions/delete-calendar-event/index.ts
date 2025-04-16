@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
@@ -200,6 +199,7 @@ serve(async (req) => {
     console.log('SUPABASE_ANON_KEY (masked):', SUPABASE_ANON_KEY.substring(0, 5) + '...');
 
     let supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    let userId = null;
     
     if (authHeader) {
       console.log('Creating authenticated client with provided auth header');
@@ -210,18 +210,32 @@ serve(async (req) => {
           }
         }
       });
+      
+      // Try to get user directly from auth header first (most reliable method)
+      try {
+        console.log('Attempting to get user from auth header');
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        
+        if (userError) {
+          console.error('Error getting user from auth header:', userError);
+        } else if (user) {
+          console.log('Successfully authenticated user from header:', user.id);
+          userId = user.id;
+        }
+      } catch (authError) {
+        console.error('Exception during authentication with header:', authError);
+      }
     }
     
-    let userId = null;
     let requestData;
-    
     try {
       requestData = await req.json();
       console.log('Received request data:', requestData);
       
       const { eventId, jobId, userId: providedUserId } = requestData;
       
-      if (providedUserId) {
+      // If we couldn't get userId from the auth header, try using it from the request
+      if (!userId && providedUserId) {
         console.log('Using userId from request body:', providedUserId);
         userId = providedUserId;
       }
@@ -239,31 +253,6 @@ serve(async (req) => {
         JSON.stringify({ error: 'Invalid request format' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
-    }
-    
-    if (!userId && authHeader) {
-      try {
-        console.log('Attempting to get user from auth header');
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-        
-        if (userError) {
-          console.error('Error getting user from auth header:', userError);
-          console.log('Error type:', userError.name);
-          console.log('Error message:', userError.message);
-        }
-        
-        if (!userError && user) {
-          console.log('Successfully authenticated user from header:', user.id);
-          userId = user.id;
-        } else {
-          console.warn('Auth header present but user auth failed:', userError);
-        }
-      } catch (authError) {
-        console.error('Exception during authentication with header:', authError);
-        console.log('Error type:', authError.name);
-        console.log('Error message:', authError.message);
-        console.log('Stack trace:', authError.stack?.substring(0, 500) || 'No stack trace');
-      }
     }
     
     if (!userId) {

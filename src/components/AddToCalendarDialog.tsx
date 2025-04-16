@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -182,65 +181,6 @@ export const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({
         currentTime: new Date().toISOString(),
       });
 
-      // Decode the JWT token for debugging
-      const decodeJwt = (token: string) => {
-        try {
-          const base64Url = token.split('.')[1];
-          const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-          const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => {
-            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-          }).join(''));
-          return JSON.parse(jsonPayload);
-        } catch (error) {
-          console.error('Error decoding JWT in frontend:', error);
-          return null;
-        }
-      };
-
-      const decodedToken = decodeJwt(session.access_token);
-      if (decodedToken) {
-        const now = Math.floor(Date.now() / 1000);
-        const isExpired = decodedToken.exp < now;
-        console.log('Frontend JWT payload:', {
-          sub: decodedToken.sub,
-          exp: decodedToken.exp ? new Date(decodedToken.exp * 1000).toISOString() : null,
-          iss: decodedToken.iss,
-          aud: decodedToken.aud,
-          isExpired: isExpired,
-          currentTime: new Date(now * 1000).toISOString(),
-        });
-
-        if (isExpired) {
-          console.log('Token is expired, forcing a refresh...');
-          const { data, error } = await supabase.auth.refreshSession();
-          session = data?.session || null;
-          sessionError = error;
-
-          console.log('Session refresh attempt after expiry:', {
-            sessionExists: !!session,
-            refreshError: sessionError?.message,
-            currentTime: new Date().toISOString(),
-          });
-
-          if (sessionError || !session || !session.access_token) {
-            console.error('Failed to refresh session:', sessionError);
-            toast.error('Session expired. Please log in again.');
-            window.location.href = '/login';
-            return;
-          }
-
-          const newDecodedToken = decodeJwt(session.access_token);
-          console.log('Refreshed JWT payload:', {
-            sub: newDecodedToken.sub,
-            exp: newDecodedToken.exp ? new Date(newDecodedToken.exp * 1000).toISOString() : null,
-            iss: newDecodedToken.iss,
-            aud: newDecodedToken.aud,
-          });
-        }
-      } else {
-        console.log('Failed to decode JWT in frontend');
-      }
-
       // Log the request data
       const requestBody = {
         eventId: job.calendarEventId,
@@ -249,18 +189,17 @@ export const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({
       };
       console.log('Deleting calendar event with data:', requestBody);
 
-      // Set up request options
-      const fetchOptions = {
-        headers: session?.access_token ? {
+      // IMPORTANT FIX: Correct way to call Supabase Edge Function with auth
+      console.log('Sending delete event request with auth token');
+      
+      const { data, error } = await supabase.functions.invoke('delete-calendar-event', {
+        headers: {
           Authorization: `Bearer ${session.access_token}`,
-        } : undefined,
+        },
         body: requestBody,
-      };
-
-      console.log('Sending Authorization header with token:', session.access_token ? 'Bearer <token present>' : 'No token');
-
-      // Call the function
-      const { data, error } = await supabase.functions.invoke('delete-calendar-event', fetchOptions);
+      });
+      
+      console.log('Delete calendar event response:', { data, error });
 
       // Handle errors from function invocation
       if (error) {

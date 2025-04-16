@@ -74,7 +74,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
       jobId: propJobId || '',
       number: '',
       date: format(new Date(), 'yyyy-MM-dd'),
-      dueDate: format(new Date(), 'yyyy-MM-dd'),
+      dueDate: format(new Date(), 'yyyy-MM-dd'), // Keep this for backwards compatibility
       items: [{ 
         id: generateId(), 
         description: '', 
@@ -370,61 +370,32 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="date">Date</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant={"outline"}
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !invoice.date && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {invoice.date ? format(new Date(invoice.date), "PPP") : (
-                    <span>Pick a date</span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <DatePicker
-                  mode="single"
-                  selected={invoice.date ? new Date(invoice.date) : undefined}
-                  onSelect={(date) => handleDateChange(date as Date, 'date')}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-          <div>
-            <Label htmlFor="dueDate">Due Date</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant={"outline"}
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !invoice.dueDate && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {invoice.dueDate ? format(new Date(invoice.dueDate), "PPP") : (
-                    <span>Pick a due date</span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <DatePicker
-                  mode="single"
-                  selected={invoice.dueDate ? new Date(invoice.dueDate) : undefined}
-                  onSelect={(date) => handleDateChange(date as Date, 'dueDate')}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
+        <div>
+          <Label htmlFor="date">Invoice Date</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant={"outline"}
+                className={cn(
+                  "w-full justify-start text-left font-normal",
+                  !invoice.date && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {invoice.date ? format(new Date(invoice.date), "PPP") : (
+                  <span>Pick a date</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <DatePicker
+                mode="single"
+                selected={invoice.date ? new Date(invoice.date) : undefined}
+                onSelect={(date) => handleDateChange(date as Date, 'date')}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
         </div>
 
         <div>

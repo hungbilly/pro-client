@@ -176,10 +176,12 @@ const CalendarTest = () => {
         date: formattedDate,
         location: event.location,
         isFullDay: event.isFullDay,
-        startTime: event.isFullDay ? undefined : event.startTime,
-        endTime: event.isFullDay ? undefined : event.endTime,
+        startTime: event.startTime,
+        endTime: event.endTime,
         timeZone: timezone
       };
+      
+      addLog(`Event start time: ${event.startTime}, Event end time: ${event.endTime}`);
       
       const { data: { session } } = await supabase.auth.getSession();
       

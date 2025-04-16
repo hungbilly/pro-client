@@ -148,6 +148,10 @@ serve(async (req) => {
     console.log('Overall timeZone parameter:', timeZone);
     console.log('Server timezone:', Intl.DateTimeFormat().resolvedOptions().timeZone);
 
+    // Double check the start and end times from event data
+    console.log('Event start time:', eventData.start_time || eventData.startTime);
+    console.log('Event end time:', eventData.end_time || eventData.endTime);
+
     // Get access token for the user
     let accessToken;
     try {
@@ -179,8 +183,12 @@ serve(async (req) => {
       console.log('Created all-day event object for update:', JSON.stringify(event));
     } else {
       // Format for specific time events
-      const startTime = eventData.start_time || '09:00:00';
-      const endTime = eventData.end_time || '17:00:00';
+      // Prioritize snake_case fields (from API) over camelCase (from frontend objects)
+      const startTime = eventData.start_time || eventData.startTime || '09:00:00';
+      const endTime = eventData.end_time || eventData.endTime || '17:00:00';
+      
+      console.log('Using start time:', startTime);
+      console.log('Using end time:', endTime);
       
       // Ensure times include seconds
       const normalizedStartTime = startTime.length === 5 ? `${startTime}:00` : startTime;
@@ -189,6 +197,9 @@ serve(async (req) => {
       // Format with correct timezone handling
       const formattedStartDate = `${eventData.date}T${normalizedStartTime}`;
       const formattedEndDate = `${eventData.date}T${normalizedEndTime}`;
+      
+      console.log('Formatted start dateTime:', formattedStartDate);
+      console.log('Formatted end dateTime:', formattedEndDate);
       
       event = {
         summary: eventData.title,

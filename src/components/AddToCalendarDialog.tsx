@@ -40,6 +40,7 @@ export const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({
       // Use job's timezone if available, otherwise use user's browser timezone
       const timeZoneToUse = job.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
       console.log(`Creating calendar event with timezone: ${timeZoneToUse}`);
+      console.log(`Job start time: ${job.startTime}, Job end time: ${job.endTime}`);
       
       const { data, error } = await supabase.functions.invoke('add-to-calendar', {
         headers: {
@@ -49,7 +50,18 @@ export const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({
           jobId: job.id,
           clientId: client.id,
           userId: session.user.id,
-          userTimeZone: timeZoneToUse
+          userTimeZone: timeZoneToUse,
+          // Explicitly include start and end times to ensure they're passed correctly
+          jobData: {
+            title: job.title,
+            description: job.description || '',
+            date: job.date || '',
+            location: job.location || '',
+            startTime: job.startTime || '09:00',
+            endTime: job.endTime || '17:00',
+            isFullDay: job.isFullDay || false,
+            timezone: timeZoneToUse
+          }
         },
       });
 
@@ -96,6 +108,7 @@ export const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({
       // Use job's timezone if available, otherwise use user's browser timezone
       const timeZoneToUse = job.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
       console.log(`Updating calendar event with timezone: ${timeZoneToUse}`);
+      console.log(`Job start time: ${job.startTime}, Job end time: ${job.endTime}`);
       
       const { data, error } = await supabase.functions.invoke('update-calendar-event', {
         headers: {
@@ -110,8 +123,9 @@ export const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({
             description: job.description || '',
             date: job.date || '',
             location: job.location || '',
-            start_time: job.startTime || '',
-            end_time: job.endTime || '',
+            // Ensure we're sending the correct time format
+            start_time: job.startTime || '09:00:00',
+            end_time: job.endTime || '17:00:00',
             is_full_day: job.isFullDay || false,
             timeZone: timeZoneToUse // Explicitly pass timezone again in job data
           }

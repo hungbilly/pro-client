@@ -292,6 +292,8 @@ serve(async (req) => {
         
         console.log('Job from database:', job);
         console.log('Job timezone from database:', job.timezone);
+        console.log('Job start time from database:', job.start_time);
+        console.log('Job end time from database:', job.end_time);
         eventData = job;
       } else if (invoiceId) {
         // Fetch invoice data
@@ -344,12 +346,20 @@ serve(async (req) => {
       
       eventDate = eventData.date; // e.g., "2025-04-14"
       
-      // Set default times if not specified
-      eventStartTime = eventData.startTime || '09:00:00'; // e.g., "09:00:00"
-      eventEndTime = eventData.endTime || '17:00:00'; // e.g., "17:00:00"
+      // Get times directly from the event data - prioritize snake_case fields from API, fallback to camelCase
+      // Add extra logging to debug time values
+      console.log('Raw start time value:', eventData.start_time || eventData.startTime);
+      console.log('Raw end time value:', eventData.end_time || eventData.endTime);
+      
+      // Set times, prioritizing snake_case fields (from database) over camelCase (from objects)
+      eventStartTime = eventData.start_time || eventData.startTime || '09:00:00'; // e.g., "09:00:00"
+      eventEndTime = eventData.end_time || eventData.endTime || '17:00:00'; // e.g., "17:00:00"
+      
+      console.log('Using event start time:', eventStartTime);
+      console.log('Using event end time:', eventEndTime);
       
       // For all-day events
-      const isFullDay = eventData.isFullDay === true;
+      const isFullDay = eventData.is_full_day === true || eventData.isFullDay === true;
       
       eventSummary = `${eventData.title} - ${clientData.name}`; // "ggg - Test Client"
       eventLocation = eventData.location || clientData.address; // "123 Test Street"
@@ -431,6 +441,9 @@ serve(async (req) => {
         // Format dates for event creation
         const formattedStartDate = `${eventDate}T${normalizedStartTime}`;
         const formattedEndDate = `${eventDate}T${normalizedEndTime}`;
+        
+        console.log('Formatted start dateTime:', formattedStartDate);
+        console.log('Formatted end dateTime:', formattedEndDate);
         
         // Create event object with start/end times and proper timezone
         const event = {

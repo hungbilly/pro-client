@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
@@ -154,7 +155,8 @@ serve(async (req) => {
     console.log('Authorization header present:', Boolean(authHeader));
     
     // Get request data
-    const { jobId, clientId, invoiceId, testMode, testData, userId } = await req.json();
+    const requestData = await req.json();
+    const { jobId, clientId, invoiceId, testMode, testData, userId, userTimeZone } = requestData;
     
     console.log('Function called with:', { 
       hasJobId: Boolean(jobId),
@@ -163,8 +165,16 @@ serve(async (req) => {
       isTestMode: Boolean(testMode),
       hasTestData: Boolean(testData),
       userId,
-      hasAuthHeader: Boolean(authHeader)
+      hasAuthHeader: Boolean(authHeader),
+      userTimeZone
     });
+    
+    console.log('Full request payload:', JSON.stringify(requestData, null, 2));
+    
+    // Log timezone information
+    const timezone = userTimeZone || 'UTC';
+    console.log('User timezone from request:', timezone);
+    console.log('Server timezone:', Intl.DateTimeFormat().resolvedOptions().timeZone);
     
     if (!userId) {
       return new Response(
@@ -344,6 +354,10 @@ serve(async (req) => {
       eventLocation = eventData.location || clientData.address; // "123 Test Street"
       eventDescription = `${eventData.description || 'Job session'} for ${clientData.name}.\n\nClient Contact:\nEmail: ${clientData.email}\nPhone: ${clientData.phone}`;
       
+      // Get the user's timezone (fallback to UTC if not provided)
+      const userTimeZone = timezone;
+      console.log(`Using timezone: ${userTimeZone} for event creation`);
+      
       // Format date/time for Google Calendar
       if (isFullDay) {
         // Format as YYYY-MM-DD for all-day events
@@ -356,11 +370,9 @@ serve(async (req) => {
           description: eventDescription,
           start: {
             date: startDate, // "2025-04-14"
-            timeZone: 'UTC',
           },
           end: {
             date: startDate, // "2025-04-14"
-            timeZone: 'UTC',
           },
         };
         
@@ -379,16 +391,27 @@ serve(async (req) => {
           }
         );
         
+        // Log the full response for debugging
+        const responseText = await calendarResponse.text();
+        console.log(`Google Calendar API response status: ${calendarResponse.status}`);
+        console.log(`Google Calendar API response body: ${responseText}`);
+        
         if (!calendarResponse.ok) {
-          const errorData = await calendarResponse.json();
-          console.error('Google Calendar API error:', errorData);
+          let errorDetails;
+          try {
+            errorDetails = JSON.parse(responseText);
+          } catch (e) {
+            errorDetails = { rawText: responseText };
+          }
+          
+          console.error('Google Calendar API error:', errorDetails);
           return new Response(
-            JSON.stringify({ error: 'Failed to create calendar event', details: errorData }),
+            JSON.stringify({ error: 'Failed to create calendar event', details: errorDetails }),
             { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
         
-        const calendarData = await calendarResponse.json();
+        const calendarData = await JSON.parse(responseText);
         
         return new Response(
           JSON.stringify({ 
@@ -403,10 +426,9 @@ serve(async (req) => {
         const normalizedStartTime = eventStartTime.length === 5 ? `${eventStartTime}:00` : eventStartTime; // "09:00:00"
         const normalizedEndTime = eventEndTime.length === 5 ? `${eventEndTime}:00` : eventEndTime; // "17:00:00"
         
-        // Fixed: Format with correct timezone handling - DO NOT append Z (which forces UTC)
-        // Instead, specify the timeZone property and let Google Calendar handle conversion
-        const formattedStartDate = `${eventDate}T${normalizedStartTime}`; // "2025-04-14T09:00:00"
-        const formattedEndDate = `${eventDate}T${normalizedEndTime}`; // "2025-04-14T17:00:00"
+        // Format dates for event creation
+        const formattedStartDate = `${eventDate}T${normalizedStartTime}`;
+        const formattedEndDate = `${eventDate}T${normalizedEndTime}`;
         
         // Create event object with start/end times and proper timezone
         const event = {
@@ -415,11 +437,11 @@ serve(async (req) => {
           description: eventDescription,
           start: {
             dateTime: formattedStartDate,
-            timeZone: 'UTC', // Using UTC as the reference timezone
+            timeZone: userTimeZone,
           },
           end: {
             dateTime: formattedEndDate,
-            timeZone: 'UTC', // Using UTC as the reference timezone
+            timeZone: userTimeZone,
           },
         };
         
@@ -438,17 +460,47 @@ serve(async (req) => {
           }
         );
         
+        // Log the full response for debugging
+        const responseText = await calendarResponse.text();
+        console.log(`Google Calendar API response status: ${calendarResponse.status}`);
+        console.log(`Google Calendar API response body: ${responseText}`);
+        
         if (!calendarResponse.ok) {
-          const errorData = await calendarResponse.json();
-          console.error('Google Calendar API error:', errorData);
+          let errorDetails;
+          try {
+            errorDetails = JSON.parse(responseText);
+          } catch (e) {
+            errorDetails = { rawText: responseText };
+          }
+          
+          console.error('Google Calendar API error:', errorDetails);
           return new Response(
-            JSON.stringify({ error: 'Failed to create calendar event', details: errorData }),
+            JSON.stringify({ error: 'Failed to create calendar event', details: errorDetails }),
             { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
         
-        const calendarData = await calendarResponse.json();
+        const calendarData = await JSON.parse(responseText);
         console.log('Successfully created event:', calendarData.id);
+        
+        // If the event was created successfully and we have a real jobId (not test mode),
+        // update the job in the database with the calendar_event_id
+        if (!testMode && jobId && calendarData.id) {
+          try {
+            const { error: updateError } = await supabase
+              .from('jobs')
+              .update({ calendar_event_id: calendarData.id })
+              .eq('id', jobId);
+            
+            if (updateError) {
+              console.error('Failed to update job with calendar event ID:', updateError);
+            } else {
+              console.log('Successfully updated job with calendar event ID');
+            }
+          } catch (updateError) {
+            console.error('Exception updating job with calendar event ID:', updateError);
+          }
+        }
         
         return new Response(
           JSON.stringify({ 
@@ -470,8 +522,11 @@ serve(async (req) => {
       
       // Format shooting date (YYYY-MM-DD to RFC3339 format)
       const shootingDate = new Date(eventData.shooting_date);
-      const formattedStartDate = `${shootingDate.toISOString().split('T')[0]}T09:00:00Z`; // Default to 9 AM
-      const formattedEndDate = `${shootingDate.toISOString().split('T')[0]}T17:00:00Z`;   // Default to 5 PM
+      const formattedStartDate = `${shootingDate.toISOString().split('T')[0]}T09:00:00`; // Default to 9 AM
+      const formattedEndDate = `${shootingDate.toISOString().split('T')[0]}T17:00:00`;   // Default to 5 PM
+      
+      // Get the user's timezone (fallback to UTC)
+      const userTimeZone = timezone;
       
       // Create event object
       const event = {
@@ -480,11 +535,11 @@ serve(async (req) => {
         description: `Photo shooting session for ${clientData.name}.\n\nClient Contact:\nEmail: ${clientData.email}\nPhone: ${clientData.phone}\n\nInvoice #${eventData.number}`,
         start: {
           dateTime: formattedStartDate,
-          timeZone: 'UTC',
+          timeZone: userTimeZone,
         },
         end: {
           dateTime: formattedEndDate,
-          timeZone: 'UTC',
+          timeZone: userTimeZone,
         },
       };
       
@@ -524,31 +579,15 @@ serve(async (req) => {
       );
     }
     
-    // If the event was created successfully and we got an eventId back,
-    // update the job in the database with the calendar_event_id
-    if (data.eventId) {
-      try {
-        // Check if the calendar_event_id column exists in the jobs table
-        const { error: columnCheckError } = await supabase
-          .from('jobs')
-          .update({ calendar_event_id: data.eventId })
-          .eq('id', jobId)
-          .select();
-        
-        if (columnCheckError) {
-          // If there's an error, it might be because the column doesn't exist
-          console.log('Note: Unable to update job with calendar event ID, this column might not exist yet:', columnCheckError);
-          
-          // Don't throw an error, just continue without updating the job
-        } else {
-          console.log('Successfully updated job with calendar event ID');
-        }
-      } catch (updateError) {
-        console.error('Failed to update job with calendar event ID:', updateError);
-        // Don't throw here, as the calendar event was created successfully
-      }
-    }
-    
+    // Should not reach here, but provide a fallback response
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        error: 'Invalid operation', 
+        message: 'The requested operation could not be performed.' 
+      }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   } catch (error) {
     console.error('Error in add-to-calendar function:', error);
     return new Response(

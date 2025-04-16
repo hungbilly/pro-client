@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -27,6 +28,9 @@ export const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
 
+  // Get user's timezone
+  const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  
   const handleAddToCalendar = async () => {
     if (!job || !client) return;
     setIsLoading(true);
@@ -36,6 +40,8 @@ export const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({
         throw new Error('No active session');
       }
 
+      console.log(`Creating calendar event with timezone: ${userTimeZone}`);
+      
       const { data, error } = await supabase.functions.invoke('add-to-calendar', {
         headers: {
           Authorization: `Bearer ${session.access_token}`,
@@ -43,7 +49,8 @@ export const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({
         body: {
           jobId: job.id,
           clientId: client.id,
-          userId: session.user.id
+          userId: session.user.id,
+          userTimeZone
         },
       });
 
@@ -85,6 +92,8 @@ export const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({
         throw new Error('No active session');
       }
 
+      console.log(`Updating calendar event with timezone: ${userTimeZone}`);
+      
       const { data, error } = await supabase.functions.invoke('update-calendar-event', {
         headers: {
           Authorization: `Bearer ${session.access_token}`,
@@ -92,6 +101,7 @@ export const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({
         body: {
           eventId: job.calendarEventId,
           userId: session.user.id,
+          timeZone: userTimeZone,
           jobData: {
             title: job.title,
             description: job.description || '',
@@ -99,7 +109,8 @@ export const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({
             location: job.location || '',
             start_time: job.startTime || '',
             end_time: job.endTime || '',
-            is_full_day: job.isFullDay || false
+            is_full_day: job.isFullDay || false,
+            timeZone: userTimeZone
           }
         },
       });
@@ -224,6 +235,7 @@ export const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({
               {job?.location && (
                 <li><span className="font-medium">Location:</span> {job?.location}</li>
               )}
+              <li><span className="font-medium">Timezone:</span> {userTimeZone}</li>
             </ul>
           </div>
         </div>

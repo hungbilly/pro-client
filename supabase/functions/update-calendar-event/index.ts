@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
@@ -115,8 +116,11 @@ serve(async (req) => {
     const authHeader = req.headers.get('Authorization');
     console.log('Authorization header present:', Boolean(authHeader));
     
-    const { eventId, userId, jobData, testMode, testData } = await req.json();
+    const requestData = await req.json();
+    const { eventId, userId, jobData, testMode, testData } = requestData;
     
+    // Log the full request payload for debugging
+    console.log('Full request payload:', JSON.stringify(requestData, null, 2));
     console.log(`Attempting to update event: ${eventId} for user: ${userId}`);
     
     if (!eventId || !userId) {
@@ -136,6 +140,11 @@ serve(async (req) => {
     // Determine which data to use (test mode or real job data)
     const eventData = testMode && testData ? testData.event : jobData;
     console.log('Using event data:', JSON.stringify(eventData));
+
+    // Log timezone information
+    const userTimeZone = eventData.timeZone || 'UTC';
+    console.log('User timezone from request:', userTimeZone);
+    console.log('Server timezone:', Intl.DateTimeFormat().resolvedOptions().timeZone);
 
     // Get access token for the user
     let accessToken;
@@ -160,14 +169,12 @@ serve(async (req) => {
         description: eventData.description,
         start: {
           date: eventData.date,
-          timeZone: 'UTC',
         },
         end: {
           date: eventData.date,
-          timeZone: 'UTC',
         },
       };
-      console.log('Created all-day event object for update');
+      console.log('Created all-day event object for update:', JSON.stringify(event));
     } else {
       // Format for specific time events
       const startTime = eventData.start_time || '09:00:00';
@@ -177,7 +184,7 @@ serve(async (req) => {
       const normalizedStartTime = startTime.length === 5 ? `${startTime}:00` : startTime;
       const normalizedEndTime = endTime.length === 5 ? `${endTime}:00` : endTime;
       
-      // Fixed: Format with correct timezone handling - DO NOT append Z (which forces UTC)
+      // Format with correct timezone handling
       const formattedStartDate = `${eventData.date}T${normalizedStartTime}`;
       const formattedEndDate = `${eventData.date}T${normalizedEndTime}`;
       
@@ -187,14 +194,15 @@ serve(async (req) => {
         description: eventData.description,
         start: {
           dateTime: formattedStartDate,
-          timeZone: 'UTC', // Using UTC as the reference timezone
+          timeZone: userTimeZone,
         },
         end: {
           dateTime: formattedEndDate,
-          timeZone: 'UTC', // Using UTC as the reference timezone
+          timeZone: userTimeZone,
         },
       };
-      console.log('Created timed event object for update with normalized times');
+      
+      console.log('Created timed event object for update with timezone:', JSON.stringify(event));
     }
     
     console.log("Using access token:", accessToken ? "Token present" : "No token");

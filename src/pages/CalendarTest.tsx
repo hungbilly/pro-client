@@ -156,6 +156,9 @@ const CalendarTest = () => {
       setIsLoading(true);
       addLog(`Creating calendar event: ${event.title}`);
       
+      const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      addLog(`Using timezone: ${userTimeZone}`);
+      
       const testClient = {
         id: "test-client-id",
         name: "Test Client",
@@ -174,6 +177,7 @@ const CalendarTest = () => {
         isFullDay: event.isFullDay,
         startTime: event.isFullDay ? undefined : event.startTime,
         endTime: event.isFullDay ? undefined : event.endTime,
+        timeZone: userTimeZone
       };
       
       const { data: { session } } = await supabase.auth.getSession();
@@ -197,7 +201,8 @@ const CalendarTest = () => {
             event: testObject,
             client: testClient
           },
-          userId: user.id
+          userId: user.id,
+          userTimeZone
         }
       });
       
@@ -251,6 +256,9 @@ const CalendarTest = () => {
         throw new Error('No active session');
       }
 
+      const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      addLog(`Using timezone: ${userTimeZone}`);
+      
       const formattedDate = format(event.date!, 'yyyy-MM-dd');
       
       const testClient = {
@@ -269,7 +277,8 @@ const CalendarTest = () => {
         isFullDay: event.isFullDay,
         startTime: event.isFullDay ? undefined : event.startTime,
         endTime: event.isFullDay ? undefined : event.endTime,
-        calendarEventId: event.calendarEventId
+        calendarEventId: event.calendarEventId,
+        timeZone: userTimeZone
       };
       
       const { data, error } = await supabase.functions.invoke('update-calendar-event', {
@@ -283,7 +292,8 @@ const CalendarTest = () => {
             event: testObject,
             client: testClient
           },
-          userId: user.id
+          userId: user.id,
+          userTimeZone
         }
       });
       

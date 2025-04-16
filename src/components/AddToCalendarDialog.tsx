@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -53,10 +54,12 @@ export const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({
       });
 
       if (error || !data) {
+        console.error('Error response from add-to-calendar:', error || 'No data returned');
         throw new Error('Failed to create calendar event');
       }
 
       if (!data.success) {
+        console.error('Calendar API returned error:', data.message || 'Unknown error');
         throw new Error(data.message || 'Failed to create calendar event');
       }
 
@@ -110,10 +113,12 @@ export const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({
             start_time: job.startTime || '',
             end_time: job.endTime || '',
             is_full_day: job.isFullDay || false,
-            timeZone: timeZoneToUse
+            timeZone: timeZoneToUse // Explicitly pass timezone again in job data
           }
         },
       });
+
+      console.log('Update calendar event response:', data, error);
 
       if (error || !data) {
         throw new Error('Failed to update calendar event');

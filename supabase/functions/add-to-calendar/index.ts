@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
@@ -276,7 +275,7 @@ serve(async (req) => {
     } else {
       // Fetch real data from database
       if (jobId) {
-        // Fetch job data
+        // Fetch job data from database with additional logging for timezone
         const { data: job, error: jobError } = await supabase
           .from('jobs')
           .select('*')
@@ -291,6 +290,8 @@ serve(async (req) => {
           );
         }
         
+        console.log('Job from database:', job);
+        console.log('Job timezone from database:', job.timezone);
         eventData = job;
       } else if (invoiceId) {
         // Fetch invoice data
@@ -354,9 +355,10 @@ serve(async (req) => {
       eventLocation = eventData.location || clientData.address; // "123 Test Street"
       eventDescription = `${eventData.description || 'Job session'} for ${clientData.name}.\n\nClient Contact:\nEmail: ${clientData.email}\nPhone: ${clientData.phone}`;
       
-      // Get the user's timezone (fallback to UTC if not provided)
-      const userTimeZone = timezone;
-      console.log(`Using timezone: ${userTimeZone} for event creation`);
+      // Get the user's timezone (prioritize job timezone, then explicit userTimeZone, then fallback to UTC)
+      const userTimeZone = eventData.timezone || timezone || 'UTC';
+      console.log(`Using timezone from prioritization: ${userTimeZone} for event creation`);
+      console.log(`Job timezone: ${eventData.timezone}, Request timezone: ${timezone}`);
       
       // Format date/time for Google Calendar
       if (isFullDay) {
@@ -446,6 +448,7 @@ serve(async (req) => {
         };
         
         console.log('Creating event with data:', JSON.stringify(event));
+        console.log('Event timezone used:', userTimeZone);
         
         // Insert event to Google Calendar using OAuth2 access token
         const calendarResponse = await fetch(

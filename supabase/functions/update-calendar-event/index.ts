@@ -117,7 +117,7 @@ serve(async (req) => {
     console.log('Authorization header present:', Boolean(authHeader));
     
     const requestData = await req.json();
-    const { eventId, userId, jobData, testMode, testData } = requestData;
+    const { eventId, userId, jobData, testMode, testData, timeZone } = requestData;
     
     // Log the full request payload for debugging
     console.log('Full request payload:', JSON.stringify(requestData, null, 2));
@@ -141,9 +141,11 @@ serve(async (req) => {
     const eventData = testMode && testData ? testData.event : jobData;
     console.log('Using event data:', JSON.stringify(eventData));
 
-    // Log timezone information
-    const userTimeZone = eventData.timeZone || 'UTC';
+    // Log timezone information - prioritize the explicit timeZone parameter if provided
+    const userTimeZone = timeZone || eventData.timeZone || 'UTC';
     console.log('User timezone from request:', userTimeZone);
+    console.log('Event data timezone:', eventData.timeZone);
+    console.log('Overall timeZone parameter:', timeZone);
     console.log('Server timezone:', Intl.DateTimeFormat().resolvedOptions().timeZone);
 
     // Get access token for the user
@@ -203,6 +205,7 @@ serve(async (req) => {
       };
       
       console.log('Created timed event object for update with timezone:', JSON.stringify(event));
+      console.log('Event timezone used:', userTimeZone);
     }
     
     console.log("Using access token:", accessToken ? "Token present" : "No token");
@@ -250,6 +253,7 @@ serve(async (req) => {
     try {
       calendarData = JSON.parse(responseText);
       console.log('Successfully updated event:', calendarData.id);
+      console.log('Event time zone in response:', calendarData.start?.timeZone || 'Not specified');
     } catch (e) {
       console.error('Failed to parse response as JSON:', e);
       return new Response(
@@ -266,7 +270,8 @@ serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         message: 'Event updated in calendar',
-        eventId: calendarData.id
+        eventId: calendarData.id,
+        eventTimezone: calendarData.start?.timeZone || 'Not specified'
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

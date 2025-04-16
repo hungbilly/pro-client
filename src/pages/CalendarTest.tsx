@@ -57,6 +57,9 @@ const CalendarTest = () => {
   const [isCheckingIntegration, setIsCheckingIntegration] = useState(true);
   const [lastCheckedIntegration, setLastCheckedIntegration] = useState<Date | null>(null);
   const [integrationDetails, setIntegrationDetails] = useState<any>(null);
+  const [timezone, setTimezone] = useState<string>(
+    Intl.DateTimeFormat().resolvedOptions().timeZone
+  );
 
   const addLog = (message: string) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -90,7 +93,6 @@ const CalendarTest = () => {
         addLog('Google Calendar integration found');
         addLog(`Integration ID: ${data[0].id}`);
         
-        // Check if token will expire soon
         const expiresAt = new Date(data[0].expires_at);
         const now = new Date();
         const timeUntilExpiry = expiresAt.getTime() - now.getTime();
@@ -156,8 +158,7 @@ const CalendarTest = () => {
       setIsLoading(true);
       addLog(`Creating calendar event: ${event.title}`);
       
-      const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      addLog(`Using timezone: ${userTimeZone}`);
+      addLog(`Using timezone: ${timezone}`);
       
       const testClient = {
         id: "test-client-id",
@@ -177,7 +178,7 @@ const CalendarTest = () => {
         isFullDay: event.isFullDay,
         startTime: event.isFullDay ? undefined : event.startTime,
         endTime: event.isFullDay ? undefined : event.endTime,
-        timeZone: userTimeZone
+        timeZone: timezone
       };
       
       const { data: { session } } = await supabase.auth.getSession();
@@ -202,7 +203,7 @@ const CalendarTest = () => {
             client: testClient
           },
           userId: user.id,
-          userTimeZone
+          userTimeZone: timezone
         }
       });
       
@@ -438,7 +439,8 @@ const CalendarTest = () => {
     startTime: event.startTime,
     endTime: event.endTime,
     createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    updatedAt: new Date().toISOString(),
+    timezone: timezone
   };
 
   const clientForDialog: Client = {
@@ -697,6 +699,29 @@ const CalendarTest = () => {
                     </div>
                   </div>
                 )}
+                
+                <div>
+                  <Label htmlFor="timezone">Timezone</Label>
+                  <Select value={timezone} onValueChange={setTimezone}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select timezone" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[
+                        'Asia/Hong_Kong',
+                        'Asia/Tokyo',
+                        'Europe/London',
+                        'America/New_York',
+                        'America/Los_Angeles',
+                        'UTC'
+                      ].map((tz) => (
+                        <SelectItem key={tz} value={tz}>
+                          {tz}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </CardContent>
               <CardFooter className="flex flex-wrap gap-2">
                 <Button 

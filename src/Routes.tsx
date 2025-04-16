@@ -86,7 +86,7 @@ const Routes = () => {
         <Route path="/client/:clientId/invoice/create" element={<InvoiceCreate />} />
         <Route path="/client/:clientId/invoice/:invoiceId/edit" element={<InvoiceCreate />} />
         
-        {/* Job-related invoice routes */}
+        {/* Job-related invoice routes - make sure both "new" and "create" paths work */}
         <Route path="/job/:jobId/invoice/new" element={<InvoiceCreate />} />
         <Route path="/job/:jobId/invoice/create" element={<InvoiceCreate />} />
         <Route path="/job/:jobId/invoice/:invoiceId/edit" element={<InvoiceCreate />} />

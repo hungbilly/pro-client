@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getJob, getClient, getJobInvoices, deleteJob } from '@/lib/storage';
@@ -312,7 +313,7 @@ const JobDetail = () => {
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-medium">Invoices</h3>
                   <Button asChild>
-                    <Link to={`/job/${job.id}/invoice/create`}>
+                    <Link to={`/job/${job.id}/invoice/new`}>
                       <FileText className="h-4 w-4 mr-2" />
                       Create Invoice
                     </Link>
@@ -324,7 +325,7 @@ const JobDetail = () => {
                     <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
                     <p className="text-muted-foreground">No invoices have been created for this job yet.</p>
                     <Button className="mt-4" asChild>
-                      <Link to={`/job/${job.id}/invoice/create`}>
+                      <Link to={`/job/${job.id}/invoice/new`}>
                         Create First Invoice
                       </Link>
                     </Button>

@@ -13,17 +13,26 @@ interface AddJobModalProps {
 
 const AddJobModal: React.FC<AddJobModalProps> = ({ isOpen, onClose, clientId: initialClientId }) => {
   const [selectedClientId, setSelectedClientId] = useState<string | null>(initialClientId || null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleClientSelect = (clientId: string) => {
     setSelectedClientId(clientId);
   };
 
   const handleJobSuccess = () => {
+    setIsSubmitting(false);
     onClose();
   };
 
+  // Prevent closing the modal during submission
+  const handleOpenChange = (open: boolean) => {
+    if (!isSubmitting && !open) {
+      onClose();
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create New Job</DialogTitle>

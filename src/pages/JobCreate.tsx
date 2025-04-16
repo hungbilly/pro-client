@@ -11,12 +11,14 @@ const JobCreate = () => {
   const { clientId } = useParams<{ clientId: string }>();
   const navigate = useNavigate();
   const [selectedClientId, setSelectedClientId] = useState<string | null>(clientId || null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleClientSelect = (clientId: string) => {
     setSelectedClientId(clientId);
   };
 
   const handleJobSuccess = () => {
+    setIsSubmitting(false);
     if (selectedClientId) {
       navigate(`/client/${selectedClientId}`);
     } else {

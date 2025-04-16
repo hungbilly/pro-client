@@ -48,6 +48,7 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
   const [newJob, setNewJob] = useState<Job | null>(null);
   const [calendarEventId, setCalendarEventId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
 
   const clientId = predefinedClientId || clientIdParam || existingJob?.clientId || '';
   const { selectedCompany } = useCompany();
@@ -198,7 +199,13 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
     
     console.log('Saving job with timezone:', timezoneToUse);
 
+    if (isSubmitting) {
+      console.log('Submission already in progress, ignoring duplicate request');
+      return;
+    }
+
     setIsSubmitting(true);
+    setSubmitAttempted(true);
 
     try {
       if (existingJob) {
@@ -312,7 +319,12 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (isSubmitting) return;
+    if (isSubmitting) {
+      console.log('Submit already in progress, preventing duplicate submission');
+      return;
+    }
+    
+    setSubmitAttempted(true);
     
     const hasConflicts = checkForConflicts();
     
@@ -534,7 +546,7 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
           </Button>
           <Button 
             onClick={handleSubmit}
-            disabled={isSubmitting}
+            disabled={isSubmitting || submitAttempted}
           >
             {isSubmitting ? (
               <>

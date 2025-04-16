@@ -22,7 +22,6 @@ import QuillEditor from './QuillEditor';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import AddProductPackageDialog from './AddProductPackageDialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle } from "lucide-react";
 
 interface ContractTemplate {
   id: string;

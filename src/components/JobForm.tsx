@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Client, Job } from '@/types';
@@ -126,14 +125,14 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
   };
 
   const addToCalendar = async (job: Job) => {
-    if (!user || !client) return;
+    if (!user || !client) return null;
     
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
         console.error('No active session for calendar creation');
-        return;
+        return null;
       }
       
       const { data, error } = await supabase.functions.invoke('add-to-calendar', {
@@ -143,14 +142,15 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
         body: {
           jobId: job.id,
           clientId: client.id,
-          userId: user.id
+          userId: user.id,
+          timeZone: timezoneToUse
         }
       });
       
       if (error) {
         console.error('Error adding to calendar:', error);
         toast.error('Failed to add event to calendar');
-        return;
+        return null;
       }
       
       if (data.success) {
@@ -210,8 +210,12 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
 
     try {
       if (existingJob) {
-        // Check if we're adding a date to a job that didn't have one before
         const isAddingDate = !existingJob.date && formattedDate;
+        const dateFieldsChanged =
+          existingJob.date !== formattedDate ||
+          existingJob.startTime !== (isFullDay ? undefined : startTime) ||
+          existingJob.endTime !== (isFullDay ? undefined : endTime) ||
+          existingJob.isFullDay !== isFullDay;
         
         const updatedJob: Job = {
           id: existingJob.id,
@@ -234,52 +238,51 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
         console.log('Updating job with data:', updatedJob);
         await updateJob(updatedJob);
         
-        if (hasCalendarIntegration && existingJob.calendarEventId) {
-          // If we already have a calendar event, update it
-          try {
-            const { data: { session } } = await supabase.auth.getSession();
-            
-            if (session) {
-              await supabase.functions.invoke('update-calendar-event', {
-                headers: {
-                  Authorization: `Bearer ${session.access_token}`,
-                },
-                body: {
-                  eventId: existingJob.calendarEventId,
-                  userId: user?.id,
-                  timeZone: timezoneToUse,
-                  jobData: {
-                    title: title,
-                    description: description,
-                    date: formattedDate,
-                    location: location,
-                    start_time: isFullDay ? undefined : startTime,
-                    end_time: isFullDay ? undefined : endTime,
-                    is_full_day: isFullDay,
-                    timeZone: timezoneToUse
-                  }
-                }
-              });
+        if (hasCalendarIntegration) {
+          if (existingJob.calendarEventId && dateFieldsChanged && formattedDate) {
+            try {
+              const { data: { session } } = await supabase.auth.getSession();
               
-              toast.success('Calendar event updated');
+              if (session) {
+                await supabase.functions.invoke('update-calendar-event', {
+                  headers: {
+                    Authorization: `Bearer ${session.access_token}`,
+                  },
+                  body: {
+                    eventId: existingJob.calendarEventId,
+                    userId: user?.id,
+                    timeZone: timezoneToUse,
+                    jobData: {
+                      title: title,
+                      description: description,
+                      date: formattedDate,
+                      location: location,
+                      start_time: isFullDay ? undefined : startTime,
+                      end_time: isFullDay ? undefined : endTime,
+                      is_full_day: isFullDay,
+                      timeZone: timezoneToUse
+                    }
+                  }
+                });
+                
+                toast.success('Calendar event updated');
+              }
+            } catch (error) {
+              console.error('Failed to update calendar event:', error);
+              toast.error('Failed to update calendar event');
             }
-          } catch (error) {
-            console.error('Failed to update calendar event:', error);
-            toast.error('Failed to update calendar event');
-          }
-        } else if (hasCalendarIntegration && isAddingDate) {
-          // If we're adding a date and have calendar integration but no calendar event yet,
-          // create one
-          try {
-            const eventId = await addToCalendar(updatedJob);
-            if (eventId) {
-              updatedJob.calendarEventId = eventId;
-              await updateJob(updatedJob);
-              toast.success('Calendar event created');
+          } else if (!existingJob.calendarEventId && formattedDate) {
+            try {
+              const eventId = await addToCalendar(updatedJob);
+              if (eventId) {
+                updatedJob.calendarEventId = eventId;
+                await updateJob(updatedJob);
+                toast.success('Calendar event created');
+              }
+            } catch (error) {
+              console.error('Failed to create calendar event:', error);
+              toast.error('Failed to create calendar event');
             }
-          } catch (error) {
-            console.error('Failed to create calendar event:', error);
-            toast.error('Failed to create calendar event');
           }
         }
         
@@ -311,7 +314,7 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
         setNewJob(savedJob);
         toast.success('Job created successfully!');
         
-        if (hasCalendarIntegration) {
+        if (hasCalendarIntegration && formattedDate) {
           const eventId = await addToCalendar(savedJob);
           if (eventId) {
             savedJob.calendarEventId = eventId;
@@ -319,11 +322,11 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
           }
         }
         
-        setShowCalendarDialog(!hasCalendarIntegration);
+        setShowCalendarDialog(!hasCalendarIntegration && formattedDate);
         
-        if (hasCalendarIntegration && onSuccess) {
+        if ((hasCalendarIntegration || !formattedDate) && onSuccess) {
           onSuccess(savedJob.id);
-        } else if (hasCalendarIntegration) {
+        } else if ((hasCalendarIntegration || !formattedDate)) {
           navigate(`/job/${savedJob.id}`);
         }
       }

@@ -1,11 +1,16 @@
+
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import InvoiceForm from '@/components/InvoiceForm';
-import { getInvoice } from '@/lib/storage';
-import { Invoice } from '@/types';
+import { getInvoice, getClient, getJob } from '@/lib/storage';
+import { Invoice, Client, Job } from '@/types';
 import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { supabase, logDebug, logError, logDataTransformation, formatDate, parseDate } from '@/integrations/supabase/client';
+import { Card, CardContent } from '@/components/ui/card';
+import { Briefcase, User, Mail, Phone, Calendar } from 'lucide-react';
+import { format } from 'date-fns';
+import { Separator } from '@/components/ui/separator';
 
 interface ContractTemplate {
   id: string;
@@ -18,16 +23,38 @@ const InvoiceCreate = () => {
   const { clientId, jobId, invoiceId } = useParams();
   const navigate = useNavigate();
   const [invoice, setInvoice] = useState<Invoice | undefined>(undefined);
-  const [loading, setLoading] = useState(!!invoiceId);
+  const [client, setClient] = useState<Client | null>(null);
+  const [job, setJob] = useState<Job | null>(null);
+  const [loading, setLoading] = useState(true);
   const [contractTemplates, setContractTemplates] = useState<ContractTemplate[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(true);
   
   logDebug('InvoiceCreate component initialized with params:', { clientId, jobId, invoiceId });
   
   useEffect(() => {
-    const fetchInvoice = async () => {
-      if (invoiceId) {
-        try {
+    const fetchInvoiceData = async () => {
+      setLoading(true);
+      try {
+        // Fetch client data if clientId is available
+        if (clientId) {
+          const clientData = await getClient(clientId);
+          setClient(clientData);
+        }
+
+        // Fetch job data if jobId is available
+        if (jobId) {
+          const jobData = await getJob(jobId);
+          setJob(jobData);
+          
+          // If job has a clientId and we don't have a client yet, fetch the client
+          if (jobData && jobData.clientId && !clientId) {
+            const clientData = await getClient(jobData.clientId);
+            setClient(clientData);
+          }
+        }
+
+        // Fetch existing invoice if invoiceId is available
+        if (invoiceId) {
           logDebug('Fetching invoice with ID:', invoiceId);
           const fetchedInvoice = await getInvoice(invoiceId);
           logDataTransformation('Fetched invoice', fetchedInvoice);
@@ -47,27 +74,19 @@ const InvoiceCreate = () => {
               }
             }
             
-            logDebug('Fetched invoice with payment schedules:', {
-              schedules: fetchedInvoice.paymentSchedules,
-              count: fetchedInvoice.paymentSchedules?.length || 0,
-              firstSchedule: fetchedInvoice.paymentSchedules?.[0]
-            });
+            setInvoice(fetchedInvoice);
             
-            if (fetchedInvoice.paymentSchedules && fetchedInvoice.paymentSchedules.length > 0) {
-              // Log detailed information about the first few payment schedules
-              fetchedInvoice.paymentSchedules.slice(0, 3).forEach((schedule, index) => {
-                const parsedDueDate = parseDate(schedule.dueDate);
-                logDebug(`Payment schedule ${index + 1}:`, {
-                  id: schedule.id,
-                  dueDate: schedule.dueDate,
-                  dueDateParsed: parsedDueDate ? parsedDueDate.toISOString() : 'invalid date',
-                  percentage: schedule.percentage,
-                  status: schedule.status
-                });
-              });
+            // If invoice has a clientId and we don't have client data, fetch it
+            if (fetchedInvoice.clientId && !client) {
+              const clientData = await getClient(fetchedInvoice.clientId);
+              setClient(clientData);
             }
             
-            setInvoice(fetchedInvoice);
+            // If invoice has a jobId and we don't have job data, fetch it
+            if (fetchedInvoice.jobId && !job) {
+              const jobData = await getJob(fetchedInvoice.jobId);
+              setJob(jobData);
+            }
           } else {
             console.error('Invoice not found for ID:', invoiceId);
             toast.error('Invoice not found');
@@ -80,13 +99,11 @@ const InvoiceCreate = () => {
               navigate('/');
             }
           }
-        } catch (error) {
-          logError('Failed to fetch invoice:', error);
-          toast.error('Failed to load invoice data');
-        } finally {
-          setLoading(false);
         }
-      } else {
+      } catch (error) {
+        logError('Failed to fetch data:', error);
+        toast.error('Failed to load data');
+      } finally {
         setLoading(false);
       }
     };
@@ -119,12 +136,9 @@ const InvoiceCreate = () => {
       }
     };
 
-    if (invoiceId && loading) {
-      fetchInvoice();
-    }
-    
+    fetchInvoiceData();
     fetchContractTemplates();
-  }, [invoiceId, clientId, jobId, navigate, loading]);
+  }, [clientId, jobId, invoiceId, navigate]);
 
   if (loading || loadingTemplates) {
     return (
@@ -135,36 +149,6 @@ const InvoiceCreate = () => {
       </PageTransition>
     );
   }
-
-  if (invoice) {
-    logDebug('Rendering InvoiceForm with invoice data:', { 
-      id: invoice.id,
-      clientId: invoice.clientId,
-      jobId: invoice.jobId,
-      amount: invoice.amount,
-      date: invoice.date,
-      dateParsed: invoice.date ? new Date(invoice.date).toLocaleDateString() : 'no date',
-      status: invoice.status,
-      paymentSchedules: invoice.paymentSchedules?.map(s => ({
-        id: s.id,
-        dueDate: s.dueDate,
-        dueDateParsed: s.dueDate ? new Date(s.dueDate).toLocaleDateString() : 'no date',
-        percentage: s.percentage,
-        status: s.status
-      }))
-    });
-  }
-
-  logDebug('Rendering InvoiceForm with props:', { 
-    hasInvoice: !!invoice, 
-    clientId, 
-    jobId, 
-    invoiceId,
-    contractTemplatesCount: contractTemplates.length,
-    paymentSchedules: invoice?.paymentSchedules?.length || 0,
-    invoiceDate: invoice?.date,
-    invoiceStatus: invoice?.status
-  });
 
   const checkDuplicateInvoiceNumber = async (number: string, currentInvoiceId?: string) => {
     try {
@@ -213,12 +197,131 @@ const InvoiceCreate = () => {
     }
   };
 
+  // Breadcrumb paths for navigation context
+  const getBreadcrumbPaths = () => {
+    const paths = [
+      { label: "Dashboard", path: "/" },
+    ];
+    
+    if (job) {
+      paths.push({ label: "Jobs", path: "/jobs" });
+      paths.push({ label: job.title, path: `/job/${job.id}` });
+    } else if (client) {
+      paths.push({ label: "Clients", path: "/clients" });
+      paths.push({ label: client.name, path: `/client/${client.id}` });
+    }
+    
+    paths.push({ label: invoice ? "Edit Invoice" : "New Invoice", path: "#" });
+    
+    return paths;
+  };
+  
+  const paths = getBreadcrumbPaths();
+
   return (
     <PageTransition>
       <div className="container py-8">
+        <div className="flex flex-col space-y-2 mb-6">
+          <h1 className="text-3xl font-bold tracking-tight">{invoice ? 'Edit Invoice' : 'New Invoice'}</h1>
+          <div className="text-sm text-muted-foreground flex items-center">
+            {paths.map((path, index) => (
+              <React.Fragment key={path.path}>
+                {index > 0 && <span className="mx-1">{'>'}</span>}
+                {path.path === '#' ? (
+                  <span>{path.label}</span>
+                ) : (
+                  <span 
+                    className="hover:underline cursor-pointer" 
+                    onClick={() => navigate(path.path)}
+                  >
+                    {path.label}
+                  </span>
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+
+        {/* Client and Job Information Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          {job && (
+            <Card>
+              <CardContent className="pt-6">
+                <h2 className="font-semibold mb-4">Job</h2>
+                <div className="flex items-center gap-2 mb-4">
+                  <Briefcase className="h-4 w-4" />
+                  <span className="font-medium">{job.title}</span>
+                </div>
+                
+                <div className="text-sm text-muted-foreground">
+                  {job.description && (
+                    <div className="mb-3">{job.description}</div>
+                  )}
+                  
+                  <div className="flex items-center gap-2 mt-2">
+                    <Calendar className="h-4 w-4" />
+                    <span>
+                      {job.date ? (
+                        format(new Date(job.date), 'PPP')
+                      ) : (
+                        'No date specified'
+                      )}
+                      {job.start_time && job.end_time && (
+                        <span> ({job.start_time} - {job.end_time})</span>
+                      )}
+                    </span>
+                  </div>
+                  
+                  {job.location && (
+                    <div className="mt-2">
+                      <strong>Location:</strong> {job.location}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {client && (
+            <Card>
+              <CardContent className="pt-6">
+                <h2 className="font-semibold mb-4">Client</h2>
+                <div className="flex items-center gap-2 mb-4">
+                  <User className="h-4 w-4" />
+                  <span className="font-medium">{client.name}</span>
+                </div>
+                
+                <div className="text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Mail className="h-4 w-4" />
+                    <span>{client.email}</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-4 w-4" />
+                    <span>{client.phone}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+        
+        {!job && !client && (
+          <div className="mb-6">
+            <Card className="bg-amber-50 border-amber-200">
+              <CardContent className="pt-6">
+                <p className="text-amber-800">
+                  This invoice is not associated with a job or client. It's recommended to create invoices from a job or client page.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         <InvoiceForm 
           invoice={invoice}
-          clientId={clientId}
+          clientId={clientId || job?.clientId}
           jobId={jobId}
           invoiceId={invoiceId}
           contractTemplates={contractTemplates}

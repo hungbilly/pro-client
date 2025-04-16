@@ -74,13 +74,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
       number: '',
       date: format(new Date(), 'yyyy-MM-dd'),
       dueDate: format(new Date(), 'yyyy-MM-dd'),
-      items: [{ 
-        id: generateId(), 
-        description: '', 
-        quantity: 1, 
-        rate: 0, 
-        amount: 0 
-      }],
+      items: [],
       amount: 0,
       status: 'draft',
       notes: '',
@@ -163,19 +157,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     setInvoice(prevInvoice => ({
       ...prevInvoice,
       items: updatedItems,
-    }));
-  };
-
-  const handleAddItem = () => {
-    setInvoice(prevInvoice => ({
-      ...prevInvoice,
-      items: [...prevInvoice.items, { 
-        id: generateId(), 
-        description: '', 
-        quantity: 1, 
-        rate: 0,
-        amount: 0
-      }],
     }));
   };
 
@@ -408,16 +389,10 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
         <div>
           <div className="flex items-center justify-between mb-4">
             <Label>Products & Packages</Label>
-            <div className="flex space-x-2">
-              <Button variant="outline" onClick={openAddProductDialog}>
-                <PackageIcon className="mr-2 h-4 w-4" />
-                Add Products & Packages
-              </Button>
-              <Button variant="outline" onClick={handleAddItem}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Empty Item
-              </Button>
-            </div>
+            <Button variant="outline" onClick={openAddProductDialog}>
+              <PackageIcon className="mr-2 h-4 w-4" />
+              Add Products & Packages
+            </Button>
           </div>
           {invoice.items.length === 0 ? (
             <div className="bg-slate-50 rounded-lg p-8 text-center">
@@ -426,7 +401,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                 You currently don't have any product or package added to
                 your Invoice. Click the button below to start adding them.
               </p>
-              <Button onClick={openAddProductDialog}>
+              <Button onClick={openAddProductDialog} className="bg-green-600 hover:bg-green-700">
                 <Plus className="mr-2 h-4 w-4" />
                 Add Products & Packages
               </Button>

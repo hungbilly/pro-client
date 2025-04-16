@@ -1,3 +1,4 @@
+
 export interface Client {
   id: string;
   name: string;
@@ -54,7 +55,7 @@ export interface Job {
   createdAt?: string;
   updatedAt?: string;
   calendarEventId?: string | null;
-  timezone: string;
+  timezone?: string;
 }
 
 export interface Package {
@@ -104,8 +105,8 @@ export interface Invoice {
 
 export interface InvoiceItem {
   id: string;
-  name?: string;
-  productName?: string;
+  name?: string;      // Added name field
+  productName?: string; // Keep for backward compatibility
   description: string;
   quantity: number;
   rate: number;

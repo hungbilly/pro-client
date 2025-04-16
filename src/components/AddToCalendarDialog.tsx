@@ -36,6 +36,9 @@ export const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({
         throw new Error('No active session');
       }
 
+      const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      console.log(`User timezone: ${userTimeZone}`);
+
       const { data, error } = await supabase.functions.invoke('add-to-calendar', {
         headers: {
           Authorization: `Bearer ${session.access_token}`,
@@ -43,7 +46,8 @@ export const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({
         body: {
           jobId: job.id,
           clientId: client.id,
-          userId: session.user.id
+          userId: session.user.id,
+          timeZone: userTimeZone
         },
       });
 
@@ -85,6 +89,9 @@ export const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({
         throw new Error('No active session');
       }
 
+      const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      console.log(`User timezone: ${userTimeZone}`);
+
       const { data, error } = await supabase.functions.invoke('update-calendar-event', {
         headers: {
           Authorization: `Bearer ${session.access_token}`,
@@ -92,6 +99,7 @@ export const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({
         body: {
           eventId: job.calendarEventId,
           userId: session.user.id,
+          timeZone: userTimeZone,
           jobData: {
             title: job.title,
             description: job.description || '',

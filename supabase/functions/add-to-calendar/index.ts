@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
@@ -154,7 +155,11 @@ serve(async (req) => {
     console.log('Authorization header present:', Boolean(authHeader));
     
     // Get request data
-    const { jobId, clientId, invoiceId, testMode, testData, userId } = await req.json();
+    const { jobId, clientId, invoiceId, testMode, testData, userId, timeZone } = await req.json();
+    
+    // Get user's timezone, either from the request or fallback to UTC
+    const userTimeZone = timeZone || 'UTC';
+    console.log(`Using time zone: ${userTimeZone}`);
     
     console.log('Function called with:', { 
       hasJobId: Boolean(jobId),
@@ -163,7 +168,8 @@ serve(async (req) => {
       isTestMode: Boolean(testMode),
       hasTestData: Boolean(testData),
       userId,
-      hasAuthHeader: Boolean(authHeader)
+      hasAuthHeader: Boolean(authHeader),
+      timeZone: userTimeZone
     });
     
     if (!userId) {
@@ -356,11 +362,11 @@ serve(async (req) => {
           description: eventDescription,
           start: {
             date: startDate, // "2025-04-14"
-            timeZone: 'UTC',
+            timeZone: userTimeZone,
           },
           end: {
             date: startDate, // "2025-04-14"
-            timeZone: 'UTC',
+            timeZone: userTimeZone,
           },
         };
         
@@ -403,23 +409,22 @@ serve(async (req) => {
         const normalizedStartTime = eventStartTime.length === 5 ? `${eventStartTime}:00` : eventStartTime; // "09:00:00"
         const normalizedEndTime = eventEndTime.length === 5 ? `${eventEndTime}:00` : eventEndTime; // "17:00:00"
         
-        // Fixed: Format with correct timezone handling - DO NOT append Z (which forces UTC)
-        // Instead, specify the timeZone property and let Google Calendar handle conversion
+        // Format without 'Z' suffix to avoid forcing UTC
         const formattedStartDate = `${eventDate}T${normalizedStartTime}`; // "2025-04-14T09:00:00"
         const formattedEndDate = `${eventDate}T${normalizedEndTime}`; // "2025-04-14T17:00:00"
         
-        // Create event object with start/end times and proper timezone
+        // Create event object with start/end times and user's timezone
         const event = {
           summary: eventSummary,
           location: eventLocation,
           description: eventDescription,
           start: {
             dateTime: formattedStartDate,
-            timeZone: 'UTC', // Using UTC as the reference timezone
+            timeZone: userTimeZone, // Using user's timezone
           },
           end: {
             dateTime: formattedEndDate,
-            timeZone: 'UTC', // Using UTC as the reference timezone
+            timeZone: userTimeZone, // Using user's timezone
           },
         };
         
@@ -470,8 +475,8 @@ serve(async (req) => {
       
       // Format shooting date (YYYY-MM-DD to RFC3339 format)
       const shootingDate = new Date(eventData.shooting_date);
-      const formattedStartDate = `${shootingDate.toISOString().split('T')[0]}T09:00:00Z`; // Default to 9 AM
-      const formattedEndDate = `${shootingDate.toISOString().split('T')[0]}T17:00:00Z`;   // Default to 5 PM
+      const formattedStartDate = `${shootingDate.toISOString().split('T')[0]}T09:00:00`; // Default to 9 AM
+      const formattedEndDate = `${shootingDate.toISOString().split('T')[0]}T17:00:00`;   // Default to 5 PM
       
       // Create event object
       const event = {
@@ -480,11 +485,11 @@ serve(async (req) => {
         description: `Photo shooting session for ${clientData.name}.\n\nClient Contact:\nEmail: ${clientData.email}\nPhone: ${clientData.phone}\n\nInvoice #${eventData.number}`,
         start: {
           dateTime: formattedStartDate,
-          timeZone: 'UTC',
+          timeZone: userTimeZone, // Using user's timezone
         },
         end: {
           dateTime: formattedEndDate,
-          timeZone: 'UTC',
+          timeZone: userTimeZone, // Using user's timezone
         },
       };
       

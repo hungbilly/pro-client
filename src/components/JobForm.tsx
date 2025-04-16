@@ -57,6 +57,7 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
   // Add debug logging for timezone
   console.log('Company timezone:', selectedCompany?.timezone);
   console.log('Timezone to use:', timezoneToUse);
+  console.log('Selected company:', selectedCompany);
 
   const { data: allJobs = [] } = useQuery({
     queryKey: ['all-jobs', selectedCompany?.id],
@@ -198,6 +199,7 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
     const formattedDate = date ? format(date, 'yyyy-MM-dd') : undefined;
     
     console.log('Saving job with timezone:', timezoneToUse);
+    console.log('Selected company when saving:', selectedCompany);
 
     try {
       if (existingJob) {
@@ -264,7 +266,7 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
           navigate(`/job/${existingJob.id}`);
         }
       } else {
-        const newJobData = {
+        const newJobData: Partial<Job> = {
           clientId: client.id,
           companyId: selectedCompany.id,
           title,

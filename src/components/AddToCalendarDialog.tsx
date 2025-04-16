@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -39,6 +40,7 @@ export const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({
       // Use job's timezone if available, otherwise use user's browser timezone
       const timeZoneToUse = job.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
       console.log(`Creating calendar event with timezone: ${timeZoneToUse}`);
+      console.log('Job data for calendar:', job);
       
       const { data, error } = await supabase.functions.invoke('add-to-calendar', {
         headers: {

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Client, Invoice, InvoiceItem, Job, PaymentSchedule } from '@/types';
@@ -8,7 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Trash2, Calendar as CalendarIcon, CalendarPlus, Pencil, Copy, Package as PackageIcon, AlertCircle, Briefcase, Mail, User } from 'lucide-react';
 import { toast } from 'sonner';
-import { getClient, saveInvoice, updateInvoice, getJob, getInvoice, getInvoicesByDate } from '@/lib/storage';
+import { getClient, saveInvoice, updateInvoice, getJob, getInvoice, getInvoicesByDate, deleteInvoice } from '@/lib/storage';
 import { format } from 'date-fns';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -19,7 +20,7 @@ import { supabase } from '@/integrations/supabase/client';
 import PackageSelector from './PackageSelector';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import RichTextEditor from './RichTextEditor';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 
 interface ContractTemplate {
   id: string;
@@ -44,6 +45,15 @@ interface InvoiceFormProps {
   onInvoiceDeleted?: (invoiceId: string) => void;
 }
 
+// Helper functions first to avoid use-before-declaration errors
+const generateId = () => {
+  return Math.random().toString(36).substring(2, 15);
+};
+
+const generateViewLink = () => {
+  return Math.random().toString(36).substring(2, 15);
+};
+
 const InvoiceForm: React.FC<InvoiceFormProps> = ({ 
   invoice: propInvoice, 
   clientId: propClientId, 
@@ -59,16 +69,23 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
   const [invoice, setInvoice] = useState<Invoice>(
     propInvoice || {
+      id: '', // Set an empty string as default for id
       clientId: propClientId || '',
       jobId: propJobId || '',
       number: '',
       date: format(new Date(), 'yyyy-MM-dd'),
       dueDate: format(new Date(), 'yyyy-MM-dd'),
-      items: [{ id: generateId(), description: '', quantity: 1, unitPrice: 0 }],
+      items: [{ 
+        id: generateId(), 
+        description: '', 
+        quantity: 1, 
+        rate: 0, // Using rate instead of unitPrice
+        amount: 0 // Adding amount field
+      }],
       amount: 0,
       status: 'draft',
       notes: '',
-      terms: '',
+      contractTerms: '', // Using contractTerms instead of terms
       paymentSchedules: [],
       companyId: company?.id || '',
       contractId: null,
@@ -113,14 +130,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     fetchJob();
   }, [invoice.jobId]);
 
-  const generateId = () => {
-    return Math.random().toString(36).substring(2, 15);
-  };
-
-  const generateViewLink = () => {
-    return Math.random().toString(36).substring(2, 15);
-  };
-
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setInvoice(prevInvoice => ({
@@ -141,7 +150,22 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
   const handleItemChange = (index: number, field: string, value: any) => {
     const updatedItems = [...invoice.items];
-    updatedItems[index][field] = value;
+    
+    // Convert the item to have properties matching InvoiceItem
+    const item = updatedItems[index];
+    if (field === 'unitPrice') {
+      // Handle unitPrice to rate conversion
+      item.rate = value;
+    } else {
+      // Set the field directly
+      item[field] = value;
+    }
+    
+    // Update amount based on quantity and rate
+    if (field === 'quantity' || field === 'rate' || field === 'unitPrice') {
+      item.amount = item.quantity * item.rate;
+    }
+    
     setInvoice(prevInvoice => ({
       ...prevInvoice,
       items: updatedItems,
@@ -151,7 +175,13 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   const handleAddItem = () => {
     setInvoice(prevInvoice => ({
       ...prevInvoice,
-      items: [...prevInvoice.items, { id: generateId(), description: '', quantity: 1, unitPrice: 0 }],
+      items: [...prevInvoice.items, { 
+        id: generateId(), 
+        description: '', 
+        quantity: 1, 
+        rate: 0,
+        amount: 0
+      }],
     }));
   };
 
@@ -165,7 +195,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   const calculateTotal = useCallback(() => {
     let total = 0;
     invoice.items.forEach(item => {
-      total += item.quantity * item.unitPrice;
+      total += item.quantity * item.rate;
     });
     return total;
   }, [invoice.items]);
@@ -257,15 +287,18 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     if (selectedTemplate) {
       setInvoice(prevInvoice => ({
         ...prevInvoice,
-        terms: selectedTemplate.content || '',
+        contractTerms: selectedTemplate.content || '',
       }));
     }
     setIsDialogOpen(false);
   };
 
   const handlePaymentScheduleChange = (index: number, field: string, value: any) => {
-    const updatedSchedules = [...invoice.paymentSchedules];
-    updatedSchedules[index][field] = value;
+    const updatedSchedules = [...(invoice.paymentSchedules || [])];
+    updatedSchedules[index] = {
+      ...updatedSchedules[index],
+      [field]: value
+    };
     setInvoice(prevInvoice => ({
       ...prevInvoice,
       paymentSchedules: updatedSchedules,
@@ -275,13 +308,19 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   const handleAddPaymentSchedule = () => {
     setInvoice(prevInvoice => ({
       ...prevInvoice,
-      paymentSchedules: [...prevInvoice.paymentSchedules, { id: generateId(), dueDate: format(new Date(), 'yyyy-MM-dd'), percentage: 0, status: 'pending' }],
+      paymentSchedules: [...(prevInvoice.paymentSchedules || []), { 
+        id: generateId(), 
+        dueDate: format(new Date(), 'yyyy-MM-dd'), 
+        percentage: 0, 
+        status: 'unpaid',
+        description: 'Payment'
+      }],
     }));
   };
 
   const handleRemovePaymentSchedule = (id: string) => {
     setInvoice(prevInvoice => {
-      const updatedSchedules = prevInvoice.paymentSchedules.filter(schedule => schedule.id !== id);
+      const updatedSchedules = prevInvoice.paymentSchedules?.filter(schedule => schedule.id !== id) || [];
       return { ...prevInvoice, paymentSchedules: updatedSchedules };
     });
   };
@@ -348,8 +387,8 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
               <PopoverContent className="w-auto p-0" align="start">
                 <DatePicker
                   mode="single"
-                  date={invoice.date ? new Date(invoice.date) : undefined}
-                  onSelect={(date) => handleDateChange(date, 'date')}
+                  selected={invoice.date ? new Date(invoice.date) : undefined}
+                  onSelect={(date) => handleDateChange(date as Date, 'date')}
                   initialFocus
                 />
               </PopoverContent>
@@ -375,8 +414,8 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
               <PopoverContent className="w-auto p-0" align="start">
                 <DatePicker
                   mode="single"
-                  date={invoice.dueDate ? new Date(invoice.dueDate) : undefined}
-                  onSelect={(date) => handleDateChange(date, 'dueDate')}
+                  selected={invoice.dueDate ? new Date(invoice.dueDate) : undefined}
+                  onSelect={(date) => handleDateChange(date as Date, 'dueDate')}
                   initialFocus
                 />
               </PopoverContent>
@@ -416,12 +455,12 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                   <TableCell>
                     <Input
                       type="number"
-                      value={item.unitPrice}
-                      onChange={(e) => handleItemChange(index, 'unitPrice', Number(e.target.value))}
+                      value={item.rate}
+                      onChange={(e) => handleItemChange(index, 'rate', Number(e.target.value))}
                     />
                   </TableCell>
                   <TableCell className="text-right">
-                    ${(item.quantity * item.unitPrice).toFixed(2)}
+                    ${(item.quantity * item.rate).toFixed(2)}
                   </TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.id)}>
@@ -445,14 +484,14 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
         <div>
           <div className="flex justify-between items-center mb-2">
-            <Label htmlFor="terms">Terms & Conditions</Label>
+            <Label htmlFor="contractTerms">Terms & Conditions</Label>
             <div>
               <Button variant="outline" size="sm" onClick={() => setIsDialogOpen(true)}>
                 Choose Template
               </Button>
             </div>
           </div>
-          <RichTextEditor value={invoice.terms} onChange={(value) => setInvoice(prev => ({ ...prev, terms: value }))} />
+          <RichTextEditor value={invoice.contractTerms || ''} onChange={(value) => setInvoice(prev => ({ ...prev, contractTerms: value }))} />
         </div>
 
         <div>
@@ -461,13 +500,14 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
             <TableHeader>
               <TableRow>
                 <TableHead>Due Date</TableHead>
+                <TableHead>Description</TableHead>
                 <TableHead>Percentage</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {invoice.paymentSchedules.map((schedule, index) => (
+              {(invoice.paymentSchedules || []).map((schedule, index) => (
                 <TableRow key={schedule.id}>
                   <TableCell>
                     <Popover>
@@ -488,12 +528,19 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                       <PopoverContent className="w-auto p-0" align="start">
                         <DatePicker
                           mode="single"
-                          date={schedule.dueDate ? new Date(schedule.dueDate) : undefined}
-                          onSelect={(date) => handlePaymentScheduleChange(index, 'dueDate', format(date, 'yyyy-MM-dd'))}
+                          selected={schedule.dueDate ? new Date(schedule.dueDate) : undefined}
+                          onSelect={(date) => handlePaymentScheduleChange(index, 'dueDate', format(date as Date, 'yyyy-MM-dd'))}
                           initialFocus
                         />
                       </PopoverContent>
                     </Popover>
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      type="text"
+                      value={schedule.description}
+                      onChange={(e) => handlePaymentScheduleChange(index, 'description', e.target.value)}
+                    />
                   </TableCell>
                   <TableCell>
                     <Input
@@ -503,13 +550,14 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                     />
                   </TableCell>
                   <TableCell>
-                    <Select name="status" value={schedule.status} onValueChange={(value) => handlePaymentScheduleChange(index, 'status', value)}>
+                    <Select value={schedule.status} onValueChange={(value) => handlePaymentScheduleChange(index, 'status', value)}>
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select status" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="unpaid">Pending</SelectItem>
                         <SelectItem value="paid">Paid</SelectItem>
+                        <SelectItem value="write-off">Write-off</SelectItem>
                       </SelectContent>
                     </Select>
                   </TableCell>

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Client, Invoice, InvoiceItem, Job, PaymentSchedule } from '@/types';
@@ -600,7 +601,11 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
           <div></div>
         )}
         <div className="flex gap-2">
-          <Button type="submit" onClick={handleSubmit} disabled={isSaving}>
+          <Button 
+            type="submit" 
+            onClick={handleSubmit} 
+            disabled={isSaving}
+          >
             {isSaving ? (
               <>
                 Saving...

@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Package as PackageIcon, Search } from 'lucide-react';
+import { Package as PackageIcon, Search, Upload, Plus, Image as ImageIcon, Check } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from './CompanySelector';
@@ -18,6 +18,9 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 interface AddProductPackageDialogProps {
   isOpen: boolean;
@@ -31,7 +34,12 @@ const AddProductPackageDialog: React.FC<AddProductPackageDialogProps> = ({
   onPackageSelect,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [customName, setCustomName] = useState('');
+  const [customDescription, setCustomDescription] = useState('');
+  const [customPrice, setCustomPrice] = useState<number>(0);
+  const [imagePosition, setImagePosition] = useState('above');
   const { selectedCompany } = useCompany();
+  const [activeTab, setActiveTab] = useState('packages');
   
   // Fetch packages for the selected company
   const { data: packages = [], isLoading: isLoadingPackages } = useQuery({
@@ -75,24 +83,55 @@ const AddProductPackageDialog: React.FC<AddProductPackageDialogProps> = ({
     onClose();
   };
 
+  const handleAddCustomItem = () => {
+    if (!customName) {
+      toast.error('Product/Package name is required');
+      return;
+    }
+
+    const newItem: InvoiceItem = {
+      id: Date.now().toString(),
+      name: customName,
+      description: customDescription || customName,
+      quantity: 1,
+      rate: customPrice,
+      amount: customPrice
+    };
+    
+    onPackageSelect([newItem]);
+    toast.success(`Added "${customName}" to invoice`);
+    onClose();
+  };
+
+  // Reset form values when dialog closes
+  useEffect(() => {
+    if (!isOpen) {
+      setCustomName('');
+      setCustomDescription('');
+      setCustomPrice(0);
+      setSearchQuery('');
+      setActiveTab('packages');
+    }
+  }, [isOpen]);
+
   return (
     <Dialog open={isOpen} onOpenChange={() => onClose()}>
-      <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add Products & Packages</DialogTitle>
+          <DialogTitle>Add Item</DialogTitle>
           <DialogDescription>
-            Choose from your existing products and packages
+            Add a product or package to your invoice.
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="packages" className="mt-2">
+        <Tabs defaultValue="packages" className="mt-2" onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="packages">Packages</TabsTrigger>
-            <TabsTrigger value="products">Products</TabsTrigger>
+            <TabsTrigger value="packages">Choose Existing Package</TabsTrigger>
+            <TabsTrigger value="custom">Create Custom Item</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="packages" className="mt-4">
-            <div className="relative mb-4">
+          <TabsContent value="packages" className="mt-4 space-y-4">
+            <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search packages..."
@@ -144,20 +183,94 @@ const AddProductPackageDialog: React.FC<AddProductPackageDialogProps> = ({
             )}
           </TabsContent>
           
-          <TabsContent value="products" className="mt-4">
-            <div className="text-center py-8 space-y-4">
-              <p className="text-muted-foreground">Products coming soon</p>
-              <p className="text-sm text-muted-foreground">
-                This feature will be available in a future update
-              </p>
+          <TabsContent value="custom" className="mt-4">
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="item-name">Product / Package Name *</Label>
+                <Input 
+                  id="item-name" 
+                  value={customName}
+                  onChange={(e) => setCustomName(e.target.value)}
+                  placeholder="Enter a Product / Package name"
+                  className="mt-1"
+                />
+              </div>
+
+              <div>
+                <Label>Image (optional)</Label>
+                <div className="mt-2 border-2 border-dashed rounded-lg p-8 text-center">
+                  <div className="flex justify-center mb-3">
+                    <Upload className="h-10 w-10 text-muted-foreground" />
+                  </div>
+                  <p>Click to upload an image.</p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Acceptable file formats are PNG, JPG and JPEG. Max file size is 2mb.
+                  </p>
+                </div>
+
+                <div className="mt-4">
+                  <Label>Image Placement</Label>
+                  <RadioGroup 
+                    defaultValue="above" 
+                    className="flex mt-2 space-x-4"
+                    value={imagePosition}
+                    onValueChange={setImagePosition}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="above" id="above" />
+                      <Label htmlFor="above">Above Description</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="below" id="below" />
+                      <Label htmlFor="below">Below Description</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="item-description">Description *</Label>
+                <Textarea 
+                  id="item-description" 
+                  value={customDescription}
+                  onChange={(e) => setCustomDescription(e.target.value)}
+                  placeholder="Enter item description"
+                  className="mt-1"
+                  rows={5}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="item-price">Price</Label>
+                <div className="flex mt-1">
+                  <span className="inline-flex items-center px-3 bg-muted border border-r-0 border-input rounded-l-md">
+                    $
+                  </span>
+                  <Input
+                    id="item-price"
+                    type="number"
+                    className="rounded-l-none"
+                    value={customPrice}
+                    onChange={(e) => setCustomPrice(parseFloat(e.target.value) || 0)}
+                    min={0}
+                    step={0.01}
+                  />
+                </div>
+              </div>
             </div>
           </TabsContent>
         </Tabs>
         
-        <DialogFooter>
+        <DialogFooter className="flex justify-between">
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
+          {activeTab === 'custom' && (
+            <Button onClick={handleAddCustomItem}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Item
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

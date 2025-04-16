@@ -132,88 +132,48 @@ export const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({
     if (!job || !job.calendarEventId) return;
     setIsLoading(true);
     try {
-      // Get the current session
-      let { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      console.log(`Attempting to delete calendar event ID: ${job.calendarEventId}`);
       
-      // Log initial session attempt
-      console.log('Initial session attempt:', {
-        sessionExists: !!session,
-        sessionError: sessionError?.message,
-        currentTime: new Date().toISOString(),
-      });
-
-      // Attempt to refresh the session if it doesn't exist or is expired
-      if (sessionError || !session || !session.access_token) {
-        console.log('No valid session, attempting to refresh...');
-        const { data, error } = await supabase.auth.refreshSession();
-        session = data?.session || null;
-        sessionError = error;
-
-        console.log('Session refresh attempt:', {
-          sessionExists: !!session,
-          refreshError: sessionError?.message,
-          currentTime: new Date().toISOString(),
-        });
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session) {
+        console.error('Error getting session:', sessionError || 'No session found');
+        throw new Error('Authentication required. Please log in and try again.');
       }
-
-      // Ensure we have a valid session
-      if (!session || !session.access_token) {
-        console.error('Failed to retrieve or refresh session:', sessionError);
-        toast.error('Session expired. Please log in again.');
-        window.location.href = '/login';
-        return;
-      }
-
-      // Ensure we have a user ID
-      const userId = user?.id || session?.user?.id;
+      
+      const userId = user?.id || session.user?.id;
+      
       if (!userId) {
-        console.error('No user ID available:', { userFromContext: user?.id, userFromSession: session?.user?.id });
+        console.error('No user ID available');
         throw new Error('User authentication required');
       }
-
-      // Log session details
-      console.log('Session details:', {
-        hasUser: !!session.user,
-        userId: userId,
-        accessTokenLength: session.access_token?.length,
-        expiresAt: session.expires_at ? new Date(session.expires_at * 1000).toISOString() : 'unknown',
-        expiresInSeconds: session.expires_in,
-        currentTime: new Date().toISOString(),
-      });
-
-      // Log the request data
-      const requestBody = {
-        eventId: job.calendarEventId,
-        jobId: job.id,
-        userId: userId,
-      };
-      console.log('Deleting calendar event with data:', requestBody);
-
-      // IMPORTANT FIX: Correct way to call Supabase Edge Function with auth
-      console.log('Sending delete event request with auth token');
+      
+      console.log('Preparing delete request with user ID:', userId);
       
       const { data, error } = await supabase.functions.invoke('delete-calendar-event', {
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${session.access_token}`
         },
-        body: requestBody,
+        body: {
+          eventId: job.calendarEventId,
+          jobId: job.id,
+          userId: userId
+        }
       });
       
       console.log('Delete calendar event response:', { data, error });
-
-      // Handle errors from function invocation
+      
       if (error) {
-        console.error('Function invocation error:', error);
+        console.error('Error invoking delete-calendar-event function:', error);
         throw new Error(`Failed to delete calendar event: ${error.message}`);
       }
-
-      // Handle errors returned in the response data
+      
       if (!data || !data.success) {
         const message = data?.message || 'Failed to delete calendar event';
-        console.error('Function returned error:', message);
+        console.error('Error response from delete-calendar-event function:', message);
         throw new Error(message);
       }
-
+      
       toast.success('Calendar event deleted successfully!');
       if (onSuccess) {
         onSuccess(null); // Clear the calendarEventId

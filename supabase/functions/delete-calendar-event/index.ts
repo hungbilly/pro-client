@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
@@ -65,11 +66,19 @@ function logTokenDetails(authHeader: string | null) {
       if (missingFields.length > 0) {
         console.log(`- Warning: Missing standard JWT fields: ${missingFields.join(', ')}`);
       }
+      
+      // If we have a sub field, try to extract the user ID
+      if (decodedToken.sub) {
+        console.log('- User ID from token:', decodedToken.sub);
+        return decodedToken.sub;
+      }
     } else {
       console.log('Could not decode JWT - invalid format');
     }
+    return null;
   } catch (e) {
     console.error('Error analyzing auth token:', e);
+    return null;
   }
 }
 
@@ -192,49 +201,46 @@ serve(async (req) => {
     const authHeader = req.headers.get('Authorization');
     console.log('Authorization header present:', Boolean(authHeader));
     
-    logTokenDetails(authHeader);
+    // Try to extract user ID from token if possible
+    let tokenUserId = null;
+    if (authHeader) {
+      tokenUserId = logTokenDetails(authHeader);
+      console.log('User ID extracted from token:', tokenUserId);
+    }
 
-    // Log Supabase configuration
-    console.log('SUPABASE_URL:', SUPABASE_URL);
-    console.log('SUPABASE_ANON_KEY (masked):', SUPABASE_ANON_KEY.substring(0, 5) + '...');
-
-    let supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    let userId = null;
+    // Create a service role client for admin operations
+    const adminClient = createClient(
+      SUPABASE_URL, 
+      SUPABASE_SERVICE_ROLE_KEY
+    );
     
+    // Create a client with the auth header for user operations
+    let supabase = adminClient;
     if (authHeader) {
       console.log('Creating authenticated client with provided auth header');
-      supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-        global: {
-          headers: {
-            Authorization: authHeader,
+      supabase = createClient(
+        SUPABASE_URL, 
+        SUPABASE_ANON_KEY, 
+        {
+          global: {
+            headers: {
+              Authorization: authHeader,
+            }
           }
         }
-      });
-      
-      // Try to get user directly from auth header first (most reliable method)
-      try {
-        console.log('Attempting to get user from auth header');
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-        
-        if (userError) {
-          console.error('Error getting user from auth header:', userError);
-        } else if (user) {
-          console.log('Successfully authenticated user from header:', user.id);
-          userId = user.id;
-        }
-      } catch (authError) {
-        console.error('Exception during authentication with header:', authError);
-      }
+      );
     }
     
+    let userId = tokenUserId; // Start with the user ID from the token if available
     let requestData;
+    
     try {
       requestData = await req.json();
       console.log('Received request data:', requestData);
       
       const { eventId, jobId, userId: providedUserId } = requestData;
       
-      // If we couldn't get userId from the auth header, try using it from the request
+      // If userId wasn't found in token but is provided in request body, use that
       if (!userId && providedUserId) {
         console.log('Using userId from request body:', providedUserId);
         userId = providedUserId;
@@ -255,8 +261,46 @@ serve(async (req) => {
       );
     }
     
+    // If we still don't have a user ID, try to get it from auth
+    if (!userId && authHeader) {
+      try {
+        console.log('Attempting to get user from auth header');
+        // Use the admin client to try get the user ID directly from the JWT token
+        const jwtPayload = decodeJWT(authHeader.replace('Bearer ', ''));
+        if (jwtPayload?.sub) {
+          console.log('Successfully extracted user ID from JWT payload:', jwtPayload.sub);
+          userId = jwtPayload.sub;
+        } else {
+          console.warn('Could not extract user ID from JWT payload');
+        }
+      } catch (authError) {
+        console.error('Exception during authentication with header:', authError);
+      }
+    }
+    
+    // As a last resort, if we have a job ID, try to get the user ID from the job
+    if (!userId && requestData?.jobId) {
+      try {
+        console.log('Attempting to get user ID from job record');
+        const { data: jobData, error: jobError } = await adminClient
+          .from('jobs')
+          .select('user_id')
+          .eq('id', requestData.jobId)
+          .single();
+          
+        if (jobError) {
+          console.error('Error fetching job:', jobError);
+        } else if (jobData?.user_id) {
+          console.log('Successfully retrieved user ID from job:', jobData.user_id);
+          userId = jobData.user_id;
+        }
+      } catch (jobError) {
+        console.error('Exception fetching job data:', jobError);
+      }
+    }
+    
     if (!userId) {
-      console.error('No user ID available from auth header or request');
+      console.error('No user ID available from any source');
       return new Response(
         JSON.stringify({ 
           error: "Failed to authenticate user", 
@@ -275,7 +319,7 @@ serve(async (req) => {
 
     let accessToken;
     try {
-      accessToken = await getAccessToken(userId, supabase);
+      accessToken = await getAccessToken(userId, adminClient);
       console.log('Successfully acquired access token');
     } catch (tokenError) {
       console.error('Failed to get access token:', tokenError);
@@ -320,7 +364,7 @@ serve(async (req) => {
     if (requestData.jobId) {
       try {
         console.log(`Updating job ${requestData.jobId} to remove calendar_event_id`);
-        const { error: updateError } = await supabase
+        const { error: updateError } = await adminClient
           .from('jobs')
           .update({ calendar_event_id: null })
           .eq('id', requestData.jobId);

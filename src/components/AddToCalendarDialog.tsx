@@ -134,43 +134,131 @@ export const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({
     setIsLoading(true);
     try {
       // Get the current session
-      const { data: { session } } = await supabase.auth.getSession();
+      let { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
-      // Ensure we have a user ID either from context or session
+      // Log initial session attempt
+      console.log('Initial session attempt:', {
+        sessionExists: !!session,
+        sessionError: sessionError?.message,
+        currentTime: new Date().toISOString(),
+      });
+
+      // Attempt to refresh the session if it doesn't exist or is expired
+      if (sessionError || !session || !session.access_token) {
+        console.log('No valid session, attempting to refresh...');
+        const { data, error } = await supabase.auth.refreshSession();
+        session = data?.session || null;
+        sessionError = error;
+
+        console.log('Session refresh attempt:', {
+          sessionExists: !!session,
+          refreshError: sessionError?.message,
+          currentTime: new Date().toISOString(),
+        });
+      }
+
+      // Ensure we have a valid session
+      if (!session || !session.access_token) {
+        console.error('Failed to retrieve or refresh session:', sessionError);
+        toast.error('Session expired. Please log in again.');
+        window.location.href = '/login';
+        return;
+      }
+
+      // Ensure we have a user ID
       const userId = user?.id || session?.user?.id;
-      
       if (!userId) {
+        console.error('No user ID available:', { userFromContext: user?.id, userFromSession: session?.user?.id });
         throw new Error('User authentication required');
       }
-      
-      // Log session information for debugging
-      if (session) {
-        console.log('Session details:', {
-          hasUser: !!session.user,
-          accessTokenLength: session.access_token?.length,
-          expiresAt: new Date(session.expires_at * 1000).toISOString()
+
+      // Log session details
+      console.log('Session details:', {
+        hasUser: !!session.user,
+        userId: userId,
+        accessTokenLength: session.access_token?.length,
+        expiresAt: session.expires_at ? new Date(session.expires_at * 1000).toISOString() : 'unknown',
+        expiresInSeconds: session.expires_in,
+        currentTime: new Date().toISOString(),
+      });
+
+      // Decode the JWT token for debugging
+      const decodeJwt = (token: string) => {
+        try {
+          const base64Url = token.split('.')[1];
+          const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+          const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+          }).join(''));
+          return JSON.parse(jsonPayload);
+        } catch (error) {
+          console.error('Error decoding JWT in frontend:', error);
+          return null;
+        }
+      };
+
+      const decodedToken = decodeJwt(session.access_token);
+      if (decodedToken) {
+        const now = Math.floor(Date.now() / 1000);
+        const isExpired = decodedToken.exp < now;
+        console.log('Frontend JWT payload:', {
+          sub: decodedToken.sub,
+          exp: decodedToken.exp ? new Date(decodedToken.exp * 1000).toISOString() : null,
+          iss: decodedToken.iss,
+          aud: decodedToken.aud,
+          isExpired: isExpired,
+          currentTime: new Date(now * 1000).toISOString(),
         });
+
+        if (isExpired) {
+          console.log('Token is expired, forcing a refresh...');
+          const { data, error } = await supabase.auth.refreshSession();
+          session = data?.session || null;
+          sessionError = error;
+
+          console.log('Session refresh attempt after expiry:', {
+            sessionExists: !!session,
+            refreshError: sessionError?.message,
+            currentTime: new Date().toISOString(),
+          });
+
+          if (sessionError || !session || !session.access_token) {
+            console.error('Failed to refresh session:', sessionError);
+            toast.error('Session expired. Please log in again.');
+            window.location.href = '/login';
+            return;
+          }
+
+          const newDecodedToken = decodeJwt(session.access_token);
+          console.log('Refreshed JWT payload:', {
+            sub: newDecodedToken.sub,
+            exp: newDecodedToken.exp ? new Date(newDecodedToken.exp * 1000).toISOString() : null,
+            iss: newDecodedToken.iss,
+            aud: newDecodedToken.aud,
+          });
+        }
       } else {
-        console.log('No active session found');
+        console.log('Failed to decode JWT in frontend');
       }
-      
-      // Prepare the request data with all possible identifiers
+
+      // Log the request data
       const requestBody = {
         eventId: job.calendarEventId,
         jobId: job.id,
-        userId: userId
+        userId: userId,
       };
-      
       console.log('Deleting calendar event with data:', requestBody);
-      
+
       // Set up request options
       const fetchOptions = {
         headers: session?.access_token ? {
           Authorization: `Bearer ${session.access_token}`,
         } : undefined,
-        body: requestBody
+        body: requestBody,
       };
-      
+
+      console.log('Sending Authorization header with token:', session.access_token ? 'Bearer <token present>' : 'No token');
+
       // Call the function
       const { data, error } = await supabase.functions.invoke('delete-calendar-event', fetchOptions);
 

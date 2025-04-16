@@ -167,12 +167,54 @@ serve(async (req) => {
     
     // Create event object from job data
     let event;
+    
+    // Get client data if we have a clientId
+    let clientData = null;
+    if (eventData.clientId) {
+      // Create supabase client
+      let supabase;
+      if (authHeader) {
+        supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+          global: {
+            headers: {
+              Authorization: authHeader,
+            }
+          }
+        });
+      } else {
+        supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      }
+      
+      // Get client data
+      const { data: client, error } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('id', eventData.clientId)
+        .single();
+        
+      if (!error && client) {
+        clientData = client;
+      }
+    }
+    
+    // Enhanced description with client name, job description and date
+    let enhancedDescription = `Job: ${eventData.title}\n`;
+    enhancedDescription += `Date: ${eventData.date}\n`;
+    
+    if (clientData) {
+      enhancedDescription += `Client: ${clientData.name}\n\n`;
+      enhancedDescription += `${eventData.description || 'No description provided'}\n\n`;
+      enhancedDescription += `Client Contact:\nEmail: ${clientData.email}\nPhone: ${clientData.phone}`;
+    } else {
+      enhancedDescription = eventData.description || '';
+    }
+    
     if (eventData.is_full_day === true) {
       // Format for all-day events
       event = {
         summary: eventData.title,
         location: eventData.location,
-        description: eventData.description,
+        description: enhancedDescription,
         start: {
           date: eventData.date,
         },
@@ -204,7 +246,7 @@ serve(async (req) => {
       event = {
         summary: eventData.title,
         location: eventData.location,
-        description: eventData.description,
+        description: enhancedDescription,
         start: {
           dateTime: formattedStartDate,
           timeZone: userTimeZone,

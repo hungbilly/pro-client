@@ -363,7 +363,13 @@ serve(async (req) => {
       
       eventSummary = `${eventData.title} - ${clientData.name}`; // "ggg - Test Client"
       eventLocation = eventData.location || clientData.address; // "123 Test Street"
-      eventDescription = `${eventData.description || 'Job session'} for ${clientData.name}.\n\nClient Contact:\nEmail: ${clientData.email}\nPhone: ${clientData.phone}`;
+      
+      // Enhanced description with client name, job description and date
+      eventDescription = `Job: ${eventData.title}\n`; 
+      eventDescription += `Date: ${eventDate}\n`;
+      eventDescription += `Client: ${clientData.name}\n\n`;
+      eventDescription += `${eventData.description || 'No description provided'}\n\n`;
+      eventDescription += `Client Contact:\nEmail: ${clientData.email}\nPhone: ${clientData.phone}`;
       
       // Get the user's timezone (prioritize job timezone, then explicit userTimeZone, then fallback to UTC)
       const userTimeZone = eventData.timezone || timezone || 'UTC';

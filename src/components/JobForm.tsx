@@ -358,13 +358,34 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
     setShowWarningDialog(false);
   };
 
-  const handleCalendarDialogClose = () => {
+  const handleCalendarDialogClose = (shouldAddEvent: boolean = false) => {
     setShowCalendarDialog(false);
     
-    if (onSuccess && newJob) {
-      onSuccess(newJob.id);
-    } else if (newJob) {
-      navigate(`/job/${newJob.id}`);
+    if (shouldAddEvent && newJob && client) {
+      addToCalendar(newJob)
+        .then(eventId => {
+          if (eventId && newJob) {
+            const updatedJob = { ...newJob, calendarEventId: eventId };
+            return updateJob(updatedJob);
+          }
+        })
+        .catch(error => {
+          console.error("Failed to add to calendar:", error);
+          toast.error("Failed to add event to calendar");
+        })
+        .finally(() => {
+          if (onSuccess && newJob) {
+            onSuccess(newJob.id);
+          } else if (newJob) {
+            navigate(`/job/${newJob.id}`);
+          }
+        });
+    } else {
+      if (onSuccess && newJob) {
+        onSuccess(newJob.id);
+      } else if (newJob) {
+        navigate(`/job/${newJob.id}`);
+      }
     }
   };
 

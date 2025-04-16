@@ -3,24 +3,14 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Package as PackageIcon, Search, Upload, Plus, Image as ImageIcon, Check } from 'lucide-react';
+import { Label } from '@/components/ui/label';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from './CompanySelector';
 import { Package, InvoiceItem } from '@/types';
 import { toast } from 'sonner';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 interface AddProductPackageDialogProps {
   isOpen: boolean;
@@ -33,13 +23,13 @@ const AddProductPackageDialog: React.FC<AddProductPackageDialogProps> = ({
   onClose,
   onPackageSelect,
 }) => {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedPackageId, setSelectedPackageId] = useState<string>('');
   const [customName, setCustomName] = useState('');
   const [customDescription, setCustomDescription] = useState('');
-  const [customPrice, setCustomPrice] = useState<number>(0);
-  const [imagePosition, setImagePosition] = useState('above');
+  const [price, setPrice] = useState<number>(0);
+  const [quantity, setQuantity] = useState<number>(1);
+  const [discount, setDiscount] = useState<number>(0);
   const { selectedCompany } = useCompany();
-  const [activeTab, setActiveTab] = useState('packages');
   
   // Fetch packages for the selected company
   const { data: packages = [], isLoading: isLoadingPackages } = useQuery({
@@ -63,39 +53,43 @@ const AddProductPackageDialog: React.FC<AddProductPackageDialogProps> = ({
     enabled: !!selectedCompany?.id && isOpen,
   });
 
-  const filteredPackages = packages.filter(pkg => 
-    pkg.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    (pkg.description && pkg.description.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
-
-  const handlePackageSelect = (pkg: Package) => {
-    const newItem: InvoiceItem = {
-      id: Date.now().toString(),
-      name: pkg.name,
-      description: pkg.description || pkg.name,
-      quantity: 1,
-      rate: pkg.price,
-      amount: pkg.price
-    };
+  // Handle package selection change
+  const handlePackageChange = (packageId: string) => {
+    setSelectedPackageId(packageId);
     
-    onPackageSelect([newItem]);
-    toast.success(`Added "${pkg.name}" to invoice`);
-    onClose();
+    if (packageId) {
+      const selectedPackage = packages.find(pkg => pkg.id === packageId);
+      if (selectedPackage) {
+        setCustomName(selectedPackage.name);
+        setCustomDescription(selectedPackage.description || '');
+        setPrice(selectedPackage.price);
+      }
+    }
   };
 
-  const handleAddCustomItem = () => {
+  // Calculate total amount
+  const calculateTotal = () => {
+    const subtotal = price * quantity;
+    const discountAmount = subtotal * (discount / 100);
+    return subtotal - discountAmount;
+  };
+
+  const handleAddItem = () => {
     if (!customName) {
       toast.error('Product/Package name is required');
       return;
     }
 
+    const totalAmount = calculateTotal();
+    
     const newItem: InvoiceItem = {
       id: Date.now().toString(),
       name: customName,
       description: customDescription || customName,
-      quantity: 1,
-      rate: customPrice,
-      amount: customPrice
+      quantity: quantity,
+      rate: price,
+      amount: totalAmount,
+      discount: discount > 0 ? discount : undefined
     };
     
     onPackageSelect([newItem]);
@@ -103,14 +97,15 @@ const AddProductPackageDialog: React.FC<AddProductPackageDialogProps> = ({
     onClose();
   };
 
-  // Reset form values when dialog closes
+  // Reset form values when dialog closes or opens
   useEffect(() => {
     if (!isOpen) {
+      setSelectedPackageId('');
       setCustomName('');
       setCustomDescription('');
-      setCustomPrice(0);
-      setSearchQuery('');
-      setActiveTab('packages');
+      setPrice(0);
+      setQuantity(1);
+      setDiscount(0);
     }
   }, [isOpen]);
 
@@ -124,153 +119,135 @@ const AddProductPackageDialog: React.FC<AddProductPackageDialogProps> = ({
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="packages" className="mt-2" onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="packages">Choose Existing Package</TabsTrigger>
-            <TabsTrigger value="custom">Create Custom Item</TabsTrigger>
-          </TabsList>
+        <div className="space-y-4 mt-4">
+          <div>
+            <Label htmlFor="package-select">Choose Existing Product / Package</Label>
+            <Select 
+              value={selectedPackageId} 
+              onValueChange={handlePackageChange}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Choose Existing Product / Package" />
+              </SelectTrigger>
+              <SelectContent>
+                {isLoadingPackages ? (
+                  <SelectItem value="loading" disabled>Loading packages...</SelectItem>
+                ) : packages.length === 0 ? (
+                  <SelectItem value="none" disabled>No packages found</SelectItem>
+                ) : (
+                  packages.map(pkg => (
+                    <SelectItem key={pkg.id} value={pkg.id}>
+                      {pkg.name}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
           
-          <TabsContent value="packages" className="mt-4 space-y-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div>
+            <Label htmlFor="item-name" className="flex items-center">
+              Product / Package Name <span className="text-red-500 ml-1">*</span>
+            </Label>
+            <Input 
+              id="item-name" 
+              value={customName}
+              onChange={(e) => setCustomName(e.target.value)}
+              placeholder="Enter a Product / Package name"
+              className="mt-1"
+            />
+          </div>
+
+          <div>
+            <div className="flex justify-between items-center">
+              <Label htmlFor="item-description" className="flex items-center">
+                Description <span className="text-red-500 ml-1">*</span>
+              </Label>
+              <span className="text-sm text-blue-600 cursor-pointer">Insert Message Variable ▾</span>
+            </div>
+            <Textarea 
+              id="item-description" 
+              value={customDescription}
+              onChange={(e) => setCustomDescription(e.target.value)}
+              placeholder="Type text here ..."
+              className="mt-1"
+              rows={8}
+            />
+            <div className="text-right text-sm text-gray-500 mt-1">
+              0/4000
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <Label htmlFor="item-price" className="flex items-center">
+                Price <span className="text-red-500 ml-1">*</span>
+              </Label>
               <Input
-                placeholder="Search packages..."
-                className="pl-9"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                id="item-price"
+                type="number"
+                value={price}
+                onChange={(e) => setPrice(parseFloat(e.target.value) || 0)}
+                min={0}
+                step={0.01}
               />
             </div>
-
-            {isLoadingPackages ? (
-              <div className="text-center py-8">Loading packages...</div>
-            ) : packages.length === 0 ? (
-              <div className="text-center py-8 space-y-4">
-                <p className="text-muted-foreground">No packages found</p>
-                <p className="text-sm text-muted-foreground">
-                  You can add packages in Settings → Packages
-                </p>
-              </div>
-            ) : filteredPackages.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">No packages matching "{searchQuery}"</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {filteredPackages.map((pkg) => (
-                  <div
-                    key={pkg.id}
-                    className="flex items-center justify-between p-4 border rounded-md cursor-pointer hover:bg-secondary"
-                    onClick={() => handlePackageSelect(pkg)}
-                  >
-                    <div className="flex items-start gap-3">
-                      <PackageIcon className="h-5 w-5 text-muted-foreground mt-0.5" />
-                      <div className="flex flex-col">
-                        <span className="font-medium">{pkg.name}</span>
-                        {pkg.description && (
-                          <span className="text-sm text-muted-foreground line-clamp-2">{pkg.description}</span>
-                        )}
-                      </div>
-                    </div>
-                    <span className="font-bold">
-                      {new Intl.NumberFormat('en-US', {
-                        style: 'currency',
-                        currency: 'USD',
-                      }).format(pkg.price)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </TabsContent>
-          
-          <TabsContent value="custom" className="mt-4">
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="item-name">Product / Package Name *</Label>
-                <Input 
-                  id="item-name" 
-                  value={customName}
-                  onChange={(e) => setCustomName(e.target.value)}
-                  placeholder="Enter a Product / Package name"
-                  className="mt-1"
+            <div>
+              <Label htmlFor="item-quantity" className="flex items-center">
+                Quantity <span className="text-red-500 ml-1">*</span>
+              </Label>
+              <Input
+                id="item-quantity"
+                type="number"
+                value={quantity}
+                onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
+                min={1}
+              />
+            </div>
+            <div>
+              <Label htmlFor="item-discount" className="flex items-center">
+                Discount <span className="text-red-500 ml-1">*</span>
+              </Label>
+              <div className="flex">
+                <Input
+                  id="item-discount"
+                  type="number"
+                  value={discount}
+                  onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
+                  min={0}
+                  max={100}
                 />
-              </div>
-
-              <div>
-                <Label>Image (optional)</Label>
-                <div className="mt-2 border-2 border-dashed rounded-lg p-8 text-center">
-                  <div className="flex justify-center mb-3">
-                    <Upload className="h-10 w-10 text-muted-foreground" />
-                  </div>
-                  <p>Click to upload an image.</p>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Acceptable file formats are PNG, JPG and JPEG. Max file size is 2mb.
-                  </p>
-                </div>
-
-                <div className="mt-4">
-                  <Label>Image Placement</Label>
-                  <RadioGroup 
-                    defaultValue="above" 
-                    className="flex mt-2 space-x-4"
-                    value={imagePosition}
-                    onValueChange={setImagePosition}
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="above" id="above" />
-                      <Label htmlFor="above">Above Description</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="below" id="below" />
-                      <Label htmlFor="below">Below Description</Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="item-description">Description *</Label>
-                <Textarea 
-                  id="item-description" 
-                  value={customDescription}
-                  onChange={(e) => setCustomDescription(e.target.value)}
-                  placeholder="Enter item description"
-                  className="mt-1"
-                  rows={5}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="item-price">Price</Label>
-                <div className="flex mt-1">
-                  <span className="inline-flex items-center px-3 bg-muted border border-r-0 border-input rounded-l-md">
-                    $
-                  </span>
-                  <Input
-                    id="item-price"
-                    type="number"
-                    className="rounded-l-none"
-                    value={customPrice}
-                    onChange={(e) => setCustomPrice(parseFloat(e.target.value) || 0)}
-                    min={0}
-                    step={0.01}
-                  />
-                </div>
+                <span className="inline-flex items-center px-3 bg-muted border border-l-0 border-input rounded-r-md">
+                  %
+                </span>
               </div>
             </div>
-          </TabsContent>
-        </Tabs>
+          </div>
+
+          <div className="bg-gray-50 rounded-md p-4 mt-6">
+            <div className="text-lg font-medium mb-2">TOTAL AMOUNT</div>
+            <div className="text-2xl font-bold mb-4">${calculateTotal().toFixed(2)}</div>
+            <div className="flex justify-between text-sm">
+              <span>Price</span>
+              <span>{quantity} x ${price.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-sm mt-1">
+              <span>Tax</span>
+              <span>No Tax</span>
+            </div>
+          </div>
+        </div>
         
-        <DialogFooter className="flex justify-between">
+        <DialogFooter className="flex justify-between mt-4 pt-2">
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          {activeTab === 'custom' && (
-            <Button onClick={handleAddCustomItem}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Item
-            </Button>
-          )}
+          <Button 
+            onClick={handleAddItem}
+            className="bg-green-600 hover:bg-green-700"
+          >
+            Save Item
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

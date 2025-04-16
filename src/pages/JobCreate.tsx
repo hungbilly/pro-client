@@ -16,6 +16,14 @@ const JobCreate = () => {
     setSelectedClientId(clientId);
   };
 
+  const handleJobSuccess = () => {
+    if (selectedClientId) {
+      navigate(`/client/${selectedClientId}`);
+    } else {
+      navigate('/');
+    }
+  };
+
   return (
     <PageTransition>
       <div className="container mx-auto py-8">
@@ -34,6 +42,7 @@ const JobCreate = () => {
         {(selectedClientId || clientId) ? (
           <JobForm 
             clientId={selectedClientId || clientId || ''} 
+            onSuccess={handleJobSuccess}
           />
         ) : (
           <Card className="max-w-4xl mx-auto">

@@ -18,6 +18,10 @@ const AddJobModal: React.FC<AddJobModalProps> = ({ isOpen, onClose, clientId: in
     setSelectedClientId(clientId);
   };
 
+  const handleJobSuccess = () => {
+    onClose();
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto">
@@ -37,7 +41,7 @@ const AddJobModal: React.FC<AddJobModalProps> = ({ isOpen, onClose, clientId: in
           {selectedClientId ? (
             <JobForm 
               clientId={selectedClientId} 
-              onSuccess={onClose}
+              onSuccess={handleJobSuccess}
             />
           ) : (
             <Card>

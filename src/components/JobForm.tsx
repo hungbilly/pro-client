@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CalendarIcon, Clock, User, Mail, Phone, MapPin, Globe } from 'lucide-react';
+import { CalendarIcon, Clock, User, Mail, Phone, MapPin, Globe, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getClient, saveJob, updateJob, getJob, getJobs } from '@/lib/storage';
 import { format } from 'date-fns';
@@ -47,14 +47,13 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
   const [showCalendarDialog, setShowCalendarDialog] = useState(false);
   const [newJob, setNewJob] = useState<Job | null>(null);
   const [calendarEventId, setCalendarEventId] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const clientId = predefinedClientId || clientIdParam || existingJob?.clientId || '';
   const { selectedCompany } = useCompany();
   
-  // Get the company's timezone or fall back to the browser's timezone
   const timezoneToUse = selectedCompany?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
   
-  // Add debug logging for timezone
   console.log('Company timezone:', selectedCompany?.timezone);
   console.log('Timezone to use:', timezoneToUse);
 
@@ -199,6 +198,8 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
     
     console.log('Saving job with timezone:', timezoneToUse);
 
+    setIsSubmitting(true);
+
     try {
       if (existingJob) {
         const updatedJob: Job = {
@@ -216,7 +217,7 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
           createdAt: existingJob.createdAt,
           updatedAt: new Date().toISOString(),
           calendarEventId: existingJob.calendarEventId,
-          timezone: timezoneToUse // Explicitly set the timezone
+          timezone: timezoneToUse
         };
 
         console.log('Updating job with data:', updatedJob);
@@ -276,7 +277,7 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
           endTime: isFullDay ? undefined : endTime,
           isFullDay,
           calendarEventId: null,
-          timezone: timezoneToUse // Explicitly set the timezone
+          timezone: timezoneToUse
         };
 
         console.log('Creating new job with data:', newJobData);
@@ -303,11 +304,15 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
     } catch (error) {
       console.error('Failed to save/update job:', error);
       toast.error('Failed to save/update job.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (isSubmitting) return;
     
     const hasConflicts = checkForConflicts();
     
@@ -520,8 +525,26 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
           </form>
         </CardContent>
         <CardFooter className="flex justify-between">
-          <Button variant="outline" onClick={() => navigate(`/client/${client.id}`)}>Cancel</Button>
-          <Button onClick={handleSubmit}>{existingJob ? 'Update Job' : 'Create Job'}</Button>
+          <Button 
+            variant="outline" 
+            onClick={() => navigate(`/client/${client.id}`)} 
+            disabled={isSubmitting}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {existingJob ? 'Updating...' : 'Creating...'}
+              </>
+            ) : (
+              existingJob ? 'Update Job' : 'Create Job'
+            )}
+          </Button>
         </CardFooter>
       </Card>
 

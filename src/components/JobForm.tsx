@@ -315,19 +315,13 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
         toast.success('Job created successfully!');
         
         if (hasCalendarIntegration && formattedDate) {
-          const eventId = await addToCalendar(savedJob);
-          if (eventId) {
-            savedJob.calendarEventId = eventId;
-            await updateJob(savedJob);
+          setShowCalendarDialog(true);
+        } else {
+          if (onSuccess) {
+            onSuccess(savedJob.id);
+          } else {
+            navigate(`/job/${savedJob.id}`);
           }
-        }
-        
-        setShowCalendarDialog(!hasCalendarIntegration && formattedDate);
-        
-        if ((hasCalendarIntegration || !formattedDate) && onSuccess) {
-          onSuccess(savedJob.id);
-        } else if ((hasCalendarIntegration || !formattedDate)) {
-          navigate(`/job/${savedJob.id}`);
         }
       }
     } catch (error) {

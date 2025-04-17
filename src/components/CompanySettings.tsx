@@ -4,7 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PlusCircle, Trash2, Check, Upload, X, Image, Clock, Palette } from 'lucide-react';
+import { PlusCircle, Trash2, Check, Upload, X, Image, Clock, Palette, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
@@ -525,8 +525,17 @@ const CompanySettings = () => {
         )}
         <div className={!isAddingNew && selectedCompanyId ? '' : 'ml-auto'}>
           <Button onClick={handleSave} disabled={isLoading || uploadingLogo}>
-            <Check className="h-4 w-4 mr-2" />
-            {isAddingNew ? 'Create Company' : 'Update Company'}
+            {isAddingNew ? (
+              <>
+                <PlusCircle className="h-4 w-4 mr-2" />
+                Create Company
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-2" />
+                Update Company
+              </>
+            )}
           </Button>
         </div>
       </div>

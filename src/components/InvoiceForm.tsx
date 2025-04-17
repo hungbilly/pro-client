@@ -410,14 +410,33 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
         const percentageValue = calculateTotal() > 0 ? (numericValue / calculateTotal()) * 100 : 0;
         updatedSchedules[index] = {
           ...updatedSchedules[index],
-          [field]: value,
           percentage: Math.round(percentageValue * 100) / 100,
         };
       }
-    } else {
+    } else if (field === 'percentage') {
       updatedSchedules[index] = {
         ...updatedSchedules[index],
-        [field]: value
+        percentage: value,
+      };
+    } else if (field === 'dueDate') {
+      updatedSchedules[index] = {
+        ...updatedSchedules[index],
+        dueDate: value,
+      };
+    } else if (field === 'description') {
+      updatedSchedules[index] = {
+        ...updatedSchedules[index],
+        description: value,
+      };
+    } else if (field === 'status') {
+      updatedSchedules[index] = {
+        ...updatedSchedules[index],
+        status: value,
+      };
+    } else if (field === 'paymentDate') {
+      updatedSchedules[index] = {
+        ...updatedSchedules[index],
+        paymentDate: value,
       };
     }
     

@@ -405,9 +405,10 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     const updatedSchedules = [...(invoice.paymentSchedules || [])];
     
     if (field === 'amount') {
-      const numericValue = parseFloat(value);
-      if (!isNaN(numericValue)) {
-        const percentageValue = calculateTotal() > 0 ? (numericValue / calculateTotal()) * 100 : 0;
+      const numericAmount = parseFloat(value);
+      if (!isNaN(numericAmount)) {
+        const total = calculateTotal();
+        const percentageValue = total > 0 ? (numericAmount / total) * 100 : 0;
         updatedSchedules[index] = {
           ...updatedSchedules[index],
           percentage: Math.round(percentageValue * 100) / 100,
@@ -828,8 +829,11 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                     <Input
                       type="text"
                       inputMode="decimal"
-                      value={(calculateTotal() * schedule.percentage / 100).toFixed(2)}
-                      onChange={(e) => handlePaymentScheduleChange(index, 'amount', e.target.value)}
+                      value={(calculateTotal() * schedule.percentage / 100)}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/[^\d.]/g, '');
+                        handlePaymentScheduleChange(index, 'amount', value);
+                      }}
                       className="appearance-none"
                     />
                   </TableCell>

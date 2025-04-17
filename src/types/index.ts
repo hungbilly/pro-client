@@ -81,6 +81,7 @@ export interface PaymentSchedule {
   percentage: number;
   status: PaymentStatus;
   paymentDate?: string;
+  amount?: number; // Add the amount property as optional
 }
 
 export interface Invoice {

@@ -1,5 +1,5 @@
 
-import React, { memo, useState } from 'react';
+import React, { memo, useState, useMemo } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -8,11 +8,12 @@ import { format } from 'date-fns';
 import { PaymentSchedule } from '@/types';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon, Edit2, CircleDollarSign } from 'lucide-react';
+import { CalendarIcon, Edit2, CircleDollarSign, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface PaymentScheduleTableProps {
   paymentSchedules: PaymentSchedule[];
@@ -50,6 +51,16 @@ const PaymentScheduleTable = memo(({
   const [editingDescriptionId, setEditingDescriptionId] = useState<string | null>(null);
   const [customDescriptions, setCustomDescriptions] = useState<{[key: string]: string}>({});
   const [selectedDescriptionTypes, setSelectedDescriptionTypes] = useState<{[key: string]: string}>({});
+
+  // Calculate total percentage
+  const totalPercentage = useMemo(() => {
+    return paymentSchedules.reduce((sum, schedule) => sum + schedule.percentage, 0);
+  }, [paymentSchedules]);
+
+  // Check if the total percentage is valid
+  const isPercentageValid = useMemo(() => {
+    return Math.abs(totalPercentage - 100) < 0.01; // Allow for small floating point differences
+  }, [totalPercentage]);
 
   const handleDateSelect = (paymentId: string, date: Date | undefined) => {
     if (!date || !onUpdatePaymentDate) return;
@@ -159,6 +170,15 @@ const PaymentScheduleTable = memo(({
 
   return (
     <div className="border rounded-md overflow-hidden">
+      {!isPercentageValid && !isClientView && (
+        <Alert variant="warning" className="mb-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            The total percentage must be exactly 100%. Currently total is {totalPercentage}%.
+          </AlertDescription>
+        </Alert>
+      )}
+      
       <Table>
         <TableHeader>
           <TableRow className="bg-muted/50">
@@ -280,6 +300,21 @@ const PaymentScheduleTable = memo(({
           ))}
         </TableBody>
       </Table>
+      
+      <div className="p-4 border-t bg-gray-50">
+        <div className="flex justify-between">
+          <div>
+            <Badge variant={isPercentageValid ? "default" : "outline"} className={isPercentageValid ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800"}>
+              Total: {totalPercentage}%
+            </Badge>
+          </div>
+          <div>
+            <Badge variant="outline" className="bg-blue-100 text-blue-800">
+              Total Amount: {formatCurrency(amount)}
+            </Badge>
+          </div>
+        </div>
+      </div>
     </div>
   );
 });

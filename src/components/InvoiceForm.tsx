@@ -23,6 +23,7 @@ import QuillEditor from './QuillEditor';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import AddProductPackageDialog from './AddProductPackageDialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 
 interface ContractTemplate {
   id: string;
@@ -420,26 +421,37 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
       ...prevInvoice,
       paymentSchedules: updatedSchedules,
     }));
+    
+    const totalPercentage = updatedSchedules.reduce((sum, schedule) => sum + schedule.percentage, 0);
+    
+    if (Math.abs(totalPercentage - 100) > 0.01 && field === 'percentage') {
+      toast.warning(`Total payment percentage is ${totalPercentage}%. It should be exactly 100%.`, {
+        duration: 4000,
+      });
+    }
   };
 
   const handleAddPaymentSchedule = () => {
+    const existingPercentageTotal = invoice.paymentSchedules?.reduce((sum, schedule) => sum + schedule.percentage, 0) || 0;
+    
+    const newPercentage = Math.max(0, Math.min(100 - existingPercentageTotal, 100));
+    
     setInvoice(prevInvoice => ({
       ...prevInvoice,
       paymentSchedules: [...(prevInvoice.paymentSchedules || []), { 
         id: generateId(), 
         dueDate: format(new Date(), 'yyyy-MM-dd'), 
-        percentage: 100,
+        percentage: newPercentage,
         status: 'unpaid',
-        description: 'Full Payment'
+        description: newPercentage === 100 ? 'Full Payment' : (existingPercentageTotal === 0 ? 'Deposit' : 'Balance')
       }],
     }));
-  };
-
-  const handleRemovePaymentSchedule = (id: string) => {
-    setInvoice(prevInvoice => {
-      const updatedSchedules = prevInvoice.paymentSchedules?.filter(schedule => schedule.id !== id) || [];
-      return { ...prevInvoice, paymentSchedules: updatedSchedules };
-    });
+    
+    if (existingPercentageTotal >= 100) {
+      toast.warning('Total payment percentage exceeds 100%. Please adjust the percentages.', {
+        duration: 4000,
+      });
+    }
   };
 
   const openAddProductDialog = () => {
@@ -673,6 +685,17 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
         <div>
           <Label>Payment Schedule</Label>
+          <div className="flex justify-between items-center mb-2">
+            <Label>Payment Schedule</Label>
+            <Badge 
+              variant={invoice.paymentSchedules?.reduce((sum, s) => sum + s.percentage, 0) === 100 ? "default" : "outline"}
+              className={invoice.paymentSchedules?.reduce((sum, s) => sum + s.percentage, 0) === 100 
+                ? "bg-green-100 text-green-800" 
+                : "bg-amber-100 text-amber-800"}
+            >
+              Total: {invoice.paymentSchedules?.reduce((sum, s) => sum + s.percentage, 0) || 0}%
+            </Badge>
+          </div>
           <Table>
             <TableHeader>
               <TableRow>

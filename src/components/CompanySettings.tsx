@@ -70,7 +70,6 @@ const CompanySettings = () => {
     }
   }, [companies, companyContextLoading]);
 
-  // Get user's local timezone for default value when creating a new company
   const userLocalTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   const populateFormWithCompany = (company: Company) => {
@@ -96,7 +95,7 @@ const CompanySettings = () => {
     setLogoUrl('');
     setCountry('hk');
     setCurrency('hkd');
-    setTimezone(userLocalTimezone); // Set to user's local timezone by default for new companies
+    setTimezone(userLocalTimezone);
     setTheme('modern-blue');
     setIsDefault(companies.length === 0);
   };

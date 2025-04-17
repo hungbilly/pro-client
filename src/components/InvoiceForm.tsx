@@ -726,53 +726,42 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
           </Button>
         </div>
       </CardContent>
-      <CardFooter className="flex flex-col items-start gap-4">
-        {Object.keys(validationErrors).length > 0 && (
-          <Alert variant="warning" className="w-full mb-4">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              Please complete all mandatory fields before creating the invoice.
-            </AlertDescription>
-          </Alert>
+      <CardFooter className="flex justify-between">
+        {invoice.id ? (
+          <Button variant="destructive" onClick={() => setShowDeleteConfirmation(true)} disabled={isDeleting}>
+            {isDeleting ? (
+              <>
+                Deleting...
+              </>
+            ) : (
+              <>
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </>
+            )}
+          </Button>
+        ) : (
+          <div></div>
         )}
-        <div className="flex justify-between w-full">
-          {invoice.id ? (
-            <Button variant="destructive" onClick={() => setShowDeleteConfirmation(true)} disabled={isDeleting}>
-              {isDeleting ? (
-                <>
-                  Deleting...
-                </>
-              ) : (
-                <>
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
-                </>
-              )}
-            </Button>
-          ) : (
-            <div></div>
-          )}
-          <div className="flex gap-2">
-            <Button 
-              type="button"
-              onClick={(e) => {
-                console.log("Save button clicked");
-                handleSubmit(e);
-              }} 
-              disabled={isSaving}
-              variant={Object.keys(validationErrors).length > 0 ? "destructive" : "default"}
-            >
-              {isSaving ? (
-                <>
-                  Saving...
-                </>
-              ) : (
-                <>
-                  {invoice.id ? 'Update Invoice' : 'Create Invoice'}
-                </>
-              )}
-            </Button>
-          </div>
+        <div className="flex gap-2">
+          <Button 
+            type="button"
+            onClick={(e) => {
+              console.log("Save button clicked");
+              handleSubmit(e);
+            }} 
+            disabled={isSaving}
+          >
+            {isSaving ? (
+              <>
+                Saving...
+              </>
+            ) : (
+              <>
+                {invoice.id ? 'Update Invoice' : 'Create Invoice'}
+              </>
+            )}
+          </Button>
         </div>
       </CardFooter>
 

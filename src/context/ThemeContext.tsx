@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect } from 'react';
 import { themes } from '@/components/ThemeSelector';
 import { useCompany } from '@/components/CompanySelector';
@@ -39,17 +38,16 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // Set accent color
     root.style.setProperty('--accent', theme.colors.accent);
     
-    console.log(`Applied theme: ${theme.name}`);
+    console.log(`Applied theme: ${themeName}`);
   };
 
-  // Apply theme when company changes
+  // Apply theme when company changes or when explicitly called
   useEffect(() => {
-    if (selectedCompany?.theme) {
-      applyTheme(selectedCompany.theme);
-    } else {
-      applyTheme('modern-blue'); // Default theme
+    if (currentTheme) {
+      console.log('ThemeProvider: Applying theme:', currentTheme);
+      applyTheme(currentTheme);
     }
-  }, [selectedCompany]);
+  }, [currentTheme]);
 
   return (
     <ThemeContext.Provider value={{ applyTheme, currentTheme }}>

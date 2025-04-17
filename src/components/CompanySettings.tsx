@@ -14,6 +14,7 @@ import { CountryDropdown } from './ui/country-dropdown';
 import { CurrencyDropdown } from './ui/currency-dropdown';
 import { timezones } from '@/lib/timezones';
 import ThemeSelector from './ThemeSelector';
+import { useTheme } from '@/context/ThemeContext';
 
 interface Company {
   id: string;
@@ -50,6 +51,8 @@ const CompanySettings = () => {
   const [timezone, setTimezone] = useState('UTC');
   const [theme, setTheme] = useState('modern-blue');
   const [isDefault, setIsDefault] = useState(false);
+
+  const { applyTheme } = useTheme();
 
   useEffect(() => {
     console.log("CompanySettings: Companies from context:", companies);
@@ -159,6 +162,7 @@ const CompanySettings = () => {
         setIsAddingNew(false);
         setSelectedCompanyId(data.id);
         await refreshCompanies();
+        applyTheme(theme);
       } else if (selectedCompanyId) {
         const { error } = await supabase
           .from('companies')
@@ -186,6 +190,7 @@ const CompanySettings = () => {
         
         toast.success('Company updated successfully');
         await refreshCompanies();
+        applyTheme(theme);
       }
     } catch (error) {
       console.error('Error saving company:', error);

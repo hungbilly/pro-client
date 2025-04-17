@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Client, Invoice, InvoiceItem, Job, PaymentSchedule } from '@/types';
@@ -631,7 +630,14 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
         <div>
           <Label htmlFor="notes">Notes</Label>
-          <QuillEditor value={invoice.notes} onChange={(value) => setInvoice(prev => ({ ...prev, notes: value }))} />
+          <Textarea
+            id="notes"
+            name="notes"
+            value={invoice.notes}
+            onChange={handleInputChange}
+            placeholder="Enter any additional notes here..."
+            className="min-h-[120px]"
+          />
         </div>
 
         <div>

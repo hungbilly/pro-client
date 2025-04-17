@@ -51,6 +51,8 @@ const PaymentScheduleTable = memo(({
   const [editingDescriptionId, setEditingDescriptionId] = useState<string | null>(null);
   const [customDescriptions, setCustomDescriptions] = useState<{[key: string]: string}>({});
   const [selectedDescriptionTypes, setSelectedDescriptionTypes] = useState<{[key: string]: string}>({});
+  const [editingAmountId, setEditingAmountId] = useState<string | null>(null);
+  const [customAmounts, setCustomAmounts] = useState<{[key: string]: string}>({});
 
   // Calculate total percentage
   const totalPercentage = useMemo(() => {
@@ -78,8 +80,11 @@ const PaymentScheduleTable = memo(({
     setEditingDateId(null);
   };
 
-  const getPaymentAmount = (percentage: number) => {
-    return (amount * percentage) / 100;
+  const getPaymentAmount = (schedule: PaymentSchedule) => {
+    if (schedule.amount !== undefined) {
+      return schedule.amount;
+    }
+    return (amount * schedule.percentage) / 100;
   };
 
   const renderDescriptionCell = (schedule: PaymentSchedule) => {
@@ -168,13 +173,65 @@ const PaymentScheduleTable = memo(({
     );
   };
 
+  const renderAmountCell = (schedule: PaymentSchedule) => {
+    const paymentAmount = getPaymentAmount(schedule);
+    
+    if (editingAmountId === schedule.id) {
+      return (
+        <div className="flex flex-col space-y-2">
+          <Input
+            type="text"
+            inputMode="decimal"
+            value={customAmounts[schedule.id] || paymentAmount}
+            onChange={e => {
+              const value = e.target.value.replace(/[^\d.]/g, '');
+              setCustomAmounts(prev => ({
+                ...prev,
+                [schedule.id]: value
+              }));
+            }}
+            className="appearance-none"
+          />
+          
+          <div className="flex justify-end">
+            <Button 
+              size="sm" 
+              onClick={() => {
+                setEditingAmountId(null);
+              }}
+            >
+              Done
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex items-center justify-end gap-1">
+        <CircleDollarSign className="h-3.5 w-3.5 text-muted-foreground" />
+        <span>{formatCurrency(paymentAmount)}</span>
+        {!isClientView && (
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-6 w-6 ml-2"
+            onClick={() => setEditingAmountId(schedule.id)}
+          >
+            <Edit2 className="h-3 w-3" />
+          </Button>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="border rounded-md overflow-hidden">
       {!isPercentageValid && !isClientView && (
         <Alert variant="warning" className="mb-4">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            The total percentage must be exactly 100%. Currently total is {totalPercentage}%.
+            The total percentage must be exactly 100%. Currently total is {totalPercentage.toFixed(2)}%.
           </AlertDescription>
         </Alert>
       )}
@@ -201,13 +258,10 @@ const PaymentScheduleTable = memo(({
                 {new Date(schedule.dueDate).toLocaleDateString()}
               </TableCell>
               <TableCell className="text-right">
-                {schedule.percentage}%
+                {schedule.percentage.toFixed(2)}%
               </TableCell>
               <TableCell className="text-right font-medium">
-                <div className="flex items-center justify-end gap-1">
-                  <CircleDollarSign className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span>{formatCurrency(getPaymentAmount(schedule.percentage))}</span>
-                </div>
+                {renderAmountCell(schedule)}
               </TableCell>
               <TableCell>
                 <Badge className={paymentStatusColors[schedule.status] || paymentStatusColors.unpaid}>
@@ -305,7 +359,7 @@ const PaymentScheduleTable = memo(({
         <div className="flex justify-between">
           <div>
             <Badge variant={isPercentageValid ? "default" : "outline"} className={isPercentageValid ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800"}>
-              Total: {totalPercentage}%
+              Total: {totalPercentage.toFixed(2)}%
             </Badge>
           </div>
           <div>

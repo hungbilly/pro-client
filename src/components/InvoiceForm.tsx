@@ -403,41 +403,47 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
   const handlePaymentScheduleChange = (index: number, field: string, value: any) => {
     const updatedSchedules = [...(invoice.paymentSchedules || [])];
+    const total = calculateTotal();
     
     if (field === 'amount') {
       const numericAmount = parseFloat(value);
       if (!isNaN(numericAmount)) {
-        const total = calculateTotal();
         const percentageValue = total > 0 ? (numericAmount / total) * 100 : 0;
         updatedSchedules[index] = {
           ...updatedSchedules[index],
           percentage: Math.round(percentageValue * 100) / 100,
+          amount: numericAmount
         };
       }
     } else if (field === 'percentage') {
-      updatedSchedules[index] = {
-        ...updatedSchedules[index],
-        percentage: value,
-      };
+      const numericPercentage = parseFloat(value);
+      if (!isNaN(numericPercentage)) {
+        const amountValue = (total * numericPercentage) / 100;
+        updatedSchedules[index] = {
+          ...updatedSchedules[index],
+          percentage: numericPercentage,
+          amount: amountValue
+        };
+      }
     } else if (field === 'dueDate') {
       updatedSchedules[index] = {
         ...updatedSchedules[index],
-        dueDate: value,
+        dueDate: value
       };
     } else if (field === 'description') {
       updatedSchedules[index] = {
         ...updatedSchedules[index],
-        description: value,
+        description: value
       };
     } else if (field === 'status') {
       updatedSchedules[index] = {
         ...updatedSchedules[index],
-        status: value,
+        status: value
       };
     } else if (field === 'paymentDate') {
       updatedSchedules[index] = {
         ...updatedSchedules[index],
-        paymentDate: value,
+        paymentDate: value
       };
     }
     
@@ -448,8 +454,8 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     
     const totalPercentage = updatedSchedules.reduce((sum, schedule) => sum + schedule.percentage, 0);
     
-    if (Math.abs(totalPercentage - 100) > 0.01 && field === 'percentage') {
-      toast.warning(`Total payment percentage is ${totalPercentage}%. It should be exactly 100%.`, {
+    if (Math.abs(totalPercentage - 100) > 0.01 && (field === 'percentage' || field === 'amount')) {
+      toast.warning(`Total payment percentage is ${totalPercentage.toFixed(2)}%. It should be exactly 100%.`, {
         duration: 4000,
       });
     }
@@ -459,6 +465,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     const existingPercentageTotal = invoice.paymentSchedules?.reduce((sum, schedule) => sum + schedule.percentage, 0) || 0;
     
     const newPercentage = Math.max(0, Math.min(100 - existingPercentageTotal, 100));
+    const newAmount = (calculateTotal() * newPercentage) / 100;
     
     setInvoice(prevInvoice => ({
       ...prevInvoice,
@@ -466,6 +473,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
         id: generateId(), 
         dueDate: format(new Date(), 'yyyy-MM-dd'), 
         percentage: newPercentage,
+        amount: newAmount,
         status: 'unpaid',
         description: newPercentage === 100 ? 'Full Payment' : (existingPercentageTotal === 0 ? 'Deposit' : 'Balance')
       }],
@@ -726,7 +734,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                 ? "bg-green-100 text-green-800" 
                 : "bg-amber-100 text-amber-800"}
             >
-              Total: {invoice.paymentSchedules?.reduce((sum, s) => sum + s.percentage, 0) || 0}%
+              Total: {(invoice.paymentSchedules?.reduce((sum, s) => sum + s.percentage, 0) || 0).toFixed(2)}%
             </Badge>
           </div>
           <Table>
@@ -829,7 +837,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                     <Input
                       type="text"
                       inputMode="decimal"
-                      value={(calculateTotal() * schedule.percentage / 100)}
+                      value={schedule.amount !== undefined ? schedule.amount : (calculateTotal() * schedule.percentage / 100)}
                       onChange={(e) => {
                         const value = e.target.value.replace(/[^\d.]/g, '');
                         handlePaymentScheduleChange(index, 'amount', value);

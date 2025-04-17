@@ -471,6 +471,15 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     }).format(amount);
   };
 
+  const handleRemovePaymentSchedule = (id: string) => {
+    setInvoice(prevInvoice => ({
+      ...prevInvoice,
+      paymentSchedules: (prevInvoice.paymentSchedules || []).filter(schedule => schedule.id !== id)
+    }));
+    
+    toast.success("Payment schedule removed");
+  };
+
   return (
     <Card>
       <CardHeader>

@@ -342,6 +342,7 @@ const CompanySettings = () => {
               size="icon" 
               onClick={handleAddNew}
               title="Add New Company"
+              className="border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800"
             >
               <PlusCircle className="h-4 w-4" />
             </Button>
@@ -518,13 +519,18 @@ const CompanySettings = () => {
             variant="destructive" 
             onClick={handleDeleteCompany}
             disabled={companies.length <= 1}
+            className="bg-red-600 hover:bg-red-700 text-white"
           >
             <Trash2 className="h-4 w-4 mr-2" />
             Delete Company
           </Button>
         )}
         <div className={!isAddingNew && selectedCompanyId ? '' : 'ml-auto'}>
-          <Button onClick={handleSave} disabled={isLoading || uploadingLogo}>
+          <Button 
+            onClick={handleSave} 
+            disabled={isLoading || uploadingLogo}
+            className="bg-blue-600 hover:bg-blue-700 text-white" 
+          >
             {isAddingNew ? (
               <>
                 <PlusCircle className="h-4 w-4 mr-2" />

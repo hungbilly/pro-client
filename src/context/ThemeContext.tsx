@@ -39,10 +39,6 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // Set accent color
     root.style.setProperty('--accent', theme.colors.accent);
     
-    // Ensure primary button color is the accent color
-    root.style.setProperty('--primary', theme.colors.accent);
-    root.style.setProperty('--primary-foreground', '#FFFFFF');
-    
     console.log(`Applied theme: ${theme.name}`);
   };
 

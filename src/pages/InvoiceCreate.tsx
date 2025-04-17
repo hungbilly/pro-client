@@ -236,21 +236,21 @@ const InvoiceCreate = () => {
         {(job || client) && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             {job && (
-              <Card>
+              <Card className="bg-[#9ECAE1] text-white border-[#9ECAE1]">
                 <CardContent className="pt-6">
                   <h2 className="font-semibold mb-4">Job</h2>
                   <div className="flex items-center gap-2 mb-4">
-                    <Briefcase className="h-4 w-4" />
+                    <Briefcase className="h-4 w-4 text-white" />
                     <span className="font-medium">{job.title}</span>
                   </div>
                   
-                  <div className="text-sm text-muted-foreground">
+                  <div className="text-sm">
                     {job.description && (
                       <div className="mb-3">{job.description}</div>
                     )}
                     
                     <div className="flex items-center gap-2 mt-2">
-                      <Calendar className="h-4 w-4" />
+                      <Calendar className="h-4 w-4 text-white" />
                       <span>
                         {job.date ? (
                           format(new Date(job.date), 'PPP')
@@ -265,7 +265,7 @@ const InvoiceCreate = () => {
                     
                     {job.location && (
                       <div className="flex items-center gap-2 mt-2">
-                        <MapPin className="h-4 w-4" />
+                        <MapPin className="h-4 w-4 text-white" />
                         <span>{job.location}</span>
                       </div>
                     )}

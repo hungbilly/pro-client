@@ -64,6 +64,11 @@ const PaymentScheduleTable = memo(({
     return Math.abs(totalPercentage - 100) < 0.01; // Allow for small floating point differences
   }, [totalPercentage]);
 
+  // Calculate how far off 100% the total is
+  const percentageDifference = useMemo(() => {
+    return Math.abs(totalPercentage - 100).toFixed(2);
+  }, [totalPercentage]);
+
   const handleDateSelect = (paymentId: string, date: Date | undefined) => {
     if (!date || !onUpdatePaymentDate) return;
 
@@ -227,11 +232,14 @@ const PaymentScheduleTable = memo(({
 
   return (
     <div className="border rounded-md overflow-hidden">
-      {!isPercentageValid && !isClientView && (
-        <Alert variant="warning" className="mb-4">
+      {!isPercentageValid && (
+        <Alert variant="destructive" className="mb-4">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            The total percentage must be exactly 100%. Currently total is {totalPercentage.toFixed(2)}%.
+          <AlertDescription className="font-medium">
+            {totalPercentage > 100 
+              ? `The total percentage exceeds 100% by ${percentageDifference}%. Please adjust the percentages.`
+              : `The total percentage is ${percentageDifference}% below 100%. Please adjust the percentages to reach exactly 100%.`
+            }
           </AlertDescription>
         </Alert>
       )}
@@ -358,8 +366,19 @@ const PaymentScheduleTable = memo(({
       <div className="p-4 border-t bg-gray-50">
         <div className="flex justify-between">
           <div>
-            <Badge variant={isPercentageValid ? "default" : "outline"} className={isPercentageValid ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800"}>
+            <Badge 
+              variant={isPercentageValid ? "default" : "destructive"} 
+              className={isPercentageValid 
+                ? "bg-green-100 text-green-800" 
+                : "bg-red-100 text-red-800 font-medium"
+              }
+            >
               Total: {totalPercentage.toFixed(2)}%
+              {!isPercentageValid && (
+                <span className="ml-1">
+                  (Must be 100%)
+                </span>
+              )}
             </Badge>
           </div>
           <div>

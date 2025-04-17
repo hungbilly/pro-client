@@ -274,6 +274,15 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
       errors.items = 'At least one item is required';
     }
     
+    const paymentSchedules = invoice.paymentSchedules || [];
+    if (paymentSchedules.length > 0) {
+      const totalPercentage = paymentSchedules.reduce((sum, schedule) => sum + schedule.percentage, 0);
+      
+      if (Math.abs(totalPercentage - 100) > 0.01) {
+        errors.paymentSchedules = `Payment schedules must total exactly 100%. Current total: ${totalPercentage.toFixed(2)}%`;
+      }
+    }
+    
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -285,7 +294,15 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     
     if (!validateForm()) {
       console.error("Validation failed", validationErrors);
-      toast.error('Please fix the errors in the form');
+      
+      if (validationErrors.paymentSchedules) {
+        toast.error(validationErrors.paymentSchedules, {
+          duration: 5000,
+          position: 'top-center'
+        });
+      } else {
+        toast.error('Please fix the errors in the form');
+      }
       return;
     }
 
@@ -737,6 +754,14 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
               Total: {(invoice.paymentSchedules?.reduce((sum, s) => sum + s.percentage, 0) || 0).toFixed(2)}%
             </Badge>
           </div>
+          {validationErrors.paymentSchedules && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                {validationErrors.paymentSchedules}
+              </AlertDescription>
+            </Alert>
+          )}
           <Table>
             <TableHeader>
               <TableRow>

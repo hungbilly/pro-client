@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { toast } from 'sonner';
 import { Download } from 'lucide-react';
@@ -31,11 +30,7 @@ const InvoicePdfView = () => {
     
     navigator.clipboard.writeText(cleanUrl)
       .then(() => {
-        toast.success('Invoice Link Copied', {
-          description: cleanUrl,  // Show the actual copied URL
-          duration: 3000,  // Ensure toast stays visible longer
-          className: 'copy-link-toast'  // Optional: for custom styling
-        });
+        toast.success('Invoice Link Copied');
       })
       .catch((err) => {
         console.error('Failed to copy invoice link:', err);
@@ -64,9 +59,6 @@ const InvoicePdfView = () => {
       toast.error('Failed to download invoice');
     }
   };
-
-  // In a real implementation, you would fetch the invoice using the viewLink
-  // For now, we'll just render a placeholder
 
   return (
     <PageTransition>

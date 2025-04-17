@@ -402,10 +402,20 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
   const handlePaymentScheduleChange = (index: number, field: string, value: any) => {
     const updatedSchedules = [...(invoice.paymentSchedules || [])];
-    updatedSchedules[index] = {
-      ...updatedSchedules[index],
-      [field]: value
-    };
+    
+    if (field === 'amount') {
+      const percentageValue = calculateTotal() > 0 ? (value / calculateTotal()) * 100 : 0;
+      updatedSchedules[index] = {
+        ...updatedSchedules[index],
+        percentage: Math.round(percentageValue * 100) / 100,
+      };
+    } else {
+      updatedSchedules[index] = {
+        ...updatedSchedules[index],
+        [field]: value
+      };
+    }
+    
     setInvoice(prevInvoice => ({
       ...prevInvoice,
       paymentSchedules: updatedSchedules,
@@ -418,9 +428,9 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
       paymentSchedules: [...(prevInvoice.paymentSchedules || []), { 
         id: generateId(), 
         dueDate: format(new Date(), 'yyyy-MM-dd'), 
-        percentage: 0, 
+        percentage: 100,
         status: 'unpaid',
-        description: 'Payment'
+        description: 'Full Payment'
       }],
     }));
   };
@@ -438,6 +448,15 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
   const renderRichTextContent = (content: string) => {
     return { __html: content };
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(amount);
   };
 
   return (
@@ -660,6 +679,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                 <TableHead>Due Date</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead>Percentage</TableHead>
+                <TableHead>Amount</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
@@ -694,17 +714,67 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                     </Popover>
                   </TableCell>
                   <TableCell>
-                    <Input
-                      type="text"
-                      value={schedule.description}
-                      onChange={(e) => handlePaymentScheduleChange(index, 'description', e.target.value)}
-                    />
+                    <Select 
+                      value={schedule.description === 'Deposit' ? 'deposit' : 
+                            schedule.description === 'Balance' ? 'balance' : 
+                            schedule.description === 'Full Payment' ? 'full_payment' : 'custom'}
+                      onValueChange={(value) => {
+                        let description = '';
+                        switch(value) {
+                          case 'deposit':
+                            description = 'Deposit';
+                            break;
+                          case 'balance':
+                            description = 'Balance';
+                            break;
+                          case 'full_payment':
+                            description = 'Full Payment';
+                            break;
+                          case 'custom':
+                            description = schedule.description;
+                            break;
+                        }
+                        handlePaymentScheduleChange(index, 'description', description);
+                      }}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="deposit">Deposit</SelectItem>
+                        <SelectItem value="balance">Balance</SelectItem>
+                        <SelectItem value="full_payment">Full Payment</SelectItem>
+                        <SelectItem value="custom">Custom</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {(schedule.description !== 'Deposit' && 
+                      schedule.description !== 'Balance' && 
+                      schedule.description !== 'Full Payment') && (
+                      <Input
+                        className="mt-2"
+                        type="text"
+                        value={schedule.description}
+                        onChange={(e) => handlePaymentScheduleChange(index, 'description', e.target.value)}
+                        placeholder="Custom description"
+                      />
+                    )}
                   </TableCell>
                   <TableCell>
                     <Input
                       type="number"
                       value={schedule.percentage}
                       onChange={(e) => handlePaymentScheduleChange(index, 'percentage', Number(e.target.value))}
+                      min="0"
+                      max="100"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      type="number"
+                      value={(calculateTotal() * schedule.percentage / 100).toFixed(2)}
+                      onChange={(e) => handlePaymentScheduleChange(index, 'amount', Number(e.target.value))}
+                      min="0"
+                      max={calculateTotal()}
                     />
                   </TableCell>
                   <TableCell>

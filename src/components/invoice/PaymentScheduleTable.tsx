@@ -8,9 +8,11 @@ import { format } from 'date-fns';
 import { PaymentSchedule } from '@/types';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon, Edit2 } from 'lucide-react';
+import { CalendarIcon, Edit2, CircleDollarSign } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface PaymentScheduleTableProps {
   paymentSchedules: PaymentSchedule[];
@@ -21,6 +23,13 @@ interface PaymentScheduleTableProps {
   formatCurrency: (amount: number) => string;
   onUpdatePaymentDate?: (paymentId: string, paymentDate: string) => void;
 }
+
+const PAYMENT_DESCRIPTION_OPTIONS = [
+  { value: 'deposit', label: 'Deposit' },
+  { value: 'balance', label: 'Balance' },
+  { value: 'full_payment', label: 'Full Payment' },
+  { value: 'custom', label: 'Custom' }
+];
 
 const PaymentScheduleTable = memo(({
   paymentSchedules,
@@ -38,6 +47,9 @@ const PaymentScheduleTable = memo(({
   };
 
   const [editingDateId, setEditingDateId] = useState<string | null>(null);
+  const [editingDescriptionId, setEditingDescriptionId] = useState<string | null>(null);
+  const [customDescriptions, setCustomDescriptions] = useState<{[key: string]: string}>({});
+  const [selectedDescriptionTypes, setSelectedDescriptionTypes] = useState<{[key: string]: string}>({});
 
   const handleDateSelect = (paymentId: string, date: Date | undefined) => {
     if (!date || !onUpdatePaymentDate) return;
@@ -53,6 +65,96 @@ const PaymentScheduleTable = memo(({
     });
     
     setEditingDateId(null);
+  };
+
+  const getPaymentAmount = (percentage: number) => {
+    return (amount * percentage) / 100;
+  };
+
+  const renderDescriptionCell = (schedule: PaymentSchedule) => {
+    const descType = selectedDescriptionTypes[schedule.id] || 
+                    (PAYMENT_DESCRIPTION_OPTIONS.some(opt => opt.label === schedule.description) ? 
+                      PAYMENT_DESCRIPTION_OPTIONS.find(opt => opt.label === schedule.description)?.value || 'custom' : 
+                      'custom');
+    
+    if (editingDescriptionId === schedule.id) {
+      return (
+        <div className="flex flex-col space-y-2">
+          <Select 
+            value={descType} 
+            onValueChange={(value) => {
+              setSelectedDescriptionTypes(prev => ({
+                ...prev,
+                [schedule.id]: value
+              }));
+              
+              if (value !== 'custom') {
+                const label = PAYMENT_DESCRIPTION_OPTIONS.find(opt => opt.value === value)?.label || '';
+                setCustomDescriptions(prev => ({
+                  ...prev,
+                  [schedule.id]: label
+                }));
+              }
+            }}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select type" />
+            </SelectTrigger>
+            <SelectContent>
+              {PAYMENT_DESCRIPTION_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
+          {descType === 'custom' && (
+            <Input
+              value={customDescriptions[schedule.id] || schedule.description}
+              onChange={e => {
+                setCustomDescriptions(prev => ({
+                  ...prev,
+                  [schedule.id]: e.target.value
+                }));
+              }}
+              placeholder="Custom description"
+            />
+          )}
+          
+          <div className="flex justify-end">
+            <Button 
+              size="sm" 
+              onClick={() => {
+                setEditingDescriptionId(null);
+              }}
+            >
+              Done
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex items-center justify-between">
+        <span>
+          {descType === 'custom' ? 
+            (customDescriptions[schedule.id] || schedule.description) : 
+            PAYMENT_DESCRIPTION_OPTIONS.find(opt => opt.value === descType)?.label || schedule.description}
+        </span>
+        {!isClientView && (
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-6 w-6 ml-2"
+            onClick={() => setEditingDescriptionId(schedule.id)}
+          >
+            <Edit2 className="h-3 w-3" />
+          </Button>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -72,7 +174,9 @@ const PaymentScheduleTable = memo(({
         <TableBody>
           {paymentSchedules.map((schedule) => (
             <TableRow key={schedule.id}>
-              <TableCell>{schedule.description}</TableCell>
+              <TableCell>
+                {renderDescriptionCell(schedule)}
+              </TableCell>
               <TableCell>
                 {new Date(schedule.dueDate).toLocaleDateString()}
               </TableCell>
@@ -80,7 +184,10 @@ const PaymentScheduleTable = memo(({
                 {schedule.percentage}%
               </TableCell>
               <TableCell className="text-right font-medium">
-                {formatCurrency((amount * schedule.percentage) / 100)}
+                <div className="flex items-center justify-end gap-1">
+                  <CircleDollarSign className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span>{formatCurrency(getPaymentAmount(schedule.percentage))}</span>
+                </div>
               </TableCell>
               <TableCell>
                 <Badge className={paymentStatusColors[schedule.status] || paymentStatusColors.unpaid}>

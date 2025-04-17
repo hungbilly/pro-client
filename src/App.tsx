@@ -2,11 +2,12 @@
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import Routes from './Routes';
-import { Toaster } from 'sonner';  // Import Sonner Toaster
+import { Toaster } from 'sonner';
 import CompanyProvider from './context/CompanyContext';
 import { AuthProvider } from './context/AuthContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import SubscriptionProvider from './context/SubscriptionContext';
+import ThemeProvider from './context/ThemeContext';
 
 // Configure the query client
 const queryClient = new QueryClient({
@@ -30,7 +31,9 @@ function App() {
           />
           <SubscriptionProvider>
             <CompanyProvider>
-              <Routes />
+              <ThemeProvider>
+                <Routes />
+              </ThemeProvider>
             </CompanyProvider>
           </SubscriptionProvider>
         </AuthProvider>

@@ -4,7 +4,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 
 // Define our theme palettes with descriptive names and color values
-const themes = [
+export const themes = [
   {
     id: 'modern-blue',
     name: 'Modern Blue',
@@ -125,6 +125,3 @@ const ThemeSelector: React.FC<ThemeSelectorProps> = ({ value, onChange }) => {
 };
 
 export default ThemeSelector;
-
-// Export the themes for use elsewhere in the application
-export { themes };

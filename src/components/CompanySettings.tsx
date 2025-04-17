@@ -1,12 +1,10 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PlusCircle, Trash2, Check, Upload, X, Image, Clock } from 'lucide-react';
+import { PlusCircle, Trash2, Check, Upload, X, Image, Clock, Palette } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
@@ -15,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { CountryDropdown } from './ui/country-dropdown';
 import { CurrencyDropdown } from './ui/currency-dropdown';
 import { timezones } from '@/lib/timezones';
+import ThemeSelector from './ThemeSelector';
 
 interface Company {
   id: string;
@@ -27,6 +26,7 @@ interface Company {
   country?: string;
   currency?: string;
   timezone: string;
+  theme?: string;
   is_default: boolean;
 }
 
@@ -48,6 +48,7 @@ const CompanySettings = () => {
   const [country, setCountry] = useState('hk');
   const [currency, setCurrency] = useState('hkd');
   const [timezone, setTimezone] = useState('UTC');
+  const [theme, setTheme] = useState('modern-blue');
   const [isDefault, setIsDefault] = useState(false);
 
   useEffect(() => {
@@ -82,6 +83,7 @@ const CompanySettings = () => {
     setCountry(company.country || 'hk');
     setCurrency(company.currency || 'hkd');
     setTimezone(company.timezone || 'UTC');
+    setTheme(company.theme || 'modern-blue');
     setIsDefault(company.is_default);
   };
 
@@ -95,6 +97,7 @@ const CompanySettings = () => {
     setCountry('hk');
     setCurrency('hkd');
     setTimezone(userLocalTimezone); // Set to user's local timezone by default for new companies
+    setTheme('modern-blue');
     setIsDefault(companies.length === 0);
   };
 
@@ -141,6 +144,7 @@ const CompanySettings = () => {
             country,
             currency,
             timezone,
+            theme,
             is_default: isDefault
           })
           .select()
@@ -169,6 +173,7 @@ const CompanySettings = () => {
             country,
             currency,
             timezone,
+            theme,
             is_default: isDefault,
             updated_at: new Date().toISOString()
           })
@@ -403,6 +408,15 @@ const CompanySettings = () => {
               </p>
             </div>
           </div>
+        </div>
+        
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <Palette className="h-4 w-4 text-muted-foreground" />
+            <Label htmlFor="theme" className="text-lg">Company Theme</Label>
+          </div>
+          <p className="text-sm text-muted-foreground mb-4">Select a color theme for your company branding</p>
+          <ThemeSelector value={theme} onChange={setTheme} />
         </div>
         
         <div>

@@ -21,6 +21,7 @@ export interface Company {
   country?: string;
   currency?: string;
   timezone: string;
+  theme?: string;
   is_default: boolean;
   user_id: string;
   created_at: string;

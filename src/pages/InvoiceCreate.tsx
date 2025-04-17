@@ -253,7 +253,7 @@ const InvoiceCreate = () => {
               </Card>}
 
             {client && <Card className="bg-blue-500 text-white border-blue-600">
-                <CardContent className="pt-6 bg-[#85a0ba]">
+                <CardContent className="pt-6 bg-[#6e9dca]">
                   <h2 className="font-semibold mb-4">Client</h2>
                   <div className="flex items-center gap-2 mb-4">
                     <User className="h-4 w-4" />

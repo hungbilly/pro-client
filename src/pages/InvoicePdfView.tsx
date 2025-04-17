@@ -16,6 +16,7 @@ const InvoicePdfView = () => {
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [functionError, setFunctionError] = useState<string | null>(null);
   const { viewLink } = useParams<{ viewLink: string }>();
+  const [isDownloading, setIsDownloading] = useState(false);
 
   useEffect(() => {
     const fetchInvoice = async () => {
@@ -127,21 +128,92 @@ const InvoicePdfView = () => {
     }
   };
 
-  const handleDownloadPdf = () => {
-    if (!invoice?.pdfUrl) return;
+  const handleCopyInvoiceLink = () => {
+    if (!invoice) return;
+    
+    const baseUrl = window.location.origin;
+    
+    let cleanViewLink = invoice.viewLink;
+    if (cleanViewLink.includes('http') || cleanViewLink.includes('/invoice/')) {
+      const parts = cleanViewLink.split('/');
+      cleanViewLink = parts[parts.length - 1];
+    }
+    
+    const cleanUrl = `${baseUrl}/invoice/${cleanViewLink}`;
+    
+    navigator.clipboard.writeText(cleanUrl)
+      .then(() => {
+        toast.success('Invoice link copied to clipboard', {
+          description: 'You can now share this link with others.'
+        });
+      })
+      .catch((err) => {
+        console.error('Failed to copy invoice link:', err);
+        toast.error('Failed to copy link to clipboard');
+      });
+  };
+
+  const handleDownloadInvoice = async () => {
+    if (!invoice) return;
+    
+    if (invoice.pdfUrl) {
+      try {
+        setIsDownloading(true);
+        toast.info('Preparing invoice for download...', {
+          description: 'Your download will start shortly.'
+        });
+
+        const link = document.createElement('a');
+        link.href = invoice.pdfUrl;
+        link.setAttribute('download', `Invoice-${invoice.number}.pdf`);
+        document.body.appendChild(link);
+        link.click();
+        
+        document.body.removeChild(link);
+        
+        toast.success('Invoice downloaded successfully');
+      } catch (err) {
+        console.error('Error during download:', err);
+        toast.error('Failed to download invoice');
+      } finally {
+        setIsDownloading(false);
+      }
+      return;
+    }
     
     try {
-      const link = document.createElement('a');
-      link.href = invoice.pdfUrl;
-      link.setAttribute('download', `Invoice-${invoice.number || 'download'}.pdf`);
-      document.body.appendChild(link);
-      link.click();
+      setIsDownloading(true);
+      toast.info('Generating PDF for download...', {
+        description: 'This might take a moment.'
+      });
       
-      document.body.removeChild(link);
-      toast.success('Invoice downloaded successfully');
+      const { data, error } = await supabase.functions.invoke('generate-invoice-pdf', {
+        body: { invoiceId: invoice.id }
+      });
+      
+      if (error) {
+        console.error('Error generating PDF:', error);
+        toast.error('Failed to generate invoice PDF');
+        return;
+      }
+      
+      if (data?.pdfUrl) {
+        setInvoice(prev => prev ? { ...prev, pdfUrl: data.pdfUrl } : null);
+        
+        const link = document.createElement('a');
+        link.href = data.pdfUrl;
+        link.setAttribute('download', `Invoice-${invoice.number}.pdf`);
+        document.body.appendChild(link);
+        link.click();
+        
+        document.body.removeChild(link);
+        toast.success('Invoice downloaded successfully');
+      }
     } catch (err) {
-      console.error('Error during download:', err);
+      console.error('Error downloading invoice:', err);
       toast.error('Failed to download invoice');
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -200,9 +272,22 @@ const InvoicePdfView = () => {
               <span>Invoice #{invoice.number}</span>
               <div className="flex gap-2">
                 {invoice.pdfUrl && (
-                  <Button variant="outline" size="sm" onClick={handleDownloadPdf}>
-                    <Download className="h-4 w-4 mr-2" />
-                    Download PDF
+                  <Button
+                    variant="default"
+                    onClick={handleDownloadInvoice}
+                    disabled={isDownloading}
+                  >
+                    {isDownloading ? (
+                      <>
+                        <Download className="h-4 w-4 mr-2 animate-spin" />
+                        Downloading...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="h-4 w-4 mr-2" />
+                        Download Invoice
+                      </>
+                    )}
                   </Button>
                 )}
                 {!invoice.pdfUrl && !generatingPdf && (

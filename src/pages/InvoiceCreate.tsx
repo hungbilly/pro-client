@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { supabase, logDebug, logError, logDataTransformation, formatDate, parseDate } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
-import { Briefcase, User, Mail, Phone, Calendar } from 'lucide-react';
+import { Briefcase, User, Mail, Phone, Calendar, MapPin } from 'lucide-react';
 import { format } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
 
@@ -233,66 +233,71 @@ const InvoiceCreate = () => {
           </div>
         </div>
 
-        {job && (
-          <Card>
-            <CardContent className="pt-6">
-              <h2 className="font-semibold mb-4">Job</h2>
-              <div className="flex items-center gap-2 mb-4">
-                <Briefcase className="h-4 w-4" />
-                <span className="font-medium">{job.title}</span>
-              </div>
-              
-              <div className="text-sm text-muted-foreground">
-                {job.description && (
-                  <div className="mb-3">{job.description}</div>
-                )}
-                
-                <div className="flex items-center gap-2 mt-2">
-                  <Calendar className="h-4 w-4" />
-                  <span>
-                    {job.date ? (
-                      format(new Date(job.date), 'PPP')
-                    ) : (
-                      'No date specified'
-                    )}
-                    {job.startTime && job.endTime && (
-                      <span> ({job.startTime} - {job.endTime})</span>
-                    )}
-                  </span>
-                </div>
-                
-                {job.location && (
-                  <div className="mt-2">
-                    <strong>Location:</strong> {job.location}
+        {(job || client) && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            {job && (
+              <Card>
+                <CardContent className="pt-6">
+                  <h2 className="font-semibold mb-4">Job</h2>
+                  <div className="flex items-center gap-2 mb-4">
+                    <Briefcase className="h-4 w-4" />
+                    <span className="font-medium">{job.title}</span>
                   </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+                  
+                  <div className="text-sm text-muted-foreground">
+                    {job.description && (
+                      <div className="mb-3">{job.description}</div>
+                    )}
+                    
+                    <div className="flex items-center gap-2 mt-2">
+                      <Calendar className="h-4 w-4" />
+                      <span>
+                        {job.date ? (
+                          format(new Date(job.date), 'PPP')
+                        ) : (
+                          'No date specified'
+                        )}
+                        {job.startTime && job.endTime && (
+                          <span> ({job.startTime} - {job.endTime})</span>
+                        )}
+                      </span>
+                    </div>
+                    
+                    {job.location && (
+                      <div className="flex items-center gap-2 mt-2">
+                        <MapPin className="h-4 w-4" />
+                        <span>{job.location}</span>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
-        {client && (
-          <Card>
-            <CardContent className="pt-6">
-              <h2 className="font-semibold mb-4">Client</h2>
-              <div className="flex items-center gap-2 mb-4">
-                <User className="h-4 w-4" />
-                <span className="font-medium">{client.name}</span>
-              </div>
-              
-              <div className="text-sm text-muted-foreground">
-                <div className="flex items-center gap-2 mb-2">
-                  <Mail className="h-4 w-4" />
-                  <span>{client.email}</span>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <Phone className="h-4 w-4" />
-                  <span>{client.phone}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+            {client && (
+              <Card className="bg-blue-500 text-white border-blue-600">
+                <CardContent className="pt-6">
+                  <h2 className="font-semibold mb-4">Client</h2>
+                  <div className="flex items-center gap-2 mb-4">
+                    <User className="h-4 w-4" />
+                    <span className="font-medium">{client.name}</span>
+                  </div>
+                  
+                  <div className="text-sm">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Mail className="h-4 w-4" />
+                      <span>{client.email}</span>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <Phone className="h-4 w-4" />
+                      <span>{client.phone}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
         )}
 
         {!job && !client && (

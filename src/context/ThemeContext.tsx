@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect } from 'react';
 import { themes } from '@/components/ThemeSelector';
 import { useCompany } from '@/components/CompanySelector';
@@ -27,16 +28,17 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // Apply theme colors to CSS variables
     const root = document.documentElement;
     
-    // Set background colors
+    // Set CSS custom properties using HSL values
     root.style.setProperty('--background', theme.colors.background);
     root.style.setProperty('--module-background', theme.colors.moduleBackground);
-    
-    // Set text colors
+    root.style.setProperty('--title-bar-background', theme.colors.titleBarBackground);
     root.style.setProperty('--text', theme.colors.text);
     root.style.setProperty('--muted-text', theme.colors.mutedText);
-    
-    // Set accent color
     root.style.setProperty('--accent', theme.colors.accent);
+    root.style.setProperty('--border', theme.colors.border);
+    root.style.setProperty('--button-primary', theme.colors.buttonPrimary);
+    root.style.setProperty('--button-primary-foreground', theme.colors.buttonPrimaryForeground);
+    root.style.setProperty('--hover', theme.colors.hover);
     
     console.log(`Applied theme: ${themeName}`);
   };

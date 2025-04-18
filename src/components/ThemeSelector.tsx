@@ -8,44 +8,48 @@ export const themes = [
     id: 'modern-blue',
     name: 'Modern Blue',
     colors: {
-      background: '#F1F5F9',
-      moduleBackground: '#FFFFFF',
-      accent: '#3B82F6',
-      text: '#1E293B',
-      mutedText: '#64748B'
+      background: '210 40% 98%',
+      moduleBackground: '0 0% 100%',
+      titleBarBackground: '210 60% 95%',
+      text: '222 84% 10%',
+      mutedText: '215 16% 47%',
+      accent: '210 80% 50%',
+      border: '214 32% 91%',
+      buttonPrimary: '210 80% 50%',
+      buttonPrimaryForeground: '0 0% 100%',
+      hover: '210 80% 60%'
     }
   },
   {
-    id: 'warm-terra',
-    name: 'Warm Terra',
+    id: 'dark-emerald',
+    name: 'Dark Emerald',
     colors: {
-      background: '#FEF7F2',
-      moduleBackground: '#FFFFFF',
-      accent: '#F97316',
-      text: '#422006',
-      mutedText: '#9A7C6A'
+      background: '180 10% 10%',
+      moduleBackground: '180 8% 15%',
+      titleBarBackground: '180 10% 20%',
+      text: '180 20% 90%',
+      mutedText: '180 15% 65%',
+      accent: '170 60% 45%',
+      border: '180 10% 30%',
+      buttonPrimary: '170 60% 45%',
+      buttonPrimaryForeground: '180 20% 95%',
+      hover: '170 60% 55%'
     }
   },
   {
-    id: 'deep-purple',
-    name: 'Deep Purple',
+    id: 'warm-sunset',
+    name: 'Warm Sunset',
     colors: {
-      background: '#F3F0FF',
-      moduleBackground: '#FFFFFF',
-      accent: '#8B5CF6',
-      text: '#2E1065',
-      mutedText: '#7C3AED'
-    }
-  },
-  {
-    id: 'elegant-green',
-    name: 'Elegant Green',
-    colors: {
-      background: '#F0FDF4',
-      moduleBackground: '#FFFFFF',
-      accent: '#10B981',
-      text: '#064E3B',
-      mutedText: '#6EE7B7'
+      background: '30 40% 98%',
+      moduleBackground: '0 0% 100%',
+      titleBarBackground: '30 50% 94%',
+      text: '25 60% 20%',
+      mutedText: '25 40% 50%',
+      accent: '15 80% 60%',
+      border: '30 30% 88%',
+      buttonPrimary: '15 80% 60%',
+      buttonPrimaryForeground: '0 0% 100%',
+      hover: '15 80% 70%'
     }
   }
 ];
@@ -87,7 +91,7 @@ const ThemeSelector: React.FC<ThemeSelectorProps> = ({
                   key={colorKey}
                   className="w-4 h-4 rounded-sm mr-1"
                   style={{ 
-                    backgroundColor: themeOption.colors[colorKey],
+                    backgroundColor: `hsl(${themeOption.colors[colorKey]})`,
                     boxShadow: 'inset 0 0 1px rgba(0,0,0,0.3)'
                   }}
                 />

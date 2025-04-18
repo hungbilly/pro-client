@@ -1,8 +1,8 @@
 
 import React from 'react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Palette } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Palette } from 'lucide-react';
 
 export const themes = [
   {
@@ -63,24 +63,24 @@ interface ThemeSelectorProps {
 
 const ThemeSelector: React.FC<ThemeSelectorProps> = ({ theme, setTheme, className }) => {
   return (
-    <Select value={theme} onValueChange={setTheme}>
-      <SelectTrigger className={cn("w-full bg-background text-foreground", className)}>
-        <div className="flex items-center gap-2">
-          <Palette className="h-4 w-4 opacity-70" />
-          <SelectValue 
-            placeholder="Select a theme" 
-            className="text-foreground opacity-100"
-          />
-        </div>
-      </SelectTrigger>
-      <SelectContent className="bg-background text-foreground">
+    <div className={cn("space-y-4", className)}>
+      <div className="flex items-center gap-2">
+        <Palette className="h-4 w-4 text-muted-foreground" />
+        <h3 className="font-medium">Available Themes</h3>
+      </div>
+      
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {themes.map(themeOption => (
-          <SelectItem 
-            key={themeOption.id} 
-            value={themeOption.id}
-            className="text-foreground hover:bg-accent hover:text-accent-foreground"
+          <Button
+            key={themeOption.id}
+            onClick={() => setTheme(themeOption.id)}
+            variant={theme === themeOption.id ? "default" : "outline"}
+            className={cn(
+              "h-auto p-4 w-full justify-start gap-4",
+              theme === themeOption.id && "ring-2 ring-primary"
+            )}
           >
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center gap-4 w-full">
               <div className="flex space-x-1">
                 <div
                   className="w-4 h-4 rounded"
@@ -98,12 +98,12 @@ const ThemeSelector: React.FC<ThemeSelectorProps> = ({ theme, setTheme, classNam
                   title="Primary"
                 />
               </div>
-              <span>{themeOption.name}</span>
+              <span className="flex-1 text-left">{themeOption.name}</span>
             </div>
-          </SelectItem>
+          </Button>
         ))}
-      </SelectContent>
-    </Select>
+      </div>
+    </div>
   );
 };
 

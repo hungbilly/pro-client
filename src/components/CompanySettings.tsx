@@ -554,6 +554,13 @@ const CompanySettings = () => {
           </Button>
         </div>
       </div>
+
+      <div className="border-t pt-6 mt-8">
+        <ThemeSelector 
+          theme={theme} 
+          setTheme={setTheme}
+        />
+      </div>
     </div>
   );
 };

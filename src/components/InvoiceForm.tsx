@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2, Calendar as CalendarIcon, CalendarPlus, Pencil, Copy, Package as PackageIcon, AlertCircle, Briefcase, Mail, User } from 'lucide-react';
+import { Plus, Trash2, Calendar as CalendarIcon, CalendarPlus, Pencil, Copy, Package as PackageIcon, AlertCircle, Briefcase, Mail, User, BadgePercent } from 'lucide-react';
 import { toast } from 'sonner';
 import { getClient, saveInvoice, updateInvoice, getJob, getInvoice, getInvoicesByDate, deleteInvoice } from '@/lib/storage';
 import { format } from 'date-fns';
@@ -690,10 +690,16 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                   You currently don't have any product or package added to
                   your Invoice. Click the button below to start adding them.
                 </p>
-                <Button onClick={openAddProductDialog} className="bg-green-600 hover:bg-green-700">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Products & Packages
-                </Button>
+                <div className="flex justify-center space-x-4">
+                  <Button onClick={openAddProductDialog} className="bg-green-600 hover:bg-green-700">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Products & Packages
+                  </Button>
+                  <Button onClick={openAddDiscountDialog} variant="outline" className="border-green-600 text-green-600 hover:bg-green-50">
+                    <BadgePercent className="mr-2 h-4 w-4" />
+                    Add Discount
+                  </Button>
+                </div>
               </div>
             ) : (
               <div className="border rounded-lg overflow-hidden">
@@ -716,10 +722,14 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                 </Table>
                 
                 <div className="flex justify-between p-4 border-t">
-                  <div>
+                  <div className="flex space-x-4">
                     <Button variant="outline" className="bg-emerald-600 text-white hover:bg-emerald-700" onClick={openAddProductDialog}>
                       <Plus className="mr-2 h-4 w-4" />
                       Add Products & Packages
+                    </Button>
+                    <Button variant="outline" className="border-green-600 text-green-600 hover:bg-green-50" onClick={openAddDiscountDialog}>
+                      <BadgePercent className="mr-2 h-4 w-4" />
+                      Add Discount
                     </Button>
                   </div>
                   <div className="space-y-2 text-right">
@@ -893,153 +903,3 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                   <TableCell>
                     <Select value={schedule.status} onValueChange={(value) => handlePaymentScheduleChange(index, 'status', value)}>
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="unpaid">Pending</SelectItem>
-                        <SelectItem value="paid">Paid</SelectItem>
-                        <SelectItem value="write-off">Write-off</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => handleRemovePaymentSchedule(schedule.id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-
-        <div>
-          <Button type="button" variant="outline" onClick={handleAddPaymentSchedule}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Payment Schedule
-          </Button>
-        </div>
-      </CardContent>
-
-      <CardFooter className="flex justify-between">
-        <div>
-          {invoice.id && (
-            <Button 
-              variant="destructive" 
-              onClick={() => setShowDeleteConfirmation(true)} 
-              disabled={isDeleting}
-            >
-              {isDeleting ? 'Deleting...' : 'Delete Invoice'}
-            </Button>
-          )}
-        </div>
-        <div className="flex space-x-2">
-          <Button 
-            variant="outline" 
-            onClick={() => {
-              if (invoice.jobId) {
-                navigate(`/job/${invoice.jobId}`);
-              } else if (invoice.clientId) {
-                navigate(`/client/${invoice.clientId}`);
-              } else {
-                navigate('/');
-              }
-            }}
-          >
-            Cancel
-          </Button>
-          <Button onClick={handleSubmit} disabled={isSaving}>
-            {isSaving ? 'Saving...' : 'Save Invoice'}
-          </Button>
-        </div>
-      </CardFooter>
-
-      <Dialog open={showDeleteConfirmation} onOpenChange={setShowDeleteConfirmation}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Invoice</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete this invoice? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDeleteConfirmation(false)}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
-              {isDeleting ? 'Deleting...' : 'Delete Invoice'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Select Contract Template</DialogTitle>
-            <DialogDescription>
-              Choose a template to apply to this invoice.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="max-h-[300px] overflow-y-auto">
-            {contractTemplates.map(template => (
-              <div 
-                key={template.id} 
-                className="p-3 border mb-2 rounded cursor-pointer hover:bg-slate-50"
-                onClick={() => handleTemplateSelect(template)}
-              >
-                <div className="font-medium">{template.name}</div>
-                {template.description && <div className="text-sm text-gray-500">{template.description}</div>}
-              </div>
-            ))}
-            {contractTemplates.length === 0 && (
-              <div className="p-3 text-center text-gray-500">
-                No templates available. You can create contract templates in the settings.
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={applyTemplate} 
-              disabled={!selectedTemplate}
-            >
-              Apply Template
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <AddProductPackageDialog 
-        open={showAddProductDialog} 
-        onOpenChange={setShowAddProductDialog}
-        onAddItems={handlePackageSelect}
-      />
-
-      <AddDiscountDialog
-        open={showAddDiscountDialog}
-        onOpenChange={setShowAddDiscountDialog}
-        onAddDiscount={(discount) => {
-          if (discount) {
-            setInvoice(prevInvoice => ({
-              ...prevInvoice,
-              items: [...prevInvoice.items, {
-                id: generateId(),
-                name: discount.name,
-                description: discount.description || '',
-                rate: -Math.abs(discount.amount || 0),
-                quantity: 1,
-                amount: -Math.abs(discount.amount || 0),
-              }],
-            }));
-          }
-        }}
-        subtotal={calculateTotal()}
-      />
-    </Card>
-  );
-};
-
-export default InvoiceForm;

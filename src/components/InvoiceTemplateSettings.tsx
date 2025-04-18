@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -12,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Plus, Save, Trash2 } from 'lucide-react';
 import { useCompanyContext } from '@/context/CompanyContext';
-import { InvoiceTemplate } from '@/types';
+import { InvoiceTemplate, InvoiceItem } from '@/types';
 import PackageSelector from './PackageSelector';
 
 // Schema for template form
@@ -61,7 +60,29 @@ const InvoiceTemplateSettings = () => {
         .eq('company_id', selectedCompany.id);
 
       if (error) throw error;
-      setTemplates(data || []);
+      
+      // Convert from database format to our app format
+      const formattedTemplates = data?.map(template => ({
+        id: template.id,
+        name: template.name,
+        description: template.description || undefined,
+        items: template.content ? JSON.parse(template.content).items || [] : [],
+        contractTerms: template.contract_terms || undefined,
+        notes: template.description || undefined,
+        companyId: template.company_id,
+        userId: template.user_id,
+        createdAt: template.created_at,
+        updatedAt: template.updated_at,
+        // Keep the database format fields too
+        company_id: template.company_id,
+        user_id: template.user_id,
+        content: template.content,
+        contract_terms: template.contract_terms,
+        created_at: template.created_at,
+        updated_at: template.updated_at,
+      })) as InvoiceTemplate[];
+      
+      setTemplates(formattedTemplates || []);
     } catch (error) {
       console.error('Error loading invoice templates:', error);
       toast.error('Failed to load invoice templates');
@@ -78,6 +99,30 @@ const InvoiceTemplateSettings = () => {
     setSelectedItems(prev => prev.filter(item => item.id !== itemId));
   };
 
+  const handleDeleteTemplate = async (templateId: string) => {
+    if (!confirm("Are you sure you want to delete this template?")) {
+      return;
+    }
+    
+    setIsLoading(true);
+    try {
+      const { error } = await supabase
+        .from('invoice_templates')
+        .delete()
+        .eq('id', templateId);
+        
+      if (error) throw error;
+      
+      toast.success('Template deleted successfully');
+      loadTemplates();
+    } catch (error) {
+      console.error('Error deleting template:', error);
+      toast.error('Failed to delete template');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const onSubmit = async (values: TemplateFormValues) => {
     if (!selectedCompany || !user) {
       toast.error('Missing required context');
@@ -86,14 +131,20 @@ const InvoiceTemplateSettings = () => {
 
     setIsLoading(true);
     try {
+      // Format the template data for storage
+      const content = JSON.stringify({
+        items: selectedItems,
+        contractTerms: values.contractTerms,
+        notes: values.notes
+      });
+      
       const templateData = {
         company_id: selectedCompany.id,
         user_id: user.id,
         name: values.name,
         description: values.description || null,
-        items: selectedItems,
+        content: content,
         contract_terms: values.contractTerms || null,
-        notes: values.notes || null,
       };
 
       let result;
@@ -286,7 +337,7 @@ const InvoiceTemplateSettings = () => {
                   <div className="space-y-1">
                     {template.items.map((item, index) => (
                       <div key={index} className="text-sm">
-                        {item.name} - ${item.rate} x {item.quantity}
+                        {item.name || item.productName} - ${item.rate} x {item.quantity}
                       </div>
                     ))}
                   </div>

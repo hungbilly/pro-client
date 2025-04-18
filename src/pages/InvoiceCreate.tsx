@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import InvoiceForm from '@/components/InvoiceForm';
 import { getInvoice, getClient, getJob } from '@/lib/storage';
-import { Invoice, Client, Job } from '@/types';
+import { Invoice, Client, Job, InvoiceTemplate } from '@/types';
 import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { supabase, logDebug, logError, logDataTransformation, formatDate, parseDate } from '@/integrations/supabase/client';
@@ -11,7 +11,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Briefcase, User, Mail, Phone, Calendar, MapPin } from 'lucide-react';
 import { format } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
-import { FormLabel, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, Button } from '@radix-ui/react-select';
+import { FormLabel } from '@/components/ui/form';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { useCompanyContext } from '@/context/CompanyContext';
 
 interface ContractTemplate {
   id: string;
@@ -31,6 +34,7 @@ const InvoiceCreate = () => {
   const [loadingTemplates, setLoadingTemplates] = useState(true);
   const [templates, setTemplates] = useState<InvoiceTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  const { selectedCompany } = useCompanyContext();
 
   logDebug('InvoiceCreate component initialized with params:', { clientId, jobId, invoiceId });
 
@@ -141,7 +145,27 @@ const InvoiceCreate = () => {
           .eq('company_id', selectedCompany.id);
 
         if (error) throw error;
-        setTemplates(data || []);
+        
+        const formattedTemplates = data?.map(template => ({
+          id: template.id,
+          name: template.name,
+          description: template.description || undefined,
+          items: template.content ? JSON.parse(template.content).items || [] : [],
+          contractTerms: template.contract_terms || undefined,
+          notes: template.description || undefined,
+          companyId: template.company_id,
+          userId: template.user_id,
+          createdAt: template.created_at,
+          updatedAt: template.updated_at,
+          company_id: template.company_id,
+          user_id: template.user_id,
+          content: template.content,
+          contract_terms: template.contract_terms,
+          created_at: template.created_at,
+          updated_at: template.updated_at,
+        })) as InvoiceTemplate[];
+        
+        setTemplates(formattedTemplates || []);
       } catch (error) {
         console.error('Error fetching invoice templates:', error);
         toast.error('Failed to load invoice templates');
@@ -151,7 +175,7 @@ const InvoiceCreate = () => {
     fetchInvoiceData();
     fetchContractTemplates();
     fetchTemplates();
-  }, [clientId, jobId, invoiceId, navigate]);
+  }, [clientId, jobId, invoiceId, navigate, selectedCompany]);
 
   if (loading || loadingTemplates) {
     return (

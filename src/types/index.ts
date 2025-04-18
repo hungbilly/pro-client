@@ -1,3 +1,4 @@
+
 export interface Client {
   id: string;
   name: string;
@@ -68,6 +69,13 @@ export interface InvoiceTemplate {
   userId: string;
   createdAt: string;
   updatedAt: string;
+  // Match these with the database fields
+  company_id?: string;
+  user_id: string;
+  contract_terms?: string;
+  content?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Package {

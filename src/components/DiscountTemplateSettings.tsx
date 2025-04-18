@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -251,8 +250,8 @@ const DiscountTemplateSettings = () => {
                   )}
                   <p className="text-sm font-medium mt-2">
                     {template.type === 'percentage' 
-                      ? `${template.amount}% off`
-                      : `$${template.amount.toFixed(2)} off`}
+                      ? `${String(template.amount)}% off`
+                      : `$${Number(template.amount).toFixed(2)} off`}
                   </p>
                 </div>
                 <Button

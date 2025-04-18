@@ -24,7 +24,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import AddProductPackageDialog from './AddProductPackageDialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import ColorPicker from './invoice/ColorPicker';
 
 interface ContractTemplate {
   id: string;
@@ -86,8 +85,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
       paymentSchedules: [],
       companyId: selectedCompany?.id || '',
       viewLink: generateViewLink(),
-      backgroundColor: '#ffffff',
-      textColor: '#000000',
     }
   );
   const [client, setClient] = useState<Client | null>(null);
@@ -899,87 +896,72 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
             Add Payment Schedule
           </Button>
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <ColorPicker
-            label="Invoice Background Color"
-            value={invoice.backgroundColor || '#ffffff'}
-            onChange={(value) => setInvoice(prev => ({ ...prev, backgroundColor: value }))}
-          />
-          <ColorPicker
-            label="Invoice Text Color"
-            value={invoice.textColor || '#000000'}
-            onChange={(value) => setInvoice(prev => ({ ...prev, textColor: value }))}
-          />
-        </div>
       </CardContent>
-      <CardFooter className="flex flex-col sm:flex-row gap-2 justify-between border-t pt-6">
-        <div className="flex gap-2">
-          {invoice.id && (
-            <Button variant="destructive" onClick={() => setShowDeleteConfirmation(true)} disabled={isDeleting}>
-              {isDeleting ? 'Deleting...' : 'Delete Invoice'}
-            </Button>
-          )}
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => {
-            if (invoice.jobId) {
-              navigate(`/job/${invoice.jobId}`);
-            } else if (invoice.clientId) {
-              navigate(`/client/${invoice.clientId}`);
-            } else {
-              navigate('/');
-            }
-          }}>
-            Cancel
+      <CardFooter className="flex justify-between">
+        {invoice.id ? (
+          <Button variant="destructive" onClick={() => setShowDeleteConfirmation(true)} disabled={isDeleting}>
+            {isDeleting ? (
+              <>
+                Deleting...
+              </>
+            ) : (
+              <>
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </>
+            )}
           </Button>
-          <Button onClick={handleSubmit} disabled={isSaving} className="bg-green-600 hover:bg-green-700">
-            {isSaving ? 'Saving...' : (invoice.id ? 'Update Invoice' : 'Save Invoice')}
+        ) : (
+          <div></div>
+        )}
+        <div className="flex gap-2">
+          <Button 
+            type="button"
+            onClick={(e) => {
+              console.log("Save button clicked");
+              handleSubmit(e);
+            }} 
+            disabled={isSaving}
+          >
+            {isSaving ? (
+              <>
+                Saving...
+              </>
+            ) : (
+              <>
+                {invoice.id ? 'Update Invoice' : 'Create Invoice'}
+              </>
+            )}
           </Button>
         </div>
       </CardFooter>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
+      <Dialog open={isDialogOpen} onOpenChange={() => setIsDialogOpen(false)}>
+        <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Choose Contract Template</DialogTitle>
+            <DialogTitle>Select a Template</DialogTitle>
             <DialogDescription>
-              Select a contract template to use for this invoice's terms and conditions.
+              Choose a template to apply to the terms and conditions.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-2 max-h-[300px] overflow-y-auto">
+          <div className="grid gap-4 py-4">
             {contractTemplates.map((template) => (
-              <div 
-                key={template.id}
-                className="border rounded-md p-3 cursor-pointer hover:bg-gray-50"
-                onClick={() => handleTemplateSelect(template)}
-              >
-                <h3 className="font-medium">{template.name}</h3>
-                {template.description && (
-                  <p className="text-sm text-gray-500">{template.description}</p>
-                )}
+              <div key={template.id} className="border rounded-md p-4 cursor-pointer hover:bg-secondary" onClick={() => handleTemplateSelect(template)}>
+                <h3 className="text-lg font-semibold">{template.name}</h3>
+                <p className="text-sm text-muted-foreground">{template.description}</p>
               </div>
             ))}
-            {contractTemplates.length === 0 && (
-              <p className="text-gray-500 italic">No contract templates found.</p>
-            )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={applyTemplate} 
-              disabled={!selectedTemplate}
-            >
+            <Button type="button" onClick={applyTemplate}>
               Apply Template
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showDeleteConfirmation} onOpenChange={setShowDeleteConfirmation}>
-        <DialogContent>
+      <Dialog open={showDeleteConfirmation} onOpenChange={() => setShowDeleteConfirmation(false)}>
+        <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Delete Invoice</DialogTitle>
             <DialogDescription>
@@ -987,21 +969,25 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDeleteConfirmation(false)}>
+            <Button type="button" variant="secondary" onClick={() => setShowDeleteConfirmation(false)}>
               Cancel
             </Button>
-            <Button 
-              variant="destructive" 
-              onClick={handleDelete} 
-              disabled={isDeleting}
-            >
-              {isDeleting ? 'Deleting...' : 'Delete Invoice'}
+            <Button type="button" variant="destructive" onClick={handleDelete} disabled={isDeleting}>
+              {isDeleting ? (
+                <>
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  Delete
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <AddProductPackageDialog
+      <AddProductPackageDialog 
         isOpen={showAddProductDialog}
         onClose={() => setShowAddProductDialog(false)}
         onPackageSelect={handlePackageSelect}

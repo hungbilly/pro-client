@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Shield, Users, Calendar } from 'lucide-react';
+import { Shield, Users, Calendar, Palette } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -72,7 +72,7 @@ const Admin = () => {
         <h1 className="text-3xl font-bold">Admin Dashboard</h1>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <Card className="bg-gradient-to-br from-purple-50 to-blue-50">
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -91,6 +91,29 @@ const Admin = () => {
               <Link to="/admin/calendar-test" className="inline-flex items-center">
                 <Calendar className="mr-2 h-4 w-4" />
                 Open Calendar Test Page
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-indigo-50 to-purple-50">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Palette className="mr-2 h-5 w-5 text-indigo-600" />
+              Theme Management
+            </CardTitle>
+            <CardDescription>
+              Customize application themes and appearance
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="mb-4 text-sm text-gray-600">
+              Create, edit, and manage themes for your application's appearance.
+            </p>
+            <Button asChild>
+              <Link to="/admin/themes" className="inline-flex items-center">
+                <Palette className="mr-2 h-4 w-4" />
+                Manage Themes
               </Link>
             </Button>
           </CardContent>

@@ -1,108 +1,95 @@
 
-import React from 'react';
-import { Route, Routes as ReactRoutes } from 'react-router-dom';
-import Index from './pages/Index';
-import Auth from './pages/Auth';
-import NotFound from './pages/NotFound';
-import Clients from './pages/Clients';
-import ClientDetail from './pages/ClientDetail';
-import ClientNew from './pages/ClientNew';
-import ClientEdit from './pages/ClientEdit';
-import InvoiceView from './pages/InvoiceView';
-import InvoiceCreate from './pages/InvoiceCreate';
-import ProtectedRoute from './components/ProtectedRoute';
-import Settings from './pages/Settings';
-import Jobs from './pages/Jobs';
-import JobDetail from './pages/JobDetail';
-import JobCreate from './pages/JobCreate';
-import JobEdit from './pages/JobEdit';
-import AppLayout from './components/AppLayout';
-import Accounts from './pages/Accounts';
-import AuthCallback from './pages/AuthCallback';
-import Invoices from './pages/Invoices';
-import InvoicePdfView from './pages/InvoicePdfView';
-import Subscription from './pages/Subscription';
-import SubscriptionSuccess from './pages/SubscriptionSuccess';
-import SubscriptionCancel from './pages/SubscriptionCancel';
-import SubscriptionGuard from './components/SubscriptionGuard';
-import Admin from './pages/Admin';
-import AdminLayout from './components/AdminLayout';
-import Debug from './pages/Debug';
-import CalendarTest from './pages/CalendarTest';
-import GoogleOAuthDiagnostic from './pages/GoogleOAuthDiagnostic';
+import { Route, Routes } from 'react-router-dom';
+import RequireAuth from '@/components/ProtectedRoute';
+import Index from '@/pages/Index';
+import Auth from '@/pages/Auth';
+import AuthCallback from '@/pages/AuthCallback';
+import NotFound from '@/pages/NotFound';
+import Clients from '@/pages/Clients';
+import ClientDetail from '@/pages/ClientDetail';
+import ClientNew from '@/pages/ClientNew';
+import ClientEdit from '@/pages/ClientEdit';
+import Jobs from '@/pages/Jobs';
+import JobCreate from '@/pages/JobCreate';
+import JobDetail from '@/pages/JobDetail';
+import JobEdit from '@/pages/JobEdit';
+import Invoices from '@/pages/Invoices';
+import InvoiceCreate from '@/pages/InvoiceCreate';
+import InvoiceView from '@/pages/InvoiceView';
+import InvoicePdfView from '@/pages/InvoicePdfView';
+import Settings from '@/pages/Settings';
+import Admin from '@/pages/Admin';
+import AdminThemes from '@/pages/AdminThemes';
+import AdminLayout from '@/components/AdminLayout';
+import AppLayout from '@/components/AppLayout';
+import GoogleAuthCallback from '@/pages/GoogleAuthCallback';
+import SubscriptionGuard from '@/components/SubscriptionGuard';
+import Subscription from '@/pages/Subscription';
+import SubscriptionSuccess from '@/pages/SubscriptionSuccess';
+import SubscriptionCancel from '@/pages/SubscriptionCancel';
+import Accounts from '@/pages/Accounts';
+import Debug from '@/pages/Debug';
+import GoogleOAuthDiagnostic from '@/pages/GoogleOAuthDiagnostic';
+import CalendarTest from '@/pages/CalendarTest';
+import Payments from '@/pages/Payments';
 
-const Routes = () => {
+const AppRoutes = () => {
   return (
-    <ReactRoutes>
-      {/* Auth routes outside of the layout */}
+    <Routes>
       <Route path="/auth" element={<Auth />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
-      
-      {/* Admin routes with admin layout */}
-      <Route element={<ProtectedRoute adminOnly={true}><AdminLayout /></ProtectedRoute>}>
-        <Route path="/admin" element={<Admin />} />
-        <Route path="/debug" element={<Debug />} />
-        <Route path="/admin/google-oauth-diagnostic" element={<GoogleOAuthDiagnostic />} />
-      </Route>
-      
-      {/* Subscription routes */}
-      <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+
+      {/* Protected routes */}
+      <Route element={<RequireAuth />}>
+        {/* Main app routes */}
+        <Route element={<AppLayout />}>
+          <Route path="/" element={<SubscriptionGuard><Index /></SubscriptionGuard>} />
+          <Route path="/clients" element={<SubscriptionGuard><Clients /></SubscriptionGuard>} />
+          <Route path="/clients/new" element={<SubscriptionGuard><ClientNew /></SubscriptionGuard>} />
+          <Route path="/clients/:id" element={<SubscriptionGuard><ClientDetail /></SubscriptionGuard>} />
+          <Route path="/clients/:id/edit" element={<SubscriptionGuard><ClientEdit /></SubscriptionGuard>} />
+          
+          <Route path="/jobs" element={<SubscriptionGuard><Jobs /></SubscriptionGuard>} />
+          <Route path="/jobs/create" element={<SubscriptionGuard><JobCreate /></SubscriptionGuard>} />
+          <Route path="/jobs/:id" element={<SubscriptionGuard><JobDetail /></SubscriptionGuard>} />
+          <Route path="/jobs/:id/edit" element={<SubscriptionGuard><JobEdit /></SubscriptionGuard>} />
+          
+          <Route path="/invoices" element={<SubscriptionGuard><Invoices /></SubscriptionGuard>} />
+          <Route path="/invoices/create" element={<SubscriptionGuard><InvoiceCreate /></SubscriptionGuard>} />
+          <Route path="/invoices/:id" element={<SubscriptionGuard><InvoiceView /></SubscriptionGuard>} />
+          <Route path="/invoices/:id/pdf" element={<SubscriptionGuard><InvoicePdfView /></SubscriptionGuard>} />
+          
+          <Route path="/settings" element={<SubscriptionGuard><Settings /></SubscriptionGuard>} />
+          <Route path="/accounts" element={<SubscriptionGuard><Accounts /></SubscriptionGuard>} />
+          <Route path="/payments" element={<SubscriptionGuard><Payments /></SubscriptionGuard>} />
+          
+          <Route path="/calendar-test" element={<SubscriptionGuard><CalendarTest /></SubscriptionGuard>} />
+        </Route>
+        
+        {/* Admin routes */}
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<Admin />} />
+          <Route path="themes" element={<AdminThemes />} />
+          <Route path="calendar-test" element={<CalendarTest />} />
+          <Route path="google-oauth-diagnostic" element={<GoogleOAuthDiagnostic />} />
+        </Route>
+        
+        {/* Subscription routes */}
         <Route path="/subscription" element={<Subscription />} />
         <Route path="/subscription/success" element={<SubscriptionSuccess />} />
         <Route path="/subscription/cancel" element={<SubscriptionCancel />} />
+        
+        {/* Debugging */}
+        <Route path="/debug" element={<Debug />} />
+        
+        {/* OAuth callbacks */}
+        <Route path="/google/callback" element={<GoogleAuthCallback />} />
       </Route>
       
-      {/* Calendar test route (protected but with regular AppLayout) */}
-      <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-        <Route path="/calendar-test" element={<CalendarTest />} />
-      </Route>
-      
-      {/* Public invoice views without AppLayout for client view */}
-      <Route path="/invoice/:idOrViewLink" element={<InvoiceView />} />
-      <Route path="/invoice/pdf/:viewLink" element={<InvoicePdfView />} />
-      
-      {/* Protected routes with layout that require subscription */}
-      <Route element={<ProtectedRoute><SubscriptionGuard><AppLayout /></SubscriptionGuard></ProtectedRoute>}>
-        <Route path="/" element={<Index />} />
-        <Route path="/clients" element={<Clients />} />
-        <Route path="/client/new" element={<ClientNew />} />
-        <Route path="/client/:id" element={<ClientDetail />} />
-        <Route path="/client/:id/edit" element={<ClientEdit />} />
-        
-        {/* Job routes */}
-        <Route path="/jobs" element={<Jobs />} />
-        <Route path="/job/new" element={<JobCreate />} />
-        <Route path="/job/:id" element={<JobDetail />} />
-        <Route path="/job/:id/edit" element={<JobEdit />} />
-        
-        {/* Client-specific job routes */}
-        <Route path="/client/:clientId/job/new" element={<JobCreate />} />
-        <Route path="/client/:clientId/job/create" element={<JobCreate />} />
-        
-        {/* Invoice routes */}
-        <Route path="/invoices" element={<Invoices />} />
-        <Route path="/invoice/:id/edit" element={<InvoiceCreate />} />
-        <Route path="/client/:clientId/invoice/new" element={<InvoiceCreate />} />
-        <Route path="/client/:clientId/invoice/create" element={<InvoiceCreate />} />
-        <Route path="/client/:clientId/invoice/:invoiceId/edit" element={<InvoiceCreate />} />
-        
-        {/* Job-related invoice routes - make sure both "new" and "create" paths work */}
-        <Route path="/job/:jobId/invoice/new" element={<InvoiceCreate />} />
-        <Route path="/job/:jobId/invoice/create" element={<InvoiceCreate />} />
-        <Route path="/job/:jobId/invoice/:invoiceId/edit" element={<InvoiceCreate />} />
-        
-        {/* Admin invoice view (wrapped in AppLayout) */}
-        <Route path="/invoice/:id/admin" element={<InvoiceView />} />
-        
-        {/* Account routes */}
-        <Route path="/account" element={<Accounts />} />
-        
-        <Route path="/settings" element={<Settings />} />
-      </Route>
-      
+      {/* Fallback route */}
       <Route path="*" element={<NotFound />} />
-    </ReactRoutes>
+    </Routes>
   );
 };
 
-export default Routes;
+export default AppRoutes;

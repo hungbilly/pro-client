@@ -1,11 +1,32 @@
 
-import React, { createContext, useContext, useEffect } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { themes } from '@/components/ThemeSelector';
 import { useCompany } from '@/components/CompanySelector';
+import { supabase } from '@/integrations/supabase/client';
+
+interface ThemeColors {
+  background: string;
+  moduleBackground: string;
+  titleBarBackground: string;
+  text: string;
+  mutedText: string;
+  accent: string;
+  border: string;
+  buttonPrimary: string;
+  buttonPrimaryForeground: string;
+  hover: string;
+}
+
+interface ThemeData {
+  id: string;
+  name: string;
+  colors: ThemeColors;
+}
 
 interface ThemeContextType {
   applyTheme: (themeName: string) => void;
   currentTheme: string | null;
+  allThemes: ThemeData[];
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -21,9 +42,61 @@ export const useTheme = () => {
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { selectedCompany } = useCompany();
   const currentTheme = selectedCompany?.theme || 'oceanic-breeze';
+  const [dbThemes, setDbThemes] = useState<ThemeData[]>([]);
+
+  // Load themes from database
+  useEffect(() => {
+    const fetchThemes = async () => {
+      try {
+        const { data, error } = await supabase.from('themes').select('*');
+        if (error) {
+          console.error('Error loading themes:', error);
+          return;
+        }
+        
+        if (data && data.length > 0) {
+          setDbThemes(data);
+        }
+      } catch (error) {
+        console.error('Error fetching themes:', error);
+      }
+    };
+    
+    fetchThemes();
+  }, []);
+
+  // Combined themes from static list and database
+  const allThemes = [
+    ...themes.map(theme => ({
+      id: theme.id,
+      name: theme.name,
+      colors: theme.colors,
+    })),
+    ...dbThemes.filter(dbTheme => 
+      // Filter out duplicates by ID
+      !themes.some(theme => theme.id === dbTheme.id)
+    )
+  ];
 
   const applyTheme = (themeName: string) => {
-    const theme = themes.find(t => t.id === themeName) || themes[0];
+    // First check database themes
+    let theme = dbThemes.find(t => t.id === themeName);
+    
+    // If not found, check static themes
+    if (!theme) {
+      const staticTheme = themes.find(t => t.id === themeName);
+      if (staticTheme) {
+        theme = {
+          id: staticTheme.id,
+          name: staticTheme.name,
+          colors: staticTheme.colors,
+        };
+      } else {
+        // Fallback to first theme
+        theme = allThemes[0];
+      }
+    }
+    
     const root = document.documentElement;
     
     // Set CSS custom properties using HSL values
@@ -43,10 +116,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     root.style.setProperty('--card', theme.colors.moduleBackground);
     root.style.setProperty('--card-foreground', theme.colors.text);
     
-    // Determine if this is a dark theme
-    const isDarkTheme = 
-      themeName === 'midnight-indigo' || 
-      themeName === 'slate-graphite';
+    // Determine if this is a dark theme by checking lightness value in the background color
+    const bgLightness = parseInt(theme.colors.background.split(' ')[2]);
+    const isDarkTheme = bgLightness < 50;
     
     if (isDarkTheme) {
       // For dark themes, use a much lighter background for inputs to create better contrast
@@ -89,16 +161,16 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     console.log(`Applied theme: ${themeName}`);
   };
 
-  // Apply theme when company changes
+  // Apply theme when company changes or when themes are loaded
   useEffect(() => {
     if (currentTheme) {
       console.log('ThemeProvider: Applying theme:', currentTheme);
       applyTheme(currentTheme);
     }
-  }, [currentTheme]);
+  }, [currentTheme, dbThemes]);
 
   return (
-    <ThemeContext.Provider value={{ applyTheme, currentTheme }}>
+    <ThemeContext.Provider value={{ applyTheme, currentTheme, allThemes }}>
       {children}
     </ThemeContext.Provider>
   );

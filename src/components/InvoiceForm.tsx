@@ -728,11 +728,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                       <span className="font-medium">${calculateTotal().toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-500 mr-8">Discount:</span>
-                      <span className="text-gray-500">None</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-bold mr-8">Total Due:</span>
+                      <span className="text-gray-500 mr-8">Total Due:</span>
                       <span className="font-bold">${calculateTotal().toFixed(2)}</span>
                     </div>
                   </div>
@@ -740,36 +736,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
               </div>
             )}
           </div>
-        </div>
-
-        <div>
-          <div className="flex justify-between items-center mb-2">
-            <Label>Discounts</Label>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => setShowAddDiscountDialog(true)}
-            >
-              Add Discount
-            </Button>
-          </div>
-          {invoice.items.filter(item => item.rate < 0).map((item) => (
-            <div key={item.id} className="flex justify-between items-center p-2 bg-muted rounded-md mb-2">
-              <div>
-                <div className="font-medium">{item.name}</div>
-                <div className="text-sm text-muted-foreground">
-                  ${Math.abs(item.rate).toFixed(2)} off
-                </div>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleRemoveItem(item.id)}
-              >
-                <Trash2 className="h-4 w-4 text-destructive" />
-              </Button>
-            </div>
-          ))}
         </div>
 
         <div>
@@ -945,117 +911,3 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
-          <Button variant="outline" className="mt-2 w-full" onClick={handleAddPaymentSchedule}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Payment Schedule
-          </Button>
-        </div>
-      </CardContent>
-      <CardFooter className="flex justify-between">
-        {invoice.id ? (
-          <Button variant="destructive" onClick={() => setShowDeleteConfirmation(true)} disabled={isDeleting}>
-            {isDeleting ? (
-              <>
-                Deleting...
-              </>
-            ) : (
-              <>
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete
-              </>
-            )}
-          </Button>
-        ) : (
-          <div></div>
-        )}
-        <div className="flex gap-2">
-          <Button 
-            type="button"
-            onClick={(e) => {
-              console.log("Save button clicked");
-              handleSubmit(e);
-            }} 
-            disabled={isSaving}
-          >
-            {isSaving ? (
-              <>
-                Saving...
-              </>
-            ) : (
-              <>
-                {invoice.id ? 'Update Invoice' : 'Create Invoice'}
-              </>
-            )}
-          </Button>
-        </div>
-      </CardFooter>
-
-      <Dialog open={isDialogOpen} onOpenChange={() => setIsDialogOpen(false)}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Select a Template</DialogTitle>
-            <DialogDescription>
-              Choose a template to apply to the terms and conditions.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            {contractTemplates.map((template) => (
-              <div key={template.id} className="border rounded-md p-4 cursor-pointer hover:bg-secondary" onClick={() => handleTemplateSelect(template)}>
-                <h3 className="text-lg font-semibold">{template.name}</h3>
-                <p className="text-sm text-muted-foreground">{template.description}</p>
-              </div>
-            ))}
-          </div>
-          <DialogFooter>
-            <Button type="button" onClick={applyTemplate}>
-              Apply Template
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={showDeleteConfirmation} onOpenChange={() => setShowDeleteConfirmation(false)}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Delete Invoice</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete this invoice? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button type="button" variant="secondary" onClick={() => setShowDeleteConfirmation(false)}>
-              Cancel
-            </Button>
-            <Button type="button" variant="destructive" onClick={handleDelete} disabled={isDeleting}>
-              {isDeleting ? (
-                <>
-                  Deleting...
-                </>
-              ) : (
-                <>
-                  Delete
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <AddProductPackageDialog 
-        isOpen={showAddProductDialog}
-        onClose={() => setShowAddProductDialog(false)}
-        onPackageSelect={handlePackageSelect}
-      />
-
-      <AddDiscountDialog
-        isOpen={showAddDiscountDialog}
-        onClose={() => setShowAddDiscountDialog(false)}
-        onDiscountSelect={handlePackageSelect}
-        subtotal={calculateTotal()}
-      />
-    </Card>
-  );
-};
-
-export default InvoiceForm;

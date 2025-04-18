@@ -14,13 +14,13 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Bug, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import DiscountTemplateSettings from '@/components/DiscountTemplateSettings';
+import { Separator } from '@/components/ui/separator';
 
 const Settings = () => {
   console.log("Settings page rendering");
   const [searchParams] = useSearchParams();
   
   useEffect(() => {
-    // Handle calendar integration results
     const success = searchParams.get('success');
     const error = searchParams.get('error');
     const source = searchParams.get('source');
@@ -35,7 +35,6 @@ const Settings = () => {
       }
     }
     
-    // Clear the URL parameters after processing
     if ((success || error) && window.history.replaceState) {
       const newUrl = window.location.pathname;
       window.history.replaceState({}, '', newUrl);

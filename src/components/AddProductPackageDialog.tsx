@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -12,15 +13,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import QuillEditor from './QuillEditor';
 
 interface AddProductPackageDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onPackageSelect: (items: InvoiceItem[]) => void;
+  open: boolean; // Changed from isOpen to open
+  onOpenChange: (open: boolean) => void; // Changed from onClose to onOpenChange
+  onAddItems: (items: InvoiceItem[]) => void; // Changed from onPackageSelect
 }
 
 const AddProductPackageDialog: React.FC<AddProductPackageDialogProps> = ({
-  isOpen,
-  onClose,
-  onPackageSelect,
+  open, // Updated prop name
+  onOpenChange, // Updated prop name
+  onAddItems, // Updated prop name
 }) => {
   const [selectedPackageId, setSelectedPackageId] = useState<string>('');
   const [customName, setCustomName] = useState('');
@@ -48,7 +49,7 @@ const AddProductPackageDialog: React.FC<AddProductPackageDialogProps> = ({
       
       return data || [];
     },
-    enabled: !!selectedCompany?.id && isOpen,
+    enabled: !!selectedCompany?.id && open, // Updated condition
   });
 
   const handlePackageChange = (packageId: string) => {
@@ -88,13 +89,13 @@ const AddProductPackageDialog: React.FC<AddProductPackageDialogProps> = ({
       discount: discount > 0 ? discount.toString() : undefined
     };
     
-    onPackageSelect([newItem]);
+    onAddItems([newItem]); // Updated function call
     toast.success(`Added "${customName}" to invoice`);
-    onClose();
+    onOpenChange(false); // Updated function call
   };
 
   useEffect(() => {
-    if (!isOpen) {
+    if (!open) { // Updated condition
       setSelectedPackageId('');
       setCustomName('');
       setCustomDescription('');
@@ -102,10 +103,10 @@ const AddProductPackageDialog: React.FC<AddProductPackageDialogProps> = ({
       setQuantity(1);
       setDiscount(0);
     }
-  }, [isOpen]);
+  }, [open]); // Updated dependency
 
   return (
-    <Dialog open={isOpen} onOpenChange={() => onClose()}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add Item</DialogTitle>
@@ -234,7 +235,7 @@ const AddProductPackageDialog: React.FC<AddProductPackageDialogProps> = ({
         </div>
         
         <DialogFooter className="flex justify-between mt-4 pt-2">
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button 

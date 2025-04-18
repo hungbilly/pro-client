@@ -10,25 +10,25 @@ import { InvoiceItem } from '@/types';
 import DiscountSelector from './DiscountSelector';
 
 interface AddDiscountDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onDiscountSelect: (items: InvoiceItem[]) => void;
-  subtotal: number;
+  open: boolean; // Changed from isOpen to open
+  onOpenChange: (open: boolean) => void; // Changed from onClose to onOpenChange
+  onAddDiscount: (discount: any) => void; // Changed from onDiscountSelect
+  subtotal?: number; // Made optional
 }
 
 const AddDiscountDialog: React.FC<AddDiscountDialogProps> = ({
-  isOpen,
-  onClose,
-  onDiscountSelect,
-  subtotal,
+  open,
+  onOpenChange,
+  onAddDiscount,
+  subtotal = 0, // Default value provided
 }) => {
   const handleDiscountSelect = (items: InvoiceItem[]) => {
-    onDiscountSelect(items);
-    onClose();
+    onAddDiscount(items);
+    onOpenChange(false);
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Add Discount</DialogTitle>

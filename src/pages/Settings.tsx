@@ -81,14 +81,14 @@ const Settings = () => {
             
             <TabsContent value="packages" className="space-y-4">
               <PackageSettings />
+              <Separator />
+              <DiscountTemplateSettings />
             </TabsContent>
             
             <TabsContent value="templates" className="space-y-8">
               <InvoiceTemplateSettings />
               <Separator />
               <ContractTemplateSettings />
-              <Separator />
-              <DiscountTemplateSettings />
             </TabsContent>
             
             <TabsContent value="contracts" className="space-y-4">

@@ -120,13 +120,13 @@ const CompanySettings = () => {
   };
 
   const handleSave = async () => {
-    if (!name) {
-      toast.error('Company name is required');
+    if (!user) {
+      toast.error('You must be logged in to save company information');
       return;
     }
 
-    if (!user) {
-      toast.error('You must be logged in to save company information');
+    if (!name) {
+      toast.error('Company name is required');
       return;
     }
 

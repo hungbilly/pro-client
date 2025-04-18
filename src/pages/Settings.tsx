@@ -15,16 +15,13 @@ import { Bug, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import DiscountTemplateSettings from '@/components/DiscountTemplateSettings';
 import { Separator } from '@/components/ui/separator';
-
 const Settings = () => {
   console.log("Settings page rendering");
   const [searchParams] = useSearchParams();
-  
   useEffect(() => {
     const success = searchParams.get('success');
     const error = searchParams.get('error');
     const source = searchParams.get('source');
-    
     if (source === 'calendar') {
       if (success === 'true') {
         console.log("Calendar integration successful");
@@ -34,15 +31,12 @@ const Settings = () => {
         toast.error(`Failed to connect: ${error}`);
       }
     }
-    
     if ((success || error) && window.history.replaceState) {
       const newUrl = window.location.pathname;
       window.history.replaceState({}, '', newUrl);
     }
   }, [searchParams]);
-  
-  return (
-    <PageTransition>
+  return <PageTransition>
       <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-3xl font-bold">Settings</h1>
@@ -66,7 +60,7 @@ const Settings = () => {
           <Tabs defaultValue="company" className="space-y-4">
             <TabsList>
               <TabsTrigger value="company">Company</TabsTrigger>
-              <TabsTrigger value="packages">Products & Packages</TabsTrigger>
+              <TabsTrigger value="packages">Packages &amp; Discounts</TabsTrigger>
               <TabsTrigger value="templates">Invoice Templates</TabsTrigger>
               <TabsTrigger value="contracts">Contract Templates</TabsTrigger>
               <TabsTrigger value="integrations">Integrations</TabsTrigger>
@@ -136,8 +130,6 @@ const Settings = () => {
           </Tabs>
         </CompanyProvider>
       </div>
-    </PageTransition>
-  );
+    </PageTransition>;
 };
-
 export default Settings;

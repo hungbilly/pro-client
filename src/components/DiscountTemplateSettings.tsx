@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -8,12 +7,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Save, Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { useCompanyContext } from '@/context/CompanyContext';
-import { DiscountTemplate } from '@/types';
+import { DiscountTemplate, mapDiscountTemplateFromRow } from './discount/types';
 
 const discountFormSchema = z.object({
   name: z.string().min(1, "Discount name is required"),
@@ -59,23 +58,7 @@ const DiscountTemplateSettings = () => {
 
       if (error) throw error;
       
-      const formattedTemplates = data?.map(template => ({
-        id: template.id,
-        name: template.name,
-        description: template.description || undefined,
-        amount: template.amount,
-        type: template.type,
-        companyId: template.company_id,
-        userId: template.user_id,
-        createdAt: template.created_at,
-        updatedAt: template.updated_at,
-        company_id: template.company_id,
-        user_id: template.user_id,
-        created_at: template.created_at,
-        updated_at: template.updated_at,
-      })) as DiscountTemplate[];
-      
-      setTemplates(formattedTemplates || []);
+      setTemplates((data || []).map(mapDiscountTemplateFromRow));
     } catch (error) {
       console.error('Error loading discount templates:', error);
       toast.error('Failed to load discount templates');

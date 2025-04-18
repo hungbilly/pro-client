@@ -357,6 +357,8 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
     contractTermsLength: invoiceData.contractTerms?.length || 0,
     contractTermsPreview: invoiceData.contractTerms?.substring(0, 100),
     companyLogoUrl: invoiceData.company.logoUrl,
+    backgroundColor: invoiceData.backgroundColor,
+    textColor: invoiceData.textColor,
   });
   
   try {
@@ -366,6 +368,16 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       format: 'a4',
     });
     
+    // Set colors if provided
+    if (invoiceData.backgroundColor) {
+      doc.setFillColor(invoiceData.backgroundColor);
+      doc.rect(0, 0, doc.internal.pageSize.getWidth(), doc.internal.pageSize.getHeight(), 'F');
+    }
+    
+    if (invoiceData.textColor) {
+      doc.setTextColor(invoiceData.textColor);
+    }
+
     // Add Inter font (similar to the web app font)
     doc.setFont('helvetica');
     

@@ -1,4 +1,3 @@
-
 export interface Client {
   id: string;
   name: string;
@@ -81,7 +80,7 @@ export interface PaymentSchedule {
   percentage: number;
   status: PaymentStatus;
   paymentDate?: string;
-  amount?: number; // Add the amount property as optional
+  amount?: number;
 }
 
 export interface Invoice {
@@ -102,12 +101,14 @@ export interface Invoice {
   paymentSchedules?: PaymentSchedule[];
   shootingDate?: string;
   pdfUrl?: string;
+  backgroundColor?: string;
+  textColor?: string;
 }
 
 export interface InvoiceItem {
   id: string;
-  name?: string;      // Added name field
-  productName?: string; // Keep for backward compatibility
+  name?: string;
+  productName?: string;
   description: string;
   quantity: number;
   rate: number;

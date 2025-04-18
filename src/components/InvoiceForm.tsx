@@ -24,6 +24,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import AddProductPackageDialog from './AddProductPackageDialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import ColorPicker from './invoice/ColorPicker';
 
 interface ContractTemplate {
   id: string;
@@ -85,6 +86,8 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
       paymentSchedules: [],
       companyId: selectedCompany?.id || '',
       viewLink: generateViewLink(),
+      backgroundColor: '#ffffff',
+      textColor: '#000000',
     }
   );
   const [client, setClient] = useState<Client | null>(null);
@@ -896,104 +899,13 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
             Add Payment Schedule
           </Button>
         </div>
-      </CardContent>
-      <CardFooter className="flex justify-between">
-        {invoice.id ? (
-          <Button variant="destructive" onClick={() => setShowDeleteConfirmation(true)} disabled={isDeleting}>
-            {isDeleting ? (
-              <>
-                Deleting...
-              </>
-            ) : (
-              <>
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete
-              </>
-            )}
-          </Button>
-        ) : (
-          <div></div>
-        )}
-        <div className="flex gap-2">
-          <Button 
-            type="button"
-            onClick={(e) => {
-              console.log("Save button clicked");
-              handleSubmit(e);
-            }} 
-            disabled={isSaving}
-          >
-            {isSaving ? (
-              <>
-                Saving...
-              </>
-            ) : (
-              <>
-                {invoice.id ? 'Update Invoice' : 'Create Invoice'}
-              </>
-            )}
-          </Button>
-        </div>
-      </CardFooter>
 
-      <Dialog open={isDialogOpen} onOpenChange={() => setIsDialogOpen(false)}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Select a Template</DialogTitle>
-            <DialogDescription>
-              Choose a template to apply to the terms and conditions.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            {contractTemplates.map((template) => (
-              <div key={template.id} className="border rounded-md p-4 cursor-pointer hover:bg-secondary" onClick={() => handleTemplateSelect(template)}>
-                <h3 className="text-lg font-semibold">{template.name}</h3>
-                <p className="text-sm text-muted-foreground">{template.description}</p>
-              </div>
-            ))}
-          </div>
-          <DialogFooter>
-            <Button type="button" onClick={applyTemplate}>
-              Apply Template
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={showDeleteConfirmation} onOpenChange={() => setShowDeleteConfirmation(false)}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Delete Invoice</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete this invoice? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button type="button" variant="secondary" onClick={() => setShowDeleteConfirmation(false)}>
-              Cancel
-            </Button>
-            <Button type="button" variant="destructive" onClick={handleDelete} disabled={isDeleting}>
-              {isDeleting ? (
-                <>
-                  Deleting...
-                </>
-              ) : (
-                <>
-                  Delete
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <AddProductPackageDialog 
-        isOpen={showAddProductDialog}
-        onClose={() => setShowAddProductDialog(false)}
-        onPackageSelect={handlePackageSelect}
-      />
-    </Card>
-  );
-};
-
-export default InvoiceForm;
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <ColorPicker
+            label="Invoice Background Color"
+            value={invoice.backgroundColor || '#ffffff'}
+            onChange={(value) => setInvoice(prev => ({ ...prev, backgroundColor: value }))}
+          />
+          <ColorPicker
+            label="Invoice Text Color"
+            value={invoice.textColor || '#000000'}

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Palette } from 'lucide-react';
@@ -63,21 +64,21 @@ interface ThemeSelectorProps {
 const ThemeSelector: React.FC<ThemeSelectorProps> = ({ theme, setTheme, className }) => {
   return (
     <Select value={theme} onValueChange={setTheme}>
-      <SelectTrigger className={cn("w-full", className)}>
+      <SelectTrigger className={cn("w-full bg-background text-foreground", className)}>
         <div className="flex items-center gap-2">
           <Palette className="h-4 w-4 opacity-70" />
           <SelectValue 
             placeholder="Select a theme" 
-            className="text-foreground" 
+            className="text-foreground opacity-100"
           />
         </div>
       </SelectTrigger>
-      <SelectContent>
+      <SelectContent className="bg-background text-foreground">
         {themes.map(themeOption => (
           <SelectItem 
             key={themeOption.id} 
             value={themeOption.id}
-            className="flex items-center space-x-3 cursor-pointer"
+            className="text-foreground hover:bg-accent hover:text-accent-foreground"
           >
             <div className="flex items-center space-x-2">
               <div className="flex space-x-1">

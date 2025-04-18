@@ -24,8 +24,6 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const applyTheme = (themeName: string) => {
     const theme = themes.find(t => t.id === themeName) || themes[0];
-    
-    // Apply theme colors to CSS variables
     const root = document.documentElement;
     
     // Set CSS custom properties using HSL values
@@ -40,10 +38,33 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     root.style.setProperty('--button-primary-foreground', theme.colors.buttonPrimaryForeground);
     root.style.setProperty('--hover', theme.colors.hover);
     
+    // Also set the fallback variables that reference the primary ones
+    root.style.setProperty('--foreground', theme.colors.text);
+    root.style.setProperty('--card', theme.colors.moduleBackground);
+    root.style.setProperty('--card-foreground', theme.colors.text);
+    root.style.setProperty('--popover', theme.colors.moduleBackground);
+    root.style.setProperty('--popover-foreground', theme.colors.text);
+    root.style.setProperty('--primary', theme.colors.buttonPrimary);
+    root.style.setProperty('--primary-foreground', theme.colors.buttonPrimaryForeground);
+    root.style.setProperty('--muted-foreground', theme.colors.mutedText);
+    root.style.setProperty('--accent-foreground', theme.colors.text);
+    root.style.setProperty('--input', theme.colors.border);
+    root.style.setProperty('--ring', theme.colors.accent);
+
+    // Set sidebar-specific variables
+    root.style.setProperty('--sidebar-background', theme.colors.moduleBackground);
+    root.style.setProperty('--sidebar-foreground', theme.colors.text);
+    root.style.setProperty('--sidebar-primary', theme.colors.accent);
+    root.style.setProperty('--sidebar-primary-foreground', theme.colors.buttonPrimaryForeground);
+    root.style.setProperty('--sidebar-accent', theme.colors.background);
+    root.style.setProperty('--sidebar-accent-foreground', theme.colors.text);
+    root.style.setProperty('--sidebar-border', theme.colors.border);
+    root.style.setProperty('--sidebar-ring', theme.colors.accent);
+    
     console.log(`Applied theme: ${themeName}`);
   };
 
-  // Apply theme when company changes or when explicitly called
+  // Apply theme when company changes
   useEffect(() => {
     if (currentTheme) {
       console.log('ThemeProvider: Applying theme:', currentTheme);

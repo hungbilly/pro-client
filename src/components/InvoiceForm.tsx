@@ -909,3 +909,105 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
           <ColorPicker
             label="Invoice Text Color"
             value={invoice.textColor || '#000000'}
+            onChange={(value) => setInvoice(prev => ({ ...prev, textColor: value }))}
+          />
+        </div>
+      </CardContent>
+      <CardFooter className="flex flex-col sm:flex-row gap-2 justify-between border-t pt-6">
+        <div className="flex gap-2">
+          {invoice.id && (
+            <Button variant="destructive" onClick={() => setShowDeleteConfirmation(true)} disabled={isDeleting}>
+              {isDeleting ? 'Deleting...' : 'Delete Invoice'}
+            </Button>
+          )}
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => {
+            if (invoice.jobId) {
+              navigate(`/job/${invoice.jobId}`);
+            } else if (invoice.clientId) {
+              navigate(`/client/${invoice.clientId}`);
+            } else {
+              navigate('/');
+            }
+          }}>
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit} disabled={isSaving} className="bg-green-600 hover:bg-green-700">
+            {isSaving ? 'Saving...' : (invoice.id ? 'Update Invoice' : 'Save Invoice')}
+          </Button>
+        </div>
+      </CardFooter>
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Choose Contract Template</DialogTitle>
+            <DialogDescription>
+              Select a contract template to use for this invoice's terms and conditions.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 max-h-[300px] overflow-y-auto">
+            {contractTemplates.map((template) => (
+              <div 
+                key={template.id}
+                className="border rounded-md p-3 cursor-pointer hover:bg-gray-50"
+                onClick={() => handleTemplateSelect(template)}
+              >
+                <h3 className="font-medium">{template.name}</h3>
+                {template.description && (
+                  <p className="text-sm text-gray-500">{template.description}</p>
+                )}
+              </div>
+            ))}
+            {contractTemplates.length === 0 && (
+              <p className="text-gray-500 italic">No contract templates found.</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={applyTemplate} 
+              disabled={!selectedTemplate}
+            >
+              Apply Template
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showDeleteConfirmation} onOpenChange={setShowDeleteConfirmation}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Invoice</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this invoice? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteConfirmation(false)}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleDelete} 
+              disabled={isDeleting}
+            >
+              {isDeleting ? 'Deleting...' : 'Delete Invoice'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AddProductPackageDialog
+        open={showAddProductDialog}
+        onOpenChange={setShowAddProductDialog}
+        onItemSelect={handlePackageSelect}
+      />
+    </Card>
+  );
+};
+
+export default InvoiceForm;

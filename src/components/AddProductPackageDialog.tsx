@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -15,12 +16,20 @@ interface AddProductPackageDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onPackageSelect: (items: InvoiceItem[]) => void;
+  // Add the missing props that are being used in InvoiceForm.tsx
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  onItemSelect?: (items: InvoiceItem[]) => void;
 }
 
 const AddProductPackageDialog: React.FC<AddProductPackageDialogProps> = ({
   isOpen,
   onClose,
   onPackageSelect,
+  // Handle both prop patterns for compatibility
+  open,
+  onOpenChange,
+  onItemSelect,
 }) => {
   const [selectedPackageId, setSelectedPackageId] = useState<string>('');
   const [customName, setCustomName] = useState('');
@@ -29,6 +38,11 @@ const AddProductPackageDialog: React.FC<AddProductPackageDialogProps> = ({
   const [quantity, setQuantity] = useState<number>(1);
   const [discount, setDiscount] = useState<number>(0);
   const { selectedCompany } = useCompany();
+  
+  // Use either the new props or the old props
+  const isDialogOpen = open !== undefined ? open : isOpen;
+  const handleClose = onOpenChange ? () => onOpenChange(false) : onClose;
+  const handlePackageSelect = onItemSelect || onPackageSelect;
   
   const { data: packages = [], isLoading: isLoadingPackages } = useQuery({
     queryKey: ['packages', selectedCompany?.id],
@@ -48,7 +62,7 @@ const AddProductPackageDialog: React.FC<AddProductPackageDialogProps> = ({
       
       return data || [];
     },
-    enabled: !!selectedCompany?.id && isOpen,
+    enabled: !!selectedCompany?.id && isDialogOpen,
   });
 
   const handlePackageChange = (packageId: string) => {
@@ -88,13 +102,13 @@ const AddProductPackageDialog: React.FC<AddProductPackageDialogProps> = ({
       discount: discount > 0 ? discount.toString() : undefined
     };
     
-    onPackageSelect([newItem]);
+    handlePackageSelect([newItem]);
     toast.success(`Added "${customName}" to invoice`);
-    onClose();
+    handleClose();
   };
 
   useEffect(() => {
-    if (!isOpen) {
+    if (!isDialogOpen) {
       setSelectedPackageId('');
       setCustomName('');
       setCustomDescription('');
@@ -102,10 +116,10 @@ const AddProductPackageDialog: React.FC<AddProductPackageDialogProps> = ({
       setQuantity(1);
       setDiscount(0);
     }
-  }, [isOpen]);
+  }, [isDialogOpen]);
 
   return (
-    <Dialog open={isOpen} onOpenChange={() => onClose()}>
+    <Dialog open={isDialogOpen} onOpenChange={onOpenChange || (() => handleClose())}>
       <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add Item</DialogTitle>
@@ -234,7 +248,7 @@ const AddProductPackageDialog: React.FC<AddProductPackageDialogProps> = ({
         </div>
         
         <DialogFooter className="flex justify-between mt-4 pt-2">
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={handleClose}>
             Cancel
           </Button>
           <Button 

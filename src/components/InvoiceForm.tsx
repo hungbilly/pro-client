@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Client, Invoice, InvoiceItem, Job, PaymentSchedule } from '@/types';
@@ -763,7 +764,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
         </div>
 
         <div>
-          <Label>Payment Schedule</Label>
           <div className="flex justify-between items-center mb-2">
             <Label>Payment Schedule</Label>
             <Badge 
@@ -911,3 +911,135 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                 </TableRow>
               ))}
             </TableBody>
+          </Table>
+        </div>
+
+        <div>
+          <Button type="button" variant="outline" onClick={handleAddPaymentSchedule}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Payment Schedule
+          </Button>
+        </div>
+      </CardContent>
+
+      <CardFooter className="flex justify-between">
+        <div>
+          {invoice.id && (
+            <Button 
+              variant="destructive" 
+              onClick={() => setShowDeleteConfirmation(true)} 
+              disabled={isDeleting}
+            >
+              {isDeleting ? 'Deleting...' : 'Delete Invoice'}
+            </Button>
+          )}
+        </div>
+        <div className="flex space-x-2">
+          <Button 
+            variant="outline" 
+            onClick={() => {
+              if (invoice.jobId) {
+                navigate(`/job/${invoice.jobId}`);
+              } else if (invoice.clientId) {
+                navigate(`/client/${invoice.clientId}`);
+              } else {
+                navigate('/');
+              }
+            }}
+          >
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit} disabled={isSaving}>
+            {isSaving ? 'Saving...' : 'Save Invoice'}
+          </Button>
+        </div>
+      </CardFooter>
+
+      <Dialog open={showDeleteConfirmation} onOpenChange={setShowDeleteConfirmation}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Invoice</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this invoice? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteConfirmation(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
+              {isDeleting ? 'Deleting...' : 'Delete Invoice'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Select Contract Template</DialogTitle>
+            <DialogDescription>
+              Choose a template to apply to this invoice.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[300px] overflow-y-auto">
+            {contractTemplates.map(template => (
+              <div 
+                key={template.id} 
+                className="p-3 border mb-2 rounded cursor-pointer hover:bg-slate-50"
+                onClick={() => handleTemplateSelect(template)}
+              >
+                <div className="font-medium">{template.name}</div>
+                {template.description && <div className="text-sm text-gray-500">{template.description}</div>}
+              </div>
+            ))}
+            {contractTemplates.length === 0 && (
+              <div className="p-3 text-center text-gray-500">
+                No templates available. You can create contract templates in the settings.
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={applyTemplate} 
+              disabled={!selectedTemplate}
+            >
+              Apply Template
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AddProductPackageDialog 
+        open={showAddProductDialog} 
+        onOpenChange={setShowAddProductDialog}
+        onAddItems={handlePackageSelect}
+      />
+
+      <AddDiscountDialog
+        open={showAddDiscountDialog}
+        onOpenChange={setShowAddDiscountDialog}
+        onAddDiscount={(discount) => {
+          if (discount) {
+            setInvoice(prevInvoice => ({
+              ...prevInvoice,
+              items: [...prevInvoice.items, {
+                id: generateId(),
+                name: discount.name,
+                description: discount.description || '',
+                rate: -Math.abs(discount.amount || 0),
+                quantity: 1,
+                amount: -Math.abs(discount.amount || 0),
+              }],
+            }));
+          }
+        }}
+      />
+    </Card>
+  );
+};
+
+export default InvoiceForm;

@@ -56,6 +56,10 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       // For dropdowns and popovers in dark themes, use the same lighter treatment
       root.style.setProperty('--popover', '220 15% 25%'); // Slightly lighter than module background
       root.style.setProperty('--popover-foreground', '0 0% 100%'); // White text for maximum contrast
+      
+      // Set a strong accent color for selections in dark mode to make them visible
+      root.style.setProperty('--accent', theme.colors.accent);
+      root.style.setProperty('--accent-foreground', '0 0% 100%');
     } else {
       // For light themes, use a slightly darker background than module background for better contrast
       root.style.setProperty('--input', '0 0% 98%'); // Almost white, but slightly off-white
@@ -64,6 +68,10 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       // For light themes, use a clean white background for dropdowns
       root.style.setProperty('--popover', '0 0% 100%'); // Clean white
       root.style.setProperty('--popover-foreground', theme.colors.text); // Regular text color
+      
+      // Set accent colors for light themes
+      root.style.setProperty('--accent', theme.colors.accent);
+      root.style.setProperty('--accent-foreground', '0 0% 100%');
     }
     
     root.style.setProperty('--ring', theme.colors.accent);

@@ -98,6 +98,7 @@ export function CurrencyDropdown({ value, onChange, disabled = false }: Currency
                   onChange(currentValue);
                   setOpen(false);
                 }}
+                className="text-popover-foreground hover:text-accent-foreground"
               >
                 <Check
                   className={cn(

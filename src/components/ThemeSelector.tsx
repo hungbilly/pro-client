@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Palette } from 'lucide-react';
@@ -21,22 +20,6 @@ export const themes = [
     },
   },
   {
-    id: 'midnight-indigo',
-    name: 'Midnight Indigo',
-    colors: {
-      background: '240 20% 12%', // #1B1F2E
-      moduleBackground: '240 15% 18%', // #252B42
-      titleBarBackground: '240 20% 24%', // #2F3557
-      text: '240 10% 90%', // #D9DDE6
-      mutedText: '240 10% 70%', // #A3A8C2
-      accent: '270 60% 60%', // #8B5CF6
-      border: '240 15% 30%', // #414B73
-      buttonPrimary: '270 60% 60%', // #8B5CF6
-      buttonPrimaryForeground: '0 0% 100%', // #FFFFFF
-      hover: '270 60% 70%', // #A78BFA
-    },
-  },
-  {
     id: 'soft-lavender',
     name: 'Soft Lavender',
     colors: {
@@ -50,22 +33,6 @@ export const themes = [
       buttonPrimary: '280 60% 60%', // #B794F4
       buttonPrimaryForeground: '0 0% 100%', // #FFFFFF
       hover: '280 60% 70%', // #C7A8F7
-    },
-  },
-  {
-    id: 'slate-graphite',
-    name: 'Slate Graphite',
-    colors: {
-      background: '220 15% 10%', // #1A1F26
-      moduleBackground: '220 10% 16%', // #252B33
-      titleBarBackground: '220 15% 22%', // #2F3744
-      text: '220 10% 90%', // #D9DDE2
-      mutedText: '220 10% 65%', // #A3A8B2
-      accent: '210 50% 60%', // #4C8EE2
-      border: '220 10% 30%', // #414A56
-      buttonPrimary: '210 50% 60%', // #4C8EE2
-      buttonPrimaryForeground: '0 0% 100%', // #FFFFFF
-      hover: '210 50% 70%', // #6DA4F0
     },
   },
   {

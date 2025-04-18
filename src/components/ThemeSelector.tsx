@@ -1,9 +1,7 @@
-
 import React from 'react';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 
-// Define our theme palettes with descriptive names and color values
 export const themes = [
   {
     id: 'modern-blue',
@@ -52,75 +50,42 @@ export const themes = [
 ];
 
 interface ThemeSelectorProps {
-  value: string;
-  onChange: (value: string) => void;
+  theme: string;
+  setTheme: (theme: string) => void;
 }
 
-const ThemeSelector: React.FC<ThemeSelectorProps> = ({ value, onChange }) => {
+const ThemeSelector: React.FC<ThemeSelectorProps> = ({ theme, setTheme }) => {
   return (
-    <RadioGroup
-      value={value}
-      onValueChange={onChange}
-      className="grid grid-cols-1 md:grid-cols-2 gap-4 my-4"
-    >
-      {themes.map((theme) => (
-        <div 
-          key={theme.id}
-          className={`
-            relative flex flex-col border rounded-lg p-4 cursor-pointer transition-all
-            ${value === theme.id ? 'ring-2 ring-primary' : 'hover:border-primary/50'}
-          `}
-          style={{ background: theme.colors.moduleBackground }}
-          onClick={() => onChange(theme.id)}
-        >
-          <RadioGroupItem
-            value={theme.id}
-            id={`theme-${theme.id}`}
-            className="absolute top-4 right-4"
-          />
-          <div className="mb-4">
-            <Label 
-              htmlFor={`theme-${theme.id}`}
-              className="font-medium mb-2 text-lg"
-              style={{ color: theme.colors.text }}
-            >
-              {theme.name}
-            </Label>
-          </div>
-
-          <div className="flex flex-wrap gap-2 mb-3">
-            {Object.entries(theme.colors).map(([key, color]) => (
-              <div key={key} className="flex flex-col items-center">
-                <div 
-                  className="w-6 h-6 rounded border border-gray-200" 
-                  style={{ backgroundColor: color }}
-                  title={`${key}: ${color}`}
-                />
-              </div>
-            ))}
-          </div>
-
-          {/* Preview card */}
-          <div 
-            className="border rounded-md p-3 text-sm mb-2"
-            style={{ background: theme.colors.moduleBackground, color: theme.colors.text }}
+    <Select value={theme} onValueChange={setTheme}>
+      <SelectTrigger className="w-full">
+        <SelectValue placeholder="Select a theme">
+          {themes.find(t => t.id === theme)?.name}
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent>
+        {themes.map(themeOption => (
+          <SelectItem 
+            key={themeOption.id} 
+            value={themeOption.id}
+            className="flex items-center space-x-3 cursor-pointer"
           >
-            <div className="font-medium mb-1" style={{ color: theme.colors.text }}>
-              Preview Card
+            <div className="flex items-center space-x-2">
+              {['background', 'accent', 'buttonPrimary'].map(colorKey => (
+                <div 
+                  key={colorKey}
+                  className="w-4 h-4 rounded-sm mr-1"
+                  style={{ 
+                    backgroundColor: `hsl(${themeOption.colors[colorKey]})`,
+                    boxShadow: 'inset 0 0 1px rgba(0,0,0,0.3)'
+                  }}
+                />
+              ))}
+              <span>{themeOption.name}</span>
             </div>
-            <div className="text-xs" style={{ color: theme.colors.mutedText }}>
-              This is how text will appear in modules
-            </div>
-            <div 
-              className="mt-2 text-xs px-2 py-1 rounded-md inline-flex"
-              style={{ background: theme.colors.accent, color: 'white' }}
-            >
-              Button
-            </div>
-          </div>
-        </div>
-      ))}
-    </RadioGroup>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 };
 

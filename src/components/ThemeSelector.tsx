@@ -1,6 +1,7 @@
 import React from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Palette } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export const themes = [
   {
@@ -56,15 +57,19 @@ export const themes = [
 interface ThemeSelectorProps {
   theme: string;
   setTheme: (theme: string) => void;
+  className?: string;
 }
 
-const ThemeSelector: React.FC<ThemeSelectorProps> = ({ theme, setTheme }) => {
+const ThemeSelector: React.FC<ThemeSelectorProps> = ({ theme, setTheme, className }) => {
   return (
     <Select value={theme} onValueChange={setTheme}>
-      <SelectTrigger className="w-full">
+      <SelectTrigger className={cn("w-full", className)}>
         <div className="flex items-center gap-2">
           <Palette className="h-4 w-4 opacity-70" />
-          <SelectValue placeholder="Select a theme" />
+          <SelectValue 
+            placeholder="Select a theme" 
+            className="text-foreground" 
+          />
         </div>
       </SelectTrigger>
       <SelectContent>

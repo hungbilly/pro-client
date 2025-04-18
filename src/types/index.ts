@@ -1,4 +1,3 @@
-
 export interface Client {
   id: string;
   name: string;
@@ -134,6 +133,24 @@ export interface InvoiceItem {
   amount: number;
   discount?: string;
   tax?: string;
+}
+
+export interface DiscountTemplate {
+  id: string;
+  name: string;
+  description?: string;
+  amount: number;
+  type: 'fixed' | 'percentage';
+  companyId?: string;
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
+  // Database fields (direct from Supabase)
+  company_id?: string;
+  user_id: string;
+  content?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export const STORAGE_KEYS = {

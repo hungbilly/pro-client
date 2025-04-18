@@ -24,6 +24,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import AddProductPackageDialog from './AddProductPackageDialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import AddDiscountDialog from './AddDiscountDialog';
 
 interface ContractTemplate {
   id: string;
@@ -96,6 +97,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [showAddProductDialog, setShowAddProductDialog] = useState(false);
+  const [showAddDiscountDialog, setShowAddDiscountDialog] = useState(false);
   const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({});
   const [isGeneratingInvoiceNumber, setIsGeneratingInvoiceNumber] = useState(false);
 
@@ -507,6 +509,10 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     setShowAddProductDialog(true);
   };
 
+  const openAddDiscountDialog = () => {
+    setShowAddDiscountDialog(true);
+  };
+
   const renderRichTextContent = (content: string) => {
     return { __html: content };
   };
@@ -715,6 +721,36 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
               </div>
             )}
           </div>
+        </div>
+
+        <div>
+          <div className="flex justify-between items-center mb-2">
+            <Label>Discounts</Label>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setShowAddDiscountDialog(true)}
+            >
+              Add Discount
+            </Button>
+          </div>
+          {invoice.items.filter(item => item.rate < 0).map((item) => (
+            <div key={item.id} className="flex justify-between items-center p-2 bg-muted rounded-md mb-2">
+              <div>
+                <div className="font-medium">{item.name}</div>
+                <div className="text-sm text-muted-foreground">
+                  ${Math.abs(item.rate).toFixed(2)} off
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleRemoveItem(item.id)}
+              >
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
+            </div>
+          ))}
         </div>
 
         <div>
@@ -991,6 +1027,13 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
         isOpen={showAddProductDialog}
         onClose={() => setShowAddProductDialog(false)}
         onPackageSelect={handlePackageSelect}
+      />
+
+      <AddDiscountDialog
+        isOpen={showAddDiscountDialog}
+        onClose={() => setShowAddDiscountDialog(false)}
+        onDiscountSelect={handlePackageSelect}
+        subtotal={calculateTotal()}
       />
     </Card>
   );

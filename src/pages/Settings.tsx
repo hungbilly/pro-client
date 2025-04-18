@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PageTransition from '@/components/ui-custom/PageTransition';
@@ -14,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Bug, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
+import DiscountTemplateSettings from '@/components/DiscountTemplateSettings';
 
 const Settings = () => {
   console.log("Settings page rendering");
@@ -84,10 +84,12 @@ const Settings = () => {
               <PackageSettings />
             </TabsContent>
             
-            <TabsContent value="templates" className="space-y-4">
-              <div className="rounded-lg border p-6">
-                <InvoiceTemplateSettings />
-              </div>
+            <TabsContent value="templates" className="space-y-8">
+              <InvoiceTemplateSettings />
+              <Separator />
+              <ContractTemplateSettings />
+              <Separator />
+              <DiscountTemplateSettings />
             </TabsContent>
             
             <TabsContent value="contracts" className="space-y-4">

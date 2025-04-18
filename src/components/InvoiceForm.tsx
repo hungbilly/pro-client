@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Client, Invoice, InvoiceItem, Job, PaymentSchedule } from '@/types';
@@ -901,5 +902,123 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                     />
                   </TableCell>
                   <TableCell>
-                    <Select value={schedule.status} onValueChange={(value) => handlePaymentScheduleChange(index, 'status', value)}>
+                    <Select value={schedule.status} onValueChange={(value) => handlePaymentScheduleChange(index, 'status', value as PaymentStatus)}>
                       <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="paid">Paid</SelectItem>
+                        <SelectItem value="unpaid">Unpaid</SelectItem>
+                        <SelectItem value="write-off">Write-off</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={() => handleRemovePaymentSchedule(schedule.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleAddPaymentSchedule}
+            className="mt-2"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Add Payment Schedule
+          </Button>
+        </div>
+      </CardContent>
+      
+      <CardFooter className="flex justify-between border-t p-6">
+        <div className="flex space-x-2">
+          {invoice.id && (
+            <Button variant="destructive" onClick={() => setShowDeleteConfirmation(true)} disabled={isDeleting}>
+              {isDeleting ? 'Deleting...' : 'Delete Invoice'}
+            </Button>
+          )}
+        </div>
+        <div className="flex space-x-2">
+          <Button variant="outline" onClick={() => {
+            if (invoice.clientId) {
+              navigate(`/client/${invoice.clientId}`);
+            } else if (invoice.jobId) {
+              navigate(`/job/${invoice.jobId}`);
+            } else {
+              navigate('/');
+            }
+          }}>
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit} disabled={isSaving}>
+            {isSaving ? 'Saving...' : invoice.id ? 'Update Invoice' : 'Create Invoice'}
+          </Button>
+        </div>
+      </CardFooter>
+      
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Choose a Contract Template</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4">
+            {contractTemplates.map((template) => (
+              <Card key={template.id} className="cursor-pointer hover:border-primary" onClick={() => handleTemplateSelect(template)}>
+                <CardHeader className="p-4">
+                  <CardTitle className="text-base">{template.name}</CardTitle>
+                  {template.description && <CardDescription>{template.description}</CardDescription>}
+                </CardHeader>
+              </Card>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+            <Button onClick={applyTemplate} disabled={!selectedTemplate}>Apply Template</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog open={showDeleteConfirmation} onOpenChange={setShowDeleteConfirmation}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Invoice</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this invoice? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteConfirmation(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
+              {isDeleting ? 'Deleting...' : 'Delete Invoice'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      <AddProductPackageDialog 
+        open={showAddProductDialog} 
+        onOpenChange={setShowAddProductDialog} 
+        onAddItems={handlePackageSelect}
+      />
+      
+      <AddDiscountDialog 
+        open={showAddDiscountDialog} 
+        onOpenChange={setShowAddDiscountDialog} 
+        onAddDiscount={handlePackageSelect}
+        subtotal={calculateTotal()}
+      />
+    </Card>
+  );
+};
+
+export default InvoiceForm;

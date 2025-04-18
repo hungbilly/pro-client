@@ -9,8 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, PenLine } from 'lucide-react';
 import { useCompanyContext } from '@/context/CompanyContext';
 import { DiscountTemplate, mapDiscountTemplateFromRow } from './discount/types';
 
@@ -18,7 +17,6 @@ const discountFormSchema = z.object({
   name: z.string().min(1, "Discount name is required"),
   description: z.string().optional(),
   amount: z.number().min(0, "Amount must be positive"),
-  type: z.enum(['fixed', 'percentage']),
 });
 
 type DiscountFormValues = z.infer<typeof discountFormSchema>;
@@ -29,6 +27,7 @@ const DiscountTemplateSettings = () => {
   const [templates, setTemplates] = useState<DiscountTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<DiscountTemplate | null>(null);
 
   const form = useForm<DiscountFormValues>({
     resolver: zodResolver(discountFormSchema),
@@ -36,7 +35,6 @@ const DiscountTemplateSettings = () => {
       name: '',
       description: '',
       amount: 0,
-      type: 'fixed',
     }
   });
 
@@ -45,6 +43,17 @@ const DiscountTemplateSettings = () => {
       loadTemplates();
     }
   }, [selectedCompany]);
+
+  useEffect(() => {
+    if (editingTemplate) {
+      form.reset({
+        name: editingTemplate.name,
+        description: editingTemplate.description || '',
+        amount: editingTemplate.amount,
+      });
+      setIsCreating(true);
+    }
+  }, [editingTemplate]);
 
   const loadTemplates = async () => {
     if (!selectedCompany) return;
@@ -91,6 +100,10 @@ const DiscountTemplateSettings = () => {
     }
   };
 
+  const handleEditTemplate = (template: DiscountTemplate) => {
+    setEditingTemplate(template);
+  };
+
   const onSubmit = async (values: DiscountFormValues) => {
     if (!selectedCompany || !user) {
       toast.error('Missing required context');
@@ -105,19 +118,30 @@ const DiscountTemplateSettings = () => {
         name: values.name,
         description: values.description || null,
         amount: values.amount,
-        type: values.type,
+        type: 'fixed' as const,
       };
 
-      const { error } = await supabase
-        .from('discount_templates')
-        .insert(templateData);
+      if (editingTemplate) {
+        const { error } = await supabase
+          .from('discount_templates')
+          .update(templateData)
+          .eq('id', editingTemplate.id);
 
-      if (error) throw error;
-      
-      toast.success('Discount template created successfully');
+        if (error) throw error;
+        toast.success('Discount template updated successfully');
+      } else {
+        const { error } = await supabase
+          .from('discount_templates')
+          .insert(templateData);
+
+        if (error) throw error;
+        toast.success('Discount template created successfully');
+      }
+
       loadTemplates();
       form.reset();
       setIsCreating(false);
+      setEditingTemplate(null);
     } catch (error) {
       console.error('Error saving template:', error);
       toast.error('Failed to save template');
@@ -140,9 +164,9 @@ const DiscountTemplateSettings = () => {
       {isCreating && (
         <Card>
           <CardHeader>
-            <CardTitle>Create Discount Template</CardTitle>
+            <CardTitle>{editingTemplate ? 'Edit' : 'Create'} Discount Template</CardTitle>
             <CardDescription>
-              Create a reusable discount template
+              {editingTemplate ? 'Modify' : 'Create'} a reusable discount template
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -178,36 +202,14 @@ const DiscountTemplateSettings = () => {
 
                 <FormField
                   control={form.control}
-                  name="type"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Discount Type</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select discount type" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="fixed">Fixed Amount</SelectItem>
-                          <SelectItem value="percentage">Percentage</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
                   name="amount"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Amount</FormLabel>
+                      <FormLabel>Fixed Amount ($)</FormLabel>
                       <FormControl>
                         <Input 
                           type="number" 
-                          placeholder={field.value === 'percentage' ? "e.g., 10 for 10%" : "e.g., 100"} 
+                          placeholder="e.g., 100" 
                           {...field} 
                           onChange={e => field.onChange(parseFloat(e.target.value))}
                         />
@@ -223,13 +225,14 @@ const DiscountTemplateSettings = () => {
                     variant="outline"
                     onClick={() => {
                       setIsCreating(false);
+                      setEditingTemplate(null);
                       form.reset();
                     }}
                   >
                     Cancel
                   </Button>
                   <Button type="submit" disabled={isLoading}>
-                    {isLoading ? 'Saving...' : 'Save Template'}
+                    {isLoading ? 'Saving...' : editingTemplate ? 'Update Template' : 'Save Template'}
                   </Button>
                 </div>
               </form>
@@ -249,18 +252,25 @@ const DiscountTemplateSettings = () => {
                     <p className="text-sm text-muted-foreground">{template.description}</p>
                   )}
                   <p className="text-sm font-medium mt-2">
-                    {template.type === 'fixed'
-                      ? `$${Number(template.amount).toFixed(2)} off`
-                      : `${Number(template.amount).toFixed(0)}% off`}
+                    ${Number(template.amount).toFixed(2)} off
                   </p>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleDeleteTemplate(template.id)}
-                >
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleEditTemplate(template)}
+                  >
+                    <PenLine className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleDeleteTemplate(template.id)}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>

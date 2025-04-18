@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Client, Invoice, InvoiceItem, Job, PaymentSchedule } from '@/types';
+import { Client, Invoice, InvoiceItem, Job, PaymentSchedule, PaymentStatus } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';

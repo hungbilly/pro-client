@@ -91,10 +91,10 @@ export function CountryDropdown({ value, onChange, disabled = false }: CountryDr
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0" align="start">
+      <PopoverContent className="w-full p-0 bg-popover text-popover-foreground" align="start">
         <Command value={safeValue} onValueChange={onChange}>
-          <CommandInput placeholder="Search country..." />
-          <CommandEmpty>No country found.</CommandEmpty>
+          <CommandInput placeholder="Search country..." className="text-popover-foreground" />
+          <CommandEmpty className="text-popover-foreground">No country found.</CommandEmpty>
           <CommandGroup className="max-h-64 overflow-y-auto">
             {countries.map((country) => (
               <CommandItem
@@ -105,6 +105,7 @@ export function CountryDropdown({ value, onChange, disabled = false }: CountryDr
                   onChange(currentValue);
                   setOpen(false);
                 }}
+                className="text-popover-foreground"
               >
                 <Check
                   className={cn(

@@ -42,15 +42,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     root.style.setProperty('--foreground', theme.colors.text);
     root.style.setProperty('--card', theme.colors.moduleBackground);
     root.style.setProperty('--card-foreground', theme.colors.text);
-    root.style.setProperty('--popover', theme.colors.moduleBackground);
-    root.style.setProperty('--popover-foreground', theme.colors.text);
-    root.style.setProperty('--primary', theme.colors.buttonPrimary);
-    root.style.setProperty('--primary-foreground', theme.colors.buttonPrimaryForeground);
-    root.style.setProperty('--muted-foreground', theme.colors.mutedText);
-    root.style.setProperty('--accent-foreground', theme.colors.text);
     
-    // Improve input field styling for better text visibility
-    // For dark themes, use lighter colors for input backgrounds
+    // Determine if this is a dark theme
     const isDarkTheme = 
       themeName === 'midnight-indigo' || 
       themeName === 'slate-graphite';
@@ -59,10 +52,18 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       // For dark themes, use a much lighter background for inputs to create better contrast
       root.style.setProperty('--input', '220 15% 30%'); // Significantly lighter than background for better visibility
       root.style.setProperty('--input-foreground', '0 0% 100%'); // Pure white text for maximum contrast
+      
+      // For dropdowns and popovers in dark themes, use the same lighter treatment
+      root.style.setProperty('--popover', '220 15% 25%'); // Slightly lighter than module background
+      root.style.setProperty('--popover-foreground', '0 0% 100%'); // White text for maximum contrast
     } else {
       // For light themes, use a slightly darker background than module background for better contrast
       root.style.setProperty('--input', '0 0% 98%'); // Almost white, but slightly off-white
       root.style.setProperty('--input-foreground', theme.colors.text);
+      
+      // For light themes, use a clean white background for dropdowns
+      root.style.setProperty('--popover', '0 0% 100%'); // Clean white
+      root.style.setProperty('--popover-foreground', theme.colors.text); // Regular text color
     }
     
     root.style.setProperty('--ring', theme.colors.accent);

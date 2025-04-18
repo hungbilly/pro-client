@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
@@ -50,16 +51,27 @@ export const themes = [
 ];
 
 interface ThemeSelectorProps {
-  theme: string;
-  setTheme: (theme: string) => void;
+  value: string;
+  onChange: (theme: string) => void;
+  theme?: string; // Keep for backward compatibility
+  setTheme?: (theme: string) => void; // Keep for backward compatibility
 }
 
-const ThemeSelector: React.FC<ThemeSelectorProps> = ({ theme, setTheme }) => {
+const ThemeSelector: React.FC<ThemeSelectorProps> = ({ 
+  value, 
+  onChange, 
+  theme = value, // Use value as fallback
+  setTheme = onChange // Use onChange as fallback
+}) => {
+  // Use either the value/onChange or theme/setTheme props
+  const currentTheme = theme || value;
+  const handleThemeChange = setTheme || onChange;
+  
   return (
-    <Select value={theme} onValueChange={setTheme}>
+    <Select value={currentTheme} onValueChange={handleThemeChange}>
       <SelectTrigger className="w-full">
         <SelectValue placeholder="Select a theme">
-          {themes.find(t => t.id === theme)?.name}
+          {themes.find(t => t.id === currentTheme)?.name}
         </SelectValue>
       </SelectTrigger>
       <SelectContent>
@@ -75,7 +87,7 @@ const ThemeSelector: React.FC<ThemeSelectorProps> = ({ theme, setTheme }) => {
                   key={colorKey}
                   className="w-4 h-4 rounded-sm mr-1"
                   style={{ 
-                    backgroundColor: `hsl(${themeOption.colors[colorKey]})`,
+                    backgroundColor: themeOption.colors[colorKey],
                     boxShadow: 'inset 0 0 1px rgba(0,0,0,0.3)'
                   }}
                 />

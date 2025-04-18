@@ -421,7 +421,7 @@ const CompanySettings = () => {
             <Label htmlFor="theme" className="text-lg">Company Theme</Label>
           </div>
           <p className="text-sm text-muted-foreground mb-4">Select a color theme for your company branding</p>
-          <ThemeSelector value={theme} onChange={setTheme} />
+          <ThemeSelector theme={theme} setTheme={setTheme} />
         </div>
         
         <div>

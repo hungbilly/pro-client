@@ -1,10 +1,12 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PlusCircle, Trash2, Check, Upload, X, Image, Clock, Palette, Save } from 'lucide-react';
+import { PlusCircle, Trash2, Check, Upload, X, Image, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
@@ -13,8 +15,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { CountryDropdown } from './ui/country-dropdown';
 import { CurrencyDropdown } from './ui/currency-dropdown';
 import { timezones } from '@/lib/timezones';
-import ThemeSelector from './ThemeSelector';
-import { useTheme } from '@/context/ThemeContext';
 
 interface Company {
   id: string;
@@ -27,7 +27,6 @@ interface Company {
   country?: string;
   currency?: string;
   timezone: string;
-  theme?: string;
   is_default: boolean;
 }
 
@@ -49,10 +48,7 @@ const CompanySettings = () => {
   const [country, setCountry] = useState('hk');
   const [currency, setCurrency] = useState('hkd');
   const [timezone, setTimezone] = useState('UTC');
-  const [theme, setTheme] = useState('modern-blue');
   const [isDefault, setIsDefault] = useState(false);
-
-  const { applyTheme } = useTheme();
 
   useEffect(() => {
     console.log("CompanySettings: Companies from context:", companies);
@@ -73,6 +69,7 @@ const CompanySettings = () => {
     }
   }, [companies, companyContextLoading]);
 
+  // Get user's local timezone for default value when creating a new company
   const userLocalTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   const populateFormWithCompany = (company: Company) => {
@@ -85,7 +82,6 @@ const CompanySettings = () => {
     setCountry(company.country || 'hk');
     setCurrency(company.currency || 'hkd');
     setTimezone(company.timezone || 'UTC');
-    setTheme(company.theme || 'modern-blue');
     setIsDefault(company.is_default);
   };
 
@@ -98,8 +94,7 @@ const CompanySettings = () => {
     setLogoUrl('');
     setCountry('hk');
     setCurrency('hkd');
-    setTimezone(userLocalTimezone);
-    setTheme('modern-blue');
+    setTimezone(userLocalTimezone); // Set to user's local timezone by default for new companies
     setIsDefault(companies.length === 0);
   };
 
@@ -120,13 +115,13 @@ const CompanySettings = () => {
   };
 
   const handleSave = async () => {
-    if (!user) {
-      toast.error('You must be logged in to save company information');
+    if (!name) {
+      toast.error('Company name is required');
       return;
     }
 
-    if (!name) {
-      toast.error('Company name is required');
+    if (!user) {
+      toast.error('You must be logged in to save company information');
       return;
     }
 
@@ -146,7 +141,6 @@ const CompanySettings = () => {
             country,
             currency,
             timezone,
-            theme,
             is_default: isDefault
           })
           .select()
@@ -162,7 +156,6 @@ const CompanySettings = () => {
         setIsAddingNew(false);
         setSelectedCompanyId(data.id);
         await refreshCompanies();
-        applyTheme(theme);
       } else if (selectedCompanyId) {
         const { error } = await supabase
           .from('companies')
@@ -176,7 +169,6 @@ const CompanySettings = () => {
             country,
             currency,
             timezone,
-            theme,
             is_default: isDefault,
             updated_at: new Date().toISOString()
           })
@@ -190,7 +182,6 @@ const CompanySettings = () => {
         
         toast.success('Company updated successfully');
         await refreshCompanies();
-        applyTheme(theme);
       }
     } catch (error) {
       console.error('Error saving company:', error);
@@ -347,7 +338,6 @@ const CompanySettings = () => {
               size="icon" 
               onClick={handleAddNew}
               title="Add New Company"
-              className="border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-800"
             >
               <PlusCircle className="h-4 w-4" />
             </Button>
@@ -413,19 +403,6 @@ const CompanySettings = () => {
               </p>
             </div>
           </div>
-        </div>
-        
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <Palette className="h-4 w-4 text-muted-foreground" />
-            <Label htmlFor="theme" className="text-lg">Company Theme</Label>
-          </div>
-          <p className="text-sm text-muted-foreground mb-4">Select a color theme for your company branding</p>
-          <ThemeSelector 
-            theme={theme} 
-            setTheme={setTheme} 
-            className="text-foreground" 
-          />
         </div>
         
         <div>
@@ -528,38 +505,17 @@ const CompanySettings = () => {
             variant="destructive" 
             onClick={handleDeleteCompany}
             disabled={companies.length <= 1}
-            className="bg-red-600 hover:bg-red-700 text-white"
           >
             <Trash2 className="h-4 w-4 mr-2" />
             Delete Company
           </Button>
         )}
         <div className={!isAddingNew && selectedCompanyId ? '' : 'ml-auto'}>
-          <Button 
-            onClick={handleSave} 
-            disabled={isLoading || uploadingLogo}
-            className="bg-blue-600 hover:bg-blue-700 text-white" 
-          >
-            {isAddingNew ? (
-              <>
-                <PlusCircle className="h-4 w-4 mr-2" />
-                Create Company
-              </>
-            ) : (
-              <>
-                <Save className="h-4 w-4 mr-2" />
-                Update Company
-              </>
-            )}
+          <Button onClick={handleSave} disabled={isLoading || uploadingLogo}>
+            <Check className="h-4 w-4 mr-2" />
+            {isAddingNew ? 'Create Company' : 'Update Company'}
           </Button>
         </div>
-      </div>
-
-      <div className="border-t pt-6 mt-8">
-        <ThemeSelector 
-          theme={theme} 
-          setTheme={setTheme}
-        />
       </div>
     </div>
   );

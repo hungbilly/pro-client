@@ -5,7 +5,7 @@ import TopNavbar from './TopNavbar';
 
 const AppLayout = () => {
   return (
-    <div className="min-h-screen flex flex-col app-container">
+    <div className="min-h-screen flex flex-col">
       <TopNavbar />
       
       <div className="flex-1">

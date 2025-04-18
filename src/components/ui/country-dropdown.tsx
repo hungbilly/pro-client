@@ -105,7 +105,6 @@ export function CountryDropdown({ value, onChange, disabled = false }: CountryDr
                   onChange(currentValue);
                   setOpen(false);
                 }}
-                className="text-popover-foreground hover:text-accent-foreground"
               >
                 <Check
                   className={cn(

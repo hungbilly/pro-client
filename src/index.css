@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -6,30 +5,33 @@
 @layer base {
   :root {
     --background: 210 40% 98%;
-    --module-background: 0 0% 100%;
-    --text: 222.2 84% 4.9%;
-    --muted-text: 215.4 16.3% 46.9%;
-    --accent: 210 100% 50%;
+    --foreground: 222.2 84% 4.9%;
 
-    --foreground: var(--text);
-    --card: var(--module-background);
-    --card-foreground: var(--text);
-    --popover: var(--module-background);
-    --popover-foreground: var(--text);
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 0 0% 100%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 210 100% 50%;
+    --primary-foreground: 210 40% 98%;
+
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
+
     --muted: 210 40% 96.1%;
-    --muted-foreground: var(--muted-text);
+    --muted-foreground: 215.4 16.3% 46.9%;
+
     --accent: 210 40% 96.1%;
     --accent-foreground: 222.2 47.4% 11.2%;
+
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
+
     --border: 214.3 31.8% 91.4%;
-    --input: 0 0% 100%;
-    --input-foreground: var(--text);
+    --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
+
     --radius: 0.8rem;
 
     --sidebar-background: 0 0% 100%;
@@ -55,7 +57,7 @@
     --popover-foreground: 210 40% 98%;
 
     --primary: 210 100% 50%;
-    --primary-foreground: 0 0% 100%;
+    --primary-foreground: 222.2 47.4% 11.2%;
 
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
@@ -70,8 +72,7 @@
     --destructive-foreground: 210 40% 98%;
 
     --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 22%;
-    --input-foreground: 210 40% 98%;
+    --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
     
     --sidebar-background: 240 5.9% 10%;
@@ -95,18 +96,6 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
-    background-color: var(--background);
-    color: var(--text);
-  }
-
-  .app-container {
-    background-color: var(--background);
-    color: var(--text);
-  }
-
-  .module-card {
-    background-color: var(--module-background);
-    color: var(--text);
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -135,8 +124,6 @@
 
   input, textarea, select {
     @apply transition-all duration-200;
-    background-color: hsl(var(--input));
-    color: hsl(var(--input-foreground));
   }
 
   /* Rich text editor list styles */
@@ -171,11 +158,6 @@
 
   .animate-in {
     animation-delay: calc(var(--index) * 100ms);
-  }
-
-  /* Ensure button text is always visible */
-  button.bg-primary {
-    color: white !important;
   }
 }
 

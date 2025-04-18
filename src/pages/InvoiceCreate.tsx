@@ -11,6 +11,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Briefcase, User, Mail, Phone, Calendar, MapPin } from 'lucide-react';
 import { format } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
+import { FormLabel, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, Button } from '@radix-ui/react-select';
 
 interface ContractTemplate {
   id: string;
@@ -28,9 +29,11 @@ const InvoiceCreate = () => {
   const [loading, setLoading] = useState(true);
   const [contractTemplates, setContractTemplates] = useState<ContractTemplate[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(true);
-  
+  const [templates, setTemplates] = useState<InvoiceTemplate[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+
   logDebug('InvoiceCreate component initialized with params:', { clientId, jobId, invoiceId });
-  
+
   useEffect(() => {
     const fetchInvoiceData = async () => {
       setLoading(true);
@@ -128,8 +131,26 @@ const InvoiceCreate = () => {
       }
     };
 
+    const fetchTemplates = async () => {
+      if (!selectedCompany) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('invoice_templates')
+          .select('*')
+          .eq('company_id', selectedCompany.id);
+
+        if (error) throw error;
+        setTemplates(data || []);
+      } catch (error) {
+        console.error('Error fetching invoice templates:', error);
+        toast.error('Failed to load invoice templates');
+      }
+    };
+
     fetchInvoiceData();
     fetchContractTemplates();
+    fetchTemplates();
   }, [clientId, jobId, invoiceId, navigate]);
 
   if (loading || loadingTemplates) {
@@ -310,6 +331,40 @@ const InvoiceCreate = () => {
               </CardContent>
             </Card>
           </div>
+        )}
+
+        {templates.length > 0 && (
+          <Card className="mb-6">
+            <CardContent className="pt-6">
+              <div className="flex items-center space-x-4">
+                <div className="flex-grow">
+                  <FormLabel>Use Template (Optional)</FormLabel>
+                  <Select
+                    value={selectedTemplate || ''}
+                    onValueChange={(value) => setSelectedTemplate(value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a template..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {templates.map((template) => (
+                        <SelectItem key={template.id} value={template.id}>
+                          {template.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => setSelectedTemplate(null)}
+                  className="mt-6"
+                >
+                  Clear
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         <InvoiceForm 

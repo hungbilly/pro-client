@@ -1,4 +1,3 @@
-
 export interface Client {
   id: string;
   name: string;
@@ -58,6 +57,19 @@ export interface Job {
   timezone?: string;
 }
 
+export interface InvoiceTemplate {
+  id: string;
+  name: string;
+  description?: string;
+  items: InvoiceItem[];
+  contractTerms?: string;
+  notes?: string;
+  companyId?: string;
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Package {
   id: string;
   name: string;
@@ -102,6 +114,7 @@ export interface Invoice {
   paymentSchedules?: PaymentSchedule[];
   shootingDate?: string;
   pdfUrl?: string;
+  templateId?: string; // Added to track which template was used
 }
 
 export interface InvoiceItem {

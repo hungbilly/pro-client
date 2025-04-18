@@ -8,46 +8,39 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Plus, Save, Trash2 } from 'lucide-react';
 import { useCompanyContext } from '@/context/CompanyContext';
+import { InvoiceTemplate } from '@/types';
+import PackageSelector from './PackageSelector';
 
 // Schema for template form
 const templateFormSchema = z.object({
   name: z.string().min(1, "Template name is required"),
   description: z.string().optional(),
-  content: z.string().min(1, "Template content is required"),
+  contractTerms: z.string().optional(),
+  notes: z.string().optional(),
 });
 
 type TemplateFormValues = z.infer<typeof templateFormSchema>;
 
-interface Template {
-  id: string;
-  company_id: string;
-  name: string;
-  description: string | null;
-  content: string;
-  created_at: string;
-  updated_at: string;
-  user_id: string;
-}
-
 const InvoiceTemplateSettings = () => {
   const { user } = useAuth();
   const { selectedCompany } = useCompanyContext();
-  const [templates, setTemplates] = useState<Template[]>([]);
+  const [templates, setTemplates] = useState<InvoiceTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isCreatingNew, setIsCreatingNew] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+  const [selectedItems, setSelectedItems] = useState<InvoiceItem[]>([]);
 
   const form = useForm<TemplateFormValues>({
     resolver: zodResolver(templateFormSchema),
     defaultValues: {
       name: '',
       description: '',
-      content: '',
+      contractTerms: '',
+      notes: '',
     }
   });
 
@@ -70,66 +63,24 @@ const InvoiceTemplateSettings = () => {
       if (error) throw error;
       setTemplates(data || []);
     } catch (error) {
-      console.error('Error loading templates:', error);
+      console.error('Error loading invoice templates:', error);
       toast.error('Failed to load invoice templates');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleEditTemplate = (template: Template) => {
-    form.reset({
-      name: template.name,
-      description: template.description || '',
-      content: template.content,
-    });
-    setEditingTemplateId(template.id);
-    setIsCreatingNew(false);
+  const handleItemsSelect = (items: InvoiceItem[]) => {
+    setSelectedItems(prev => [...prev, ...items]);
   };
 
-  const handleCreateNew = () => {
-    form.reset({
-      name: '',
-      description: '',
-      content: '',
-    });
-    setEditingTemplateId(null);
-    setIsCreatingNew(true);
-  };
-
-  const handleDeleteTemplate = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this template?')) return;
-    
-    try {
-      const { error } = await supabase
-        .from('invoice_templates')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-      
-      toast.success('Template deleted successfully');
-      loadTemplates();
-      
-      if (editingTemplateId === id) {
-        form.reset();
-        setEditingTemplateId(null);
-        setIsCreatingNew(false);
-      }
-    } catch (error) {
-      console.error('Error deleting template:', error);
-      toast.error('Failed to delete template');
-    }
+  const handleRemoveItem = (itemId: string) => {
+    setSelectedItems(prev => prev.filter(item => item.id !== itemId));
   };
 
   const onSubmit = async (values: TemplateFormValues) => {
-    if (!selectedCompany) {
-      toast.error('Please select a company first');
-      return;
-    }
-
-    if (!user) {
-      toast.error('You must be logged in');
+    if (!selectedCompany || !user) {
+      toast.error('Missing required context');
       return;
     }
 
@@ -140,7 +91,9 @@ const InvoiceTemplateSettings = () => {
         user_id: user.id,
         name: values.name,
         description: values.description || null,
-        content: values.content,
+        items: selectedItems,
+        contract_terms: values.contractTerms || null,
+        notes: values.notes || null,
       };
 
       let result;
@@ -161,9 +114,11 @@ const InvoiceTemplateSettings = () => {
       toast.success(editingTemplateId ? 'Template updated successfully' : 'Template created successfully');
       loadTemplates();
       
-      // Reset form
+      // Reset form and state
       if (!editingTemplateId) {
         form.reset();
+        setSelectedItems([]);
+        setIsCreating(false);
       }
     } catch (error) {
       console.error('Error saving template:', error);
@@ -173,132 +128,173 @@ const InvoiceTemplateSettings = () => {
     }
   };
 
-  if (isLoading && templates.length === 0) {
-    return <div className="text-center p-4">Loading templates...</div>;
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium">Invoice Templates</h3>
-        <Button onClick={handleCreateNew} size="sm">
-          <Plus className="h-4 w-4 mr-2" />
-          Create New Template
-        </Button>
+        <h2 className="text-xl font-semibold">Invoice Templates</h2>
+        {!isCreating && (
+          <Button onClick={() => setIsCreating(true)} size="sm">
+            <Plus className="mr-2 h-4 w-4" /> Create Template
+          </Button>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="md:col-span-1">
-          {templates.length === 0 ? (
-            <div className="text-center p-4 border rounded-md">
-              No templates yet. Create your first template.
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {templates.map(template => (
-                <Card 
-                  key={template.id} 
-                  className={`cursor-pointer ${editingTemplateId === template.id ? 'border-primary' : ''}`}
-                  onClick={() => handleEditTemplate(template)}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <h4 className="font-medium">{template.name}</h4>
-                        {template.description && (
-                          <p className="text-sm text-muted-foreground">{template.description}</p>
-                        )}
-                      </div>
-                      <Button 
-                        variant="ghost" 
-                        size="icon"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteTemplate(template.id);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
+      {isCreating && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Create Invoice Template</CardTitle>
+            <CardDescription>
+              Create a reusable template with predefined items and terms
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Template Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., Wedding Package Basic" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-        <div className="md:col-span-2">
-          {(isCreatingNew || editingTemplateId) && (
-            <Card>
-              <CardHeader>
-                <CardTitle>{editingTemplateId ? 'Edit Template' : 'Create New Template'}</CardTitle>
-                <CardDescription>
-                  {editingTemplateId 
-                    ? 'Update your invoice template details' 
-                    : 'Create a new invoice template to use when generating invoices'}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Template Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="e.g. Standard Invoice" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="description"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Description (Optional)</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Brief description of this template" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="content"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Template Content</FormLabel>
-                          <FormControl>
-                            <Textarea 
-                              placeholder="Enter your template content here..." 
-                              className="min-h-[200px]"
-                              {...field} 
-                            />
-                          </FormControl>
-                          <FormDescription>
-                            You can use placeholders like {'{client_name}'}, {'{invoice_number}'}, etc.
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <div className="flex justify-end">
-                      <Button type="submit" disabled={isLoading}>
-                        <Save className="h-4 w-4 mr-2" />
-                        {isLoading ? 'Saving...' : 'Save Template'}
-                      </Button>
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description (Optional)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Brief description of this template" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="space-y-2">
+                  <FormLabel>Items</FormLabel>
+                  <PackageSelector onPackageSelect={handleItemsSelect} variant="direct-list" />
+                  
+                  {selectedItems.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                      {selectedItems.map((item) => (
+                        <div key={item.id} className="flex justify-between items-center p-2 bg-muted rounded-md">
+                          <div>
+                            <div className="font-medium">{item.name}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {item.quantity} x ${item.rate} = ${item.amount}
+                            </div>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveItem(item.id)}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      ))}
                     </div>
-                  </form>
-                </Form>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+                  )}
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="contractTerms"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Contract Terms (Optional)</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Default contract terms for this template"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Notes (Optional)</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Additional notes for invoices using this template"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex justify-end space-x-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setIsCreating(false);
+                      form.reset();
+                      setSelectedItems([]);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={isLoading}>
+                    {isLoading ? 'Saving...' : 'Save Template'}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {templates.map((template) => (
+          <Card key={template.id}>
+            <CardContent className="pt-6">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="text-lg font-medium">{template.name}</h3>
+                  {template.description && (
+                    <p className="text-sm text-muted-foreground">{template.description}</p>
+                  )}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleDeleteTemplate(template.id)}
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
+              {template.items && template.items.length > 0 && (
+                <div className="mt-4">
+                  <h4 className="text-sm font-medium mb-2">Items:</h4>
+                  <div className="space-y-1">
+                    {template.items.map((item, index) => (
+                      <div key={index} className="text-sm">
+                        {item.name} - ${item.rate} x {item.quantity}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ))}
       </div>
     </div>
   );

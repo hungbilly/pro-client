@@ -1,8 +1,7 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Palette } from 'lucide-react';
-import { useTheme } from '@/context/ThemeContext';
 
 export const themes = [
   {
@@ -93,16 +92,6 @@ interface ThemeSelectorProps {
 }
 
 const ThemeSelector: React.FC<ThemeSelectorProps> = ({ theme, setTheme }) => {
-  const { allThemes } = useTheme();
-  
-  // Update the theme prop if it's not found in available themes
-  useEffect(() => {
-    const themeExists = allThemes.some(t => t.id === theme);
-    if (!themeExists && allThemes.length > 0) {
-      setTheme(allThemes[0].id);
-    }
-  }, [theme, allThemes, setTheme]);
-
   return (
     <Select value={theme} onValueChange={setTheme}>
       <SelectTrigger className="w-full">
@@ -112,7 +101,7 @@ const ThemeSelector: React.FC<ThemeSelectorProps> = ({ theme, setTheme }) => {
         </div>
       </SelectTrigger>
       <SelectContent>
-        {allThemes.map(themeOption => (
+        {themes.map(themeOption => (
           <SelectItem 
             key={themeOption.id} 
             value={themeOption.id}

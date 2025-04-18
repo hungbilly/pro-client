@@ -536,13 +536,9 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   };
 
   const renderItems = () => {
-    const sortedItems = [...invoice.items].sort((a, b) => {
-      if (a.rate >= 0 && b.rate < 0) return -1;
-      if (a.rate < 0 && b.rate >= 0) return 1;
-      return 0;
-    });
-
-    return sortedItems.map((item, index) => (
+    const regularItems = invoice.items.filter(item => item.rate >= 0);
+    
+    return regularItems.map((item, index) => (
       <TableRow 
         key={item.id} 
         className={cn(
@@ -568,6 +564,30 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
           item.rate < 0 && "text-blue-600 dark:text-blue-400"
         )}>
           ${(item.quantity * Math.abs(item.rate)).toFixed(2)}
+        </TableCell>
+        <TableCell>
+          <div className="flex items-center justify-end space-x-1">
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleRemoveItem(item.id)}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </TableCell>
+      </TableRow>
+    ));
+  };
+
+  const renderDiscounts = () => {
+    const discountItems = invoice.items.filter(item => item.rate < 0);
+    
+    return discountItems.map((item, index) => (
+      <TableRow key={item.id} className="bg-blue-50/50 dark:bg-blue-950/20">
+        <TableCell className="font-medium">{item.name}</TableCell>
+        <TableCell>{item.description}</TableCell>
+        <TableCell className="text-right font-medium text-blue-600 dark:text-blue-400">
+          -${Math.abs(item.rate * item.quantity).toFixed(2)}
         </TableCell>
         <TableCell>
           <div className="flex items-center justify-end space-x-1">
@@ -720,6 +740,24 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                     {renderItems()}
                   </TableBody>
                 </Table>
+                
+                {invoice.items.some(item => item.rate < 0) && (
+                  <div className="border rounded-lg overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[200px]">Discount Name</TableHead>
+                          <TableHead className="w-[350px]">Description</TableHead>
+                          <TableHead className="text-right">Amount</TableHead>
+                          <TableHead className="w-[100px]"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {renderDiscounts()}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
                 
                 <div className="flex justify-between p-4 border-t">
                   <div className="flex space-x-4">

@@ -56,12 +56,12 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       themeName === 'slate-graphite';
     
     if (isDarkTheme) {
-      // For dark themes, use a slightly lighter background for inputs to create contrast
-      root.style.setProperty('--input', '220 10% 22%'); // Slightly lighter than background
-      root.style.setProperty('--input-foreground', '220 10% 95%'); // Very light text for high contrast
+      // For dark themes, use a much lighter background for inputs to create better contrast
+      root.style.setProperty('--input', '220 15% 30%'); // Significantly lighter than background for better visibility
+      root.style.setProperty('--input-foreground', '0 0% 100%'); // Pure white text for maximum contrast
     } else {
-      // For light themes, use the regular background with dark text
-      root.style.setProperty('--input', theme.colors.moduleBackground);
+      // For light themes, use a slightly darker background than module background for better contrast
+      root.style.setProperty('--input', '0 0% 98%'); // Almost white, but slightly off-white
       root.style.setProperty('--input-foreground', theme.colors.text);
     }
     

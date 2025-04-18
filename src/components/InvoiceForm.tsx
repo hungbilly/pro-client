@@ -535,6 +535,54 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     toast.success("Payment schedule removed");
   };
 
+  const renderItems = () => {
+    const sortedItems = [...invoice.items].sort((a, b) => {
+      if (a.rate >= 0 && b.rate < 0) return -1;
+      if (a.rate < 0 && b.rate >= 0) return 1;
+      return 0;
+    });
+
+    return sortedItems.map((item, index) => (
+      <TableRow 
+        key={item.id} 
+        className={cn(
+          "align-top",
+          item.rate < 0 && "bg-blue-50/50 dark:bg-blue-950/20"
+        )}
+      >
+        <TableCell className="font-medium">
+          {item.name || item.description.split('\n')[0]}
+        </TableCell>
+        <TableCell>
+          <div 
+            className="prose prose-sm max-w-none"
+            dangerouslySetInnerHTML={renderRichTextContent(item.description)}
+          />
+        </TableCell>
+        <TableCell>${Math.abs(item.rate).toFixed(2)}</TableCell>
+        <TableCell>{item.quantity}</TableCell>
+        <TableCell>{item.discount || '0%'}</TableCell>
+        <TableCell>No Tax</TableCell>
+        <TableCell className={cn(
+          "text-right font-medium",
+          item.rate < 0 && "text-blue-600 dark:text-blue-400"
+        )}>
+          ${(item.quantity * Math.abs(item.rate)).toFixed(2)}
+        </TableCell>
+        <TableCell>
+          <div className="flex items-center justify-end space-x-1">
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleRemoveItem(item.id)}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </TableCell>
+      </TableRow>
+    ));
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -663,36 +711,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {invoice.items.map((item, index) => (
-                      <TableRow key={item.id} className="align-top">
-                        <TableCell className="font-medium">
-                          {item.name || item.description.split('\n')[0]}
-                        </TableCell>
-                        <TableCell>
-                          <div 
-                            className="prose prose-sm max-w-none"
-                            dangerouslySetInnerHTML={renderRichTextContent(item.description)}
-                          />
-                        </TableCell>
-                        <TableCell>${item.rate.toFixed(2)}</TableCell>
-                        <TableCell>{item.quantity}</TableCell>
-                        <TableCell>{item.discount || '0%'}</TableCell>
-                        <TableCell>No Tax</TableCell>
-                        <TableCell className="text-right font-medium">
-                          ${(item.quantity * item.rate).toFixed(2)}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center justify-end space-x-1">
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleRemoveItem(item.id)}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {renderItems()}
                   </TableBody>
                 </Table>
                 

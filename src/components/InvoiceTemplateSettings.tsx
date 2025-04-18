@@ -62,25 +62,35 @@ const InvoiceTemplateSettings = () => {
       if (error) throw error;
       
       // Convert from database format to our app format
-      const formattedTemplates = data?.map(template => ({
-        id: template.id,
-        name: template.name,
-        description: template.description || undefined,
-        items: template.content ? JSON.parse(template.content).items || [] : [],
-        contractTerms: template.contract_terms || undefined,
-        notes: template.description || undefined,
-        companyId: template.company_id,
-        userId: template.user_id,
-        createdAt: template.created_at,
-        updatedAt: template.updated_at,
-        // Keep the database format fields too
-        company_id: template.company_id,
-        user_id: template.user_id,
-        content: template.content,
-        contract_terms: template.contract_terms,
-        created_at: template.created_at,
-        updated_at: template.updated_at,
-      })) as InvoiceTemplate[];
+      const formattedTemplates = data?.map(template => {
+        // Parse content JSON safely
+        let parsedContent;
+        try {
+          parsedContent = template.content ? JSON.parse(template.content) : {};
+        } catch (e) {
+          console.error('Error parsing template content:', e);
+          parsedContent = {};
+        }
+        
+        return {
+          id: template.id,
+          name: template.name,
+          description: template.description || undefined,
+          items: parsedContent.items || [],
+          contractTerms: parsedContent.contractTerms || undefined,
+          notes: parsedContent.notes || undefined,
+          companyId: template.company_id,
+          userId: template.user_id,
+          createdAt: template.created_at,
+          updatedAt: template.updated_at,
+          // Keep the database format fields too
+          company_id: template.company_id,
+          user_id: template.user_id,
+          content: template.content,
+          created_at: template.created_at,
+          updated_at: template.updated_at,
+        };
+      }) as InvoiceTemplate[];
       
       setTemplates(formattedTemplates || []);
     } catch (error) {
@@ -144,7 +154,6 @@ const InvoiceTemplateSettings = () => {
         name: values.name,
         description: values.description || null,
         content: content,
-        contract_terms: values.contractTerms || null,
       };
 
       let result;

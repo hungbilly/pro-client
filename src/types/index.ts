@@ -69,10 +69,9 @@ export interface InvoiceTemplate {
   userId: string;
   createdAt: string;
   updatedAt: string;
-  // Match these with the database fields
+  // Database fields (direct from Supabase)
   company_id?: string;
   user_id: string;
-  contract_terms?: string;
   content?: string;
   created_at: string;
   updated_at: string;

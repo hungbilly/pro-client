@@ -20,7 +20,7 @@ export const useTheme = () => {
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { selectedCompany } = useCompany();
-  const currentTheme = selectedCompany?.theme || 'modern-blue';
+  const currentTheme = selectedCompany?.theme || 'oceanic-breeze';
 
   const applyTheme = (themeName: string) => {
     const theme = themes.find(t => t.id === themeName) || themes[0];
@@ -48,7 +48,23 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     root.style.setProperty('--primary-foreground', theme.colors.buttonPrimaryForeground);
     root.style.setProperty('--muted-foreground', theme.colors.mutedText);
     root.style.setProperty('--accent-foreground', theme.colors.text);
-    root.style.setProperty('--input', theme.colors.border);
+    
+    // Improve input field styling for better text visibility
+    // For dark themes, use lighter colors for input backgrounds
+    const isDarkTheme = 
+      themeName === 'midnight-indigo' || 
+      themeName === 'slate-graphite';
+    
+    if (isDarkTheme) {
+      // For dark themes, use a slightly lighter background for inputs to create contrast
+      root.style.setProperty('--input', '220 10% 22%'); // Slightly lighter than background
+      root.style.setProperty('--input-foreground', '220 10% 95%'); // Very light text for high contrast
+    } else {
+      // For light themes, use the regular background with dark text
+      root.style.setProperty('--input', theme.colors.moduleBackground);
+      root.style.setProperty('--input-foreground', theme.colors.text);
+    }
+    
     root.style.setProperty('--ring', theme.colors.accent);
 
     // Set sidebar-specific variables

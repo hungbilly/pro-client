@@ -1,59 +1,38 @@
 
-import React, { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { useCompanyContext } from '@/context/CompanyContext';
-import { InvoiceItem } from '@/types';
+import React from 'react';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { DiscountTemplate, mapDiscountTemplateFromRow } from './discount/types';
+import { DollarSign, Percent } from 'lucide-react';
+import { InvoiceItem } from '@/types';
 
 interface DiscountSelectorProps {
   onDiscountSelect: (items: InvoiceItem[]) => void;
-  variant?: 'dialog' | 'direct-list';
+  variant?: 'dialog' | 'page';
   subtotal?: number;
 }
 
-const DiscountSelector: React.FC<DiscountSelectorProps> = ({ 
-  onDiscountSelect, 
-  variant = 'dialog',
+const DiscountSelector: React.FC<DiscountSelectorProps> = ({
+  onDiscountSelect,
+  variant = 'page',
   subtotal = 0,
 }) => {
-  const [templates, setTemplates] = useState<DiscountTemplate[]>([]);
-  const [loading, setLoading] = useState(true);
-  const { selectedCompany } = useCompanyContext();
-
-  useEffect(() => {
-    loadDiscountTemplates();
-  }, [selectedCompany]);
-
-  const loadDiscountTemplates = async () => {
-    if (!selectedCompany) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from('discount_templates')
-        .select('*')
-        .eq('company_id', selectedCompany.id);
-
-      if (error) throw error;
-
-      setTemplates((data || []).map(mapDiscountTemplateFromRow));
-    } catch (error) {
-      console.error('Error loading discount templates:', error);
-    } finally {
-      setLoading(false);
+  const calculateDiscountAmount = (amount: number, type: 'fixed' | 'percentage') => {
+    if (type === 'percentage') {
+      return (subtotal * amount) / 100;
     }
+    return amount;
   };
 
-  const handleSelectDiscount = (template: DiscountTemplate) => {
-    const discountAmount = template.type === 'percentage' 
-      ? (subtotal * template.amount) / 100
-      : template.amount;
+  const handleSelect = (discount: any) => {
+    const discountAmount = calculateDiscountAmount(
+      discount.amount,
+      discount.type as 'fixed' | 'percentage'
+    );
 
     const discountItem: InvoiceItem = {
-      id: `discount-${template.id}`,
-      name: template.name,
-      description: template.description || template.name,
+      id: `template-discount-${discount.id}`,
+      name: discount.name,
+      description: discount.description || 'Template discount',
       quantity: 1,
       rate: -discountAmount,
       amount: -discountAmount,
@@ -62,29 +41,48 @@ const DiscountSelector: React.FC<DiscountSelectorProps> = ({
     onDiscountSelect([discountItem]);
   };
 
-  if (loading) {
-    return <div>Loading discounts...</div>;
-  }
-
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {templates.map((template) => (
-        <Card 
-          key={template.id}
-          className="p-4 cursor-pointer hover:bg-slate-50"
-          onClick={() => handleSelectDiscount(template)}
-        >
-          <h3 className="font-medium">{template.name}</h3>
-          {template.description && (
-            <p className="text-sm text-muted-foreground">{template.description}</p>
-          )}
-          <p className="text-sm font-medium mt-2">
-            {template.type === 'percentage' 
-              ? `${template.amount}% off`
-              : `$${template.amount.toFixed(2)} off`}
-          </p>
-        </Card>
-      ))}
+    <div className="w-full">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Name</TableHead>
+            <TableHead>Amount</TableHead>
+            <TableHead>Description</TableHead>
+            <TableHead className="text-right">Action</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {discounts.map((discount) => (
+            <TableRow key={discount.id}>
+              <TableCell className="font-medium">{discount.name}</TableCell>
+              <TableCell>
+                <div className="flex items-center gap-1">
+                  {discount.type === 'percentage' ? (
+                    <Percent className="h-4 w-4" />
+                  ) : (
+                    <DollarSign className="h-4 w-4" />
+                  )}
+                  {discount.amount}
+                  {discount.type === 'percentage' && '%'}
+                </div>
+              </TableCell>
+              <TableCell className="text-muted-foreground">
+                {discount.description || '-'}
+              </TableCell>
+              <TableCell className="text-right">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleSelect(discount)}
+                >
+                  Apply
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   );
 };

@@ -1025,6 +1025,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
       <AddProductPackageDialog 
         open={showAddProductDialog} 
         onOpenChange={setShowAddProductDialog} 
+        onAddItems={handlePackageSelect}
       />
       <AddDiscountDialog 
         open={showAddDiscountDialog} 

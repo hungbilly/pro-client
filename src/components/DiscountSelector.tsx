@@ -5,6 +5,38 @@ import { Button } from '@/components/ui/button';
 import { DollarSign, Percent } from 'lucide-react';
 import { InvoiceItem } from '@/types';
 
+// Define the discounts array that was missing
+const discounts = [
+  {
+    id: '1',
+    name: 'Early Payment',
+    description: 'Discount for paying within 7 days',
+    amount: 10,
+    type: 'percentage',
+  },
+  {
+    id: '2',
+    name: 'New Client',
+    description: 'Welcome discount for new clients',
+    amount: 15,
+    type: 'percentage',
+  },
+  {
+    id: '3',
+    name: 'Holiday Special',
+    description: 'Special holiday season discount',
+    amount: 50,
+    type: 'fixed',
+  },
+  {
+    id: '4',
+    name: 'Loyalty Discount',
+    description: 'For returning clients',
+    amount: 5,
+    type: 'percentage',
+  }
+];
+
 interface DiscountSelectorProps {
   onDiscountSelect: (items: InvoiceItem[]) => void;
   variant?: 'dialog' | 'page';

@@ -2,7 +2,6 @@
 import React from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Invoice, Client } from '@/types';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +9,14 @@ import { CalendarDays, Copy, Eye, FileEdit, Trash2, AreaChart } from 'lucide-rea
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { deleteInvoice } from '@/lib/storage';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 import {
   AlertDialog,
@@ -85,7 +92,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
       .then(() => toast.success('Invoice link copied to clipboard!'))
       .catch(() => toast.error('Failed to copy link'));
   };
-  
+
   const handleDeleteInvoice = async () => {
     if (!invoiceToDelete) return;
 
@@ -119,92 +126,6 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
     e.stopPropagation();
     setInvoiceToDelete(invoiceId);
   };
-
-  const renderInvoiceCard = (invoice: Invoice) => (
-    <div key={invoice.id} className="group relative">
-      <Link 
-        to={`/invoice/${invoice.id}`}
-        className="block transition-all duration-200 hover:shadow-soft rounded-lg"
-      >
-        <Card className="overflow-hidden h-full border-transparent hover:border-border transition-all duration-200">
-          <CardHeader className="pb-3">
-            <div className="flex justify-between items-start">
-              <div>
-                <CardTitle className="text-base">{invoice.number}</CardTitle>
-                <CardDescription className="text-xs mt-1">
-                  Created: {new Date(invoice.date).toLocaleDateString()}
-                </CardDescription>
-              </div>
-              <div className="flex flex-col gap-2 items-end">
-                <Badge className={getStatusColor(invoice.status)}>
-                  {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
-                </Badge>
-                {invoice.contractStatus && (
-                  <Badge className={getContractStatusColor(invoice.contractStatus)}>
-                    {invoice.contractStatus === 'accepted' ? 'Accepted' : 'Not Accepted'}
-                  </Badge>
-                )}
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex justify-between items-center mb-2">
-              <div className="text-sm text-muted-foreground">Due Date:</div>
-              <div className="text-sm font-medium flex items-center">
-                <CalendarDays className="h-3 w-3 mr-1 text-muted-foreground" />
-                {new Date(invoice.dueDate).toLocaleDateString()}
-              </div>
-            </div>
-            {invoice.shootingDate && (
-              <div className="flex justify-between items-center mb-2">
-                <div className="text-sm text-muted-foreground">Job Date:</div>
-                <div className="text-sm font-medium flex items-center">
-                  <CalendarDays className="h-3 w-3 mr-1 text-muted-foreground" />
-                  {new Date(invoice.shootingDate).toLocaleDateString()}
-                </div>
-              </div>
-            )}
-            <div className="flex justify-between items-center mb-6 relative">
-              <div className="text-sm text-muted-foreground">Amount:</div>
-              <div className="text-base font-bold">${invoice.amount.toFixed(2)}</div>
-            </div>
-            <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-1">
-              {invoice.status !== 'draft' && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  title="Copy client link"
-                  onClick={(e) => copyInvoiceLink(invoice, e)}
-                >
-                  <Copy className="h-3.5 w-3.5" />
-                </Button>
-              )}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                asChild
-              >
-                <Link to={`/invoice/${invoice.id}`}>
-                  <Eye className="h-3.5 w-3.5" />
-                </Link>
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                title="Delete invoice"
-                onClick={(e) => confirmDeleteInvoice(e, invoice.id)}
-              >
-                <Trash2 className="h-3.5 w-3.5 text-destructive" />
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </Link>
-    </div>
-  );
 
   return (
     <div className="space-y-8">
@@ -252,29 +173,111 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
         )}
       </div>
       
-      {localInvoices.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-8 text-center">
-            <AreaChart className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">No Invoices Yet</h3>
-            <p className="text-muted-foreground mb-6 max-w-md">
-              {showCreateButton 
-                ? "You haven't created any invoices for this client yet. Create your first invoice to get started."
-                : "No invoices have been created for this client yet. Invoices can be created from the job page."}
-            </p>
-            {showCreateButton && (
-              <Button asChild>
-                <Link to={`/invoice/create/${client.id}`}>
-                  <FileEdit className="h-4 w-4 mr-2" />
-                  Create First Invoice
-                </Link>
-              </Button>
-            )}
-          </CardContent>
-        </Card>
+      {sortedInvoices.length === 0 ? (
+        <div className="rounded-md border border-dashed p-8 text-center">
+          <AreaChart className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-medium mb-2">No Invoices Yet</h3>
+          <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+            {showCreateButton 
+              ? "You haven't created any invoices for this client yet. Create your first invoice to get started."
+              : "No invoices have been created for this client yet. Invoices can be created from the job page."}
+          </p>
+          {showCreateButton && (
+            <Button asChild>
+              <Link to={`/invoice/create/${client.id}`}>
+                <FileEdit className="h-4 w-4 mr-2" />
+                Create First Invoice
+              </Link>
+            </Button>
+          )}
+        </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {sortedInvoices.map(renderInvoiceCard)}
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Invoice #</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Due Date</TableHead>
+                {sortBy === 'job-date' && <TableHead>Job Date</TableHead>}
+                <TableHead>Amount</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Contract</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sortedInvoices.map((invoice) => (
+                <TableRow key={invoice.id}>
+                  <TableCell className="font-medium">{invoice.number}</TableCell>
+                  <TableCell>{new Date(invoice.date).toLocaleDateString()}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center">
+                      <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+                      {new Date(invoice.dueDate).toLocaleDateString()}
+                    </div>
+                  </TableCell>
+                  {sortBy === 'job-date' && (
+                    <TableCell>
+                      {invoice.shootingDate && (
+                        <div className="flex items-center">
+                          <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+                          {new Date(invoice.shootingDate).toLocaleDateString()}
+                        </div>
+                      )}
+                    </TableCell>
+                  )}
+                  <TableCell className="font-semibold">${invoice.amount.toFixed(2)}</TableCell>
+                  <TableCell>
+                    <Badge className={getStatusColor(invoice.status)}>
+                      {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {invoice.contractStatus && (
+                      <Badge className={getContractStatusColor(invoice.contractStatus)}>
+                        {invoice.contractStatus === 'accepted' ? 'Accepted' : 'Not Accepted'}
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end items-center gap-1">
+                      {invoice.status !== 'draft' && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          title="Copy client link"
+                          onClick={(e) => copyInvoiceLink(invoice, e)}
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        asChild
+                      >
+                        <Link to={`/invoice/${invoice.id}`}>
+                          <Eye className="h-3.5 w-3.5" />
+                        </Link>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        title="Delete invoice"
+                        onClick={(e) => confirmDeleteInvoice(e, invoice.id)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       )}
     </div>

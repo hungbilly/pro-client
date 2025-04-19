@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Invoice, Client } from '@/types';
@@ -5,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { CalendarDays, Copy, Eye, FileEdit, Trash2 } from 'lucide-react';
+import { CalendarDays, Copy, Eye, FileEdit, Trash2, AreaChart } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { deleteInvoice } from '@/lib/storage';
@@ -69,8 +70,8 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
       if (sortBy === 'invoice-date') {
         return new Date(b.date).getTime() - new Date(a.date).getTime();
       } else {
-        const dateA = a.shooting_date ? new Date(a.shooting_date) : new Date(a.date);
-        const dateB = b.shooting_date ? new Date(b.shooting_date) : new Date(b.date);
+        const dateA = a.shootingDate ? new Date(a.shootingDate) : new Date(a.date);
+        const dateB = b.shootingDate ? new Date(b.shootingDate) : new Date(b.date);
         return dateB.getTime() - dateA.getTime();
       }
     });
@@ -147,12 +148,12 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
                 {new Date(invoice.dueDate).toLocaleDateString()}
               </div>
             </div>
-            {invoice.shooting_date && (
+            {invoice.shootingDate && (
               <div className="flex justify-between items-center mb-2">
                 <div className="text-sm text-muted-foreground">Job Date:</div>
                 <div className="text-sm font-medium flex items-center">
                   <CalendarDays className="h-3 w-3 mr-1 text-muted-foreground" />
-                  {new Date(invoice.shooting_date).toLocaleDateString()}
+                  {new Date(invoice.shootingDate).toLocaleDateString()}
                 </div>
               </div>
             )}

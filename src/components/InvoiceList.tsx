@@ -3,9 +3,9 @@ import { Link, useParams } from 'react-router-dom';
 import { Invoice, Client } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { AreaChart, CalendarDays, ClipboardCheck, Copy, Eye, FileEdit, FileCheck, FileText, Trash2 } from 'lucide-react';
+import { CalendarDays, Copy, Eye, FileEdit, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { deleteInvoice } from '@/lib/storage';
@@ -56,6 +56,7 @@ const getContractStatusColor = (status?: 'pending' | 'accepted') => {
 const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateButton = true, onInvoiceDeleted }) => {
   const [invoiceToDelete, setInvoiceToDelete] = React.useState<string | null>(null);
   const [localInvoices, setLocalInvoices] = React.useState<Invoice[]>(invoices);
+  const [sortBy, setSortBy] = React.useState<'invoice-date' | 'job-date'>('invoice-date');
   const queryClient = useQueryClient();
   const { id: jobId } = useParams();
   
@@ -63,13 +64,17 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
     setLocalInvoices(invoices);
   }, [invoices]);
   
-  const sortedInvoices = [...localInvoices].sort((a, b) => 
-    new Date(b.date).getTime() - new Date(a.date).getTime()
-  );
-
-  const draftInvoices = sortedInvoices.filter(invoice => invoice.status === 'draft');
-  const activeInvoices = sortedInvoices.filter(invoice => ['sent', 'accepted'].includes(invoice.status));
-  const paidInvoices = sortedInvoices.filter(invoice => invoice.status === 'paid');
+  const sortedInvoices = React.useMemo(() => {
+    return [...localInvoices].sort((a, b) => {
+      if (sortBy === 'invoice-date') {
+        return new Date(b.date).getTime() - new Date(a.date).getTime();
+      } else {
+        const dateA = a.shooting_date ? new Date(a.shooting_date) : new Date(a.date);
+        const dateB = b.shooting_date ? new Date(b.shooting_date) : new Date(b.date);
+        return dateB.getTime() - dateA.getTime();
+      }
+    });
+  }, [localInvoices, sortBy]);
 
   const copyInvoiceLink = (invoice: Invoice, e: React.MouseEvent) => {
     e.preventDefault();
@@ -129,17 +134,9 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
                   Created: {new Date(invoice.date).toLocaleDateString()}
                 </CardDescription>
               </div>
-              <div className="flex flex-col gap-1">
-                <Badge className={getStatusColor(invoice.status)}>
-                  {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
-                </Badge>
-                {invoice.contractStatus === 'accepted' && (
-                  <Badge variant="outline" className={`flex items-center gap-1 ${getContractStatusColor('accepted')}`}>
-                    <FileCheck className="h-3 w-3" />
-                    Contract Accepted
-                  </Badge>
-                )}
-              </div>
+              <Badge className={getStatusColor(invoice.status)}>
+                {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
+              </Badge>
             </div>
           </CardHeader>
           <CardContent>
@@ -150,6 +147,15 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
                 {new Date(invoice.dueDate).toLocaleDateString()}
               </div>
             </div>
+            {invoice.shooting_date && (
+              <div className="flex justify-between items-center mb-2">
+                <div className="text-sm text-muted-foreground">Job Date:</div>
+                <div className="text-sm font-medium flex items-center">
+                  <CalendarDays className="h-3 w-3 mr-1 text-muted-foreground" />
+                  {new Date(invoice.shooting_date).toLocaleDateString()}
+                </div>
+              </div>
+            )}
             <div className="flex justify-between items-center mb-6 relative">
               <div className="text-sm text-muted-foreground">Amount:</div>
               <div className="text-base font-bold">${invoice.amount.toFixed(2)}</div>
@@ -192,23 +198,6 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
     </div>
   );
 
-  const renderInvoiceSection = (title: string, icon: React.ReactNode, invoices: Invoice[], emptyMessage: string) => (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        {icon}
-        <h3 className="text-lg font-medium">{title}</h3>
-      </div>
-      
-      {invoices.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {invoices.map(renderInvoiceCard)}
-        </div>
-      ) : (
-        <p className="text-sm text-muted-foreground py-4">{emptyMessage}</p>
-      )}
-    </div>
-  );
-
   return (
     <div className="space-y-8">
       <AlertDialog open={!!invoiceToDelete} onOpenChange={(open) => !open && setInvoiceToDelete(null)}>
@@ -233,7 +222,18 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
       </AlertDialog>
 
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-semibold">Invoices</h2>
+        <div className="flex items-center gap-4">
+          <h2 className="text-2xl font-semibold">Invoices</h2>
+          <Select value={sortBy} onValueChange={(value) => setSortBy(value as 'invoice-date' | 'job-date')}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Sort by..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="invoice-date">Sort by Invoice Date</SelectItem>
+              <SelectItem value="job-date">Sort by Job Date</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         {showCreateButton && (
           <Button asChild>
             <Link to={`/invoice/create/${client.id}`}>
@@ -265,37 +265,8 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-10">
-          {draftInvoices.length > 0 && (
-            <>
-              {renderInvoiceSection(
-                "Draft Invoices", 
-                <FileEdit className="h-5 w-5 text-muted-foreground" />, 
-                draftInvoices,
-                "No draft invoices"
-              )}
-              <Separator />
-            </>
-          )}
-          
-          {renderInvoiceSection(
-            "Active Invoices", 
-            <ClipboardCheck className="h-5 w-5 text-muted-foreground" />, 
-            activeInvoices,
-            "No active invoices"
-          )}
-          
-          {paidInvoices.length > 0 && (
-            <>
-              <Separator />
-              {renderInvoiceSection(
-                "Paid Invoices", 
-                <AreaChart className="h-5 w-5 text-muted-foreground" />, 
-                paidInvoices,
-                "No paid invoices"
-              )}
-            </>
-          )}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {sortedInvoices.map(renderInvoiceCard)}
         </div>
       )}
     </div>

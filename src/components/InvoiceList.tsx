@@ -135,9 +135,11 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
                   Created: {new Date(invoice.date).toLocaleDateString()}
                 </CardDescription>
               </div>
-              <Badge className={getStatusColor(invoice.status)}>
-                {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
-              </Badge>
+              {invoice.contractStatus && (
+                <Badge className={getContractStatusColor(invoice.contractStatus)}>
+                  {invoice.contractStatus === 'accepted' ? 'Accepted' : 'Not Accepted'}
+                </Badge>
+              )}
             </div>
           </CardHeader>
           <CardContent>

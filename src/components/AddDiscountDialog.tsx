@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import {
   Dialog,
@@ -13,6 +12,7 @@ import DiscountSelector from './DiscountSelector';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 
 interface AddDiscountDialogProps {
   open: boolean;
@@ -28,6 +28,8 @@ const AddDiscountDialog: React.FC<AddDiscountDialogProps> = ({
   subtotal = 0,
 }) => {
   const [manualAmount, setManualAmount] = useState<string>('');
+  const [discountName, setDiscountName] = useState<string>('');
+  const [discountDescription, setDiscountDescription] = useState<string>('');
 
   const handleDiscountSelect = (items: InvoiceItem[]) => {
     onAddDiscount(items);
@@ -40,8 +42,8 @@ const AddDiscountDialog: React.FC<AddDiscountDialogProps> = ({
 
     const discountItem: InvoiceItem = {
       id: `manual-discount-${Date.now()}`,
-      name: `$${numericAmount} Off`,
-      description: 'Manual fixed amount discount',
+      name: discountName || `$${numericAmount} Off`,
+      description: discountDescription || 'Manual fixed amount discount',
       quantity: 1,
       rate: -numericAmount,
       amount: -numericAmount,
@@ -49,6 +51,13 @@ const AddDiscountDialog: React.FC<AddDiscountDialogProps> = ({
 
     onAddDiscount([discountItem]);
     onOpenChange(false);
+  };
+
+  const isManualDiscountValid = () => {
+    const numericAmount = parseFloat(manualAmount);
+    return !isNaN(numericAmount) && 
+           numericAmount > 0 && 
+           discountName.trim().length > 0;
   };
 
   return (
@@ -78,6 +87,15 @@ const AddDiscountDialog: React.FC<AddDiscountDialogProps> = ({
           <TabsContent value="manual" className="space-y-4">
             <div className="space-y-4">
               <div className="space-y-2">
+                <Label>Discount Name</Label>
+                <Input
+                  value={discountName}
+                  onChange={(e) => setDiscountName(e.target.value)}
+                  placeholder="Enter discount name"
+                />
+              </div>
+
+              <div className="space-y-2">
                 <Label>Amount ($)</Label>
                 <Input
                   type="number"
@@ -89,9 +107,20 @@ const AddDiscountDialog: React.FC<AddDiscountDialogProps> = ({
                 />
               </div>
 
+              <div className="space-y-2">
+                <Label>Description</Label>
+                <Textarea
+                  value={discountDescription}
+                  onChange={(e) => setDiscountDescription(e.target.value)}
+                  placeholder="Enter discount description (optional)"
+                  className="resize-none"
+                  rows={3}
+                />
+              </div>
+
               <Button 
                 onClick={handleManualDiscount}
-                disabled={!manualAmount || parseFloat(manualAmount) <= 0}
+                disabled={!isManualDiscountValid()}
                 className="w-full"
               >
                 Apply Manual Discount

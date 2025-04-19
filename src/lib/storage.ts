@@ -1135,41 +1135,61 @@ export const deleteInvoice = async (invoiceId: string): Promise<boolean> => {
   }
 };
 
-export const updateInvoiceStatus = async (invoiceId: string, status: InvoiceStatus): Promise<boolean> => {
+export const updateInvoiceStatus = async (invoiceId: string, status: InvoiceStatus): Promise<Invoice | null> => {
   try {
-    const { error } = await supabase
+    const updateData: { status: InvoiceStatus; invoice_accepted_at?: string } = { 
+      status 
+    };
+
+    if (status === 'accepted') {
+      updateData.invoice_accepted_at = new Date().toISOString();
+    }
+
+    const { data, error } = await supabase
       .from('invoices')
-      .update({ status })
-      .eq('id', invoiceId);
+      .update(updateData)
+      .eq('id', invoiceId)
+      .select()
+      .single();
 
     if (error) {
       console.error('Error updating invoice status:', error);
-      return false;
+      return null;
     }
 
-    return true;
+    return data;
   } catch (error) {
     console.error('Error in updateInvoiceStatus:', error);
-    return false;
+    return null;
   }
 };
 
-export const updateContractStatus = async (invoiceId: string, status: ContractStatus): Promise<boolean> => {
+export const updateContractStatus = async (invoiceId: string, contractStatus: ContractStatus): Promise<Invoice | null> => {
   try {
-    const { error } = await supabase
+    const updateData: { contract_status: ContractStatus; contract_accepted_at?: string } = { 
+      contract_status: contractStatus 
+    };
+
+    if (contractStatus === 'accepted') {
+      updateData.contract_accepted_at = new Date().toISOString();
+    }
+
+    const { data, error } = await supabase
       .from('invoices')
-      .update({ contract_status: status })
-      .eq('id', invoiceId);
+      .update(updateData)
+      .eq('id', invoiceId)
+      .select()
+      .single();
 
     if (error) {
       console.error('Error updating contract status:', error);
-      return false;
+      return null;
     }
 
-    return true;
+    return data;
   } catch (error) {
     console.error('Error in updateContractStatus:', error);
-    return false;
+    return null;
   }
 };
 

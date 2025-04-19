@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Client, Invoice, InvoiceItem, Job, PaymentSchedule, PaymentStatus } from '@/types';
@@ -923,3 +924,25 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                 navigate(`/job/${invoice.jobId}`);
               } else if (invoice.clientId) {
                 navigate(`/client/${invoice.clientId}`);
+              } else {
+                navigate('/');
+              }
+            }}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleSubmit} 
+            disabled={isSaving}
+          >
+            {isSaving ? 'Saving...' : 'Save Invoice'}
+          </Button>
+        </div>
+      </CardFooter>
+    </Card>
+  );
+};
+
+InvoiceForm.displayName = 'InvoiceForm';
+
+export default InvoiceForm;

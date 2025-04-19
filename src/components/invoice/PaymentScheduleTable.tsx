@@ -1,3 +1,4 @@
+
 import React, { memo, useState, useMemo } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -141,7 +142,21 @@ const PaymentScheduleTable = memo(({
     if (descType === 'custom') {
       description = customDescriptions[paymentId] || paymentSchedules.find(s => s.id === paymentId)?.description || '';
     } else {
-      description = PAYMENT_DESCRIPTION_OPTIONS.find(opt => opt.value === descType)?.label || '';
+      // Since PAYMENT_DESCRIPTION_OPTIONS is no longer available, 
+      // we'll use a simple mapping here
+      switch(descType) {
+        case 'deposit':
+          description = 'Deposit';
+          break;
+        case 'balance':
+          description = 'Balance';
+          break;
+        case 'full_payment':
+          description = 'Full Payment';
+          break;
+        default:
+          description = '';
+      }
     }
     
     if (description) {

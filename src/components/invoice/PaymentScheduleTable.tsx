@@ -98,8 +98,9 @@ const PaymentScheduleTable = memo(({
   const handleAmountUpdate = (paymentId: string, schedule: PaymentSchedule) => {
     if (!onUpdateAmount) return;
     
-    const newAmountStr = customAmounts[paymentId];
-    if (!newAmountStr) return;
+    const newAmountStr = customAmounts[paymentId] !== undefined 
+      ? customAmounts[paymentId] 
+      : schedule.amount?.toString() || '0';
     
     const newAmount = parseFloat(newAmountStr);
     if (isNaN(newAmount)) return;
@@ -119,8 +120,9 @@ const PaymentScheduleTable = memo(({
   const handlePercentageUpdate = (paymentId: string, schedule: PaymentSchedule) => {
     if (!onUpdateAmount) return;
     
-    const newPercentageStr = customPercentages[paymentId];
-    if (!newPercentageStr) return;
+    const newPercentageStr = customPercentages[paymentId] !== undefined 
+      ? customPercentages[paymentId] 
+      : (schedule.percentage || 0).toFixed(2);
     
     const newPercentage = parseFloat(newPercentageStr);
     if (isNaN(newPercentage)) return;
@@ -144,7 +146,7 @@ const PaymentScheduleTable = memo(({
     let description = '';
     
     if (descType === 'custom') {
-      description = customDescriptions[paymentId] || '';
+      description = customDescriptions[paymentId] || paymentSchedules.find(s => s.id === paymentId)?.description || '';
     } else {
       description = PAYMENT_DESCRIPTION_OPTIONS.find(opt => opt.value === descType)?.label || '';
     }

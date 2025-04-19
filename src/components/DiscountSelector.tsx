@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { DollarSign, Percent } from 'lucide-react';
 import { InvoiceItem } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
-import { DiscountTemplate } from '@/types';
+import { DiscountTemplate, mapDiscountTemplateFromRow } from '@/components/discount/types';
 import { useCompanyContext } from '@/context/CompanyContext';
 
 interface DiscountSelectorProps {
@@ -34,7 +34,7 @@ const DiscountSelector: React.FC<DiscountSelectorProps> = ({
         return;
       }
 
-      setDiscounts(data || []);
+      setDiscounts((data || []).map(mapDiscountTemplateFromRow));
     };
 
     if (selectedCompany) {

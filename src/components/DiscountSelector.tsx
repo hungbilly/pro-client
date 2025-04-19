@@ -1,41 +1,12 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { DollarSign, Percent } from 'lucide-react';
 import { InvoiceItem } from '@/types';
-
-// Define the discounts array that was missing
-const discounts = [
-  {
-    id: '1',
-    name: 'Early Payment',
-    description: 'Discount for paying within 7 days',
-    amount: 10,
-    type: 'percentage',
-  },
-  {
-    id: '2',
-    name: 'New Client',
-    description: 'Welcome discount for new clients',
-    amount: 15,
-    type: 'percentage',
-  },
-  {
-    id: '3',
-    name: 'Holiday Special',
-    description: 'Special holiday season discount',
-    amount: 50,
-    type: 'fixed',
-  },
-  {
-    id: '4',
-    name: 'Loyalty Discount',
-    description: 'For returning clients',
-    amount: 5,
-    type: 'percentage',
-  }
-];
+import { supabase } from '@/integrations/supabase/client';
+import { DiscountTemplate } from '@/types';
+import { useCompanyContext } from '@/context/CompanyContext';
 
 interface DiscountSelectorProps {
   onDiscountSelect: (items: InvoiceItem[]) => void;
@@ -48,6 +19,29 @@ const DiscountSelector: React.FC<DiscountSelectorProps> = ({
   variant = 'page',
   subtotal = 0,
 }) => {
+  const [discounts, setDiscounts] = useState<DiscountTemplate[]>([]);
+  const { selectedCompany } = useCompanyContext();
+
+  useEffect(() => {
+    const fetchDiscounts = async () => {
+      const { data, error } = await supabase
+        .from('discount_templates')
+        .select('*')
+        .eq('company_id', selectedCompany?.id);
+
+      if (error) {
+        console.error('Error fetching discount templates:', error);
+        return;
+      }
+
+      setDiscounts(data || []);
+    };
+
+    if (selectedCompany) {
+      fetchDiscounts();
+    }
+  }, [selectedCompany]);
+
   const calculateDiscountAmount = (amount: number, type: 'fixed' | 'percentage') => {
     if (type === 'percentage') {
       return (subtotal * amount) / 100;
@@ -55,10 +49,10 @@ const DiscountSelector: React.FC<DiscountSelectorProps> = ({
     return amount;
   };
 
-  const handleSelect = (discount: any) => {
+  const handleSelect = (discount: DiscountTemplate) => {
     const discountAmount = calculateDiscountAmount(
-      discount.amount,
-      discount.type as 'fixed' | 'percentage'
+      Number(discount.amount),
+      discount.type
     );
 
     const discountItem: InvoiceItem = {

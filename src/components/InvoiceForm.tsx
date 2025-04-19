@@ -652,7 +652,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                 <SelectValue placeholder="Select status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="draft">Draft</SelectItem>
                 <SelectItem value="sent">Not Accepted</SelectItem>
                 <SelectItem value="accepted">Accepted</SelectItem>
               </SelectContent>
@@ -895,3 +894,130 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                     >
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="deposit">Deposit</SelectItem>
+                        <SelectItem value="balance">Balance</SelectItem>
+                        <SelectItem value="full_payment">Full Payment</SelectItem>
+                        <SelectItem value="custom">Custom</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell>{schedule.percentage.toFixed(2)}%</TableCell>
+                  <TableCell>${schedule.amount.toFixed(2)}</TableCell>
+                  <TableCell>
+                    <Select 
+                      value={schedule.status}
+                      onValueChange={(value) => handlePaymentScheduleChange(index, 'status', value)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unpaid">Unpaid</SelectItem>
+                        <SelectItem value="paid">Paid</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center justify-end space-x-1">
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleRemovePaymentSchedule(schedule.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          <Button variant="outline" onClick={handleAddPaymentSchedule}>Add Payment Schedule</Button>
+        </div>
+      </CardContent>
+      <CardFooter className="flex justify-between">
+        <Button 
+          variant="outline" 
+          onClick={() => setShowDeleteConfirmation(true)}
+          disabled={!invoice.id || isSaving || isDeleting}
+        >
+          {isDeleting ? 'Deleting...' : 'Delete Invoice'}
+        </Button>
+        <div className="flex space-x-2">
+          <Button 
+            variant="outline" 
+            onClick={() => {
+              if (invoice.jobId) {
+                navigate(`/job/${invoice.jobId}`);
+              } else if (invoice.clientId) {
+                navigate(`/client/${invoice.clientId}`);
+              } else {
+                navigate('/');
+              }
+            }}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleSubmit}
+            disabled={isSaving}
+          >
+            {isSaving ? 'Saving...' : (invoice.id ? 'Update Invoice' : 'Create Invoice')}
+          </Button>
+        </div>
+      </CardFooter>
+
+      <Dialog open={showDeleteConfirmation} onOpenChange={setShowDeleteConfirmation}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Confirm Delete</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this invoice?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteConfirmation(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDelete}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Select Template</DialogTitle>
+          </DialogHeader>
+          <DialogDescription>
+            Choose a template for the invoice.
+          </DialogDescription>
+          <div className="grid grid-cols-1 gap-4">
+            {contractTemplates.map(template => (
+              <Button variant="outline" key={template.id} onClick={() => handleTemplateSelect(template)}>
+                {template.name}
+              </Button>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="outline" onClick={applyTemplate}>
+              Apply
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AddProductPackageDialog open={showAddProductDialog} onClose={() => setShowAddProductDialog(false)} />
+      <AddDiscountDialog open={showAddDiscountDialog} onClose={() => setShowAddDiscountDialog(false)} />
+    </Card>
+  );
+};
+
+export default InvoiceForm;

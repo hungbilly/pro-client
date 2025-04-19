@@ -456,7 +456,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     }
   };
 
-  // Add these new handler methods for the PaymentScheduleTable
   const handleUpdatePaymentAmount = (paymentId: string, amount: number, percentage: number) => {
     setInvoice(prevInvoice => {
       const updatedSchedules = prevInvoice.paymentSchedules?.map(schedule => {
@@ -505,7 +504,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
             status
           };
           
-          // If marked as paid and no payment date, set to today
           if (status === 'paid' && !schedule.paymentDate) {
             updatedSchedule.paymentDate = format(new Date(), 'yyyy-MM-dd');
           }
@@ -922,4 +920,67 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
             onClick={() => {
               if (invoice.jobId) {
                 navigate(`/job/${invoice.jobId}`);
-              } else if
+              } else if (invoice.clientId) {
+                navigate(`/client/${invoice.clientId}`);
+              } else {
+                navigate('/');
+              }
+            }}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleSubmit}
+            disabled={isSaving}
+          >
+            {isSaving ? 'Saving...' : (invoice.id ? 'Update Invoice' : 'Create Invoice')}
+          </Button>
+        </div>
+      </CardFooter>
+
+      <Dialog open={showDeleteConfirmation} onOpenChange={setShowDeleteConfirmation}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Deletion</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this invoice? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteConfirmation(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDelete}>Delete</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Apply Contract Template</DialogTitle>
+            <DialogDescription>
+              This will replace your current contract terms. Are you sure?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+            <Button onClick={applyTemplate}>Apply Template</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AddProductPackageDialog 
+        open={showAddProductDialog} 
+        onClose={() => setShowAddProductDialog(false)} 
+        onSelect={handlePackageSelect}
+      />
+
+      <AddDiscountDialog
+        open={showAddDiscountDialog}
+        onClose={() => setShowAddDiscountDialog(false)}
+        onSelect={handleAddDiscountDialog}
+      />
+    </Card>
+  );
+};
+
+export default InvoiceForm;

@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
-import { PaymentSchedule } from '@/types';
+import { PaymentSchedule, PaymentStatus } from '@/types';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, Edit2, CircleDollarSign, AlertCircle } from 'lucide-react';
@@ -20,9 +20,11 @@ interface PaymentScheduleTableProps {
   amount: number;
   isClientView: boolean;
   updatingPaymentId: string | null;
-  onUpdateStatus: (paymentId: string, status: 'paid' | 'unpaid' | 'write-off') => void;
+  onUpdateStatus: (paymentId: string, status: PaymentStatus) => void;
   formatCurrency: (amount: number) => string;
   onUpdatePaymentDate?: (paymentId: string, paymentDate: string) => void;
+  onUpdateAmount?: (paymentId: string, amount: number, percentage: number) => void;
+  onUpdateDescription?: (paymentId: string, description: string) => void;
 }
 
 const PAYMENT_DESCRIPTION_OPTIONS = [
@@ -39,7 +41,9 @@ const PaymentScheduleTable = memo(({
   updatingPaymentId,
   onUpdateStatus,
   formatCurrency,
-  onUpdatePaymentDate
+  onUpdatePaymentDate,
+  onUpdateAmount,
+  onUpdateDescription
 }: PaymentScheduleTableProps) => {
   const paymentStatusColors: { [key: string]: string } = {
     paid: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
@@ -53,10 +57,15 @@ const PaymentScheduleTable = memo(({
   const [selectedDescriptionTypes, setSelectedDescriptionTypes] = useState<{[key: string]: string}>({});
   const [editingAmountId, setEditingAmountId] = useState<string | null>(null);
   const [customAmounts, setCustomAmounts] = useState<{[key: string]: string}>({});
+  const [customPercentages, setCustomPercentages] = useState<{[key: string]: string}>({});
+  const [editMode, setEditMode] = useState<'amount' | 'percentage'>('amount');
 
   // Calculate total percentage
   const totalPercentage = useMemo(() => {
-    return paymentSchedules.reduce((sum, schedule) => sum + schedule.percentage, 0);
+    return paymentSchedules.reduce((sum, schedule) => {
+      // Make sure percentage exists and is a number
+      return sum + (typeof schedule.percentage === 'number' ? schedule.percentage : 0);
+    }, 0);
   }, [paymentSchedules]);
 
   // Check if the total percentage is valid
@@ -89,13 +98,80 @@ const PaymentScheduleTable = memo(({
     if (schedule.amount !== undefined) {
       return schedule.amount;
     }
-    return (amount * schedule.percentage) / 100;
+    return (amount * (schedule.percentage || 0)) / 100;
+  };
+
+  const handleAmountUpdate = (paymentId: string, schedule: PaymentSchedule) => {
+    if (!onUpdateAmount) return;
+    
+    const newAmountStr = customAmounts[paymentId];
+    if (!newAmountStr) return;
+    
+    const newAmount = parseFloat(newAmountStr);
+    if (isNaN(newAmount)) return;
+    
+    // Calculate new percentage based on amount
+    const newPercentage = amount > 0 ? (newAmount / amount) * 100 : 0;
+    
+    onUpdateAmount(paymentId, newAmount, newPercentage);
+    setEditingAmountId(null);
+    setCustomAmounts({});
+    
+    toast.success('Payment amount updated', {
+      duration: 3000,
+      position: 'top-center'
+    });
+  };
+
+  const handlePercentageUpdate = (paymentId: string, schedule: PaymentSchedule) => {
+    if (!onUpdateAmount) return;
+    
+    const newPercentageStr = customPercentages[paymentId];
+    if (!newPercentageStr) return;
+    
+    const newPercentage = parseFloat(newPercentageStr);
+    if (isNaN(newPercentage)) return;
+    
+    // Calculate new amount based on percentage
+    const newAmount = (amount * newPercentage) / 100;
+    
+    onUpdateAmount(paymentId, newAmount, newPercentage);
+    setEditingAmountId(null);
+    setCustomPercentages({});
+    
+    toast.success('Payment percentage updated', {
+      duration: 3000,
+      position: 'top-center'
+    });
+  };
+
+  const handleDescriptionUpdate = (paymentId: string) => {
+    if (!onUpdateDescription) return;
+    
+    const descType = selectedDescriptionTypes[paymentId] || 'custom';
+    let description = '';
+    
+    if (descType === 'custom') {
+      description = customDescriptions[paymentId] || '';
+    } else {
+      description = PAYMENT_DESCRIPTION_OPTIONS.find(opt => opt.value === descType)?.label || '';
+    }
+    
+    if (description) {
+      onUpdateDescription(paymentId, description);
+      setEditingDescriptionId(null);
+      toast.success('Payment description updated', {
+        duration: 3000,
+        position: 'top-center'
+      });
+    }
   };
 
   const renderDescriptionCell = (schedule: PaymentSchedule) => {
+    const scheduleDescription = schedule.description || '';
     const descType = selectedDescriptionTypes[schedule.id] || 
-                    (PAYMENT_DESCRIPTION_OPTIONS.some(opt => opt.label === schedule.description) ? 
-                      PAYMENT_DESCRIPTION_OPTIONS.find(opt => opt.label === schedule.description)?.value || 'custom' : 
+                    (PAYMENT_DESCRIPTION_OPTIONS.some(opt => opt.label === scheduleDescription) ? 
+                      PAYMENT_DESCRIPTION_OPTIONS.find(opt => opt.label === scheduleDescription)?.value || 'custom' : 
                       'custom');
     
     if (editingDescriptionId === schedule.id) {
@@ -132,7 +208,7 @@ const PaymentScheduleTable = memo(({
           
           {descType === 'custom' && (
             <Input
-              value={customDescriptions[schedule.id] || schedule.description}
+              value={customDescriptions[schedule.id] || scheduleDescription}
               onChange={e => {
                 setCustomDescriptions(prev => ({
                   ...prev,
@@ -146,11 +222,9 @@ const PaymentScheduleTable = memo(({
           <div className="flex justify-end">
             <Button 
               size="sm" 
-              onClick={() => {
-                setEditingDescriptionId(null);
-              }}
+              onClick={() => handleDescriptionUpdate(schedule.id)}
             >
-              Done
+              Save
             </Button>
           </div>
         </div>
@@ -160,9 +234,7 @@ const PaymentScheduleTable = memo(({
     return (
       <div className="flex items-center justify-between">
         <span>
-          {descType === 'custom' ? 
-            (customDescriptions[schedule.id] || schedule.description) : 
-            PAYMENT_DESCRIPTION_OPTIONS.find(opt => opt.value === descType)?.label || schedule.description}
+          {scheduleDescription}
         </span>
         {!isClientView && (
           <Button 
@@ -180,32 +252,73 @@ const PaymentScheduleTable = memo(({
 
   const renderAmountCell = (schedule: PaymentSchedule) => {
     const paymentAmount = getPaymentAmount(schedule);
+    const percentage = schedule.percentage || 0;
     
     if (editingAmountId === schedule.id) {
       return (
         <div className="flex flex-col space-y-2">
-          <Input
-            type="text"
-            inputMode="decimal"
-            value={customAmounts[schedule.id] || paymentAmount}
-            onChange={e => {
-              const value = e.target.value.replace(/[^\d.]/g, '');
-              setCustomAmounts(prev => ({
-                ...prev,
-                [schedule.id]: value
-              }));
-            }}
-            className="appearance-none"
-          />
+          <div className="flex items-center space-x-2 mb-2">
+            <Button
+              size="sm"
+              variant={editMode === 'amount' ? 'default' : 'outline'}
+              onClick={() => setEditMode('amount')}
+              className="text-xs h-6 px-2"
+            >
+              Amount
+            </Button>
+            <Button
+              size="sm"
+              variant={editMode === 'percentage' ? 'default' : 'outline'}
+              onClick={() => setEditMode('percentage')}
+              className="text-xs h-6 px-2"
+            >
+              Percentage
+            </Button>
+          </div>
+          
+          {editMode === 'amount' ? (
+            <Input
+              type="text"
+              inputMode="decimal"
+              value={customAmounts[schedule.id] !== undefined ? customAmounts[schedule.id] : paymentAmount}
+              onChange={e => {
+                const value = e.target.value.replace(/[^\d.]/g, '');
+                setCustomAmounts(prev => ({
+                  ...prev,
+                  [schedule.id]: value
+                }));
+              }}
+              className="appearance-none"
+            />
+          ) : (
+            <Input
+              type="text"
+              inputMode="decimal"
+              value={customPercentages[schedule.id] !== undefined ? customPercentages[schedule.id] : percentage.toFixed(2)}
+              onChange={e => {
+                const value = e.target.value.replace(/[^\d.]/g, '');
+                setCustomPercentages(prev => ({
+                  ...prev,
+                  [schedule.id]: value
+                }));
+              }}
+              className="appearance-none"
+              suffix="%"
+            />
+          )}
           
           <div className="flex justify-end">
             <Button 
               size="sm" 
               onClick={() => {
-                setEditingAmountId(null);
+                if (editMode === 'amount') {
+                  handleAmountUpdate(schedule.id, schedule);
+                } else {
+                  handlePercentageUpdate(schedule.id, schedule);
+                }
               }}
             >
-              Done
+              Save
             </Button>
           </div>
         </div>
@@ -213,9 +326,11 @@ const PaymentScheduleTable = memo(({
     }
 
     return (
-      <div className="flex items-center justify-end gap-1">
-        <CircleDollarSign className="h-3.5 w-3.5 text-muted-foreground" />
-        <span>{formatCurrency(paymentAmount)}</span>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1">
+          <CircleDollarSign className="h-3.5 w-3.5 text-muted-foreground" />
+          <span>{formatCurrency(paymentAmount)}</span>
+        </div>
         {!isClientView && (
           <Button 
             variant="ghost" 
@@ -263,10 +378,10 @@ const PaymentScheduleTable = memo(({
                 {renderDescriptionCell(schedule)}
               </TableCell>
               <TableCell>
-                {new Date(schedule.dueDate).toLocaleDateString()}
+                {schedule.dueDate && new Date(schedule.dueDate).toLocaleDateString()}
               </TableCell>
               <TableCell className="text-right">
-                {schedule.percentage.toFixed(2)}%
+                {(schedule.percentage || 0).toFixed(2)}%
               </TableCell>
               <TableCell className="text-right font-medium">
                 {renderAmountCell(schedule)}

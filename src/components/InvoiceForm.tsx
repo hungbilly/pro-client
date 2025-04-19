@@ -25,6 +25,7 @@ import AddProductPackageDialog from './AddProductPackageDialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import AddDiscountDialog from './AddDiscountDialog';
+import PaymentScheduleTable from './invoice/PaymentScheduleTable';
 
 interface ContractTemplate {
   id: string;
@@ -446,7 +447,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
       paymentSchedules: updatedSchedules,
     }));
     
-    const totalPercentage = updatedSchedules.reduce((sum, schedule) => sum + schedule.percentage, 0);
+    const totalPercentage = updatedSchedules.reduce((sum, schedule) => sum + (schedule.percentage || 0), 0);
     
     if (Math.abs(totalPercentage - 100) > 0.01 && (field === 'percentage' || field === 'amount')) {
       toast.warning(`Total payment percentage is ${totalPercentage.toFixed(2)}%. It should be exactly 100%.`, {
@@ -455,29 +456,89 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     }
   };
 
-  const handleAddPaymentSchedule = () => {
-    const existingPercentageTotal = invoice.paymentSchedules?.reduce((sum, schedule) => sum + schedule.percentage, 0) || 0;
-    
-    const newPercentage = Math.max(0, Math.min(100 - existingPercentageTotal, 100));
-    const newAmount = (calculateTotal() * newPercentage) / 100;
-    
-    setInvoice(prevInvoice => ({
-      ...prevInvoice,
-      paymentSchedules: [...(prevInvoice.paymentSchedules || []), { 
-        id: generateId(), 
-        dueDate: format(new Date(), 'yyyy-MM-dd'), 
-        percentage: newPercentage,
-        amount: newAmount,
-        status: 'unpaid',
-        description: newPercentage === 100 ? 'Full Payment' : (existingPercentageTotal === 0 ? 'Deposit' : 'Balance')
-      }],
-    }));
-    
-    if (existingPercentageTotal >= 100) {
-      toast.warning('Total payment percentage exceeds 100%. Please adjust the percentages.', {
-        duration: 4000,
-      });
-    }
+  // Add these new handler methods for the PaymentScheduleTable
+  const handleUpdatePaymentAmount = (paymentId: string, amount: number, percentage: number) => {
+    setInvoice(prevInvoice => {
+      const updatedSchedules = prevInvoice.paymentSchedules?.map(schedule => {
+        if (schedule.id === paymentId) {
+          return {
+            ...schedule,
+            amount,
+            percentage
+          };
+        }
+        return schedule;
+      }) || [];
+      
+      return {
+        ...prevInvoice,
+        paymentSchedules: updatedSchedules,
+      };
+    });
+  };
+
+  const handleUpdatePaymentDescription = (paymentId: string, description: string) => {
+    setInvoice(prevInvoice => {
+      const updatedSchedules = prevInvoice.paymentSchedules?.map(schedule => {
+        if (schedule.id === paymentId) {
+          return {
+            ...schedule,
+            description
+          };
+        }
+        return schedule;
+      }) || [];
+      
+      return {
+        ...prevInvoice,
+        paymentSchedules: updatedSchedules,
+      };
+    });
+  };
+
+  const handleUpdatePaymentStatus = (paymentId: string, status: PaymentStatus) => {
+    setInvoice(prevInvoice => {
+      const updatedSchedules = prevInvoice.paymentSchedules?.map(schedule => {
+        if (schedule.id === paymentId) {
+          const updatedSchedule = {
+            ...schedule,
+            status
+          };
+          
+          // If marked as paid and no payment date, set to today
+          if (status === 'paid' && !schedule.paymentDate) {
+            updatedSchedule.paymentDate = format(new Date(), 'yyyy-MM-dd');
+          }
+          
+          return updatedSchedule;
+        }
+        return schedule;
+      }) || [];
+      
+      return {
+        ...prevInvoice,
+        paymentSchedules: updatedSchedules,
+      };
+    });
+  };
+
+  const handleUpdatePaymentDate = (paymentId: string, paymentDate: string) => {
+    setInvoice(prevInvoice => {
+      const updatedSchedules = prevInvoice.paymentSchedules?.map(schedule => {
+        if (schedule.id === paymentId) {
+          return {
+            ...schedule,
+            paymentDate
+          };
+        }
+        return schedule;
+      }) || [];
+      
+      return {
+        ...prevInvoice,
+        paymentSchedules: updatedSchedules,
+      };
+    });
   };
 
   const openAddProductDialog = () => {
@@ -795,12 +856,12 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
           <div className="flex justify-between items-center mb-2">
             <Label>Payment Schedule</Label>
             <Badge 
-              variant={invoice.paymentSchedules?.reduce((sum, s) => sum + s.percentage, 0) === 100 ? "default" : "outline"}
-              className={invoice.paymentSchedules?.reduce((sum, s) => sum + s.percentage, 0) === 100 
+              variant={invoice.paymentSchedules?.reduce((sum, s) => sum + (s.percentage || 0), 0) === 100 ? "default" : "outline"}
+              className={invoice.paymentSchedules?.reduce((sum, s) => sum + (s.percentage || 0), 0) === 100 
                 ? "bg-green-100 text-green-800" 
                 : "bg-amber-100 text-amber-800"}
             >
-              Total: {(invoice.paymentSchedules?.reduce((sum, s) => sum + s.percentage, 0) || 0).toFixed(2)}%
+              Total: {(invoice.paymentSchedules?.reduce((sum, s) => sum + (s.percentage || 0), 0) || 0).toFixed(2)}%
             </Badge>
           </div>
           {validationErrors.paymentSchedules && (
@@ -811,113 +872,24 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
               </AlertDescription>
             </Alert>
           )}
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Due Date</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Percentage</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="w-[50px]"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(invoice.paymentSchedules || []).map((schedule, index) => (
-                <TableRow key={schedule.id}>
-                  <TableCell>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "w-full justify-start text-left font-normal",
-                            !schedule.dueDate && "text-muted-foreground"
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {schedule.dueDate ? format(new Date(schedule.dueDate), "PPP") : (
-                            <span>Pick a date</span>
-                          )}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <DatePicker
-                          mode="single"
-                          selected={schedule.dueDate ? new Date(schedule.dueDate) : undefined}
-                          onSelect={(date) => handlePaymentScheduleChange(index, 'dueDate', format(date as Date, 'yyyy-MM-dd'))}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </TableCell>
-                  <TableCell>
-                    <Select 
-                      value={schedule.description === 'Deposit' ? 'deposit' : 
-                            schedule.description === 'Balance' ? 'balance' : 
-                            schedule.description === 'Full Payment' ? 'full_payment' : 'custom'}
-                      onValueChange={(value) => {
-                        let description = '';
-                        switch(value) {
-                          case 'deposit':
-                            description = 'Deposit';
-                            break;
-                          case 'balance':
-                            description = 'Balance';
-                            break;
-                          case 'full_payment':
-                            description = 'Full Payment';
-                            break;
-                          case 'custom':
-                            description = schedule.description;
-                            break;
-                        }
-                        handlePaymentScheduleChange(index, 'description', description);
-                      }}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="deposit">Deposit</SelectItem>
-                        <SelectItem value="balance">Balance</SelectItem>
-                        <SelectItem value="full_payment">Full Payment</SelectItem>
-                        <SelectItem value="custom">Custom</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell>{schedule.percentage.toFixed(2)}%</TableCell>
-                  <TableCell>${schedule.amount.toFixed(2)}</TableCell>
-                  <TableCell>
-                    <Select 
-                      value={schedule.status}
-                      onValueChange={(value) => handlePaymentScheduleChange(index, 'status', value)}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="unpaid">Unpaid</SelectItem>
-                        <SelectItem value="paid">Paid</SelectItem>
-                        <SelectItem value="pending">Pending</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center justify-end space-x-1">
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleRemovePaymentSchedule(schedule.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          <Button variant="outline" onClick={handleAddPaymentSchedule}>Add Payment Schedule</Button>
+          
+          {invoice.paymentSchedules && invoice.paymentSchedules.length > 0 && (
+            <PaymentScheduleTable
+              paymentSchedules={invoice.paymentSchedules}
+              amount={calculateTotal()}
+              isClientView={false}
+              updatingPaymentId={null}
+              onUpdateStatus={handleUpdatePaymentStatus}
+              formatCurrency={formatCurrency}
+              onUpdatePaymentDate={handleUpdatePaymentDate}
+              onUpdateAmount={handleUpdatePaymentAmount}
+              onUpdateDescription={handleUpdatePaymentDescription}
+            />
+          )}
+          
+          <Button variant="outline" onClick={handleAddPaymentSchedule} className="mt-4">
+            Add Payment Schedule
+          </Button>
         </div>
       </CardContent>
       <CardFooter className="flex justify-between">
@@ -952,64 +924,4 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
         </div>
       </CardFooter>
 
-      <Dialog open={showDeleteConfirmation} onOpenChange={setShowDeleteConfirmation}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Confirm Delete</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete this invoice?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDeleteConfirmation(false)}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={handleDelete}>
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Select Template</DialogTitle>
-          </DialogHeader>
-          <DialogDescription>
-            Choose a template for the invoice.
-          </DialogDescription>
-          <div className="grid grid-cols-1 gap-4">
-            {contractTemplates.map(template => (
-              <Button variant="outline" key={template.id} onClick={() => handleTemplateSelect(template)}>
-                {template.name}
-              </Button>
-            ))}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="outline" onClick={applyTemplate}>
-              Apply
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <AddProductPackageDialog 
-        open={showAddProductDialog} 
-        onOpenChange={setShowAddProductDialog} 
-        onAddItems={handlePackageSelect}
-      />
-      <AddDiscountDialog 
-        open={showAddDiscountDialog} 
-        onOpenChange={setShowAddDiscountDialog}
-        onAddDiscount={handleAddDiscountDialog}
-        subtotal={calculateTotal()}
-      />
-    </Card>
-  );
-};
-
-export default InvoiceForm;
+      <Dialog open={showDeleteConfirmation} onOpenChange

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Client, Invoice, InvoiceItem, Job, PaymentSchedule, PaymentStatus } from '@/types';
@@ -540,6 +539,23 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     });
   };
 
+  const handleAddPaymentSchedule = () => {
+    const total = calculateTotal();
+    const newSchedule: PaymentSchedule = {
+      id: generateId(),
+      percentage: 0,
+      amount: 0,
+      dueDate: format(new Date(), 'yyyy-MM-dd'),
+      status: 'unpaid',
+      description: '' // Add the required description property
+    };
+
+    setInvoice(prevInvoice => ({
+      ...prevInvoice,
+      paymentSchedules: [...(prevInvoice.paymentSchedules || []), newSchedule]
+    }));
+  };
+
   const openAddProductDialog = () => {
     setShowAddProductDialog(true);
   };
@@ -644,23 +660,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
         </TableCell>
       </TableRow>
     ));
-  };
-
-  const handleAddPaymentSchedule = () => {
-    const total = calculateTotal();
-    const newSchedule: PaymentSchedule = {
-      id: generateId(),
-      percentage: 0,
-      amount: 0,
-      dueDate: format(new Date(), 'yyyy-MM-dd'),
-      status: 'unpaid',
-      description: '' // Add the required description property
-    };
-
-    setInvoice(prevInvoice => ({
-      ...prevInvoice,
-      paymentSchedules: [...(prevInvoice.paymentSchedules || []), newSchedule]
-    }));
   };
 
   return (
@@ -939,6 +938,19 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
           </Button>
         </div>
       </CardFooter>
+
+      <AddProductPackageDialog 
+        open={showAddProductDialog} 
+        onOpenChange={setShowAddProductDialog} 
+        onAddItems={handlePackageSelect}
+      />
+
+      <AddDiscountDialog 
+        open={showAddDiscountDialog} 
+        onOpenChange={setShowAddDiscountDialog} 
+        onAddDiscount={handleAddDiscountDialog} 
+        subtotal={calculateTotal()}
+      />
     </Card>
   );
 };

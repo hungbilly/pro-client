@@ -630,9 +630,16 @@ const InvoiceView = () => {
                 {invoice.status === 'accepted' && (
                   <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-md flex items-center gap-2">
                     <FileCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
-                    <span className="text-green-800 dark:text-green-400">
-                      This invoice has been accepted
-                    </span>
+                    <div>
+                      <span className="text-green-800 dark:text-green-400">
+                        This invoice has been accepted
+                      </span>
+                      {invoice.invoiceAcceptedAt && (
+                        <div className="text-sm text-green-600 dark:text-green-500 mt-1">
+                          Accepted on {new Date(invoice.invoiceAcceptedAt).toLocaleString()}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
                 
@@ -745,9 +752,16 @@ const InvoiceView = () => {
                 {invoice.contractStatus === 'accepted' && (
                   <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-md flex items-center gap-2">
                     <FileCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
-                    <span className="text-green-800 dark:text-green-400">
-                      This contract has been accepted
-                    </span>
+                    <div>
+                      <span className="text-green-800 dark:text-green-400">
+                        This contract has been accepted
+                      </span>
+                      {invoice.contractAcceptedAt && (
+                        <div className="text-sm text-green-600 dark:text-green-500 mt-1">
+                          Accepted on {new Date(invoice.contractAcceptedAt).toLocaleString()}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
                   

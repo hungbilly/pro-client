@@ -6,7 +6,7 @@ export interface Client {
   address: string;
   notes: string;
   createdAt: string;
-	companyId: string;
+  companyId: string;
 }
 
 export interface Job {
@@ -54,21 +54,22 @@ export interface PaymentSchedule {
 export interface Invoice {
   id: string;
   clientId: string;
-  companyId: string;
-  jobId: string;
+  companyId?: string;
+  jobId?: string;
   number: string;
+  amount: number;
   date: string;
   dueDate: string;
-  amount: number;
   status: InvoiceStatus;
   contractStatus: ContractStatus;
-  notes: string;
-  contractTerms: string;
-  viewLink: string;
-  shootingDate?: string;
   items: InvoiceItem[];
+  notes?: string;
+  contractTerms?: string;
+  viewLink: string;
   paymentSchedules?: PaymentSchedule[];
+  shootingDate?: string;
   pdfUrl?: string;
+  templateId?: string;
   contractAcceptedAt?: string;
   invoiceAcceptedAt?: string;
 }

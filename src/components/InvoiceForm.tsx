@@ -652,7 +652,8 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
       percentage: 0,
       amount: 0,
       dueDate: format(new Date(), 'yyyy-MM-dd'),
-      status: 'unpaid'
+      status: 'unpaid',
+      description: '' // Add the required description property
     };
 
     setInvoice(prevInvoice => ({
@@ -922,65 +923,3 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                 navigate(`/job/${invoice.jobId}`);
               } else if (invoice.clientId) {
                 navigate(`/client/${invoice.clientId}`);
-              } else {
-                navigate('/');
-              }
-            }}
-          >
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleSubmit}
-            disabled={isSaving}
-          >
-            {isSaving ? 'Saving...' : (invoice.id ? 'Update Invoice' : 'Create Invoice')}
-          </Button>
-        </div>
-      </CardFooter>
-
-      <Dialog open={showDeleteConfirmation} onOpenChange={setShowDeleteConfirmation}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirm Deletion</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete this invoice? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDeleteConfirmation(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleDelete}>Delete</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Apply Contract Template</DialogTitle>
-            <DialogDescription>
-              This will replace your current contract terms. Are you sure?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-            <Button onClick={applyTemplate}>Apply Template</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <AddProductPackageDialog 
-        open={showAddProductDialog} 
-        onClose={() => setShowAddProductDialog(false)} 
-        onSelect={handlePackageSelect}
-      />
-
-      <AddDiscountDialog
-        open={showAddDiscountDialog}
-        onClose={() => setShowAddDiscountDialog(false)}
-        onSelect={handleAddDiscountDialog}
-      />
-    </Card>
-  );
-};
-
-export default InvoiceForm;

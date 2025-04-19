@@ -1,4 +1,3 @@
-
 import React, { memo, useState, useMemo } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -60,20 +59,16 @@ const PaymentScheduleTable = memo(({
   const [customPercentages, setCustomPercentages] = useState<{[key: string]: string}>({});
   const [editMode, setEditMode] = useState<'amount' | 'percentage'>('amount');
 
-  // Calculate total percentage
   const totalPercentage = useMemo(() => {
     return paymentSchedules.reduce((sum, schedule) => {
-      // Make sure percentage exists and is a number
       return sum + (typeof schedule.percentage === 'number' ? schedule.percentage : 0);
     }, 0);
   }, [paymentSchedules]);
 
-  // Check if the total percentage is valid
   const isPercentageValid = useMemo(() => {
-    return Math.abs(totalPercentage - 100) < 0.01; // Allow for small floating point differences
+    return Math.abs(totalPercentage - 100) < 0.01;
   }, [totalPercentage]);
 
-  // Calculate how far off 100% the total is
   const percentageDifference = useMemo(() => {
     return Math.abs(totalPercentage - 100).toFixed(2);
   }, [totalPercentage]);
@@ -84,7 +79,6 @@ const PaymentScheduleTable = memo(({
     const formattedDate = format(date, 'yyyy-MM-dd');
     onUpdatePaymentDate(paymentId, formattedDate);
     
-    // Format the date for display in the toast notification
     const displayDate = format(date, 'dd-MMM-yyyy');
     toast.success(`Payment date updated to ${displayDate}`, {
       duration: 3000,
@@ -110,7 +104,6 @@ const PaymentScheduleTable = memo(({
     const newAmount = parseFloat(newAmountStr);
     if (isNaN(newAmount)) return;
     
-    // Calculate new percentage based on amount
     const newPercentage = amount > 0 ? (newAmount / amount) * 100 : 0;
     
     onUpdateAmount(paymentId, newAmount, newPercentage);
@@ -132,7 +125,6 @@ const PaymentScheduleTable = memo(({
     const newPercentage = parseFloat(newPercentageStr);
     if (isNaN(newPercentage)) return;
     
-    // Calculate new amount based on percentage
     const newAmount = (amount * newPercentage) / 100;
     
     onUpdateAmount(paymentId, newAmount, newPercentage);
@@ -291,20 +283,22 @@ const PaymentScheduleTable = memo(({
               className="appearance-none"
             />
           ) : (
-            <Input
-              type="text"
-              inputMode="decimal"
-              value={customPercentages[schedule.id] !== undefined ? customPercentages[schedule.id] : percentage.toFixed(2)}
-              onChange={e => {
-                const value = e.target.value.replace(/[^\d.]/g, '');
-                setCustomPercentages(prev => ({
-                  ...prev,
-                  [schedule.id]: value
-                }));
-              }}
-              className="appearance-none"
-              suffix="%"
-            />
+            <div className="relative">
+              <Input
+                type="text"
+                inputMode="decimal"
+                value={customPercentages[schedule.id] !== undefined ? customPercentages[schedule.id] : percentage.toFixed(2)}
+                onChange={e => {
+                  const value = e.target.value.replace(/[^\d.]/g, '');
+                  setCustomPercentages(prev => ({
+                    ...prev,
+                    [schedule.id]: value
+                  }));
+                }}
+                className="appearance-none pr-6"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2">%</span>
+            </div>
           )}
           
           <div className="flex justify-end">

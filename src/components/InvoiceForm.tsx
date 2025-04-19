@@ -951,6 +951,45 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
         onAddDiscount={handleAddDiscountDialog} 
         subtotal={calculateTotal()}
       />
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Select Contract Template</DialogTitle>
+            <DialogDescription>
+              Choose a template for your contract terms and conditions
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            {contractTemplates.length === 0 ? (
+              <p className="text-center text-muted-foreground">No contract templates found.</p>
+            ) : (
+              contractTemplates.map((template) => (
+                <Card key={template.id} className={`p-4 cursor-pointer transition-colors ${
+                  selectedTemplate?.id === template.id ? 'border-primary bg-primary/5' : ''
+                }`} onClick={() => setSelectedTemplate(template)}>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="font-medium">{template.name}</h3>
+                      {template.description && (
+                        <p className="text-sm text-muted-foreground">{template.description}</p>
+                      )}
+                    </div>
+                  </div>
+                </Card>
+              ))
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={applyTemplate} disabled={!selectedTemplate}>
+              Apply Template
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };

@@ -88,7 +88,7 @@ const Jobs = () => {
     // Text search filter
     const matchesSearch = job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       getClientName(job.clientId).toLowerCase().includes(searchQuery.toLowerCase()) ||
-      job.status.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (job.status && job.status.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (job.location && job.location.toLowerCase().includes(searchQuery.toLowerCase()));
     
     // Date range filter
@@ -224,8 +224,8 @@ const Jobs = () => {
                         </TableCell>
                         <TableCell className="hidden md:table-cell">{job.location || '-'}</TableCell>
                         <TableCell>
-                          <Badge className={getStatusColor(job.status)}>
-                            {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
+                          <Badge className={getStatusColor(job.status || '')}>
+                            {job.status ? job.status.charAt(0).toUpperCase() + job.status.slice(1) : 'Unknown'}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">

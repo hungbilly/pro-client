@@ -26,13 +26,6 @@ interface PaymentScheduleTableProps {
   onUpdateDescription?: (paymentId: string, description: string) => void;
 }
 
-const PAYMENT_DESCRIPTION_OPTIONS = [
-  { value: 'deposit', label: 'Deposit' },
-  { value: 'balance', label: 'Balance' },
-  { value: 'full_payment', label: 'Full Payment' },
-  { value: 'custom', label: 'Custom' }
-];
-
 const PaymentScheduleTable = memo(({
   paymentSchedules,
   amount,
@@ -161,87 +154,26 @@ const PaymentScheduleTable = memo(({
     }
   };
 
-  const renderDescriptionCell = (schedule: PaymentSchedule) => {
-    const scheduleDescription = schedule.description || '';
-    const descType = selectedDescriptionTypes[schedule.id] || 
-                    (PAYMENT_DESCRIPTION_OPTIONS.some(opt => opt.label === scheduleDescription) ? 
-                      PAYMENT_DESCRIPTION_OPTIONS.find(opt => opt.label === scheduleDescription)?.value || 'custom' : 
-                      'custom');
+  const renderDescriptionCell = (schedule: PaymentSchedule, index: number) => {
+    const autoDescription = `${getOrdinalNumber(index + 1)} Payment`;
     
-    if (editingDescriptionId === schedule.id) {
-      return (
-        <div className="flex flex-col space-y-2">
-          <Select 
-            value={descType} 
-            onValueChange={(value) => {
-              setSelectedDescriptionTypes(prev => ({
-                ...prev,
-                [schedule.id]: value
-              }));
-              
-              if (value !== 'custom') {
-                const label = PAYMENT_DESCRIPTION_OPTIONS.find(opt => opt.value === value)?.label || '';
-                setCustomDescriptions(prev => ({
-                  ...prev,
-                  [schedule.id]: label
-                }));
-              }
-            }}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select type" />
-            </SelectTrigger>
-            <SelectContent>
-              {PAYMENT_DESCRIPTION_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          
-          {descType === 'custom' && (
-            <Input
-              value={customDescriptions[schedule.id] || scheduleDescription}
-              onChange={e => {
-                setCustomDescriptions(prev => ({
-                  ...prev,
-                  [schedule.id]: e.target.value
-                }));
-              }}
-              placeholder="Custom description"
-            />
-          )}
-          
-          <div className="flex justify-end">
-            <Button 
-              size="sm" 
-              onClick={() => handleDescriptionUpdate(schedule.id)}
-            >
-              Save
-            </Button>
-          </div>
-        </div>
-      );
+    if (!schedule.description || schedule.description === '') {
+      if (onUpdateDescription) {
+        onUpdateDescription(schedule.id, autoDescription);
+      }
     }
-
+    
     return (
       <div className="flex items-center justify-between">
-        <span>
-          {scheduleDescription}
-        </span>
-        {!isClientView && (
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-6 w-6 ml-2"
-            onClick={() => setEditingDescriptionId(schedule.id)}
-          >
-            <Edit2 className="h-3 w-3" />
-          </Button>
-        )}
+        <span>{schedule.description || autoDescription}</span>
       </div>
     );
+  };
+
+  const getOrdinalNumber = (num: number): string => {
+    const suffix = ['th', 'st', 'nd', 'rd'];
+    const v = num % 100;
+    return num + (suffix[(v - 20) % 10] || suffix[v] || suffix[0]);
   };
 
   const renderAmountCell = (schedule: PaymentSchedule) => {
@@ -368,10 +300,10 @@ const PaymentScheduleTable = memo(({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {paymentSchedules.map((schedule) => (
+          {paymentSchedules.map((schedule, index) => (
             <TableRow key={schedule.id}>
               <TableCell>
-                {renderDescriptionCell(schedule)}
+                {renderDescriptionCell(schedule, index)}
               </TableCell>
               <TableCell>
                 {schedule.dueDate && new Date(schedule.dueDate).toLocaleDateString()}

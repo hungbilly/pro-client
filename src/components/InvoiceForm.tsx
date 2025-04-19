@@ -308,23 +308,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
       return;
     }
 
-    console.log("Checking for duplicate invoice number");
-    if (checkDuplicateInvoiceNumber) {
-      const isDuplicate = await checkDuplicateInvoiceNumber(invoice.number, invoice.id);
-      console.log("Duplicate check result:", isDuplicate);
-      if (isDuplicate) {
-        setIsNumberValid(false);
-        setValidationErrors(prev => ({
-          ...prev,
-          number: 'Invoice number already exists'
-        }));
-        toast.error('Invoice number already exists.');
-        return;
-      } else {
-        setIsNumberValid(true);
-      }
-    }
-
     setIsSaving(true);
     console.log("Setting saving state to true");
     
@@ -339,9 +322,10 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
         companyId: selectedCompany?.id
       });
       
+      let savedInvoice;
       if (invoice.id) {
         console.log("Updating existing invoice:", invoice.id);
-        await updateInvoice(invoice);
+        savedInvoice = await updateInvoice(invoice);
         console.log("Invoice updated successfully");
         toast.success('Invoice updated successfully!');
       } else {
@@ -354,22 +338,13 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
           jobId: propJobId || invoice.jobId 
         };
         console.log("New invoice data:", newInvoice);
-        await saveInvoice(newInvoice);
+        savedInvoice = await saveInvoice(newInvoice);
         console.log("Invoice saved successfully");
         toast.success('Invoice saved successfully!');
       }
       
-      console.log("Preparing navigation after save");
-      if (invoice.jobId) {
-        console.log("Navigating to job page:", invoice.jobId);
-        navigate(`/job/${invoice.jobId}`);
-      } else if (invoice.clientId) {
-        console.log("Navigating to client page:", invoice.clientId);
-        navigate(`/client/${invoice.clientId}`);
-      } else {
-        console.log("Navigating to home page");
-        navigate('/');
-      }
+      navigate(`/invoice/${savedInvoice.id}`);
+      
     } catch (error) {
       console.error('Error saving invoice:', error);
       toast.error('Failed to save invoice.');

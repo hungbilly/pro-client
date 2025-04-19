@@ -1,3 +1,4 @@
+
 export interface User {
   id: string;
   email: string;
@@ -24,6 +25,8 @@ export interface Client {
   phone?: string;
   address?: string;
   companyId: string;
+  notes?: string;
+  createdAt?: string;
 }
 
 export interface Job {
@@ -36,6 +39,12 @@ export interface Job {
   location?: string;
   clientId: string;
   companyId: string;
+  status?: 'active' | 'completed' | 'cancelled';
+  isFullDay?: boolean;
+  calendarEventId?: string;
+  timezone?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface InvoiceItem {
@@ -45,16 +54,26 @@ export interface InvoiceItem {
   quantity: number;
   rate: number;
   amount: number;
+  discount?: string;
+  productName?: string;
 }
+
+export type PaymentStatus = 'paid' | 'unpaid' | 'pending' | 'write-off';
 
 export interface PaymentSchedule {
   id: string;
-  date: string;
+  date?: string;
+  dueDate: string;
   amount: number;
-  status: 'paid' | 'unpaid' | 'write-off';
-  invoiceId: string;
+  status: PaymentStatus;
+  invoiceId?: string;
   paymentDate?: string;
+  percentage: number;
+  description?: string;
 }
+
+export type InvoiceStatus = 'draft' | 'sent' | 'accepted' | 'paid';
+export type ContractStatus = 'pending' | 'accepted';
 
 export interface Invoice {
   id: string;
@@ -64,7 +83,7 @@ export interface Invoice {
   jobId?: string;
   companyId: string;
   amount: number;
-  status: 'draft' | 'sent' | 'accepted' | 'paid';
+  status: InvoiceStatus;
   dueDate: string;
   notes?: string;
   items: InvoiceItem[];
@@ -72,8 +91,9 @@ export interface Invoice {
   viewLink: string;
   pdfUrl?: string;
   contractTerms?: string;
-  contractStatus?: 'pending' | 'accepted';
+  contractStatus?: ContractStatus;
   contractSignature?: ContractSignature;
+  shootingDate?: string;
 }
 
 export interface CompanyClientView {
@@ -108,4 +128,16 @@ export interface InvoiceTemplate {
 export interface ContractSignature {
   signerName: string;
   signedAt: string;
+}
+
+export interface Package {
+  id: string;
+  name: string;
+  description?: string;
+  price: number;
+  tax_rate?: number;
+  company_id: string;
+  user_id: string;
+  created_at?: string;
+  updated_at?: string;
 }

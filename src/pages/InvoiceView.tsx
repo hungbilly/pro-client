@@ -26,7 +26,6 @@ import RichTextEditor from '@/components/RichTextEditor';
 import PaymentScheduleTable from '@/components/invoice/PaymentScheduleTable';
 import isEqual from 'lodash/isEqual';
 import ContractAcceptance from '@/components/invoice/ContractAcceptance';
-import ContractSignature from '@/components/invoice/ContractSignature';
 
 const InvoiceView = () => {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
@@ -333,22 +332,13 @@ const InvoiceView = () => {
     }
   };
 
-  const handleAcceptContract = async (signerName: string) => {
+  const handleAcceptContract = async () => {
     if (!invoice) return;
     
     try {
-      const contractData = {
-        signerName,
-        signedAt: new Date().toISOString(),
-      };
-      
-      await updateContractStatus(invoice.id, 'accepted', contractData);
+      await updateContractStatus(invoice.id, 'accepted');
       toast.success('Contract terms accepted successfully');
-      setInvoice(prev => prev ? { 
-        ...prev, 
-        contractStatus: 'accepted',
-        contractSignature: contractData
-      } : null);
+      setInvoice(prev => prev ? { ...prev, contractStatus: 'accepted' } : null);
     } catch (err) {
       console.error('Failed to accept contract:', err);
       toast.error('Error accepting contract terms');
@@ -750,15 +740,6 @@ const InvoiceView = () => {
                     companyName={displayCompany?.name || 'Company'}
                     onAccept={handleAcceptContract}
                   />
-                )}
-                  
-                {invoice.contractStatus === 'accepted' && invoice.contractSignature && (
-                  <div className="mb-4">
-                    <ContractSignature
-                      signerName={invoice.contractSignature.signerName}
-                      signedAt={invoice.contractSignature.signedAt}
-                    />
-                  </div>
                 )}
                   
                 {invoice.contractStatus === 'accepted' && (

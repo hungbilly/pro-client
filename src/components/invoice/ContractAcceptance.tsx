@@ -4,11 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Check } from 'lucide-react';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
 
 interface ContractAcceptanceProps {
   companyName: string;
-  onAccept: (signerName: string) => Promise<void>;
+  onAccept: () => Promise<void>;
 }
 
 const ContractAcceptance: React.FC<ContractAcceptanceProps> = ({
@@ -26,7 +25,7 @@ const ContractAcceptance: React.FC<ContractAcceptanceProps> = ({
 
     setIsSubmitting(true);
     try {
-      await onAccept(name.trim());
+      await onAccept();
     } finally {
       setIsSubmitting(false);
     }

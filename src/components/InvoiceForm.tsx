@@ -543,11 +543,11 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     const total = calculateTotal();
     const newSchedule: PaymentSchedule = {
       id: generateId(),
-      percentage: 0,
-      amount: 0,
+      percentage: 100,
+      amount: total,
       dueDate: format(new Date(), 'yyyy-MM-dd'),
       status: 'unpaid',
-      description: '' // Add the required description property
+      description: '1st Payment'
     };
 
     setInvoice(prevInvoice => ({

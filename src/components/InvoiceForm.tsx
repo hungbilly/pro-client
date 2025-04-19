@@ -513,6 +513,14 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     setShowAddDiscountDialog(true);
   };
 
+  const handleAddDiscountDialog = (items: InvoiceItem[]) => {
+    setInvoice(prevInvoice => ({
+      ...prevInvoice,
+      items: [...prevInvoice.items, ...items],
+    }));
+    setShowAddDiscountDialog(false);
+  };
+
   const renderRichTextContent = (content: string) => {
     return { __html: content };
   };
@@ -1014,8 +1022,16 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
         </DialogContent>
       </Dialog>
 
-      <AddProductPackageDialog open={showAddProductDialog} onClose={() => setShowAddProductDialog(false)} />
-      <AddDiscountDialog open={showAddDiscountDialog} onClose={() => setShowAddDiscountDialog(false)} />
+      <AddProductPackageDialog 
+        open={showAddProductDialog} 
+        onOpenChange={setShowAddProductDialog} 
+      />
+      <AddDiscountDialog 
+        open={showAddDiscountDialog} 
+        onOpenChange={setShowAddDiscountDialog}
+        onAddDiscount={handleAddDiscountDialog}
+        subtotal={calculateTotal()}
+      />
     </Card>
   );
 };

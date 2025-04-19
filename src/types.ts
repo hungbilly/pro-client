@@ -27,16 +27,6 @@ export interface Job {
   timezone: string;
 }
 
-export interface InvoiceItem {
-  id: string;
-  description: string;
-  quantity: number;
-  rate: number;
-  amount: number;
-  name?: string;
-  discount?: string;
-}
-
 export type InvoiceStatus = 'draft' | 'sent' | 'accepted' | 'paid';
 export type ContractStatus = 'pending' | 'accepted';
 export type PaymentStatus = 'unpaid' | 'paid' | 'write-off';
@@ -54,7 +44,7 @@ export interface PaymentSchedule {
 export interface Invoice {
   id: string;
   clientId: string;
-  companyId?: string;
+  companyId: string;
   jobId?: string;
   number: string;
   amount: number;
@@ -72,6 +62,16 @@ export interface Invoice {
   templateId?: string;
   contractAcceptedAt?: string;
   invoiceAcceptedAt?: string;
+}
+
+export interface InvoiceItem {
+  id: string;
+  name?: string;
+  description: string;
+  quantity: number;
+  rate: number;
+  amount: number;
+  discount?: string;
 }
 
 export interface CompanyClientView {

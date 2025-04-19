@@ -620,13 +620,20 @@ const InvoiceView = () => {
               </TabsList>
               
               <TabsContent value="invoice" className="mt-6">
-                {isClientView && ['draft', 'sent'].includes(invoice.status) && (
-                  <Button onClick={handleAcceptInvoice} className="mb-4">
-                    <Check className="h-4 w-4 mr-2" />
-                    Accept Invoice
-                  </Button>
-                )}
-                
+                {isClientView && ['draft', 'sent'].includes(invoice.status) ? (
+                  <div className="space-y-2">
+                    <Button onClick={handleAcceptInvoice} className="mb-4">
+                      <Check className="h-4 w-4 mr-2" />
+                      Accept Invoice
+                    </Button>
+                    {invoice.invoiceAcceptedAt && (
+                      <div className="text-sm text-muted-foreground">
+                        Accepted on {new Date(invoice.invoiceAcceptedAt).toLocaleString()}
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+
                 {invoice.status === 'accepted' && (
                   <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-md flex items-center gap-2">
                     <FileCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
@@ -742,13 +749,20 @@ const InvoiceView = () => {
               </TabsContent>
               
               <TabsContent value="contract" className="mt-6">
-                {isClientView && invoice.contractStatus !== 'accepted' && (
-                  <ContractAcceptance
-                    companyName={displayCompany?.name || 'Company'}
-                    onAccept={handleAcceptContract}
-                  />
-                )}
-                  
+                {isClientView && invoice.contractStatus !== 'accepted' ? (
+                  <div className="space-y-2">
+                    <ContractAcceptance
+                      companyName={displayCompany?.name || 'Company'}
+                      onAccept={handleAcceptContract}
+                    />
+                    {invoice.contractAcceptedAt && (
+                      <div className="text-sm text-muted-foreground">
+                        Accepted on {new Date(invoice.contractAcceptedAt).toLocaleString()}
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+
                 {invoice.contractStatus === 'accepted' && (
                   <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-md flex items-center gap-2">
                     <FileCheck className="h-5 w-5 text-green-600 dark:text-green-400" />

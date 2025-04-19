@@ -25,6 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import RichTextEditor from '@/components/RichTextEditor';
 import PaymentScheduleTable from '@/components/invoice/PaymentScheduleTable';
 import isEqual from 'lodash/isEqual';
+import ContractAcceptance from '@/components/invoice/ContractAcceptance';
 
 const InvoiceView = () => {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
@@ -735,10 +736,10 @@ const InvoiceView = () => {
               
               <TabsContent value="contract" className="mt-6">
                 {isClientView && invoice.contractStatus !== 'accepted' && (
-                  <Button onClick={handleAcceptContract} className="mb-4">
-                    <Check className="h-4 w-4 mr-2" />
-                    Accept Contract Terms
-                  </Button>
+                  <ContractAcceptance
+                    companyName={displayCompany?.name || 'Company'}
+                    onAccept={handleAcceptContract}
+                  />
                 )}
                   
                 {invoice.contractStatus === 'accepted' && (

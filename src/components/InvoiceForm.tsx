@@ -647,6 +647,22 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     ));
   };
 
+  const handleAddPaymentSchedule = () => {
+    const total = calculateTotal();
+    const newSchedule: PaymentSchedule = {
+      id: generateId(),
+      percentage: 0,
+      amount: 0,
+      dueDate: format(new Date(), 'yyyy-MM-dd'),
+      status: 'unpaid'
+    };
+
+    setInvoice(prevInvoice => ({
+      ...prevInvoice,
+      paymentSchedules: [...(prevInvoice.paymentSchedules || []), newSchedule]
+    }));
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -906,22 +922,4 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
             onClick={() => {
               if (invoice.jobId) {
                 navigate(`/job/${invoice.jobId}`);
-              } else if (invoice.clientId) {
-                navigate(`/client/${invoice.clientId}`);
-              } else {
-                navigate('/');
-              }
-            }}
-          >
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleSubmit}
-            disabled={isSaving}
-          >
-            {isSaving ? 'Saving...' : (invoice.id ? 'Update Invoice' : 'Create Invoice')}
-          </Button>
-        </div>
-      </CardFooter>
-
-      <Dialog open={showDeleteConfirmation} onOpenChange
+              } else if

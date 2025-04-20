@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Route, Routes as ReactRoutes } from 'react-router-dom';
 import Index from './pages/Index';
@@ -28,8 +27,6 @@ import SubscriptionGuard from './components/SubscriptionGuard';
 import Admin from './pages/Admin';
 import AdminLayout from './components/AdminLayout';
 import Debug from './pages/Debug';
-import CalendarTest from './pages/CalendarTest';
-import GoogleOAuthDiagnostic from './pages/GoogleOAuthDiagnostic';
 
 const Routes = () => {
   return (
@@ -42,7 +39,6 @@ const Routes = () => {
       <Route element={<ProtectedRoute adminOnly={true}><AdminLayout /></ProtectedRoute>}>
         <Route path="/admin" element={<Admin />} />
         <Route path="/debug" element={<Debug />} />
-        <Route path="/admin/google-oauth-diagnostic" element={<GoogleOAuthDiagnostic />} />
       </Route>
       
       {/* Subscription routes */}
@@ -50,11 +46,6 @@ const Routes = () => {
         <Route path="/subscription" element={<Subscription />} />
         <Route path="/subscription/success" element={<SubscriptionSuccess />} />
         <Route path="/subscription/cancel" element={<SubscriptionCancel />} />
-      </Route>
-      
-      {/* Calendar test route (protected but with regular AppLayout) */}
-      <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-        <Route path="/calendar-test" element={<CalendarTest />} />
       </Route>
       
       {/* Public invoice views without AppLayout for client view */}

@@ -465,6 +465,7 @@ export type Database = {
           amount: number
           client_id: string
           company_id: string | null
+          contract_accepted_at: string | null
           contract_status: string | null
           contract_terms: string | null
           created_at: string
@@ -473,6 +474,7 @@ export type Database = {
           html_content: string | null
           html_generated_at: string | null
           id: string
+          invoice_accepted_at: string | null
           job_id: string | null
           notes: string | null
           number: string
@@ -485,6 +487,7 @@ export type Database = {
           amount: number
           client_id: string
           company_id?: string | null
+          contract_accepted_at?: string | null
           contract_status?: string | null
           contract_terms?: string | null
           created_at?: string
@@ -493,6 +496,7 @@ export type Database = {
           html_content?: string | null
           html_generated_at?: string | null
           id?: string
+          invoice_accepted_at?: string | null
           job_id?: string | null
           notes?: string | null
           number: string
@@ -505,6 +509,7 @@ export type Database = {
           amount?: number
           client_id?: string
           company_id?: string | null
+          contract_accepted_at?: string | null
           contract_status?: string | null
           contract_terms?: string | null
           created_at?: string
@@ -513,6 +518,7 @@ export type Database = {
           html_content?: string | null
           html_generated_at?: string | null
           id?: string
+          invoice_accepted_at?: string | null
           job_id?: string | null
           notes?: string | null
           number?: string

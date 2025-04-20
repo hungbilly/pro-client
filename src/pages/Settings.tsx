@@ -15,6 +15,7 @@ import { Bug, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import DiscountTemplateSettings from '@/components/DiscountTemplateSettings';
 import { Separator } from '@/components/ui/separator';
+
 const Settings = () => {
   console.log("Settings page rendering");
   const [searchParams] = useSearchParams();
@@ -40,20 +41,6 @@ const Settings = () => {
       <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-3xl font-bold">Settings</h1>
-          <div className="flex gap-2">
-            <Link to="/calendar-test">
-              <Button variant="outline" size="sm" className="flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                Test Calendar
-              </Button>
-            </Link>
-            <Link to="/admin/google-oauth-diagnostic">
-              <Button variant="outline" size="sm" className="flex items-center gap-2">
-                <Bug className="h-4 w-4" />
-                Google OAuth Diagnostic
-              </Button>
-            </Link>
-          </div>
         </div>
         
         <CompanyProvider>
@@ -132,4 +119,5 @@ const Settings = () => {
       </div>
     </PageTransition>;
 };
+
 export default Settings;

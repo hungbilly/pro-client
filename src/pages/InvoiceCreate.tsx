@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
@@ -29,7 +28,6 @@ const InvoiceCreate = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Update the isEditView logic to correctly handle the paths
   const isEditView = location.pathname.includes('/edit');
   
   console.log('InvoiceCreate rendered with path:', location.pathname, 'isEditView:', isEditView);
@@ -191,6 +189,28 @@ const InvoiceCreate = () => {
     fetchContractTemplates();
     fetchTemplates();
   }, [clientId, jobId, invoiceId, navigate, selectedCompany]);
+
+  useEffect(() => {
+    if (!invoice) return;
+
+    const total = invoice.items.reduce((sum, item) => sum + (item.quantity * item.rate), 0);
+    
+    if (total > 0 && (!invoice.paymentSchedules || invoice.paymentSchedules.length === 0) && !invoice.id) {
+      const newSchedule = {
+        id: generateId(),
+        percentage: 100,
+        amount: total,
+        dueDate: format(new Date(), 'yyyy-MM-dd'),
+        status: 'unpaid',
+        description: 'Full Payment'
+      };
+
+      setInvoice(prev => ({
+        ...prev,
+        paymentSchedules: [newSchedule]
+      }));
+    }
+  }, [invoice?.items, invoice?.id]);
 
   if (loading || loadingTemplates) {
     return (

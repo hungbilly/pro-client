@@ -799,9 +799,23 @@ const InvoiceView = () => {
                     <div className="text-green-800 dark:text-green-400">
                       <p>This contract has been accepted</p>
                       {invoice.invoice_accepted_by ? (
-                        <p className="text-sm mt-1">Accepted by: {invoice.invoice_accepted_by}</p>
+                        <div>
+                          <p className="text-sm mt-1">Accepted by: {invoice.invoice_accepted_by}</p>
+                          {invoice.contract_accepted_at && (
+                            <p className="text-sm mt-1">
+                              Accepted at: {new Date(invoice.contract_accepted_at).toLocaleString()}
+                            </p>
+                          )}
+                        </div>
                       ) : (
-                        <p className="text-sm mt-1">Accepted by client</p>
+                        <div>
+                          <p className="text-sm mt-1">Accepted by client</p>
+                          {invoice.contract_accepted_at && (
+                            <p className="text-sm mt-1">
+                              Accepted at: {new Date(invoice.contract_accepted_at).toLocaleString()}
+                            </p>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>

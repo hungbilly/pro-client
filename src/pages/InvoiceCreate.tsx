@@ -299,8 +299,8 @@ const InvoiceCreate = () => {
 
     const newSchedule: PaymentSchedule = {
       id: Math.random().toString(36).substring(2, 15),
-      percentage: scheduleCount === 0 ? 100 : remainingPercentage,
-      amount: scheduleCount === 0 ? total : (total * remainingPercentage / 100),
+      percentage: remainingPercentage,
+      amount: (total * remainingPercentage / 100),
       dueDate: format(new Date(), 'yyyy-MM-dd'),
       status: 'unpaid',
       description: getOrdinalNumber(scheduleCount + 1) + ' Payment'

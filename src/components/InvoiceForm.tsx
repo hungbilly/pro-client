@@ -909,7 +909,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
           
           {invoice.paymentSchedules && invoice.paymentSchedules.length > 0 && (
             <PaymentScheduleTable
-              paymentSchedules={invoice.paymentSchedules}
+              paymentSchedules={invoice.paymentSchedules || []}
               amount={calculateTotal()}
               isClientView={false}
               updatingPaymentId={null}
@@ -918,6 +918,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
               onUpdatePaymentDate={handleUpdatePaymentDate}
               onUpdateAmount={handleUpdatePaymentAmount}
               onUpdateDescription={handleUpdatePaymentDescription}
+              onRemovePaymentSchedule={handleRemovePaymentSchedule}
             />
           )}
           

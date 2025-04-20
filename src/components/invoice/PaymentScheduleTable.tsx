@@ -7,7 +7,7 @@ import { format } from 'date-fns';
 import { PaymentSchedule, PaymentStatus } from '@/types';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon, Edit2, CircleDollarSign, AlertCircle } from 'lucide-react';
+import { CalendarIcon, Edit2, CircleDollarSign, AlertCircle, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
@@ -24,6 +24,7 @@ interface PaymentScheduleTableProps {
   onUpdatePaymentDate?: (paymentId: string, paymentDate: string) => void;
   onUpdateAmount?: (paymentId: string, amount: number, percentage: number) => void;
   onUpdateDescription?: (paymentId: string, description: string) => void;
+  onRemovePaymentSchedule?: (id: string) => void;
 }
 
 const PaymentScheduleTable = memo(({
@@ -35,7 +36,8 @@ const PaymentScheduleTable = memo(({
   formatCurrency,
   onUpdatePaymentDate,
   onUpdateAmount,
-  onUpdateDescription
+  onUpdateDescription,
+  onRemovePaymentSchedule
 }: PaymentScheduleTableProps) => {
   const paymentStatusColors: { [key: string]: string } = {
     paid: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
@@ -431,42 +433,54 @@ const PaymentScheduleTable = memo(({
               </TableCell>
               {!isClientView && (
                 <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button 
-                        variant="ghost" 
+                  <div className="flex space-x-2">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          disabled={updatingPaymentId === schedule.id}
+                        >
+                          {updatingPaymentId === schedule.id ? 'Updating...' : 'Set Status'}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {schedule.status !== 'paid' && (
+                          <DropdownMenuItem 
+                            onClick={() => onUpdateStatus(schedule.id, 'paid')}
+                            className="text-green-600"
+                          >
+                            Mark as Paid
+                          </DropdownMenuItem>
+                        )}
+                        {schedule.status !== 'unpaid' && (
+                          <DropdownMenuItem 
+                            onClick={() => onUpdateStatus(schedule.id, 'unpaid')}
+                          >
+                            Mark as Unpaid
+                          </DropdownMenuItem>
+                        )}
+                        {schedule.status !== 'write-off' && (
+                          <DropdownMenuItem 
+                            onClick={() => onUpdateStatus(schedule.id, 'write-off')}
+                            className="text-red-600"
+                          >
+                            Write Off
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    {onRemovePaymentSchedule && (
+                      <Button
+                        variant="ghost"
                         size="sm"
-                        disabled={updatingPaymentId === schedule.id}
+                        onClick={() => onRemovePaymentSchedule(schedule.id)}
+                        className="text-red-500 hover:text-red-700"
                       >
-                        {updatingPaymentId === schedule.id ? 'Updating...' : 'Set Status'}
+                        <Trash2 className="h-4 w-4" />
                       </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {schedule.status !== 'paid' && (
-                        <DropdownMenuItem 
-                          onClick={() => onUpdateStatus(schedule.id, 'paid')}
-                          className="text-green-600"
-                        >
-                          Mark as Paid
-                        </DropdownMenuItem>
-                      )}
-                      {schedule.status !== 'unpaid' && (
-                        <DropdownMenuItem 
-                          onClick={() => onUpdateStatus(schedule.id, 'unpaid')}
-                        >
-                          Mark as Unpaid
-                        </DropdownMenuItem>
-                      )}
-                      {schedule.status !== 'write-off' && (
-                        <DropdownMenuItem 
-                          onClick={() => onUpdateStatus(schedule.id, 'write-off')}
-                          className="text-red-600"
-                        >
-                          Write Off
-                        </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                    )}
+                  </div>
                 </TableCell>
               )}
             </TableRow>

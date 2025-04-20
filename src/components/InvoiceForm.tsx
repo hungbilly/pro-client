@@ -555,16 +555,37 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
   const handleAddPaymentSchedule = () => {
     const total = calculateTotal();
-    const currentSchedulesCount = (invoice.paymentSchedules || []).length;
-    const ordinalDescription = getOrdinalNumber(currentSchedulesCount + 1) + ' Payment';
+    const currentSchedules = invoice.paymentSchedules || [];
+    
+    const totalAllocatedPercentage = currentSchedules.reduce((sum, schedule) => 
+      sum + (schedule.percentage || 0), 0
+    );
+    
+    const remainingPercentage = 100 - totalAllocatedPercentage;
+    const scheduleCount = currentSchedules.length;
+
+    if (remainingPercentage <= 0) {
+      toast.error("All payment percentage (100%) has been allocated");
+      return;
+    }
+
+    // Default percentage for new schedule
+    let newPercentage: number;
+    if (scheduleCount === 0) {
+      // First payment: Default to 100%
+      newPercentage = 100;
+    } else {
+      // Subsequent payments: Use remaining percentage
+      newPercentage = remainingPercentage;
+    }
 
     const newSchedule: PaymentSchedule = {
       id: generateId(),
-      percentage: 100,
-      amount: total,
+      percentage: newPercentage,
+      amount: (total * newPercentage) / 100,
       dueDate: format(new Date(), 'yyyy-MM-dd'),
       status: 'unpaid',
-      description: ordinalDescription
+      description: getOrdinalNumber(scheduleCount + 1) + ' Payment'
     };
 
     setInvoice(prevInvoice => ({

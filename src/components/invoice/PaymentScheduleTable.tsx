@@ -359,13 +359,6 @@ const PaymentScheduleTable = memo(({
 
   return (
     <div className="border rounded-md overflow-hidden">
-      {process.env.NODE_ENV === 'development' && (
-        <div className="bg-gray-100 p-2 text-xs">
-          <p>Debug: isClientView={String(isClientView)} | isEditView={String(isEditView)} | shouldEnableEditing={String(shouldEnableEditing)}</p>
-          <p>Current Path: {currentPath}</p>
-        </div>
-      )}
-      
       {!isPercentageValid && (
         <Alert variant="destructive" className="mb-4">
           <AlertCircle className="h-4 w-4" />

@@ -175,15 +175,19 @@ const InvoiceView = () => {
           try {
             const { data: rawInvoice, error: rawError } = await supabase
               .from('invoices')
-              .select('invoice_accepted_by')
+              .select('invoice_accepted_by, contract_accepted_at')
               .eq('id', fetchedInvoice.id)
               .single();
               
             if (rawInvoice) {
               console.log('[InvoiceView] Direct DB query for invoice_accepted_by:', rawInvoice.invoice_accepted_by);
+              console.log('[InvoiceView] Direct DB query for contract_accepted_at:', rawInvoice.contract_accepted_at);
               // If we have data from DB but it's missing in our object, add it
               if (rawInvoice.invoice_accepted_by && !fetchedInvoice.invoice_accepted_by) {
                 fetchedInvoice.invoice_accepted_by = rawInvoice.invoice_accepted_by;
+              }
+              if (rawInvoice.contract_accepted_at && !fetchedInvoice.contract_accepted_at) {
+                fetchedInvoice.contract_accepted_at = rawInvoice.contract_accepted_at;
               }
             }
           } catch (err) {
@@ -457,7 +461,8 @@ const InvoiceView = () => {
         contractPreview: invoice.contractTerms?.substring(0, 100),
         invoice_accepted_by: invoice.invoice_accepted_by,
         invoice_accepted_by_raw: typeof invoice.invoice_accepted_by === 'object' ? 
-          JSON.stringify(invoice.invoice_accepted_by) : invoice.invoice_accepted_by
+          JSON.stringify(invoice.invoice_accepted_by) : invoice.invoice_accepted_by,
+        contract_accepted_at: invoice.contract_accepted_at
       });
     }
   }, [invoice]);

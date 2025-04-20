@@ -1,3 +1,4 @@
+
 export interface Client {
   id: string;
   name: string;
@@ -88,7 +89,7 @@ export interface CompanyClientView {
   updated_at: string;
 }
 
-// Add Company type
+// Updated Company interface to match the database schema
 export interface Company {
   id: string;
   name: string;
@@ -99,23 +100,22 @@ export interface Company {
   logo_url?: string;
   country?: string;
   currency?: string;
-  theme?: string;
   timezone: string;
   is_default?: boolean;
   user_id?: string;
-  createdAt: string;
-  updatedAt?: string;
+  created_at: string;
+  updated_at?: string;
 }
 
-// Define InvoiceTemplate type if missing
+// Updated InvoiceTemplate interface to match the database schema
 export interface InvoiceTemplate {
   id: string;
   name: string;
   content: string;
   description?: string;
-  companyId?: string;
-  userId: string;
-  createdAt: string;
-  updatedAt: string;
+  company_id?: string;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
   items?: any[]; // Replace with proper type definition if available
 }

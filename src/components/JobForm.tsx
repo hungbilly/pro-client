@@ -63,8 +63,12 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
     queryKey: ['clients', selectedCompany?.id],
     queryFn: async () => {
       if (!selectedCompany?.id) return [];
-      const clientsData = await getClients(selectedCompany.id);
-      return clientsData;
+      const { data } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('company_id', selectedCompany.id)
+        .order('created_at', { ascending: false });
+      return data || [];
     },
     enabled: !!selectedCompany
   });
@@ -73,8 +77,12 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
     queryKey: ['all-jobs', selectedCompany?.id],
     queryFn: async () => {
       if (!selectedCompany) return [];
-      const jobsData = await getJobs(selectedCompany.id);
-      return jobsData;
+      const { data } = await supabase
+        .from('jobs')
+        .select('*')
+        .eq('company_id', selectedCompany.id)
+        .order('created_at', { ascending: false });
+      return data || [];
     },
     enabled: !!selectedCompany
   });

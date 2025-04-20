@@ -5,13 +5,13 @@ import { getInvoices } from '@/lib/storage';
 import { useCompany } from '@/components/CompanySelector';
 
 const Invoices = () => {
-  const { selectedCompanyId } = useCompany();
+  const { selectedCompany } = useCompany();
 
   // When importing getInvoices
   const { data: invoices = [], isLoading } = useQuery({
-    queryKey: ['invoices'],
-    queryFn: () => getInvoices(),
-    enabled: !!selectedCompanyId,
+    queryKey: ['invoices', selectedCompany?.id],
+    queryFn: () => getInvoices(selectedCompany?.id),
+    enabled: !!selectedCompany?.id,
   });
 
   return (

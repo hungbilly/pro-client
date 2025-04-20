@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -28,12 +27,29 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({ isOpen, onClose
   const { selectedCompany } = useCompanyContext();
   const selectedCompanyId = selectedCompany?.id;
   const [searchQuery, setSearchQuery] = useState('');
-  
+  const [clients, setClients] = useState([]);
+
   const { data: jobs = [], isLoading } = useQuery({
     queryKey: ['jobs', selectedCompanyId],
     queryFn: () => getJobs(selectedCompanyId),
     enabled: !!selectedCompanyId && isOpen,
   });
+
+  useEffect(() => {
+    const fetchClients = async () => {
+      try {
+        const fetchedClients = await getClients();
+        const filteredClients = selectedCompany 
+          ? fetchedClients.filter(c => c.companyId === selectedCompany.id)
+          : fetchedClients;
+        setClients(filteredClients);
+      } catch (error) {
+        console.error('Error fetching clients:', error);
+      }
+    };
+
+    fetchClients();
+  }, [selectedCompany]);
 
   const filteredJobs = jobs.filter(job => 
     job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -41,7 +57,6 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({ isOpen, onClose
   );
 
   const handleJobSelect = (jobId: string, clientId: string) => {
-    // Navigate to create invoice page with the selected job
     navigate(`/job/${jobId}/invoice/create`);
     onClose();
   };
@@ -51,7 +66,6 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({ isOpen, onClose
     onClose();
   };
 
-  // Helper function to safely capitalize a string, handling null/undefined values
   const capitalizeStatus = (status: string | null | undefined): string => {
     if (!status) return 'Unknown';
     return status.charAt(0).toUpperCase() + status.slice(1);

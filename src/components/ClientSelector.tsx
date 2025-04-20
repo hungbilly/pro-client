@@ -38,12 +38,17 @@ const ClientSelector: React.FC<ClientSelectorProps> = ({
     const fetchClients = async () => {
       try {
         console.log("Fetching clients for company:", selectedCompanyId);
-        const allClients = await getClients(selectedCompanyId);
-        console.log("Fetched clients:", allClients.length);
-        setClients(allClients);
+        const allClients = await getClients();
+        // Filter clients by company ID
+        const filteredClients = selectedCompanyId 
+          ? allClients.filter(client => client.companyId === selectedCompanyId)
+          : allClients;
+          
+        console.log("Fetched clients:", filteredClients.length);
+        setClients(filteredClients);
         
         if (selectedClientId) {
-          const client = allClients.find(c => c.id === selectedClientId);
+          const client = filteredClients.find(c => c.id === selectedClientId);
           if (client) {
             setSelectedClient(client);
           }

@@ -21,6 +21,7 @@ import { AddToCalendarDialog } from './AddToCalendarDialog';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
+import { v4 as uuidv4 } from 'uuid';
 
 interface JobFormProps {
   job?: Job;
@@ -294,19 +295,23 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
           navigate(`/job/${existingJob.id}`);
         }
       } else {
-        const newJobData = {
+        const now = new Date().toISOString();
+        const newJobData: Job = {
+          id: uuidv4(),
           clientId: client.id,
           companyId: selectedCompany.id,
           title,
           description,
           status,
-          date: formattedDate,
+          date: formattedDate || '',
           location,
-          startTime: isFullDay ? undefined : startTime,
-          endTime: isFullDay ? undefined : endTime,
+          startTime: isFullDay ? '' : startTime,
+          endTime: isFullDay ? '' : endTime,
           isFullDay,
           calendarEventId: null,
-          timezone: timezoneToUse
+          timezone: timezoneToUse,
+          createdAt: now,
+          updatedAt: now
         };
 
         console.log('Creating new job with data:', newJobData);

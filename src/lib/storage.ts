@@ -12,10 +12,89 @@ import {
   PaymentStatus,
   STORAGE_KEYS
 } from '@/types';
-import { format, subDays, addDays } from 'date-fns';
 
-// Utility function to simulate network delay
-const simulateDelay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+// Map database client to our Client interface
+const mapClientFromDatabase = (data: any): Client => {
+  return {
+    id: data.id,
+    name: data.name,
+    email: data.email,
+    phone: data.phone,
+    address: data.address,
+    notes: data.notes || '',
+    createdAt: data.created_at,
+    companyId: data.company_id || ''
+  };
+};
+
+// Map database job to our Job interface
+const mapJobFromDatabase = (data: any): Job => {
+  return {
+    id: data.id,
+    clientId: data.client_id,
+    companyId: data.company_id || '',
+    title: data.title,
+    description: data.description || '',
+    status: data.status,
+    date: data.date || '',
+    location: data.location || '',
+    startTime: data.start_time || '',
+    endTime: data.end_time || '',
+    isFullDay: data.is_full_day || false,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+    calendarEventId: data.calendar_event_id,
+    timezone: data.timezone || 'UTC'
+  };
+};
+
+// Map our Client interface to database format
+const mapClientForDatabase = (client: Client): any => {
+  return {
+    id: client.id,
+    name: client.name,
+    email: client.email,
+    phone: client.phone,
+    address: client.address,
+    notes: client.notes,
+    company_id: client.companyId,
+    created_at: client.createdAt
+  };
+};
+
+// Map our Job interface to database format
+const mapJobForDatabase = (job: Job): any => {
+  return {
+    id: job.id,
+    client_id: job.clientId,
+    company_id: job.companyId,
+    title: job.title,
+    description: job.description,
+    status: job.status,
+    date: job.date,
+    location: job.location,
+    start_time: job.startTime,
+    end_time: job.endTime,
+    is_full_day: job.isFullDay,
+    created_at: job.createdAt,
+    updated_at: job.updatedAt,
+    calendar_event_id: job.calendarEventId,
+    timezone: job.timezone
+  };
+};
+
+// Map payment schedule from database
+const mapPaymentScheduleFromDatabase = (data: any): PaymentSchedule => {
+  return {
+    id: data.id,
+    dueDate: data.due_date,
+    percentage: data.percentage,
+    description: data.description,
+    status: data.status as PaymentStatus,
+    paymentDate: data.payment_date,
+    amount: data.amount
+  };
+};
 
 // ===================================================================================
 // ================================  Client Functions =================================
@@ -33,7 +112,7 @@ export const getClients = async (): Promise<Client[]> => {
       return [];
     }
 
-    return clients || [];
+    return (clients || []).map(mapClientFromDatabase);
   } catch (error) {
     console.error("Unexpected error fetching clients:", error);
     return [];
@@ -53,7 +132,7 @@ export const getClient = async (id: string): Promise<Client | null> => {
       return null;
     }
 
-    return client || null;
+    return client ? mapClientFromDatabase(client) : null;
   } catch (error) {
     console.error(`Unexpected error fetching client with id ${id}:`, error);
     return null;
@@ -62,9 +141,11 @@ export const getClient = async (id: string): Promise<Client | null> => {
 
 export const saveClient = async (client: Client): Promise<Client> => {
   try {
+    const dbClient = mapClientForDatabase(client);
+    
     const { data, error } = await supabase
       .from('clients')
-      .insert([client])
+      .insert([dbClient])
       .select()
       .single();
 
@@ -73,7 +154,7 @@ export const saveClient = async (client: Client): Promise<Client> => {
       throw error;
     }
 
-    return data as Client;
+    return mapClientFromDatabase(data);
   } catch (error) {
     console.error("Unexpected error saving client:", error);
     throw error;
@@ -82,9 +163,11 @@ export const saveClient = async (client: Client): Promise<Client> => {
 
 export const updateClient = async (client: Client): Promise<Client> => {
   try {
+    const dbClient = mapClientForDatabase(client);
+    
     const { data, error } = await supabase
       .from('clients')
-      .update(client)
+      .update(dbClient)
       .eq('id', client.id)
       .select()
       .single();
@@ -94,7 +177,7 @@ export const updateClient = async (client: Client): Promise<Client> => {
       throw error;
     }
 
-    return data as Client;
+    return mapClientFromDatabase(data);
   } catch (error) {
     console.error(`Unexpected error updating client with id ${client.id}:`, error);
     throw error;
@@ -280,7 +363,7 @@ export const getJobs = async (): Promise<Job[]> => {
       return [];
     }
 
-    return jobs || [];
+    return (jobs || []).map(mapJobFromDatabase);
   } catch (error) {
     console.error("Unexpected error fetching jobs:", error);
     return [];
@@ -300,7 +383,7 @@ export const getJob = async (id: string): Promise<Job | null> => {
       return null;
     }
 
-    return job || null;
+    return job ? mapJobFromDatabase(job) : null;
   } catch (error) {
     console.error(`Unexpected error fetching job with id ${id}:`, error);
     return null;
@@ -309,9 +392,11 @@ export const getJob = async (id: string): Promise<Job | null> => {
 
 export const saveJob = async (job: Job): Promise<Job> => {
   try {
+    const dbJob = mapJobForDatabase(job);
+    
     const { data, error } = await supabase
       .from('jobs')
-      .insert([job])
+      .insert([dbJob])
       .select()
       .single();
 
@@ -320,7 +405,7 @@ export const saveJob = async (job: Job): Promise<Job> => {
       throw error;
     }
 
-    return data as Job;
+    return mapJobFromDatabase(data);
   } catch (error) {
     console.error("Unexpected error saving job:", error);
     throw error;
@@ -329,9 +414,11 @@ export const saveJob = async (job: Job): Promise<Job> => {
 
 export const updateJob = async (job: Job): Promise<Job> => {
   try {
+    const dbJob = mapJobForDatabase(job);
+    
     const { data, error } = await supabase
       .from('jobs')
-      .update(job)
+      .update(dbJob)
       .eq('id', job.id)
       .select()
       .single();
@@ -341,7 +428,7 @@ export const updateJob = async (job: Job): Promise<Job> => {
       throw error;
     }
 
-    return data as Job;
+    return mapJobFromDatabase(data);
   } catch (error) {
     console.error(`Unexpected error updating job with id ${job.id}:`, error);
     throw error;
@@ -480,7 +567,7 @@ export const getInvoice = async (id: string): Promise<Invoice | null> => {
       console.error(`Error fetching payment schedules for invoice id ${id}:`, schedulesError);
       invoice.paymentSchedules = []; // Assign empty array in case of error
     } else {
-      invoice.paymentSchedules = schedulesData as PaymentSchedule[];
+      invoice.paymentSchedules = schedulesData.map(mapPaymentScheduleFromDatabase);
     }
 
     return invoice;
@@ -534,7 +621,7 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
       console.error(`Error fetching payment schedules for invoice id ${invoice.id}:`, schedulesError);
       invoice.paymentSchedules = []; // Assign empty array in case of error
     } else {
-      invoice.paymentSchedules = schedulesData as PaymentSchedule[];
+      invoice.paymentSchedules = schedulesData.map(mapPaymentScheduleFromDatabase);
     }
 
     return invoice;

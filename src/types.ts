@@ -10,6 +10,23 @@ export interface Client {
   companyId: string;
 }
 
+export interface Company {
+  id: string;
+  name: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  logo_url?: string;
+  country?: string;
+  currency?: string;
+  timezone: string;
+  is_default: boolean;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Job {
   id: string;
   clientId: string;
@@ -117,3 +134,10 @@ export interface Package {
   created_at: string;
   updated_at: string;
 }
+
+// Add storage keys for localStorage use
+export const STORAGE_KEYS = {
+  CLIENTS: 'wedding-clients',
+  INVOICES: 'wedding-invoices',
+  JOBS: 'wedding-jobs'
+};

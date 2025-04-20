@@ -1,4 +1,5 @@
 import React, { memo, useState, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -67,6 +68,9 @@ const PaymentScheduleTable = memo(({
   const percentageDifference = useMemo(() => {
     return Math.abs(totalPercentage - 100).toFixed(2);
   }, [totalPercentage]);
+
+  const location = useLocation();
+  const isEditView = location.pathname.includes('/edit/');
 
   const handleDateSelect = (paymentId: string, date: Date | undefined) => {
     if (!date || !onUpdatePaymentDate) return;
@@ -249,7 +253,7 @@ const PaymentScheduleTable = memo(({
     const paymentAmount = getPaymentAmount(schedule);
     const percentage = schedule.percentage || 0;
     
-    if (editingAmountId === schedule.id) {
+    if (editingAmountId === schedule.id && isEditView) {
       return (
         <div className="flex flex-col space-y-2">
           <div className="flex items-center space-x-2 mb-2">
@@ -329,7 +333,7 @@ const PaymentScheduleTable = memo(({
           <CircleDollarSign className="h-3.5 w-3.5 text-muted-foreground" />
           <span>{formatCurrency(paymentAmount)}</span>
         </div>
-        {!isClientView && (
+        {!isClientView && isEditView && (
           <Button 
             variant="ghost" 
             size="icon" 

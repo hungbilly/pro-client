@@ -16,7 +16,6 @@ interface CalendarIntegration {
   refresh_token: string | null;
   token_type: string | null;
   expires_at: string | null;
-  email?: string;
 }
 
 const GoogleCalendarIntegration: React.FC = () => {
@@ -84,7 +83,7 @@ const GoogleCalendarIntegration: React.FC = () => {
         console.log("Fetching user's Google Calendar integration");
         const { data, error } = await supabase
           .from('user_integrations')
-          .select('*, email')
+          .select('*')
           .eq('user_id', user.id)
           .eq('provider', 'google_calendar')
           .single();
@@ -100,8 +99,7 @@ const GoogleCalendarIntegration: React.FC = () => {
               hasAccessToken: Boolean(data.access_token),
               hasRefreshToken: Boolean(data.refresh_token),
               tokenExpiry: data.expires_at,
-              userId: data.user_id,
-              email: data.email
+              userId: data.user_id
             });
           } else {
             console.log("User does not have Google Calendar integration");
@@ -402,12 +400,8 @@ const GoogleCalendarIntegration: React.FC = () => {
             <CheckCircle2 className="h-4 w-4 text-green-600" />
             <AlertTitle className="text-green-800">Connected</AlertTitle>
             <AlertDescription className="text-green-700">
-              Your account is connected to Google Calendar
-              {integration.email && (
-                <div className="mt-1 text-sm">
-                  Connected account: {integration.email}
-                </div>
-              )}
+              Your account is connected to Google Calendar. 
+              Event management is enabled.
               {isAdmin && (
                 <div className="text-xs mt-2 text-green-600">
                   User ID: <code className="bg-green-100 px-1">{integration.user_id}</code>

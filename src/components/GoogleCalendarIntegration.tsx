@@ -19,7 +19,7 @@ interface CalendarIntegration {
 }
 
 const GoogleCalendarIntegration: React.FC = () => {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [integration, setIntegration] = useState<CalendarIntegration | null>(null);
   const [loading, setLoading] = useState(true);
   const [clientId, setClientId] = useState<string | null>(null);
@@ -27,7 +27,6 @@ const GoogleCalendarIntegration: React.FC = () => {
   const [debugInfo, setDebugInfo] = useState<any>(null);
   const [apiCallsHistory, setApiCallsHistory] = useState<any[]>([]);
   const [initialCheckComplete, setInitialCheckComplete] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
 
   const origin = window.location.origin;
   const appRedirectUrl = `${origin}/settings`;
@@ -448,15 +447,17 @@ const GoogleCalendarIntegration: React.FC = () => {
               <LogOut className="h-4 w-4" />
               Disconnect Calendar
             </Button>
-            <Button 
-              variant="secondary" 
-              onClick={testCalendarIntegration} 
-              disabled={loading}
-              className="flex items-center gap-2"
-            >
-              <Calendar className="h-4 w-4" />
-              Test Integration
-            </Button>
+            {isAdmin && (
+              <Button 
+                variant="secondary" 
+                onClick={testCalendarIntegration} 
+                disabled={loading}
+                className="flex items-center gap-2"
+              >
+                <Calendar className="h-4 w-4" />
+                Test Integration
+              </Button>
+            )}
             {isAdmin && (
               <Link to="/calendar-test" className="ml-auto">
                 <Button 

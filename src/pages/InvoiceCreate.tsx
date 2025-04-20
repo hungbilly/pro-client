@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import InvoiceForm from '@/components/InvoiceForm';
 import { getInvoice, getClient, getJob } from '@/lib/storage';
-import { Invoice, Client, Job, InvoiceTemplate } from '@/types';
+import { Invoice, Client, Job, InvoiceTemplate, PaymentSchedule } from '@/types';
 import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { supabase, logDebug, logError, logDataTransformation, formatDate, parseDate } from '@/integrations/supabase/client';
@@ -41,6 +41,20 @@ const InvoiceCreate = () => {
   const [templates, setTemplates] = useState<InvoiceTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const { selectedCompany } = useCompanyContext();
+
+  const calculateTotal = (): number => {
+    if (!invoice || !invoice.items) return 0;
+    
+    return invoice.items.reduce((total, item) => {
+      return total + (item.quantity * item.rate);
+    }, 0);
+  };
+
+  const getOrdinalNumber = (num: number): string => {
+    const suffixes = ['th', 'st', 'nd', 'rd'];
+    const v = num % 100;
+    return num + (suffixes[(v - 20) % 10] || suffixes[v] || suffixes[0]);
+  };
 
   useEffect(() => {
     const fetchInvoiceData = async () => {
@@ -269,7 +283,7 @@ const InvoiceCreate = () => {
 
   const handleAddPaymentSchedule = () => {
     const total = calculateTotal();
-    const currentSchedules = invoice.paymentSchedules || [];
+    const currentSchedules = invoice?.paymentSchedules || [];
     
     const totalAllocatedPercentage = currentSchedules.reduce((sum, schedule) => 
       sum + (schedule.percentage || 0), 0
@@ -294,7 +308,7 @@ const InvoiceCreate = () => {
 
     setInvoice(prevInvoice => ({
       ...prevInvoice,
-      paymentSchedules: [...(prevInvoice.paymentSchedules || []), newSchedule]
+      paymentSchedules: [...(prevInvoice?.paymentSchedules || []), newSchedule]
     }));
   };
 

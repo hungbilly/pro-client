@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -28,6 +27,7 @@ const GoogleCalendarIntegration: React.FC = () => {
   const [debugInfo, setDebugInfo] = useState<any>(null);
   const [apiCallsHistory, setApiCallsHistory] = useState<any[]>([]);
   const [initialCheckComplete, setInitialCheckComplete] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const origin = window.location.origin;
   const appRedirectUrl = `${origin}/settings`;
@@ -343,7 +343,6 @@ const GoogleCalendarIntegration: React.FC = () => {
     );
   };
 
-  // Show skeleton while initial fetching is happening
   if (loading && !initialCheckComplete) {
     return (
       <Card className="animate-pulse">
@@ -374,7 +373,7 @@ const GoogleCalendarIntegration: React.FC = () => {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {error && (
+        {error && isAdmin && (
           <Alert variant="destructive" className="mb-4">
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Configuration Error</AlertTitle>
@@ -387,7 +386,7 @@ const GoogleCalendarIntegration: React.FC = () => {
           </Alert>
         )}
         
-        {!error && !clientId && (
+        {!error && !clientId && isAdmin && (
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Configuration Error</AlertTitle>
@@ -404,9 +403,11 @@ const GoogleCalendarIntegration: React.FC = () => {
             <AlertDescription className="text-green-700">
               Your account is connected to Google Calendar. 
               Event management is enabled.
-              <div className="text-xs mt-2 text-green-600">
-                User ID: <code className="bg-green-100 px-1">{integration.user_id}</code>
-              </div>
+              {isAdmin && (
+                <div className="text-xs mt-2 text-green-600">
+                  User ID: <code className="bg-green-100 px-1">{integration.user_id}</code>
+                </div>
+              )}
             </AlertDescription>
           </Alert>
         ) : clientId && (
@@ -415,21 +416,25 @@ const GoogleCalendarIntegration: React.FC = () => {
             <AlertTitle className="text-yellow-800">Not Connected</AlertTitle>
             <AlertDescription className="text-yellow-700">
               Connect your account to Google Calendar to enable automatic event creation and management.
-              <div className="text-xs mt-2">
-                You'll be redirected back to: <code className="bg-gray-100 px-1">{appRedirectUrl}</code>
-              </div>
+              {isAdmin && (
+                <div className="text-xs mt-2">
+                  You'll be redirected back to: <code className="bg-gray-100 px-1">{appRedirectUrl}</code>
+                </div>
+              )}
             </AlertDescription>
           </Alert>
         )}
         
-        <div className="mt-4 border border-dashed border-gray-300 p-3 rounded-md">
-          <h3 className="text-sm font-medium mb-2">Setup Requirements:</h3>
-          <ul className="text-xs space-y-1 text-gray-700">
-            <li>• Set <code className="bg-gray-100 px-1">GOOGLE_CLIENT_ID</code> and <code className="bg-gray-100 px-1">GOOGLE_CLIENT_SECRET</code> secrets in Supabase</li>
-            <li>• Add <code className="bg-gray-100 px-1">{origin}</code> to Authorized JavaScript origins</li>
-            <li>• Add <code className="bg-gray-100 px-1">{`${origin}/functions/v1/handle-google-calendar-callback`}</code> to Authorized redirect URIs</li>
-          </ul>
-        </div>
+        {isAdmin && (
+          <div className="mt-4 border border-dashed border-gray-300 p-3 rounded-md">
+            <h3 className="text-sm font-medium mb-2">Setup Requirements:</h3>
+            <ul className="text-xs space-y-1 text-gray-700">
+              <li>• Set <code className="bg-gray-100 px-1">GOOGLE_CLIENT_ID</code> and <code className="bg-gray-100 px-1">GOOGLE_CLIENT_SECRET</code> secrets in Supabase</li>
+              <li>• Add <code className="bg-gray-100 px-1">{origin}</code> to Authorized JavaScript origins</li>
+              <li>• Add <code className="bg-gray-100 px-1">{`${origin}/functions/v1/handle-google-calendar-callback`}</code> to Authorized redirect URIs</li>
+            </ul>
+          </div>
+        )}
       </CardContent>
       <CardFooter className="flex flex-wrap gap-2">
         {clientId && integration ? (
@@ -452,16 +457,18 @@ const GoogleCalendarIntegration: React.FC = () => {
               <Calendar className="h-4 w-4" />
               Test Integration
             </Button>
-            <Link to="/calendar-test" className="ml-auto">
-              <Button 
-                variant="outline"
-                size="sm" 
-                className="flex items-center gap-2"
-              >
-                <ExternalLink className="h-4 w-4" />
-                Open Calendar Test Page
-              </Button>
-            </Link>
+            {isAdmin && (
+              <Link to="/calendar-test" className="ml-auto">
+                <Button 
+                  variant="outline"
+                  size="sm" 
+                  className="flex items-center gap-2"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Open Calendar Test Page
+                </Button>
+              </Link>
+            )}
           </>
         ) : clientId && (
           <Button 
@@ -474,15 +481,17 @@ const GoogleCalendarIntegration: React.FC = () => {
           </Button>
         )}
         
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={showDebugInfo}
-          className={clientId && integration ? "" : "ml-auto"}
-        >
-          <Bug className="h-4 w-4 mr-2" />
-          Debug Info
-        </Button>
+        {isAdmin && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={showDebugInfo}
+            className={clientId && integration ? "" : "ml-auto"}
+          >
+            <Bug className="h-4 w-4 mr-2" />
+            Debug Info
+          </Button>
+        )}
       </CardFooter>
     </Card>
   );

@@ -1,4 +1,3 @@
-
 import React, { memo, useState, useMemo } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -90,47 +89,83 @@ const PaymentScheduleTable = memo(({
   };
 
   const handleAmountUpdate = (paymentId: string, schedule: PaymentSchedule) => {
-    if (!onUpdateAmount) return;
+    if (!onUpdateAmount) {
+      console.log('onUpdateAmount handler is not provided');
+      return;
+    }
     
-    const newAmountStr = customAmounts[paymentId] !== undefined 
-      ? customAmounts[paymentId] 
-      : schedule.amount?.toString() || '0';
-    
-    const newAmount = parseFloat(newAmountStr);
-    if (isNaN(newAmount)) return;
-    
-    const newPercentage = amount > 0 ? (newAmount / amount) * 100 : 0;
-    
-    onUpdateAmount(paymentId, newAmount, newPercentage);
-    setEditingAmountId(null);
-    setCustomAmounts({});
-    
-    toast.success('Payment amount updated', {
-      duration: 3000,
-      position: 'top-center'
-    });
+    try {
+      const newAmountStr = customAmounts[paymentId] !== undefined 
+        ? customAmounts[paymentId] 
+        : schedule.amount?.toString() || '0';
+      
+      const newAmount = parseFloat(newAmountStr);
+      if (isNaN(newAmount)) {
+        console.log('Invalid amount value:', newAmountStr);
+        toast.error('Please enter a valid amount');
+        return;
+      }
+      
+      const newPercentage = amount > 0 ? (newAmount / amount) * 100 : 0;
+      
+      console.log('Updating payment amount:', {
+        paymentId,
+        newAmount,
+        newPercentage
+      });
+      
+      onUpdateAmount(paymentId, newAmount, newPercentage);
+      setEditingAmountId(null);
+      setCustomAmounts({});
+      
+      toast.success('Payment amount updated', {
+        duration: 3000,
+        position: 'top-center'
+      });
+    } catch (error) {
+      console.error('Error updating amount:', error);
+      toast.error('Failed to update amount');
+    }
   };
 
   const handlePercentageUpdate = (paymentId: string, schedule: PaymentSchedule) => {
-    if (!onUpdateAmount) return;
+    if (!onUpdateAmount) {
+      console.log('onUpdateAmount handler is not provided');
+      return;
+    }
     
-    const newPercentageStr = customPercentages[paymentId] !== undefined 
-      ? customPercentages[paymentId] 
-      : (schedule.percentage || 0).toFixed(2);
-    
-    const newPercentage = parseFloat(newPercentageStr);
-    if (isNaN(newPercentage)) return;
-    
-    const newAmount = (amount * newPercentage) / 100;
-    
-    onUpdateAmount(paymentId, newAmount, newPercentage);
-    setEditingAmountId(null);
-    setCustomPercentages({});
-    
-    toast.success('Payment percentage updated', {
-      duration: 3000,
-      position: 'top-center'
-    });
+    try {
+      const newPercentageStr = customPercentages[paymentId] !== undefined 
+        ? customPercentages[paymentId] 
+        : (schedule.percentage || 0).toFixed(2);
+      
+      const newPercentage = parseFloat(newPercentageStr);
+      if (isNaN(newPercentage)) {
+        console.log('Invalid percentage value:', newPercentageStr);
+        toast.error('Please enter a valid percentage');
+        return;
+      }
+      
+      const newAmount = (amount * newPercentage) / 100;
+      
+      console.log('Updating payment percentage:', {
+        paymentId,
+        newAmount,
+        newPercentage
+      });
+      
+      onUpdateAmount(paymentId, newAmount, newPercentage);
+      setEditingAmountId(null);
+      setCustomPercentages({});
+      
+      toast.success('Payment percentage updated', {
+        duration: 3000,
+        position: 'top-center'
+      });
+    } catch (error) {
+      console.error('Error updating percentage:', error);
+      toast.error('Failed to update percentage');
+    }
   };
 
   const handleDescriptionUpdate = (paymentId: string) => {
@@ -254,6 +289,7 @@ const PaymentScheduleTable = memo(({
             <Button 
               size="sm" 
               onClick={() => {
+                console.log('Save button clicked, edit mode:', editMode);
                 if (editMode === 'amount') {
                   handleAmountUpdate(schedule.id, schedule);
                 } else {

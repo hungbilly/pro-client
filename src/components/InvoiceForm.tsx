@@ -460,6 +460,8 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   };
 
   const handleUpdatePaymentAmount = (paymentId: string, amount: number, percentage: number) => {
+    console.log('Handling payment amount update:', { paymentId, amount, percentage });
+    
     setInvoice(prevInvoice => {
       const updatedSchedules = prevInvoice.paymentSchedules?.map(schedule => {
         if (schedule.id === paymentId) {
@@ -476,6 +478,11 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
         ...prevInvoice,
         paymentSchedules: updatedSchedules,
       };
+    });
+    
+    toast.success('Payment amount updated successfully', {
+      duration: 3000,
+      position: 'top-center'
     });
   };
 

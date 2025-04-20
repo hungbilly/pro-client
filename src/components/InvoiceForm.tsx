@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Client, Invoice, InvoiceItem, Job, PaymentSchedule, PaymentStatus } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -58,6 +58,24 @@ const generateViewLink = () => {
   return Math.random().toString(36).substring(2, 15);
 };
 
+const defaultInvoice = useMemo(() => ({
+  id: '', 
+  clientId: '',
+  jobId: '',
+  number: '',
+  date: format(new Date(), 'yyyy-MM-dd'),
+  dueDate: format(new Date(), 'yyyy-MM-dd'),
+  items: [],
+  amount: 0,
+  status: 'draft' as InvoiceStatus,
+  contractStatus: 'pending' as ContractStatus,
+  notes: '',
+  contractTerms: '',
+  paymentSchedules: [],
+  companyId: '',
+  viewLink: '',
+}), []);
+
 const InvoiceForm: React.FC<InvoiceFormProps> = ({ 
   invoice: propInvoice, 
   clientId: propClientId, 
@@ -72,22 +90,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   const { selectedCompany } = useCompany();
 
   const [invoice, setInvoice] = useState<Invoice>(
-    propInvoice || {
-      id: '', 
-      clientId: propClientId || '',
-      jobId: propJobId || '',
-      number: '',
-      date: format(new Date(), 'yyyy-MM-dd'),
-      dueDate: format(new Date(), 'yyyy-MM-dd'),
-      items: [],
-      amount: 0,
-      status: 'draft',
-      notes: '',
-      contractTerms: '', 
-      paymentSchedules: [],
-      companyId: selectedCompany?.id || '',
-      viewLink: generateViewLink(),
-    }
+    propInvoice || defaultInvoice
   );
   const [client, setClient] = useState<Client | null>(null);
   const [job, setJob] = useState<Job | null>(null);

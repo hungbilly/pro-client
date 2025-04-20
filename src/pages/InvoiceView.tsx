@@ -9,7 +9,7 @@ import {
   updatePaymentScheduleStatus,
   getJob
 } from '@/lib/storage';
-import { Invoice, Client, Job, CompanyClientView, PaymentSchedule } from '@/types';
+import { Invoice, Client, Job, CompanyClientView, PaymentSchedule, ContractStatus } from '@/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -390,13 +390,16 @@ const InvoiceView = () => {
     try {
       console.log('[InvoiceView] Accepting contract with name:', name);
       
+      const updates = {
+        contract_status: 'accepted' as ContractStatus,
+        contract_accepted_at: new Date().toISOString(),
+        invoice_accepted_by: name,
+        updated_at: new Date().toISOString(),
+      };
+
       const { data, error } = await supabase
         .from('invoices')
-        .update({ 
-          contract_status: 'accepted' as ContractStatus, 
-          contract_accepted_at: new Date().toISOString(),
-          invoice_accepted_by: name 
-        })
+        .update(updates)
         .eq('id', invoice.id)
         .select('invoice_accepted_by, contract_accepted_at');
 
@@ -419,7 +422,6 @@ const InvoiceView = () => {
           contract_accepted_at: new Date().toISOString()
         };
       });
-      
     } catch (err) {
       console.error('[InvoiceView] Failed to accept contract:', err);
       toast.error('Error accepting contract terms');

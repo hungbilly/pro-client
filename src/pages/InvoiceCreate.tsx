@@ -281,37 +281,6 @@ const InvoiceCreate = () => {
   
   const paths = getBreadcrumbPaths();
 
-  const handleAddPaymentSchedule = () => {
-    const total = calculateTotal();
-    const currentSchedules = invoice?.paymentSchedules || [];
-    
-    const totalAllocatedPercentage = currentSchedules.reduce((sum, schedule) => 
-      sum + (schedule.percentage || 0), 0
-    );
-    
-    const remainingPercentage = 100 - totalAllocatedPercentage;
-    const scheduleCount = currentSchedules.length;
-    
-    if (remainingPercentage <= 0) {
-      toast.error("All payment percentage (100%) has been allocated");
-      return;
-    }
-
-    const newSchedule: PaymentSchedule = {
-      id: Math.random().toString(36).substring(2, 15),
-      percentage: remainingPercentage,
-      amount: (total * remainingPercentage / 100),
-      dueDate: format(new Date(), 'yyyy-MM-dd'),
-      status: 'unpaid',
-      description: getOrdinalNumber(scheduleCount + 1) + ' Payment'
-    };
-
-    setInvoice(prevInvoice => ({
-      ...prevInvoice,
-      paymentSchedules: [...(prevInvoice?.paymentSchedules || []), newSchedule]
-    }));
-  };
-
   return (
     <PageTransition>
       <div className="container py-8">
@@ -458,7 +427,6 @@ const InvoiceCreate = () => {
           contractTemplates={contractTemplates}
           checkDuplicateInvoiceNumber={checkDuplicateInvoiceNumber}
           onInvoiceDeleted={handleInvoiceDeleted}
-          handleAddPaymentSchedule={handleAddPaymentSchedule}
         />
       </div>
     </PageTransition>

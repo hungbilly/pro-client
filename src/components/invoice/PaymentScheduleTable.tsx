@@ -342,7 +342,7 @@ const PaymentScheduleTable = memo(({
             size="icon" 
             className="h-6 w-6 ml-2"
             onClick={() => {
-              console.log('Edit amount button clicked for schedule:', schedule.id);
+              console.log('Edit amount button clicked for schedule:', schedule.id, 'isEditView:', isEditView);
               setEditingAmountId(schedule.id);
             }}
           >

@@ -27,7 +27,8 @@ const InvoiceCreate = () => {
   const { clientId, jobId, invoiceId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const isEditView = location.pathname.includes('/edit/');
+  
+  const isEditView = location.pathname.includes('/edit') || (invoiceId !== undefined);
   
   console.log('InvoiceCreate rendered with path:', location.pathname, 'isEditView:', isEditView);
   
@@ -40,8 +41,6 @@ const InvoiceCreate = () => {
   const [templates, setTemplates] = useState<InvoiceTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const { selectedCompany } = useCompanyContext();
-
-  logDebug('InvoiceCreate component initialized with params:', { clientId, jobId, invoiceId });
 
   useEffect(() => {
     const fetchInvoiceData = async () => {

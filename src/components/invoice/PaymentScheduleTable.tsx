@@ -1,4 +1,3 @@
-
 import React, { memo, useState, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -20,6 +19,7 @@ interface PaymentScheduleTableProps {
   paymentSchedules: PaymentSchedule[];
   amount: number;
   isClientView: boolean;
+  isEditView?: boolean;
   updatingPaymentId: string | null;
   onUpdateStatus: (paymentId: string, status: PaymentStatus) => void;
   formatCurrency: (amount: number) => string;
@@ -33,6 +33,7 @@ const PaymentScheduleTable = memo(({
   paymentSchedules,
   amount,
   isClientView,
+  isEditView = false,
   updatingPaymentId,
   onUpdateStatus,
   formatCurrency,
@@ -201,8 +202,6 @@ const PaymentScheduleTable = memo(({
     if (descType === 'custom') {
       description = customDescriptions[paymentId] || paymentSchedules.find(s => s.id === paymentId)?.description || '';
     } else {
-      // Since PAYMENT_DESCRIPTION_OPTIONS is no longer available, 
-      // we'll use a simple mapping here
       switch(descType) {
         case 'deposit':
           description = 'Deposit';
@@ -254,7 +253,6 @@ const PaymentScheduleTable = memo(({
     const paymentAmount = getPaymentAmount(schedule);
     const percentage = schedule.percentage || 0;
     
-    // Check if we're in edit mode and editing this specific amount
     if (editingAmountId === schedule.id) {
       return (
         <div className="flex flex-col space-y-2">
@@ -335,7 +333,7 @@ const PaymentScheduleTable = memo(({
           <CircleDollarSign className="h-3.5 w-3.5 text-muted-foreground" />
           <span>{formatCurrency(paymentAmount)}</span>
         </div>
-        {!isClientView && (
+        {!isClientView && isEditView && (
           <Button 
             variant="ghost" 
             size="icon" 

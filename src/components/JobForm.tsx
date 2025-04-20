@@ -63,7 +63,8 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
     queryKey: ['clients', selectedCompany?.id],
     queryFn: async () => {
       if (!selectedCompany?.id) return [];
-      return await getClients(selectedCompany.id);
+      const clientsData = await getClients(selectedCompany.id);
+      return clientsData;
     },
     enabled: !!selectedCompany
   });
@@ -72,7 +73,8 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
     queryKey: ['all-jobs', selectedCompany?.id],
     queryFn: async () => {
       if (!selectedCompany) return [];
-      return await getJobs(selectedCompany.id);
+      const jobsData = await getJobs(selectedCompany.id);
+      return jobsData;
     },
     enabled: !!selectedCompany
   });

@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import JobList from '@/components/JobList';
 import InvoiceList from '@/components/InvoiceList';
-import { getClient, updateClient, deleteClient, getInvoices, getJobs } from '@/lib/storage';
+import { getClient, updateClient, deleteClient, getInvoices, getJobs, getClientInvoices, getClientJobs } from '@/lib/storage';
 import { useCompany } from '@/components/CompanySelector';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
@@ -43,18 +43,16 @@ const ClientDetail = () => {
     queryKey: ['client-jobs', id],
     queryFn: async () => {
       if (!id) return [];
-      const allJobs = await getJobs(selectedCompanyId);
-      return allJobs.filter(job => job.clientId === id);
+      return await getClientJobs(id);
     },
-    enabled: !!id && !!selectedCompanyId,
+    enabled: !!id,
   });
 
   const { data: invoices = [], isLoading: isLoadingInvoices } = useQuery({
     queryKey: ['client-invoices', id],
     queryFn: async () => {
       if (!id) return [];
-      const allInvoices = await getInvoices();
-      return allInvoices.filter(invoice => invoice.clientId === id);
+      return await getClientInvoices(id);
     },
     enabled: !!id,
   });
@@ -69,9 +67,10 @@ const ClientDetail = () => {
     }
   }, [client]);
 
-  const updateClientMutation = useMutation(updateClient, {
+  const updateClientMutation = useMutation({
+    mutationFn: (updatedClient: Client) => updateClient(updatedClient),
     onSuccess: () => {
-      queryClient.invalidateQueries(['client', id]);
+      queryClient.invalidateQueries({ queryKey: ['client', id] });
       setIsEditing(false);
       toast.success('Client updated successfully.');
     },
@@ -80,7 +79,8 @@ const ClientDetail = () => {
     },
   });
 
-  const deleteClientMutation = useMutation(deleteClient, {
+  const deleteClientMutation = useMutation({
+    mutationFn: (clientId: string) => deleteClient(clientId),
     onSuccess: () => {
       toast.success('Client deleted successfully.');
       navigate('/clients');
@@ -126,7 +126,7 @@ const ClientDetail = () => {
   };
 
   const handleJobDeleted = (jobId: string) => {
-    queryClient.invalidateQueries(['client-jobs', id]);
+    queryClient.invalidateQueries({ queryKey: ['client-jobs', id] });
   };
 
   const getClientInitials = (name: string) => {
@@ -172,7 +172,7 @@ const ClientDetail = () => {
         <Card className="w-full max-w-4xl mx-auto">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
-              <CardTitle className="text-2xl font-bold">{client.name}</CardTitle>
+              <CardTitle className="text-2xl font-bold">{client?.name}</CardTitle>
             </div>
             <div className="space-x-2">
               <Button variant="outline" size="sm" onClick={() => navigate('/clients')}>
@@ -211,8 +211,8 @@ const ClientDetail = () => {
                   <Button variant="secondary" size="sm" onClick={handleCancelClick}>
                     Cancel
                   </Button>
-                  <Button size="sm" onClick={handleSaveClick} disabled={updateClientMutation.isLoading}>
-                    {updateClientMutation.isLoading ? 'Saving...' : 'Save'}
+                  <Button size="sm" onClick={handleSaveClick} disabled={updateClientMutation.isPending}>
+                    {updateClientMutation.isPending ? 'Saving...' : 'Save'}
                   </Button>
                 </>
               )}

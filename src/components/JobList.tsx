@@ -48,6 +48,7 @@ const JobList: React.FC<JobListProps> = ({ client, jobs: providedJobs, onJobDele
       
       if (onJobDelete) {
         onJobDelete(jobId);
+        toast.success("Job deleted successfully");
       } else {
         toast.success("Job deleted successfully");
       }

@@ -10,7 +10,8 @@ import {
   Invoice,
   ContractStatus,
   Package,
-  CompanyClientView
+  CompanyClientView,
+  Company
 } from '@/types';
 
 // Storage keys for localStorage
@@ -140,6 +141,35 @@ const mapInvoiceFromDatabase = (invoiceData: any): Invoice => {
     templateId: invoiceData.template_id,
     contractAcceptedAt: invoiceData.contract_accepted_at,
     invoiceAcceptedAt: invoiceData.invoice_accepted_at,
+  };
+};
+
+// Map invoice template from database format
+const mapInvoiceTemplateFromDatabase = (templateData: any): InvoiceTemplate => {
+  return {
+    id: templateData.id,
+    name: templateData.name,
+    content: templateData.content,
+    description: templateData.description || '',
+    companyId: templateData.company_id || '',
+    userId: templateData.user_id,
+    createdAt: templateData.created_at,
+    updatedAt: templateData.updated_at,
+    items: []
+  };
+};
+
+// Map invoice template to database format
+const mapInvoiceTemplateForDatabase = (template: InvoiceTemplate): any => {
+  return {
+    id: template.id,
+    name: template.name,
+    content: template.content,
+    description: template.description,
+    company_id: template.companyId,
+    user_id: template.userId,
+    created_at: template.createdAt,
+    updated_at: template.updatedAt
   };
 };
 
@@ -293,7 +323,23 @@ export const getCompanies = async (userId: string): Promise<Company[]> => {
       return [];
     }
 
-    return companies || [];
+    return companies.map(company => ({
+      id: company.id,
+      name: company.name,
+      email: company.email,
+      phone: company.phone,
+      address: company.address,
+      website: company.website,
+      logo_url: company.logo_url,
+      country: company.country,
+      currency: company.currency || 'USD',
+      theme: company.theme,
+      timezone: company.timezone || 'UTC',
+      is_default: company.is_default,
+      user_id: company.user_id,
+      createdAt: company.created_at,
+      updatedAt: company.updated_at
+    })) || [];
   } catch (error) {
     console.error("Unexpected error fetching companies:", error);
     return [];
@@ -313,7 +359,25 @@ export const getCompany = async (id: string): Promise<Company | null> => {
       return null;
     }
 
-    return company || null;
+    if (!company) return null;
+
+    return {
+      id: company.id,
+      name: company.name,
+      email: company.email,
+      phone: company.phone,
+      address: company.address,
+      website: company.website,
+      logo_url: company.logo_url,
+      country: company.country,
+      currency: company.currency || 'USD',
+      theme: company.theme,
+      timezone: company.timezone || 'UTC',
+      is_default: company.is_default,
+      user_id: company.user_id,
+      createdAt: company.created_at,
+      updatedAt: company.updated_at
+    };
   } catch (error) {
     console.error(`Unexpected error fetching company with id ${id}:`, error);
     return null;
@@ -984,7 +1048,7 @@ export const getInvoiceTemplates = async (): Promise<InvoiceTemplate[]> => {
       return [];
     }
 
-    return invoiceTemplates || [];
+    return (invoiceTemplates || []).map(mapInvoiceTemplateFromDatabase);
   } catch (error) {
     console.error("Unexpected error fetching invoice templates:", error);
     return [];
@@ -1004,7 +1068,7 @@ export const getInvoiceTemplate = async (id: string): Promise<InvoiceTemplate | 
       return null;
     }
 
-    return invoiceTemplate || null;
+    return invoiceTemplate ? mapInvoiceTemplateFromDatabase(invoiceTemplate) : null;
   } catch (error) {
     console.error(`Unexpected error fetching invoice template with id ${id}:`, error);
     return null;

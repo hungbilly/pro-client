@@ -91,6 +91,11 @@ const PaymentScheduleTable = memo(({
   const handleAmountUpdate = (paymentId: string, schedule: PaymentSchedule) => {
     if (!onUpdateAmount) {
       console.log('onUpdateAmount handler is not provided');
+      toast.error('Payment update is not available in this view', {
+        duration: 3000,
+        position: 'top-center'
+      });
+      setEditingAmountId(null);
       return;
     }
     
@@ -131,6 +136,11 @@ const PaymentScheduleTable = memo(({
   const handlePercentageUpdate = (paymentId: string, schedule: PaymentSchedule) => {
     if (!onUpdateAmount) {
       console.log('onUpdateAmount handler is not provided');
+      toast.error('Payment update is not available in this view', {
+        duration: 3000,
+        position: 'top-center'
+      });
+      setEditingAmountId(null);
       return;
     }
     
@@ -169,7 +179,14 @@ const PaymentScheduleTable = memo(({
   };
 
   const handleDescriptionUpdate = (paymentId: string) => {
-    if (!onUpdateDescription) return;
+    if (!onUpdateDescription) {
+      toast.error('Description update is not available in this view', {
+        duration: 3000,
+        position: 'top-center'
+      });
+      setEditingDescriptionId(null);
+      return;
+    }
     
     const descType = selectedDescriptionTypes[paymentId] || 'custom';
     let description = '';

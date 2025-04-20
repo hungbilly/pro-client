@@ -56,18 +56,37 @@ serve(async (req) => {
       throw new Error('Failed to fetch user profiles');
     }
 
-    // Fetch subscription information for each user
+    console.log(`Found ${profiles?.length || 0} user profiles`);
+
+    // Fetch subscription information for each user with detailed logging
+    console.log('Fetching subscription data...');
     const { data: subscriptions, error: subsError } = await supabase
       .from('user_subscriptions')
       .select('*');
       
     if (subsError) {
+      console.error('Subscription fetch error:', subsError);
       throw new Error('Failed to fetch subscription data');
     }
 
-    // Combine user data with subscription data
+    console.log(`Found ${subscriptions?.length || 0} subscription records`);
+    
+    // Log sample subscription data for inspection
+    if (subscriptions && subscriptions.length > 0) {
+      console.log('Sample subscription record:', JSON.stringify(subscriptions[0], null, 2));
+    } else {
+      console.log('No subscription records found');
+    }
+
+    // Combine user data with subscription data with detailed logging
     const users = profiles.map(profile => {
       const userSub = subscriptions.find(sub => sub.user_id === profile.id);
+      
+      if (userSub) {
+        console.log(`User ${profile.id}: Found subscription with status=${userSub.status}, trial_end_date=${userSub.trial_end_date || 'null'}`);
+      } else {
+        console.log(`User ${profile.id}: No subscription found`);
+      }
       
       return {
         id: profile.id,

@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CalendarIcon, Clock, User, Mail, Phone, MapPin, Globe, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { getClient, saveJob, updateJob, getJob } from '@/lib/storage';
+import { getClient, saveJob, updateJob, getJob, getJobs } from '@/lib/storage';
 import { format } from 'date-fns';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -21,7 +21,6 @@ import { AddToCalendarDialog } from './AddToCalendarDialog';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
-import { v4 as uuidv4 } from 'uuid';
 
 interface JobFormProps {
   job?: Job;
@@ -59,54 +58,14 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
   console.log('Company timezone:', selectedCompany?.timezone);
   console.log('Timezone to use:', timezoneToUse);
 
-  const { data: clients = [], isLoading: isClientsLoading } = useQuery({
-    queryKey: ['clients', selectedCompany?.id],
-    queryFn: async () => {
-      if (!selectedCompany?.id) return [];
-      const { data } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('company_id', selectedCompany.id)
-        .order('created_at', { ascending: false });
-      return data || [];
-    },
-    enabled: !!selectedCompany
-  });
-
   const { data: allJobs = [] } = useQuery({
     queryKey: ['all-jobs', selectedCompany?.id],
     queryFn: async () => {
       if (!selectedCompany) return [];
-      const { data } = await supabase
-        .from('jobs')
-        .select('*')
-        .eq('company_id', selectedCompany.id)
-        .order('created_at', { ascending: false });
-        
-      return data ? data.map(job => mapJobFromDatabase(job)) : [];
+      return await getJobs(selectedCompany.id);
     },
     enabled: !!selectedCompany
   });
-
-  const mapJobFromDatabase = (data: any): Job => {
-    return {
-      id: data.id,
-      clientId: data.client_id,
-      companyId: data.company_id || '',
-      title: data.title,
-      description: data.description || '',
-      status: data.status,
-      date: data.date || '',
-      location: data.location || '',
-      startTime: data.start_time || '',
-      endTime: data.end_time || '',
-      isFullDay: data.is_full_day || false,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at,
-      calendarEventId: data.calendar_event_id,
-      timezone: data.timezone || 'UTC'
-    };
-  };
 
   const { data: hasCalendarIntegration, isLoading: checkingIntegration } = useQuery({
     queryKey: ['calendar-integration', user?.id],
@@ -265,10 +224,10 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
           title,
           description,
           status,
-          date: formattedDate || '',
+          date: formattedDate,
           location,
-          startTime: isFullDay ? '' : startTime,
-          endTime: isFullDay ? '' : endTime,
+          startTime: isFullDay ? undefined : startTime,
+          endTime: isFullDay ? undefined : endTime,
           isFullDay,
           createdAt: existingJob.createdAt,
           updatedAt: new Date().toISOString(),
@@ -335,23 +294,19 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
           navigate(`/job/${existingJob.id}`);
         }
       } else {
-        const now = new Date().toISOString();
-        const newJobData: Job = {
-          id: uuidv4(),
+        const newJobData = {
           clientId: client.id,
           companyId: selectedCompany.id,
           title,
           description,
           status,
-          date: formattedDate || '',
+          date: formattedDate,
           location,
-          startTime: isFullDay ? '' : startTime,
-          endTime: isFullDay ? '' : endTime,
+          startTime: isFullDay ? undefined : startTime,
+          endTime: isFullDay ? undefined : endTime,
           isFullDay,
           calendarEventId: null,
-          timezone: timezoneToUse,
-          createdAt: now,
-          updatedAt: now
+          timezone: timezoneToUse
         };
 
         console.log('Creating new job with data:', newJobData);

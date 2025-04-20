@@ -10,7 +10,6 @@ import { toast } from 'sonner';
 import { saveClient, updateClient } from '@/lib/storage';
 import CompanySelector, { useCompany } from './CompanySelector';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { v4 as uuidv4 } from 'uuid';
 
 interface ClientFormProps {
   existingClient?: Client;
@@ -93,14 +92,12 @@ const ClientForm: React.FC<ClientFormProps> = ({ existingClient, onSuccess }) =>
         updateClientMutation.mutate(updatedClient);
       } else {
         // Create new client
-        const newClient: Client = {
-          id: uuidv4(),
+        const newClient = {
           name,
           email,
           phone,
           address,
           notes,
-          createdAt: new Date().toISOString(),
           companyId: selectedCompanyId
         };
         createClientMutation.mutate(newClient);

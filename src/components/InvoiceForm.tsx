@@ -76,17 +76,16 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
       id: '', 
       clientId: propClientId || '',
       jobId: propJobId || '',
-      companyId: selectedCompany?.id || '',
       number: '',
       date: format(new Date(), 'yyyy-MM-dd'),
       dueDate: format(new Date(), 'yyyy-MM-dd'),
       items: [],
       amount: 0,
       status: 'draft',
-      contractStatus: 'pending',
       notes: '',
       contractTerms: '', 
       paymentSchedules: [],
+      companyId: selectedCompany?.id || '',
       viewLink: generateViewLink(),
     }
   );

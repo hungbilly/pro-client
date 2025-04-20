@@ -1,139 +1,233 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Job, Client } from '@/types';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { CalendarDays, MapPin, FileText } from 'lucide-react';
+import { BriefcaseBusiness, CalendarDays, MapPin, Plus, Clock } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { deleteJob } from '@/lib/storage';
 import { toast } from 'sonner';
-import { deleteJob, getJobs } from '@/lib/storage';
-import { useCompany } from './CompanySelector';
 
 interface JobListProps {
-  client?: Client;
-  jobs?: Job[];
-  onJobDelete?: (jobId: string) => void;
+  jobs: Job[];
+  client: Client;
+  onJobDelete: (jobId: string) => void;
 }
 
-const JobList: React.FC<JobListProps> = ({ client, jobs: providedJobs, onJobDelete }) => {
+const getStatusColor = (status: Job['status']) => {
+  switch (status) {
+    case 'active':
+      return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+    case 'completed':
+      return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+    case 'cancelled':
+      return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+    default:
+      return 'bg-gray-100 text-gray-800';
+  }
+};
+
+const formatTimeDisplay = (job: Job) => {
+  if (job.isFullDay) {
+    return "Full Day";
+  }
+  
+  if (job.startTime && job.endTime) {
+    return `${job.startTime} - ${job.endTime}`;
+  }
+  
+  return null;
+};
+
+const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
   const navigate = useNavigate();
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const { selectedCompany } = useCompany();
+  
+  const sortedJobs = [...jobs].sort((a, b) => {
+    if (!a.date) return 1;
+    if (!b.date) return -1;
+    return new Date(b.date).getTime() - new Date(a.date).getTime();
+  });
 
-  useEffect(() => {
-    if (providedJobs) {
-      setJobs(providedJobs);
-      return;
-    }
-
-    const fetchJobs = async () => {
-      if (!selectedCompany) return;
-      try {
-        const allJobs = await getJobs(selectedCompany.id);
-        setJobs(allJobs);
-      } catch (error) {
-        console.error("Failed to fetch jobs:", error);
-        toast.error("Failed to fetch jobs");
-      }
-    };
-
-    fetchJobs();
-  }, [selectedCompany, providedJobs]);
+  const activeJobs = sortedJobs.filter(job => job.status === 'active');
+  const completedJobs = sortedJobs.filter(job => job.status === 'completed');
+  const cancelledJobs = sortedJobs.filter(job => job.status === 'cancelled');
 
   const handleDeleteJob = async (jobId: string) => {
+    console.log('handleDeleteJob called with jobId:', jobId);
+    
+    const jobToDelete = jobs.find(job => job.id === jobId);
+    console.log('Job to delete:', jobToDelete);
+    
+    if (jobToDelete?.calendarEventId) {
+      console.log('Job has a calendar event that will also be deleted:', jobToDelete.calendarEventId);
+    }
+    
     try {
-      await deleteJob(jobId);
-      setJobs(jobs.filter(job => job.id !== jobId));
+      console.log('Attempting to delete job with ID:', jobId);
+      const result = await deleteJob(jobId);
+      console.log('Delete job result:', result);
       
-      if (onJobDelete) {
+      if (result) {
+        console.log('Job deleted successfully, calling onJobDelete callback');
+        toast.success('Job deleted successfully.');
         onJobDelete(jobId);
-        toast.success("Job deleted successfully");
       } else {
-        toast.success("Job deleted successfully");
+        console.error('Delete job returned false');
+        toast.error('Failed to delete job.');
       }
     } catch (error) {
-      console.error("Failed to delete job:", error);
-      toast.error("Failed to delete job");
+      console.error('Exception in handleDeleteJob:', error);
+      toast.error('Failed to delete job.');
     }
   };
 
-  const getStatusColor = (status: Job['status']) => {
-    switch (status) {
-      case 'active':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-      case 'completed':
-        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
+  const handleJobCardClick = (jobId: string) => {
+    navigate(`/job/${jobId}`);
   };
 
-  const filteredJobs = client ? jobs.filter(job => job.clientId === client.id) : jobs;
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-medium">Jobs</h3>
-        <Button asChild>
-          <Link to="/job/new">
-            <FileText className="h-4 w-4 mr-2" />
-            Create Job
-          </Link>
-        </Button>
-      </div>
-      
-      {filteredJobs.length === 0 ? (
-        <Card className="w-full">
-          <CardContent className="py-8">
-            <div className="text-center">
-              No jobs found.
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-4">
-          {filteredJobs.map((job) => (
-            <Card key={job.id} className="w-full">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <div className="space-y-1">
-                  <CardTitle className="text-sm font-medium">
-                    <Link to={`/job/${job.id}`} className="hover:underline">
-                      {job.title}
-                    </Link>
-                  </CardTitle>
-                  <CardDescription className="text-xs text-muted-foreground">
-                    {job.date && (
-                      <div className="flex items-center">
-                        <CalendarDays className="h-3 w-3 mr-1" />
-                        {new Date(job.date).toLocaleDateString()}
-                      </div>
-                    )}
-                    {job.location && (
-                      <div className="flex items-center">
-                        <MapPin className="h-3 w-3 mr-1" />
-                        {job.location}
-                      </div>
-                    )}
+  const renderJobCard = (job: Job) => {
+    console.log('Rendering job card for job:', job.id);
+    
+    return (
+      <div key={job.id} className="group relative">
+        <div 
+          className="block transition-all duration-200 hover:shadow-soft rounded-lg cursor-pointer"
+          onClick={() => handleJobCardClick(job.id)}
+        >
+          <Card className="overflow-hidden h-full border-transparent hover:border-border transition-all duration-200">
+            <CardHeader className="pb-3">
+              <div className="flex justify-between items-start">
+                <div>
+                  <CardTitle className="text-base">{job.title}</CardTitle>
+                  <CardDescription className="text-xs mt-1">
+                    {job.createdAt && `Created: ${new Date(job.createdAt).toLocaleDateString()}`}
                   </CardDescription>
                 </div>
                 <Badge className={getStatusColor(job.status)}>
                   {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
                 </Badge>
-              </CardHeader>
-              <CardContent>
-                {job.description}
-              </CardContent>
+              </div>
+            </CardHeader>
+            <CardContent className="pb-6 relative">
+              {job.description && (
+                <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{job.description}</p>
+              )}
+              <div className="space-y-2">
+                {job.date && (
+                  <div className="flex justify-between items-center">
+                    <div className="text-sm text-muted-foreground">Date:</div>
+                    <div className="text-sm font-medium">
+                      <div className="flex items-center">
+                        <CalendarDays className="h-3 w-3 mr-1 text-muted-foreground" />
+                        {new Date(job.date).toLocaleDateString()}
+                      </div>
+                      {(job.startTime || job.isFullDay) && (
+                        <div className="flex items-center mt-1 justify-end">
+                          <Clock className="h-3 w-3 mr-1 text-muted-foreground" />
+                          <span className="text-muted-foreground">{formatTimeDisplay(job)}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {job.location && (
+                  <div className="flex justify-between items-center">
+                    <div className="text-sm text-muted-foreground">Location:</div>
+                    <div className="text-sm font-medium flex items-center">
+                      <MapPin className="h-3 w-3 mr-1 text-muted-foreground" />
+                      {job.location}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  };
+
+  const renderJobSection = (title: string, icon: React.ReactNode, jobList: Job[], emptyMessage: string) => (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        {icon}
+        <h3 className="text-lg font-medium">{title}</h3>
+      </div>
+      
+      {jobList.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {jobList.map(renderJobCard)}
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground py-4">{emptyMessage}</p>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-semibold">Jobs</h2>
+        <Button asChild>
+          <Link to={`/client/${client.id}/job/create`}>
+            <Plus className="h-4 w-4 mr-2" />
+            Create Job
+          </Link>
+        </Button>
+      </div>
+      
+      {sortedJobs.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-8 text-center">
+            <BriefcaseBusiness className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-medium mb-2">No Jobs Yet</h3>
+            <p className="text-muted-foreground mb-6 max-w-md">
+              You haven't created any jobs for this client yet. Create your first job to get started.
+            </p>
+            <Button asChild>
+              <Link to={`/client/${client.id}/job/create`}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create First Job
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-10">
+          {activeJobs.length > 0 && (
+            renderJobSection(
+              "Active Jobs", 
+              <BriefcaseBusiness className="h-5 w-5 text-muted-foreground" />, 
+              activeJobs,
+              "No active jobs"
+            )
+          )}
+          
+          {completedJobs.length > 0 && (
+            <>
               <Separator />
-              <CardContent className="flex justify-end">
-                <Button size="sm" variant="outline" onClick={() => navigate(`/job/${job.id}`)}>
-                  View Details
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+              {renderJobSection(
+                "Completed Jobs", 
+                <BriefcaseBusiness className="h-5 w-5 text-muted-foreground" />, 
+                completedJobs,
+                "No completed jobs"
+              )}
+            </>
+          )}
+          
+          {cancelledJobs.length > 0 && (
+            <>
+              <Separator />
+              {renderJobSection(
+                "Cancelled Jobs", 
+                <BriefcaseBusiness className="h-5 w-5 text-muted-foreground" />, 
+                cancelledJobs,
+                "No cancelled jobs"
+              )}
+            </>
+          )}
         </div>
       )}
     </div>

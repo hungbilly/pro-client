@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { getJobs, getClients } from '@/lib/storage';
+import { getJobs } from '@/lib/storage';
 import { FileText, Plus, Search } from 'lucide-react';
 import { useCompanyContext } from '@/context/CompanyContext';
 import AddJobButton from './AddJobButton';
@@ -27,28 +28,12 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({ isOpen, onClose
   const { selectedCompany } = useCompanyContext();
   const selectedCompanyId = selectedCompany?.id;
   const [searchQuery, setSearchQuery] = useState('');
-  const [clients, setClients] = useState([]);
-
+  
   const { data: jobs = [], isLoading } = useQuery({
     queryKey: ['jobs', selectedCompanyId],
     queryFn: () => getJobs(selectedCompanyId),
     enabled: !!selectedCompanyId && isOpen,
   });
-
-  useEffect(() => {
-    const fetchClients = async () => {
-      try {
-        if (selectedCompanyId) {
-          const filteredClients = await getClients(selectedCompanyId);
-          setClients(filteredClients);
-        }
-      } catch (error) {
-        console.error('Error fetching clients:', error);
-      }
-    };
-
-    fetchClients();
-  }, [selectedCompany, selectedCompanyId]);
 
   const filteredJobs = jobs.filter(job => 
     job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -56,6 +41,7 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({ isOpen, onClose
   );
 
   const handleJobSelect = (jobId: string, clientId: string) => {
+    // Navigate to create invoice page with the selected job
     navigate(`/job/${jobId}/invoice/create`);
     onClose();
   };
@@ -65,6 +51,7 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({ isOpen, onClose
     onClose();
   };
 
+  // Helper function to safely capitalize a string, handling null/undefined values
   const capitalizeStatus = (status: string | null | undefined): string => {
     if (!status) return 'Unknown';
     return status.charAt(0).toUpperCase() + status.slice(1);

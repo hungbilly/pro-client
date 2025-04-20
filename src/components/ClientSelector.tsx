@@ -1,7 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Client } from '@/types';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { getClients } from '@/lib/storage';
@@ -36,14 +38,12 @@ const ClientSelector: React.FC<ClientSelectorProps> = ({
     const fetchClients = async () => {
       try {
         console.log("Fetching clients for company:", selectedCompanyId);
-        // Call getClients with the selectedCompanyId
-        const filteredClients = await getClients(selectedCompanyId);
-          
-        console.log("Fetched clients:", filteredClients.length);
-        setClients(filteredClients);
+        const allClients = await getClients(selectedCompanyId);
+        console.log("Fetched clients:", allClients.length);
+        setClients(allClients);
         
         if (selectedClientId) {
-          const client = filteredClients.find(c => c.id === selectedClientId);
+          const client = allClients.find(c => c.id === selectedClientId);
           if (client) {
             setSelectedClient(client);
           }

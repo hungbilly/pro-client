@@ -31,7 +31,7 @@ import {
 
 interface InvoiceListProps {
   invoices: Invoice[];
-  client?: Client; // Make client prop optional
+  client: Client;
   showCreateButton?: boolean;
   onInvoiceDeleted?: (invoiceId: string) => void;
 }
@@ -163,7 +163,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
             </SelectContent>
           </Select>
         </div>
-        {showCreateButton && client && ( // Check if client exists before rendering create button
+        {showCreateButton && (
           <Button asChild>
             <Link to={`/invoice/create/${client.id}`}>
               <FileEdit className="h-4 w-4 mr-2" />
@@ -178,11 +178,11 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
           <AreaChart className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
           <h3 className="text-lg font-medium mb-2">No Invoices Yet</h3>
           <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-            {showCreateButton && client
+            {showCreateButton 
               ? "You haven't created any invoices for this client yet. Create your first invoice to get started."
               : "No invoices have been created for this client yet. Invoices can be created from the job page."}
           </p>
-          {showCreateButton && client && (
+          {showCreateButton && (
             <Button asChild>
               <Link to={`/invoice/create/${client.id}`}>
                 <FileEdit className="h-4 w-4 mr-2" />

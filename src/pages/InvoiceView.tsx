@@ -120,6 +120,57 @@ const InvoiceView = () => {
           return;
         }
         
+        // Additional debugging directly from db record if needed
+        if (fetchedInvoice.id) {
+          try {
+            const { data: rawInvoice, error: rawError } = await supabase
+              .from('invoices')
+              .select('invoice_accepted_by, contract_accepted_at')
+              .eq('id', fetchedInvoice.id)
+              .single();
+              
+            if (rawInvoice) {
+              console.log('[InvoiceView] Direct DB query for invoice_accepted_by:', rawInvoice.invoice_accepted_by);
+              console.log('[InvoiceView] Direct DB query for contract_accepted_at:', rawInvoice.contract_accepted_at);
+              
+              // Add additional debug information
+              console.log('[InvoiceView] DETAILED DEBUG - Before update:');
+              console.log('[InvoiceView] fetchedInvoice.invoice_accepted_by =', 
+                fetchedInvoice.invoice_accepted_by, 
+                'type:', typeof fetchedInvoice.invoice_accepted_by);
+              console.log('[InvoiceView] fetchedInvoice.contract_accepted_at =', 
+                fetchedInvoice.contract_accepted_at,
+                'type:', typeof fetchedInvoice.contract_accepted_at);
+              console.log('[InvoiceView] rawInvoice.invoice_accepted_by =', 
+                rawInvoice.invoice_accepted_by,
+                'type:', typeof rawInvoice.invoice_accepted_by);
+              console.log('[InvoiceView] rawInvoice.contract_accepted_at =', 
+                rawInvoice.contract_accepted_at,
+                'type:', typeof rawInvoice.contract_accepted_at);
+              
+              // If we have data from DB but it's missing in our object, add it
+              if (rawInvoice.invoice_accepted_by && !fetchedInvoice.invoice_accepted_by) {
+                console.log('[InvoiceView] Updating fetchedInvoice.invoice_accepted_by with DB value');
+                fetchedInvoice.invoice_accepted_by = rawInvoice.invoice_accepted_by;
+              }
+              if (rawInvoice.contract_accepted_at && !fetchedInvoice.contract_accepted_at) {
+                console.log('[InvoiceView] Updating fetchedInvoice.contract_accepted_at with DB value');
+                fetchedInvoice.contract_accepted_at = rawInvoice.contract_accepted_at;
+              }
+              
+              console.log('[InvoiceView] DETAILED DEBUG - After update:');
+              console.log('[InvoiceView] fetchedInvoice.invoice_accepted_by =', 
+                fetchedInvoice.invoice_accepted_by,
+                'type:', typeof fetchedInvoice.invoice_accepted_by);
+              console.log('[InvoiceView] fetchedInvoice.contract_accepted_at =', 
+                fetchedInvoice.contract_accepted_at,
+                'type:', typeof fetchedInvoice.contract_accepted_at);
+            }
+          } catch (err) {
+            console.error('[InvoiceView] Error fetching raw invoice data:', err);
+          }
+        }
+        
         setInvoice(fetchedInvoice);
         
         if (fetchedInvoice.clientId) {
@@ -157,41 +208,6 @@ const InvoiceView = () => {
             }
           } catch (err) {
             console.error('[InvoiceView] Failed to fetch company data:', err);
-          }
-        }
-        
-        // Log raw data to debug the invoice_accepted_by field
-        console.log('[InvoiceView] Fetched invoice with contract terms:', {
-          id: fetchedInvoice.id,
-          hasContractTerms: !!fetchedInvoice.contractTerms,
-          contractTermsLength: fetchedInvoice.contractTerms?.length || 0,
-          contractStatus: fetchedInvoice.contractStatus,
-          contractTermsPreview: fetchedInvoice.contractTerms?.substring(0, 100),
-          invoice_accepted_by: fetchedInvoice.invoice_accepted_by
-        });
-        
-        // Additional debugging directly from db record if needed
-        if (fetchedInvoice.id) {
-          try {
-            const { data: rawInvoice, error: rawError } = await supabase
-              .from('invoices')
-              .select('invoice_accepted_by, contract_accepted_at')
-              .eq('id', fetchedInvoice.id)
-              .single();
-              
-            if (rawInvoice) {
-              console.log('[InvoiceView] Direct DB query for invoice_accepted_by:', rawInvoice.invoice_accepted_by);
-              console.log('[InvoiceView] Direct DB query for contract_accepted_at:', rawInvoice.contract_accepted_at);
-              // If we have data from DB but it's missing in our object, add it
-              if (rawInvoice.invoice_accepted_by && !fetchedInvoice.invoice_accepted_by) {
-                fetchedInvoice.invoice_accepted_by = rawInvoice.invoice_accepted_by;
-              }
-              if (rawInvoice.contract_accepted_at && !fetchedInvoice.contract_accepted_at) {
-                fetchedInvoice.contract_accepted_at = rawInvoice.contract_accepted_at;
-              }
-            }
-          } catch (err) {
-            console.error('[InvoiceView] Error fetching raw invoice data:', err);
           }
         }
       } catch (err) {
@@ -372,6 +388,8 @@ const InvoiceView = () => {
     if (!invoice) return;
     
     try {
+      console.log('[InvoiceView] Accepting contract with name:', name);
+      
       const { data, error } = await supabase
         .from('invoices')
         .update({ 
@@ -379,20 +397,39 @@ const InvoiceView = () => {
           contract_accepted_at: new Date().toISOString(),
           invoice_accepted_by: name 
         })
-        .eq('id', invoice.id);
+        .eq('id', invoice.id)
+        .select('invoice_accepted_by, contract_accepted_at');
 
-      if (error) throw error;
+      if (error) {
+        console.error('[InvoiceView] Error updating contract:', error);
+        throw error;
+      }
+
+      console.log('[InvoiceView] Contract acceptance response:', data);
 
       toast.success('Contract terms accepted successfully');
-      setInvoice(prev => prev ? { 
-        ...prev, 
-        contractStatus: 'accepted',
-        invoice_accepted_by: name 
-      } : null);
       
-      console.log('[InvoiceView] Updated invoice with acceptor name:', name);
+      // Update the invoice state with the new values
+      setInvoice(prev => {
+        if (!prev) return prev;
+        
+        const updatedInvoice = { 
+          ...prev, 
+          contractStatus: 'accepted',
+          invoice_accepted_by: name,
+          contract_accepted_at: new Date().toISOString()
+        };
+        
+        console.log('[InvoiceView] Updated invoice state:', {
+          contractStatus: updatedInvoice.contractStatus,
+          invoice_accepted_by: updatedInvoice.invoice_accepted_by,
+          contract_accepted_at: updatedInvoice.contract_accepted_at
+        });
+        
+        return updatedInvoice;
+      });
     } catch (err) {
-      console.error('Failed to accept contract:', err);
+      console.error('[InvoiceView] Failed to accept contract:', err);
       toast.error('Error accepting contract terms');
     }
   };
@@ -454,7 +491,7 @@ const InvoiceView = () => {
 
   useEffect(() => {
     if (invoice) {
-      console.log('[InvoiceView] Current invoice data:', {
+      console.log('[InvoiceView] Current invoice data (render):', {
         hasContractTerms: !!invoice.contractTerms,
         contractTermsLength: invoice.contractTerms?.length || 0,
         contractStatus: invoice.contractStatus,
@@ -504,7 +541,7 @@ const InvoiceView = () => {
     paid: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
   };
 
-  const contractStatusColor = invoice.contractStatus === 'accepted' 
+  const contractStatusColor = invoice?.contractStatus === 'accepted' 
     ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
     : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
 
@@ -812,20 +849,11 @@ const InvoiceView = () => {
                             </p>
                           )}
                         </div>
-                      ) : (
-                        <div>
-                          <p className="text-sm mt-1">Accepted by client</p>
-                          {invoice.contract_accepted_at && (
-                            <p className="text-sm mt-1">
-                              Accepted at: {new Date(invoice.contract_accepted_at).toLocaleString()}
-                            </p>
-                          )}
-                        </div>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                 )}
-                  
+                
                 <div className="flex items-center mb-3">
                   <FileText className="h-5 w-5 mr-2" />
                   <h4 className="text-lg font-semibold">Contract Terms</h4>
@@ -842,6 +870,12 @@ const InvoiceView = () => {
                       No contract terms provided.
                     </div>
                   )}
+                </div>
+                
+                <div className="hidden">
+                  DEBUG: invoice_accepted_by = {invoice?.invoice_accepted_by || 'null'}, 
+                  type: {invoice?.invoice_accepted_by ? typeof invoice.invoice_accepted_by : 'null'}, 
+                  contract_accepted_at: {invoice?.contract_accepted_at || 'null'}
                 </div>
               </TabsContent>
             </Tabs>

@@ -1,24 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon } from "lucide-react";
-import { format } from 'date-fns';
-import { DayPicker } from "react-day-picker";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { useToast } from "@/components/ui/use-toast";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Client, Job } from '@/types';
-import { saveClient, saveJob, getClients } from '@/lib/storage';
-import { v4 as generateUUID } from 'uuid';
-import { useCompany } from '@/components/CompanySelector';
-import { useAuth } from '@/context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import React from 'react';
+import { saveClient, saveJob } from '@/lib/storage';
 
 const CalendarTest = () => {
   const [date, setDate] = useState<Date | undefined>(new Date());

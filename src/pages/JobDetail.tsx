@@ -1,352 +1,284 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { getJob, getClient, getInvoices, deleteJob } from '@/lib/storage';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Job, Client, Invoice } from '@/types';
+import { getJob, getClient, deleteJob, getInvoices } from '@/lib/storage';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Trash2, FileEdit, CalendarDays, MapPin, FileText, User, Building2, Mail, Phone, Clock } from 'lucide-react';
+import { CalendarDays, Pencil, MapPin, Trash2, FileEdit, CircleDollarSign, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
-import PageTransition from '@/components/ui-custom/PageTransition';
+import { format } from 'date-fns';
+import { Badge } from '@/components/ui/badge';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useCompany } from '@/components/CompanySelector';
+import JobForm from '@/components/JobForm';
 import InvoiceList from '@/components/InvoiceList';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 const JobDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [job, setJob] = useState<Job | undefined>(undefined);
-  const [client, setClient] = useState<Client | undefined>(undefined);
-  const [isLoading, setIsLoading] = useState(true);
-
-  const { data: invoices = [] } = useQuery({
-    queryKey: ['job-invoices', id],
+  const { selectedCompany } = useCompany();
+  
+  const [isEditing, setIsEditing] = useState(false);
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  
+  const { data: job, isLoading: jobLoading } = useQuery({
+    queryKey: ['job', id],
     queryFn: async () => {
-      if (!id) return [];
-      const allInvoices = await getInvoices();
-      return allInvoices.filter(invoice => invoice.jobId === id);
+      if (!id) return null;
+      return await getJob(id);
     },
-    enabled: !!id,
+    enabled: !!id
   });
 
-  useEffect(() => {
-    if (!id) {
-      toast.error('Job ID is missing.');
-      navigate('/');
-      return;
-    }
+  const { data: client, isLoading: clientLoading } = useQuery({
+    queryKey: ['client', job?.clientId],
+    queryFn: async () => {
+      if (!job?.clientId) return null;
+      return await getClient(job.clientId);
+    },
+    enabled: !!job?.clientId
+  });
 
-    const fetchJobData = async () => {
-      setIsLoading(true);
-      try {
-        const fetchedJob = await getJob(id);
-        if (fetchedJob) {
-          setJob(fetchedJob);
-          
-          const fetchedClient = await getClient(fetchedJob.clientId);
-          if (fetchedClient) {
-            setClient(fetchedClient);
-          } else {
-            toast.error('Client not found.');
-          }
-        } else {
-          toast.error('Job not found.');
-          navigate('/');
-        }
-      } catch (error) {
-        console.error('Failed to fetch job data:', error);
-        toast.error('Failed to load job data.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const { data: invoices = [], isLoading: invoicesLoading } = useQuery({
+    queryKey: ['job-invoices', id],
+    queryFn: async () => {
+      if (!id || !selectedCompany?.id) return [];
+      const allInvoices = await getInvoices(selectedCompany.id);
+      return allInvoices.filter(invoice => invoice.jobId === id);
+    },
+    enabled: !!id && !!selectedCompany?.id
+  });
 
-    fetchJobData();
-  }, [id, navigate]);
-
-  const handleDeleteJob = async () => {
+  const handleDelete = async () => {
+    if (!id) return;
+    
+    setIsDeleting(true);
     try {
-      if (id && job) {
-        await deleteJob(id);
-        toast.success('Job deleted successfully.');
-        navigate(`/client/${job.clientId}`);
-      } else {
-        toast.error('Job ID is missing.');
-      }
+      await deleteJob(id);
+      toast.success('Job deleted successfully');
+      navigate('/');
     } catch (error) {
-      console.error('Failed to delete job:', error);
-      toast.error('Failed to delete job.');
+      console.error('Error deleting job:', error);
+      toast.error('Failed to delete job');
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirmation(false);
     }
   };
 
-  const getStatusColor = (status: Job['status']) => {
+  const getStatusBadge = (status: Job['status']) => {
     switch (status) {
       case 'active':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+        return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Active</Badge>;
       case 'completed':
-        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+        return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">Completed</Badge>;
       case 'cancelled':
-        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+        return <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">Cancelled</Badge>;
       default:
-        return 'bg-gray-100 text-gray-800';
+        return <Badge>Unknown</Badge>;
     }
   };
 
-  const getClientInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(part => part[0])
-      .join('')
-      .toUpperCase()
-      .substring(0, 2);
-  };
+  if (isEditing && job && client) {
+    return <JobForm job={job} clientId={client.id} onSuccess={() => setIsEditing(false)} />;
+  }
 
-  const formatTimeDisplay = (job: Job) => {
-    if (job.isFullDay) {
-      return "Full Day";
-    }
-    
-    if (job.startTime && job.endTime) {
-      return `${job.startTime} - ${job.endTime}`;
-    }
-    
-    return null;
-  };
-
-  if (isLoading) {
+  if (jobLoading || clientLoading) {
     return (
-      <PageTransition>
-        <div className="container mx-auto py-8">
-          <Card className="w-full max-w-4xl mx-auto">
-            <CardContent className="pt-6">
-              <div className="text-center p-8">Loading job data...</div>
-            </CardContent>
-          </Card>
-        </div>
-      </PageTransition>
+      <div className="container mx-auto py-8">
+        <div className="text-center">Loading job details...</div>
+      </div>
     );
   }
 
   if (!job || !client) {
     return (
-      <PageTransition>
-        <div className="container mx-auto py-8">
-          <Card className="w-full max-w-4xl mx-auto">
-            <CardContent className="pt-6">
-              <div className="text-center p-8">Job or client not found.</div>
-            </CardContent>
-          </Card>
-        </div>
-      </PageTransition>
+      <div className="container mx-auto py-8">
+        <div className="text-center">Job not found</div>
+      </div>
     );
   }
 
   return (
-    <PageTransition>
-      <div className="container mx-auto py-8">
-        <Card className="w-full max-w-4xl mx-auto">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <div>
-              <CardTitle className="text-2xl font-bold">{job.title}</CardTitle>
-              <div className="flex items-center mt-2">
-                <div className="flex items-center">
-                  <Avatar className="h-6 w-6 mr-2 bg-purple-100">
-                    <AvatarFallback className="text-purple-700 text-xs">
-                      {getClientInitials(client.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <Link 
-                    to={`/client/${client.id}`} 
-                    className="text-base font-semibold text-purple-700 hover:underline"
-                  >
-                    {client.name}
-                  </Link>
-                </div>
-                <Badge className={`ml-3 ${getStatusColor(job.status)}`}>
-                  {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
-                </Badge>
-              </div>
-            </div>
-            <div className="space-x-2">
-              <Button variant="outline" size="sm" onClick={() => navigate(`/client/${client.id}`)}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Client
-              </Button>
-              <Button 
-                variant="outline" 
-                size="icon" 
-                asChild 
-                className="tooltip" 
-                title="Edit Job"
-              >
-                <Link to={`/job/${job.id}/edit`}>
-                  <FileEdit className="h-4 w-4" />
-                  <span className="sr-only">Edit Job</span>
-                </Link>
-              </Button>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="destructive" size="icon" title="Delete Job">
-                    <Trash2 className="h-4 w-4" />
-                    <span className="sr-only">Delete Job</span>
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This action cannot be undone. All data associated with this job will be permanently deleted.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDeleteJob}>Continue</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="md:col-span-1 bg-slate-50 p-4 rounded-lg border border-slate-200">
-                  <h3 className="text-md font-medium flex items-center gap-2 mb-3">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    Client Information
-                  </h3>
-                  
-                  <div className="space-y-3">
-                    <div>
-                      <div className="text-sm font-medium text-muted-foreground">Company</div>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span>{client.name}</span>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <div className="text-sm font-medium text-muted-foreground">Email</div>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-                        <a href={`mailto:${client.email}`} className="hover:underline">
-                          {client.email}
-                        </a>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <div className="text-sm font-medium text-muted-foreground">Phone</div>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-                        <a href={`tel:${client.phone}`} className="hover:underline">
-                          {client.phone}
-                        </a>
-                      </div>
-                    </div>
-                    
-                    {client.address && (
-                      <div>
-                        <div className="text-sm font-medium text-muted-foreground">Address</div>
-                        <div className="mt-0.5">
-                          {client.address}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {client.notes && (
-                      <div>
-                        <div className="text-sm font-medium text-muted-foreground">Notes</div>
-                        <div className="mt-0.5 text-sm line-clamp-3">
-                          {client.notes}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="md:col-span-2">
-                  <h3 className="text-lg font-medium">Job Details</h3>
-                  <CardDescription>
-                    View and manage job information.
-                  </CardDescription>
-                  <Separator className="my-4" />
-                  
-                  {job.description && (
-                    <div className="mb-4">
-                      <h4 className="font-semibold mb-1">Description</h4>
-                      <p className="text-sm">{job.description}</p>
-                    </div>
-                  )}
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {job.date && (
-                      <div className="flex items-center">
-                        <CalendarDays className="h-4 w-4 text-muted-foreground mr-2" />
-                        <div>
-                          <span>Date: {new Date(job.date).toLocaleDateString()}</span>
-                          {(job.startTime || job.isFullDay) && (
-                            <div className="flex items-center text-sm text-muted-foreground mt-1">
-                              <Clock className="h-3.5 w-3.5 mr-1" />
-                              <span>{formatTimeDisplay(job)}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {job.location && (
-                      <div className="flex items-center">
-                        <MapPin className="h-4 w-4 text-muted-foreground mr-2" />
-                        <span>Location: {job.location}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-              
-              <Separator className="my-4" />
-              
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-medium">Invoices</h3>
-                  <Button asChild>
-                    <Link to={`/job/${job.id}/invoice/new`}>
-                      <FileText className="h-4 w-4 mr-2" />
-                      Create Invoice
-                    </Link>
-                  </Button>
-                </div>
-                
-                {invoices.length === 0 ? (
-                  <div className="bg-muted/50 rounded-lg p-6 text-center">
-                    <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
-                    <p className="text-muted-foreground">No invoices have been created for this job yet.</p>
-                    <Button className="mt-4" asChild>
-                      <Link to={`/job/${job.id}/invoice/new`}>
-                        Create First Invoice
-                      </Link>
-                    </Button>
-                  </div>
-                ) : (
-                  <InvoiceList invoices={invoices} client={client} showCreateButton={false} />
-                )}
-              </div>
-            </div>
-          </CardContent>
-          <CardFooter>
-            <CardDescription>
-              Created on {new Date(job.createdAt).toLocaleDateString()}
-              {job.updatedAt && job.updatedAt !== job.createdAt && 
-                ` • Last updated on ${new Date(job.updatedAt).toLocaleDateString()}`
-              }
-            </CardDescription>
-          </CardFooter>
-        </Card>
+    <div className="container mx-auto py-8">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">{job.title}</h1>
+        <div className="flex space-x-2">
+          <Button variant="outline" onClick={() => setIsEditing(true)}>
+            <Pencil className="h-4 w-4 mr-2" />
+            Edit
+          </Button>
+          <Button variant="destructive" onClick={() => setShowDeleteConfirmation(true)}>
+            <Trash2 className="h-4 w-4 mr-2" />
+            Delete
+          </Button>
+        </div>
       </div>
-    </PageTransition>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="md:col-span-2 space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Job Details</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center">
+                <Badge className="mr-2">{getStatusBadge(job.status)}</Badge>
+              </div>
+              
+              {job.date && (
+                <div className="flex items-center">
+                  <CalendarDays className="h-5 w-5 mr-2 text-gray-500" />
+                  <span>
+                    {format(new Date(job.date), 'MMMM d, yyyy')}
+                    {job.isFullDay ? ' (Full Day)' : 
+                      job.startTime && job.endTime ? 
+                        ` (${job.startTime} - ${job.endTime})` : 
+                        ''
+                    }
+                  </span>
+                </div>
+              )}
+              
+              {job.location && (
+                <div className="flex items-center">
+                  <MapPin className="h-5 w-5 mr-2 text-gray-500" />
+                  <span>{job.location}</span>
+                </div>
+              )}
+              
+              {job.description && (
+                <div className="mt-4">
+                  <h3 className="font-medium mb-2">Description</h3>
+                  <p className="text-gray-700 whitespace-pre-wrap">{job.description}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Invoices</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {invoicesLoading ? (
+                <div className="text-center py-4">Loading invoices...</div>
+              ) : (
+                <InvoiceList 
+                  invoices={invoices} 
+                  client={client}
+                  showCreateButton={true}
+                />
+              )}
+            </CardContent>
+            <CardFooter>
+              <Button asChild>
+                <a href={`/invoice/create/${client.id}?jobId=${job.id}`}>
+                  <FileEdit className="h-4 w-4 mr-2" />
+                  Create Invoice
+                </a>
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Client Information</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <h3 className="font-medium text-lg">{client.name}</h3>
+              </div>
+              
+              {client.email && (
+                <div className="flex items-center">
+                  <Mail className="h-4 w-4 mr-2 text-gray-500" />
+                  <a href={`mailto:${client.email}`} className="text-blue-600 hover:underline">
+                    {client.email}
+                  </a>
+                </div>
+              )}
+              
+              {client.phone && (
+                <div className="flex items-center">
+                  <Phone className="h-4 w-4 mr-2 text-gray-500" />
+                  <a href={`tel:${client.phone}`} className="text-blue-600 hover:underline">
+                    {client.phone}
+                  </a>
+                </div>
+              )}
+              
+              {client.address && (
+                <div className="flex items-center">
+                  <MapPin className="h-4 w-4 mr-2 text-gray-500" />
+                  <span>{client.address}</span>
+                </div>
+              )}
+              
+              <Button variant="outline" className="w-full" asChild>
+                <a href={`/client/${client.id}`}>
+                  View Client Profile
+                </a>
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Actions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Button className="w-full" asChild>
+                <a href={`/invoice/create/${client.id}?jobId=${job.id}`}>
+                  <CircleDollarSign className="h-4 w-4 mr-2" />
+                  Create Invoice
+                </a>
+              </Button>
+              <Button variant="outline" className="w-full">
+                <Calendar className="h-4 w-4 mr-2" />
+                Add to Calendar
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      <AlertDialog open={showDeleteConfirmation} onOpenChange={setShowDeleteConfirmation}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete this job?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the job
+              and all associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDelete} 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeleting}
+            >
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   );
 };
 

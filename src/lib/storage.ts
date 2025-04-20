@@ -26,13 +26,18 @@ const mapInvoiceFromDatabase = (data: any): Invoice => ({
   invoiceAcceptedAt: data.invoice_accepted_at,
 });
 
-// Function to create a new client
-export const createClient = async (client: Omit<Client, 'id' | 'createdAt'>): Promise<Client> => {
+// Function to create a new client (renamed from createClient to saveClient)
+export const saveClient = async (client: Client): Promise<Client> => {
   try {
+    // If client already has an ID, update instead of create
+    if (client.id && client.id !== '') {
+      return updateClient(client);
+    }
+
     const newClient: Client = {
-      id: uuidv4(),
-      createdAt: new Date().toISOString(),
       ...client,
+      id: client.id || uuidv4(),
+      createdAt: client.createdAt || new Date().toISOString()
     };
 
     // Insert the new client into the database
@@ -331,14 +336,19 @@ export const getCompanies = async (userId: string): Promise<Company[]> => {
   }
 };
 
-// Function to create a new job
-export const createJob = async (job: Omit<Job, 'id' | 'createdAt' | 'updatedAt'>): Promise<Job> => {
+// Function to create a new job (renamed from createJob to saveJob)
+export const saveJob = async (job: Job): Promise<Job> => {
   try {
+    // If job already has an ID, update instead of create
+    if (job.id && job.id !== '') {
+      return updateJob(job);
+    }
+
     const newJob: Job = {
-      id: uuidv4(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
       ...job,
+      id: job.id || uuidv4(),
+      createdAt: job.createdAt || new Date().toISOString(),
+      updatedAt: job.updatedAt || new Date().toISOString()
     };
 
     // Insert the new job into the database
@@ -500,13 +510,18 @@ export const getJobs = async (companyId: string): Promise<Job[]> => {
   }
 };
 
-// Function to create a new invoice
-export const createInvoice = async (invoice: Omit<Invoice, 'id' | 'viewLink'>): Promise<Invoice> => {
+// Function to create a new invoice (renamed from createInvoice to saveInvoice)
+export const saveInvoice = async (invoice: Invoice): Promise<Invoice> => {
   try {
+    // If invoice already has an ID, update instead of create
+    if (invoice.id && invoice.id !== '') {
+      return updateInvoice(invoice);
+    }
+
     const newInvoice: Invoice = {
-      id: uuidv4(),
-      viewLink: uuidv4(),
       ...invoice,
+      id: invoice.id || uuidv4(),
+      viewLink: invoice.viewLink || uuidv4(),
     };
 
     // Insert the new invoice into the database
@@ -692,8 +707,11 @@ export const createInvoiceTemplate = async (invoiceTemplate: Omit<InvoiceTemplat
   try {
     const newInvoiceTemplate: InvoiceTemplate = {
       id: uuidv4(),
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      items: [],
+      contractTerms: '',
+      notes: '',
       ...invoiceTemplate,
     };
 
@@ -710,7 +728,7 @@ export const createInvoiceTemplate = async (invoiceTemplate: Omit<InvoiceTemplat
           notes: newInvoiceTemplate.notes,
           company_id: newInvoiceTemplate.companyId,
           user_id: newInvoiceTemplate.userId,
-          created_at: newInvoiceTemplate.created_at,
+          created_at: newInvoiceTemplate.createdAt,
           updated_at: newInvoiceTemplate.updated_at,
           content: newInvoiceTemplate.content,
         },
@@ -745,18 +763,14 @@ export const getInvoiceTemplate = async (id: string): Promise<InvoiceTemplate | 
         id: data.id,
         name: data.name,
         description: data.description,
-        items: data.items,
-        contractTerms: data.contract_terms,
-        notes: data.notes,
+        items: data.items || [],
+        contractTerms: data.contract_terms || '',
+        notes: data.notes || '',
         companyId: data.company_id,
         userId: data.user_id,
         createdAt: data.created_at,
         updatedAt: data.updated_at,
-        company_id: data.company_id,
-        user_id: data.user_id,
         content: data.content,
-        created_at: data.created_at,
-        updated_at: data.updated_at,
       };
     }
 
@@ -828,19 +842,15 @@ export const getInvoiceTemplates = async (companyId: string): Promise<InvoiceTem
     return data.map(template => ({
       id: template.id,
       name: template.name,
-      description: template.description,
-      items: template.items,
-      contractTerms: template.contract_terms,
-      notes: template.notes,
+      description: template.description || '',
+      items: template.items || [],
+      contractTerms: template.contract_terms || '',
+      notes: template.notes || '',
       companyId: template.company_id,
       userId: template.user_id,
       createdAt: template.created_at,
       updatedAt: template.updated_at,
-      company_id: template.company_id,
-      user_id: template.user_id,
       content: template.content,
-      created_at: template.created_at,
-      updated_at: template.updated_at,
     }));
   } catch (err) {
     console.error('Error fetching invoice templates:', err);
@@ -897,10 +907,10 @@ export const updatePaymentScheduleStatus = async (
         id: data.id,
         dueDate: data.due_date,
         percentage: data.percentage,
-        description: data.description,
+        description: data.description || '',
         status: data.status as PaymentStatus,
         paymentDate: data.payment_date,
-        amount: data.amount
+        amount: data.percentage || 0 // Adding amount field based on percentage since it doesn't exist in db
       };
     }
     
@@ -957,6 +967,32 @@ export const getClientJobs = async (clientId: string): Promise<Job[]> => {
     }));
   } catch (err) {
     console.error('Error fetching client jobs:', err);
+    return [];
+  }
+};
+
+// Function to get invoices by date (for calendar, reports, etc)
+export const getInvoicesByDate = async (date: string, companyId?: string): Promise<Invoice[]> => {
+  try {
+    let query = supabase
+      .from('invoices')
+      .select('*');
+    
+    // Filter by date
+    query = query.eq('date', date);
+    
+    // Additional company filter if provided
+    if (companyId) {
+      query = query.eq('company_id', companyId);
+    }
+    
+    const { data, error } = await query;
+      
+    if (error) throw error;
+    
+    return data.map(mapInvoiceFromDatabase);
+  } catch (err) {
+    console.error('Error fetching invoices by date:', err);
     return [];
   }
 };

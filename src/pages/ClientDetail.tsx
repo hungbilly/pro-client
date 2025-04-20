@@ -1,22 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Client, Job, Invoice } from '@/types';
+import { getClient, deleteClient, getClientJobs, getClientInvoices } from '@/lib/storage';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Separator } from '@/components/ui/separator';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { FileText, Mail, Phone, MapPin, Globe, User, Building2, FileEdit, Trash2, ArrowLeft } from 'lucide-react';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Mail, Phone, MapPin, Pencil, Trash, CalendarRange, FileText } from 'lucide-react';
 import { toast } from 'sonner';
-import PageTransition from '@/components/ui-custom/PageTransition';
-import JobList from '@/components/JobList';
+import { format } from 'date-fns';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import ClientForm from '@/components/ClientForm';
 import InvoiceList from '@/components/InvoiceList';
-import { getClient, updateClient, deleteClient, getClientInvoices, getClientJobs } from '@/lib/storage';
-import { useCompany } from '@/components/CompanySelector';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const ClientDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -48,7 +54,7 @@ const ClientDetail = () => {
     enabled: !!id,
   });
 
-  const { data: invoices = [], isLoading: isLoadingInvoices } = useQuery({
+  const { data: invoices = [], isLoading: invoicesLoading } = useQuery({
     queryKey: ['client-invoices', id],
     queryFn: async () => {
       if (!id) return [];
@@ -359,27 +365,23 @@ const ClientDetail = () => {
               
               <Separator className="my-4" />
               
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-medium">Invoices</h3>
-                  <Button asChild>
-                    <Link to={`/client/${client.id}/invoice/new`}>
-                      <FileText className="h-4 w-4 mr-2" />
-                      Create Invoice
-                    </Link>
-                  </Button>
-                </div>
+              <Tabs defaultValue="invoices">
+                <TabsList>
+                  <TabsTrigger value="invoices">Invoices</TabsTrigger>
+                </TabsList>
                 
-                {isLoadingInvoices ? (
-                  <div className="text-center p-4">Loading invoices...</div>
-                ) : (
-                  <InvoiceList 
-                    invoices={invoices} 
-                    showCreateButton={false}
-                    client={client}
-                  />
-                )}
-              </div>
+                <TabsContent value="invoices">
+                  {invoicesLoading ? (
+                    <div className="text-center py-8">Loading invoices...</div>
+                  ) : (
+                    <InvoiceList 
+                      invoices={invoices || []} 
+                      client={client}
+                      showCreateButton={true} 
+                    />
+                  )}
+                </TabsContent>
+              </Tabs>
             </div>
           </CardContent>
           <CardFooter>

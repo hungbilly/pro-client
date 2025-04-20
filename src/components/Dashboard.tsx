@@ -55,7 +55,8 @@ const Dashboard: React.FC = () => {
     }
   }, [selectedCompanyId, queryClient]);
 
-  const { data: clients = [], isLoading: clientsLoading } = useQuery({
+  // Fetch clients
+  const { data: clients = [], isLoading: isClientsLoading } = useQuery({
     queryKey: ['clients', selectedCompanyId],
     queryFn: () => getClients(selectedCompanyId),
     enabled: !!selectedCompanyId
@@ -142,7 +143,7 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const { data: invoices = [], isLoading: invoicesLoading } = useQuery({
+  const { data: invoices = [], isLoading: isInvoicesLoading } = useQuery({
     queryKey: ['invoices', selectedCompanyId],
     queryFn: () => selectedCompanyId ? fetchInvoicesWithSchedules(selectedCompanyId) : [],
     enabled: !!selectedCompanyId
@@ -152,7 +153,8 @@ const Dashboard: React.FC = () => {
     setLocalInvoices(invoices);
   }, [invoices]);
 
-  const { data: jobs = [], isLoading: jobsLoading } = useQuery({
+  // Fetch jobs
+  const { data: jobs = [], isLoading: isJobsLoading } = useQuery({
     queryKey: ['jobs', selectedCompanyId],
     queryFn: () => getJobs(selectedCompanyId),
     enabled: !!selectedCompanyId
@@ -262,7 +264,7 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const isLoading = clientsLoading || invoicesLoading || jobsLoading;
+  const isLoading = isClientsLoading || isJobsLoading || isInvoicesLoading;
 
   if (isLoading) {
     return (

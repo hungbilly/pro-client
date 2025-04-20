@@ -59,6 +59,13 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
   console.log('Company timezone:', selectedCompany?.timezone);
   console.log('Timezone to use:', timezoneToUse);
 
+  // Fetch clients for the dropdown
+  const { data: clients = [], isLoading: isClientsLoading } = useQuery({
+    queryKey: ['clients', selectedCompany?.id],
+    queryFn: () => getClients(selectedCompany?.id),
+    enabled: !!selectedCompany
+  });
+
   const { data: allJobs = [] } = useQuery({
     queryKey: ['all-jobs', selectedCompany?.id],
     queryFn: async () => {

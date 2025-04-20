@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { getJobs } from '@/lib/storage';
+import { getJobs, getClients } from '@/lib/storage';
 import { FileText, Plus, Search } from 'lucide-react';
 import { useCompanyContext } from '@/context/CompanyContext';
 import AddJobButton from './AddJobButton';
@@ -38,18 +38,17 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({ isOpen, onClose
   useEffect(() => {
     const fetchClients = async () => {
       try {
-        const fetchedClients = await getClients();
-        const filteredClients = selectedCompany 
-          ? fetchedClients.filter(c => c.companyId === selectedCompany.id)
-          : fetchedClients;
-        setClients(filteredClients);
+        if (selectedCompanyId) {
+          const filteredClients = await getClients(selectedCompanyId);
+          setClients(filteredClients);
+        }
       } catch (error) {
         console.error('Error fetching clients:', error);
       }
     };
 
     fetchClients();
-  }, [selectedCompany]);
+  }, [selectedCompany, selectedCompanyId]);
 
   const filteredJobs = jobs.filter(job => 
     job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||

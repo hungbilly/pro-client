@@ -2,25 +2,32 @@ import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Client,
-  Company,
-  CompanyClientView,
-  Invoice,
   InvoiceItem,
   Job,
   InvoiceTemplate,
   PaymentSchedule,
   PaymentStatus,
-  STORAGE_KEYS
+  Invoice,
+  ContractStatus,
+  Package,
+  CompanyClientView
 } from '@/types';
+
+// Storage keys for localStorage
+export const STORAGE_KEYS = {
+  CLIENTS: 'wedding-clients',
+  INVOICES: 'wedding-invoices',
+  JOBS: 'wedding-jobs'
+};
 
 // Map database client to our Client interface
 const mapClientFromDatabase = (data: any): Client => {
   return {
     id: data.id,
     name: data.name,
-    email: data.email,
-    phone: data.phone,
-    address: data.address,
+    email: data.email || '',
+    phone: data.phone || '',
+    address: data.address || '',
     notes: data.notes || '',
     createdAt: data.created_at,
     companyId: data.company_id || ''
@@ -89,10 +96,74 @@ const mapPaymentScheduleFromDatabase = (data: any): PaymentSchedule => {
     id: data.id,
     dueDate: data.due_date,
     percentage: data.percentage,
-    description: data.description,
+    description: data.description || '',
     status: data.status as PaymentStatus,
     paymentDate: data.payment_date,
     amount: data.amount
+  };
+};
+
+// Map payment schedule to database format
+const mapPaymentScheduleForDatabase = (schedule: PaymentSchedule, invoiceId: string): any => {
+  return {
+    id: schedule.id,
+    invoice_id: invoiceId,
+    description: schedule.description,
+    due_date: schedule.dueDate,
+    percentage: schedule.percentage,
+    status: schedule.status,
+    payment_date: schedule.paymentDate,
+    amount: schedule.amount
+  };
+};
+
+// Map invoice from database format
+const mapInvoiceFromDatabase = (invoiceData: any): Invoice => {
+  return {
+    id: invoiceData.id,
+    clientId: invoiceData.client_id,
+    companyId: invoiceData.company_id || '',
+    jobId: invoiceData.job_id,
+    number: invoiceData.number,
+    amount: invoiceData.amount,
+    date: invoiceData.date,
+    dueDate: invoiceData.due_date,
+    status: invoiceData.status,
+    contractStatus: invoiceData.contract_status || 'pending',
+    items: [], // This will be populated later
+    notes: invoiceData.notes,
+    contractTerms: invoiceData.contract_terms,
+    viewLink: invoiceData.view_link,
+    paymentSchedules: [], // This will be populated later
+    pdfUrl: invoiceData.pdf_url,
+    shootingDate: invoiceData.shooting_date,
+    templateId: invoiceData.template_id,
+    contractAcceptedAt: invoiceData.contract_accepted_at,
+    invoiceAcceptedAt: invoiceData.invoice_accepted_at,
+  };
+};
+
+// Map invoice to database format
+const mapInvoiceForDatabase = (invoice: Invoice): any => {
+  return {
+    id: invoice.id,
+    client_id: invoice.clientId,
+    company_id: invoice.companyId,
+    job_id: invoice.jobId,
+    number: invoice.number,
+    amount: invoice.amount,
+    date: invoice.date,
+    due_date: invoice.dueDate,
+    status: invoice.status,
+    contract_status: invoice.contractStatus,
+    notes: invoice.notes,
+    contract_terms: invoice.contractTerms,
+    view_link: invoice.viewLink,
+    pdf_url: invoice.pdfUrl,
+    shooting_date: invoice.shootingDate,
+    template_id: invoice.templateId,
+    contract_accepted_at: invoice.contractAcceptedAt,
+    invoice_accepted_at: invoice.invoiceAcceptedAt
   };
 };
 
@@ -100,12 +171,16 @@ const mapPaymentScheduleFromDatabase = (data: any): PaymentSchedule => {
 // ================================  Client Functions =================================
 // ===================================================================================
 
-export const getClients = async (): Promise<Client[]> => {
+export const getClients = async (companyId?: string): Promise<Client[]> => {
   try {
-    const { data: clients, error } = await supabase
-      .from('clients')
-      .select('*')
-      .order('created_at', { ascending: false });
+    let query = supabase.from('clients').select('*').order('created_at', { ascending: false });
+    
+    // If companyId is provided, filter by it
+    if (companyId) {
+      query = query.eq('company_id', companyId);
+    }
+    
+    const { data: clients, error } = await query;
 
     if (error) {
       console.error("Error fetching clients:", error);
@@ -351,12 +426,16 @@ export const getCompanyClientView = async (id: string): Promise<CompanyClientVie
 // ================================  Job Functions =====================================
 // ===================================================================================
 
-export const getJobs = async (): Promise<Job[]> => {
+export const getJobs = async (companyId?: string): Promise<Job[]> => {
   try {
-    const { data: jobs, error } = await supabase
-      .from('jobs')
-      .select('*')
-      .order('created_at', { ascending: false });
+    let query = supabase.from('jobs').select('*').order('created_at', { ascending: false });
+    
+    // If companyId is provided, filter by it
+    if (companyId) {
+      query = query.eq('company_id', companyId);
+    }
+    
+    const { data: jobs, error } = await query;
 
     if (error) {
       console.error("Error fetching jobs:", error);
@@ -636,19 +715,13 @@ export const saveInvoice = async (invoice: Invoice): Promise<Invoice> => {
     // Omit the 'id' property from the invoice object to prevent conflicts with auto-generated IDs
     const { id, items, paymentSchedules, ...invoiceData } = invoice;
 
+    // Map the invoice data to the database format
+    const dbInvoiceData = mapInvoiceForDatabase({ id, ...invoiceData, items: [], paymentSchedules: [] });
+
     // Insert the invoice data into the 'invoices' table
     const { data: newInvoiceData, error: invoiceError } = await supabase
       .from('invoices')
-      .insert([{
-        ...invoiceData,
-        client_id: invoiceData.clientId,
-        company_id: invoiceData.companyId,
-        job_id: invoiceData.jobId,
-        due_date: invoiceData.dueDate,
-        contract_status: invoiceData.contractStatus,
-        contract_accepted_at: invoiceData.contractAcceptedAt,
-        invoice_accepted_at: invoiceData.invoiceAcceptedAt,
-      }])
+      .insert([dbInvoiceData])
       .select()
       .single();
 
@@ -682,10 +755,9 @@ export const saveInvoice = async (invoice: Invoice): Promise<Invoice> => {
 
     // Save payment schedules
     if (paymentSchedules && paymentSchedules.length > 0) {
-      const schedulesToInsert = paymentSchedules.map(schedule => ({
-        ...schedule,
-        invoice_id: newInvoice.id,
-      }));
+      const schedulesToInsert = paymentSchedules.map(schedule => 
+        mapPaymentScheduleForDatabase(schedule, newInvoice.id)
+      );
 
       const { error: schedulesError } = await supabase
         .from('payment_schedules')
@@ -706,22 +778,16 @@ export const saveInvoice = async (invoice: Invoice): Promise<Invoice> => {
 
 export const updateInvoice = async (invoice: Invoice): Promise<Invoice> => {
   try {
-    // Destructure invoice properties, excluding id, items, and paymentSchedules
+    // Destructure invoice properties
     const { id, items, paymentSchedules, ...invoiceData } = invoice;
+
+    // Map the invoice data to the database format
+    const dbInvoiceData = mapInvoiceForDatabase({ id, ...invoiceData, items: [], paymentSchedules: [] });
 
     // Update the invoice data in the 'invoices' table
     const { data: updatedInvoiceData, error: invoiceError } = await supabase
       .from('invoices')
-      .update({
-        ...invoiceData,
-        client_id: invoiceData.clientId,
-        company_id: invoiceData.companyId,
-        job_id: invoiceData.jobId,
-        due_date: invoiceData.dueDate,
-        contract_status: invoiceData.contractStatus,
-        contract_accepted_at: invoiceData.contractAcceptedAt,
-        invoice_accepted_at: invoiceData.invoiceAcceptedAt,
-      })
+      .update(dbInvoiceData)
       .eq('id', id)
       .select()
       .single();
@@ -777,10 +843,9 @@ export const updateInvoice = async (invoice: Invoice): Promise<Invoice> => {
 
     // Insert the new payment schedules
     if (paymentSchedules && paymentSchedules.length > 0) {
-      const schedulesToInsert = paymentSchedules.map(schedule => ({
-        ...schedule,
-        invoice_id: id,
-      }));
+      const schedulesToInsert = paymentSchedules.map(schedule => 
+        mapPaymentScheduleForDatabase(schedule, id)
+      );
 
       const { error: insertSchedulesError } = await supabase
         .from('payment_schedules')
@@ -794,7 +859,7 @@ export const updateInvoice = async (invoice: Invoice): Promise<Invoice> => {
 
     return updatedInvoice;
   } catch (error) {
-    console.error(`Unexpected error updating invoice with id ${id}:`, error);
+    console.error(`Unexpected error updating invoice with id ${invoice.id}:`, error);
     throw error;
   }
 };
@@ -896,7 +961,7 @@ export const updatePaymentScheduleStatus = async (paymentId: string, status: Pay
       return null;
     }
 
-    return data as PaymentSchedule;
+    return data ? mapPaymentScheduleFromDatabase(data) : null;
   } catch (error) {
     console.error(`Unexpected error updating payment schedule status for payment id ${paymentId}:`, error);
     return null;

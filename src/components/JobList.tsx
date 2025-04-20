@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Job, Client } from '@/types';
@@ -23,9 +24,8 @@ const JobList: React.FC<JobListProps> = ({ client }) => {
     const fetchJobs = async () => {
       if (!selectedCompany) return;
       try {
-        const allJobs = await getJobs();
-        const filteredJobs = allJobs.filter(job => job.companyId === selectedCompany.id);
-        setJobs(filteredJobs);
+        const allJobs = await getJobs(selectedCompany.id);
+        setJobs(allJobs);
       } catch (error) {
         console.error("Failed to fetch jobs:", error);
         toast.error("Failed to fetch jobs");

@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 
 interface ContractAcceptanceProps {
   companyName: string;
-  onAccept: () => Promise<void>;
+  onAccept: (name: string) => Promise<void>;
 }
 
 const ContractAcceptance: React.FC<ContractAcceptanceProps> = ({
@@ -25,7 +25,7 @@ const ContractAcceptance: React.FC<ContractAcceptanceProps> = ({
 
     setIsSubmitting(true);
     try {
-      await onAccept();
+      await onAccept(name.trim());
     } finally {
       setIsSubmitting(false);
     }

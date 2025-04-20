@@ -551,13 +551,16 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
   const handleAddPaymentSchedule = () => {
     const total = calculateTotal();
+    const currentSchedulesCount = (invoice.paymentSchedules || []).length;
+    const ordinalDescription = getOrdinalNumber(currentSchedulesCount + 1) + ' Payment';
+
     const newSchedule: PaymentSchedule = {
       id: generateId(),
       percentage: 100,
       amount: total,
       dueDate: format(new Date(), 'yyyy-MM-dd'),
       status: 'unpaid',
-      description: '1st Payment'
+      description: ordinalDescription
     };
 
     setInvoice(prevInvoice => ({
@@ -670,6 +673,12 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
         </TableCell>
       </TableRow>
     ));
+  };
+
+  const getOrdinalNumber = (num: number): string => {
+    const suffix = ['th', 'st', 'nd', 'rd'];
+    const v = num % 100;
+    return num + (suffix[(v - 20) % 10] || suffix[v] || suffix[0]);
   };
 
   return (

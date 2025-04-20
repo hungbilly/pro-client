@@ -159,6 +159,37 @@ const InvoiceView = () => {
             console.error('[InvoiceView] Failed to fetch company data:', err);
           }
         }
+        
+        // Log raw data to debug the invoice_accepted_by field
+        console.log('[InvoiceView] Fetched invoice with contract terms:', {
+          id: fetchedInvoice.id,
+          hasContractTerms: !!fetchedInvoice.contractTerms,
+          contractTermsLength: fetchedInvoice.contractTerms?.length || 0,
+          contractStatus: fetchedInvoice.contractStatus,
+          contractTermsPreview: fetchedInvoice.contractTerms?.substring(0, 100),
+          invoice_accepted_by: fetchedInvoice.invoice_accepted_by
+        });
+        
+        // Additional debugging directly from db record if needed
+        if (fetchedInvoice.id) {
+          try {
+            const { data: rawInvoice, error: rawError } = await supabase
+              .from('invoices')
+              .select('invoice_accepted_by')
+              .eq('id', fetchedInvoice.id)
+              .single();
+              
+            if (rawInvoice) {
+              console.log('[InvoiceView] Direct DB query for invoice_accepted_by:', rawInvoice.invoice_accepted_by);
+              // If we have data from DB but it's missing in our object, add it
+              if (rawInvoice.invoice_accepted_by && !fetchedInvoice.invoice_accepted_by) {
+                fetchedInvoice.invoice_accepted_by = rawInvoice.invoice_accepted_by;
+              }
+            }
+          } catch (err) {
+            console.error('[InvoiceView] Error fetching raw invoice data:', err);
+          }
+        }
       } catch (err) {
         console.error('[InvoiceView] Failed to load invoice:', err);
         setError('Failed to load invoice. Please try again later.');
@@ -354,6 +385,8 @@ const InvoiceView = () => {
         contractStatus: 'accepted',
         invoice_accepted_by: name 
       } : null);
+      
+      console.log('[InvoiceView] Updated invoice with acceptor name:', name);
     } catch (err) {
       console.error('Failed to accept contract:', err);
       toast.error('Error accepting contract terms');
@@ -422,7 +455,9 @@ const InvoiceView = () => {
         contractTermsLength: invoice.contractTerms?.length || 0,
         contractStatus: invoice.contractStatus,
         contractPreview: invoice.contractTerms?.substring(0, 100),
-        invoice_accepted_by: invoice.invoice_accepted_by
+        invoice_accepted_by: invoice.invoice_accepted_by,
+        invoice_accepted_by_raw: typeof invoice.invoice_accepted_by === 'object' ? 
+          JSON.stringify(invoice.invoice_accepted_by) : invoice.invoice_accepted_by
       });
     }
   }, [invoice]);
@@ -763,8 +798,10 @@ const InvoiceView = () => {
                     <FileCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
                     <div className="text-green-800 dark:text-green-400">
                       <p>This contract has been accepted</p>
-                      {invoice.invoice_accepted_by && (
+                      {typeof invoice.invoice_accepted_by === 'string' && invoice.invoice_accepted_by ? (
                         <p className="text-sm mt-1">Accepted by: {invoice.invoice_accepted_by}</p>
+                      ) : (
+                        <p className="text-sm mt-1">Accepted by client</p>
                       )}
                     </div>
                   </div>

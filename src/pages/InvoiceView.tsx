@@ -798,7 +798,7 @@ const InvoiceView = () => {
                     <FileCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
                     <div className="text-green-800 dark:text-green-400">
                       <p>This contract has been accepted</p>
-                      {typeof invoice.invoice_accepted_by === 'string' && invoice.invoice_accepted_by ? (
+                      {invoice.invoice_accepted_by ? (
                         <p className="text-sm mt-1">Accepted by: {invoice.invoice_accepted_by}</p>
                       ) : (
                         <p className="text-sm mt-1">Accepted by client</p>

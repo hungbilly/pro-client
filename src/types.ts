@@ -1,3 +1,4 @@
+
 export interface Client {
   id: string;
   name: string;
@@ -41,6 +42,16 @@ export interface PaymentSchedule {
   amount?: number;
 }
 
+export interface InvoiceItem {
+  id: string;
+  name?: string;
+  description: string;
+  quantity: number;
+  rate: number;
+  amount: number;
+  discount?: string;
+}
+
 export interface Invoice {
   id: string;
   clientId: string;
@@ -62,16 +73,6 @@ export interface Invoice {
   templateId?: string;
   contractAcceptedAt?: string;
   invoiceAcceptedAt?: string;
-}
-
-export interface InvoiceItem {
-  id: string;
-  name?: string;
-  description: string;
-  quantity: number;
-  rate: number;
-  amount: number;
-  discount?: string;
 }
 
 export interface CompanyClientView {

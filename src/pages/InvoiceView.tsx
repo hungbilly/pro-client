@@ -536,14 +536,24 @@ const InvoiceView = () => {
                   <div className="text-2xl font-bold"># {invoice.number}</div>
                   <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">INVOICE ISSUE DATE</div>
                   <div className="text-sm">{new Date(invoice.date).toLocaleDateString()}</div>
-                  <div className="mt-1 flex items-center">
+                  <div className="mt-1 flex flex-col gap-2">
                     <Badge className={statusColors[invoice.status] || 'bg-gray-100 text-gray-800'}>
                       {invoice.status.toUpperCase()}
+                      {invoice.invoiceAcceptedAt && (
+                        <span className="ml-2 text-xs">
+                          (Accepted on {new Date(invoice.invoiceAcceptedAt).toLocaleString()})
+                        </span>
+                      )}
                     </Badge>
                     {invoice.contractStatus === 'accepted' && (
-                      <Badge variant="outline" className={`ml-2 flex items-center gap-1 ${contractStatusColor}`}>
+                      <Badge variant="outline" className={`flex items-center gap-1 ${contractStatusColor}`}>
                         <FileCheck className="h-3 w-3" />
                         Contract Accepted
+                        {invoice.contractAcceptedAt && (
+                          <span className="ml-2 text-xs">
+                            (on {new Date(invoice.contractAcceptedAt).toLocaleString()})
+                          </span>
+                        )}
                       </Badge>
                     )}
                   </div>
@@ -627,7 +637,7 @@ const InvoiceView = () => {
                       Accept Invoice
                     </Button>
                     {invoice.invoiceAcceptedAt && (
-                      <div className="text-sm text-muted-foreground">
+                      <div className="text-sm text-muted-foreground ml-2">
                         Accepted on {new Date(invoice.invoiceAcceptedAt).toLocaleString()}
                       </div>
                     )}
@@ -756,7 +766,7 @@ const InvoiceView = () => {
                       onAccept={handleAcceptContract}
                     />
                     {invoice.contractAcceptedAt && (
-                      <div className="text-sm text-muted-foreground">
+                      <div className="text-sm text-muted-foreground ml-2">
                         Accepted on {new Date(invoice.contractAcceptedAt).toLocaleString()}
                       </div>
                     )}

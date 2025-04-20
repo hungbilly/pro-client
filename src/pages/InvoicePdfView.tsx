@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { Download } from 'lucide-react';
+import { Download, FileCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useParams } from 'react-router-dom';
 import { getInvoiceByViewLink } from '@/lib/storage';
 import { Invoice } from '@/types';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import PageTransition from '@/components/ui-custom/PageTransition';
 
 const InvoicePdfView = () => {
@@ -14,6 +16,29 @@ const InvoicePdfView = () => {
   const [error, setError] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const { viewLink } = useParams<{ viewLink: string }>();
+
+  useEffect(() => {
+    const fetchInvoice = async () => {
+      if (!viewLink) return;
+
+      try {
+        setLoading(true);
+        const invoiceData = await getInvoiceByViewLink(viewLink);
+        if (!invoiceData) {
+          setError('Invoice not found');
+          return;
+        }
+        setInvoice(invoiceData);
+      } catch (err) {
+        console.error('Error fetching invoice:', err);
+        setError('Failed to load invoice');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchInvoice();
+  }, [viewLink]);
 
   const handleCopyInvoiceLink = () => {
     if (!invoice) return;
@@ -60,12 +85,71 @@ const InvoicePdfView = () => {
     }
   };
 
+  if (loading) {
+    return (
+      <PageTransition>
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">Loading invoice...</div>
+        </div>
+      </PageTransition>
+    );
+  }
+
+  if (error || !invoice) {
+    return (
+      <PageTransition>
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">{error || 'Invoice not found'}</div>
+        </div>
+      </PageTransition>
+    );
+  }
+
+  const statusColors = {
+    draft: 'bg-muted text-muted-foreground',
+    sent: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+    accepted: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+    paid: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+  };
+
+  const contractStatusColor = invoice.contractStatus === 'accepted' 
+    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+    : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+
   return (
     <PageTransition>
       <div className="container mx-auto px-4 py-8">
         <Card>
+          <CardHeader>
+            <h1 className="text-2xl font-bold mb-4">Invoice #{invoice.number}</h1>
+            <div className="flex flex-col space-y-2">
+              <div className="flex items-center">
+                <Badge className={statusColors[invoice.status] || 'bg-gray-100 text-gray-800'}>
+                  {invoice.status.toUpperCase()}
+                </Badge>
+                {invoice.invoiceAcceptedAt && (
+                  <span className="ml-2 text-sm text-muted-foreground">
+                    Accepted on {new Date(invoice.invoiceAcceptedAt).toLocaleString()}
+                  </span>
+                )}
+              </div>
+              
+              {invoice.contractStatus === 'accepted' && (
+                <div className="flex items-center">
+                  <Badge variant="outline" className={`flex items-center gap-1 ${contractStatusColor}`}>
+                    <FileCheck className="h-3 w-3" />
+                    Contract Accepted
+                  </Badge>
+                  {invoice.contractAcceptedAt && (
+                    <span className="ml-2 text-sm text-muted-foreground">
+                      Accepted on {new Date(invoice.contractAcceptedAt).toLocaleString()}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          </CardHeader>
           <CardContent className="p-6">
-            <h1 className="text-2xl font-bold mb-4">Invoice PDF View</h1>
             <p>View Link: {viewLink}</p>
           </CardContent>
           <CardFooter className="border-t p-6 flex justify-end gap-2">

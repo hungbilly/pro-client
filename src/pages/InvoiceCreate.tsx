@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
@@ -29,7 +28,6 @@ const InvoiceCreate = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Update the isEditView logic to correctly handle the paths
   const isEditView = location.pathname.includes('/edit');
   
   console.log('InvoiceCreate rendered with path:', location.pathname, 'isEditView:', isEditView);
@@ -269,6 +267,37 @@ const InvoiceCreate = () => {
   
   const paths = getBreadcrumbPaths();
 
+  const handleAddPaymentSchedule = () => {
+    const total = calculateTotal();
+    const currentSchedules = invoice.paymentSchedules || [];
+    
+    const totalAllocatedPercentage = currentSchedules.reduce((sum, schedule) => 
+      sum + (schedule.percentage || 0), 0
+    );
+    
+    const remainingPercentage = 100 - totalAllocatedPercentage;
+    const scheduleCount = currentSchedules.length;
+    
+    if (remainingPercentage <= 0) {
+      toast.error("All payment percentage (100%) has been allocated");
+      return;
+    }
+
+    const newSchedule: PaymentSchedule = {
+      id: Math.random().toString(36).substring(2, 15),
+      percentage: scheduleCount === 0 ? 100 : remainingPercentage,
+      amount: scheduleCount === 0 ? total : (total * remainingPercentage / 100),
+      dueDate: format(new Date(), 'yyyy-MM-dd'),
+      status: 'unpaid',
+      description: getOrdinalNumber(scheduleCount + 1) + ' Payment'
+    };
+
+    setInvoice(prevInvoice => ({
+      ...prevInvoice,
+      paymentSchedules: [...(prevInvoice.paymentSchedules || []), newSchedule]
+    }));
+  };
+
   return (
     <PageTransition>
       <div className="container py-8">
@@ -415,6 +444,7 @@ const InvoiceCreate = () => {
           contractTemplates={contractTemplates}
           checkDuplicateInvoiceNumber={checkDuplicateInvoiceNumber}
           onInvoiceDeleted={handleInvoiceDeleted}
+          handleAddPaymentSchedule={handleAddPaymentSchedule}
         />
       </div>
     </PageTransition>

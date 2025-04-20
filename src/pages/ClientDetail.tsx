@@ -373,7 +373,11 @@ const ClientDetail = () => {
                 {isLoadingInvoices ? (
                   <div className="text-center p-4">Loading invoices...</div>
                 ) : (
-                  <InvoiceList invoices={invoices} showCreateButton={false} />
+                  <InvoiceList 
+                    invoices={invoices} 
+                    showCreateButton={false}
+                    client={client}
+                  />
                 )}
               </div>
             </div>

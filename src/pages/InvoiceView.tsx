@@ -174,9 +174,9 @@ const InvoiceView = () => {
     
     setUpdatingPaymentId(paymentId);
     try {
-      const result = await updatePaymentScheduleStatus(paymentId, newStatus, newStatus === 'paid' ? format(new Date(), 'yyyy-MM-dd') : undefined);
+      const result = await updatePaymentScheduleStatus(paymentId, newStatus);
       
-      if (!result) {
+      if (result === null) {
         toast.error('Failed to update payment status');
         return;
       }
@@ -215,7 +215,7 @@ const InvoiceView = () => {
         paymentDate
       );
       
-      if (!result) {
+      if (result === null) {
         toast.error('Failed to update payment date');
         return;
       }

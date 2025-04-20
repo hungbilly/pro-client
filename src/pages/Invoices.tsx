@@ -7,10 +7,13 @@ import { useCompany } from '@/components/CompanySelector';
 const Invoices = () => {
   const { selectedCompany } = useCompany();
 
-  // When importing getInvoices
+  // Updated query to handle the case when selectedCompany?.id is undefined
   const { data: invoices = [], isLoading } = useQuery({
     queryKey: ['invoices', selectedCompany?.id],
-    queryFn: () => getInvoices(selectedCompany?.id),
+    queryFn: async () => {
+      if (!selectedCompany?.id) return [];
+      return await getInvoices(selectedCompany.id);
+    },
     enabled: !!selectedCompany?.id,
   });
 

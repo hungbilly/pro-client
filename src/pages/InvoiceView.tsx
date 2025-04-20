@@ -332,17 +332,13 @@ const InvoiceView = () => {
     }
   };
 
-  const handleAcceptContract = async (clientName: string) => {
+  const handleAcceptContract = async () => {
     if (!invoice) return;
     
     try {
-      await updateContractStatus(invoice.id, 'accepted', clientName);
+      await updateContractStatus(invoice.id, 'accepted');
       toast.success('Contract terms accepted successfully');
-      setInvoice(prev => prev ? { 
-        ...prev, 
-        contractStatus: 'accepted',
-        contract_accepted_at: new Date().toISOString()
-      } : null);
+      setInvoice(prev => prev ? { ...prev, contractStatus: 'accepted' } : null);
     } catch (err) {
       console.error('Failed to accept contract:', err);
       toast.error('Error accepting contract terms');

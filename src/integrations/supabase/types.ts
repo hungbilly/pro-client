@@ -475,7 +475,6 @@ export type Database = {
           html_generated_at: string | null
           id: string
           invoice_accepted_at: string | null
-          invoice_accepted_by: string | null
           job_id: string | null
           notes: string | null
           number: string
@@ -498,7 +497,6 @@ export type Database = {
           html_generated_at?: string | null
           id?: string
           invoice_accepted_at?: string | null
-          invoice_accepted_by?: string | null
           job_id?: string | null
           notes?: string | null
           number: string
@@ -521,7 +519,6 @@ export type Database = {
           html_generated_at?: string | null
           id?: string
           invoice_accepted_at?: string | null
-          invoice_accepted_by?: string | null
           job_id?: string | null
           notes?: string | null
           number?: string

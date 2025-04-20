@@ -33,7 +33,7 @@ const PaymentScheduleTable = memo(({
   paymentSchedules,
   amount,
   isClientView,
-  isEditView = false,
+  isEditView = true,
   updatingPaymentId,
   onUpdateStatus,
   formatCurrency,
@@ -75,7 +75,11 @@ const PaymentScheduleTable = memo(({
 
   const location = useLocation();
   const currentPath = location.pathname;
-  console.log('Current path:', currentPath, 'isEditView from props:', isEditView);
+  const isCreateOrEditPath = currentPath.includes('/create') || currentPath.includes('/edit') || currentPath.includes('/new');
+  
+  const shouldEnableEditing = isEditView || isCreateOrEditPath;
+  
+  console.log('Current path:', currentPath, 'isEditView from props:', isEditView, 'shouldEnableEditing:', shouldEnableEditing);
 
   const handleDateSelect = (paymentId: string, date: Date | undefined) => {
     if (!date || !onUpdatePaymentDate) return;
@@ -336,13 +340,13 @@ const PaymentScheduleTable = memo(({
           <CircleDollarSign className="h-3.5 w-3.5 text-muted-foreground" />
           <span>{formatCurrency(paymentAmount)}</span>
         </div>
-        {!isClientView && isEditView && (
+        {!isClientView && shouldEnableEditing && (
           <Button 
             variant="ghost" 
             size="icon" 
             className="h-6 w-6 ml-2"
             onClick={() => {
-              console.log('Edit amount button clicked for schedule:', schedule.id, 'isEditView:', isEditView);
+              console.log('Edit amount button clicked for schedule:', schedule.id, 'isEditView:', isEditView, 'shouldEnableEditing:', shouldEnableEditing);
               setEditingAmountId(schedule.id);
             }}
           >
@@ -357,7 +361,7 @@ const PaymentScheduleTable = memo(({
     <div className="border rounded-md overflow-hidden">
       {process.env.NODE_ENV === 'development' && (
         <div className="bg-gray-100 p-2 text-xs">
-          <p>Debug: isClientView={String(isClientView)} | isEditView={String(isEditView)}</p>
+          <p>Debug: isClientView={String(isClientView)} | isEditView={String(isEditView)} | shouldEnableEditing={String(shouldEnableEditing)}</p>
           <p>Current Path: {currentPath}</p>
         </div>
       )}
@@ -414,7 +418,7 @@ const PaymentScheduleTable = memo(({
                         <span>
                           {format(new Date(schedule.paymentDate), 'MMM d, yyyy')}
                         </span>
-                        {!isClientView && isEditView && (
+                        {!isClientView && shouldEnableEditing && (
                           <Popover open={editingDateId === schedule.id} onOpenChange={(open) => {
                             if (open) setEditingDateId(schedule.id);
                             else setEditingDateId(null);
@@ -490,7 +494,7 @@ const PaymentScheduleTable = memo(({
                         )}
                       </DropdownMenuContent>
                     </DropdownMenu>
-                    {onRemovePaymentSchedule && isEditView && (
+                    {onRemovePaymentSchedule && shouldEnableEditing && (
                       <Button
                         variant="ghost"
                         size="sm"

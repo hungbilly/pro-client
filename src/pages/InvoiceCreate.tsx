@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
@@ -28,7 +29,8 @@ const InvoiceCreate = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  const isEditView = location.pathname.includes('/edit') || (invoiceId !== undefined);
+  // Update the isEditView logic to correctly handle both edit paths and create paths
+  const isEditView = location.pathname.includes('/edit') || (invoiceId !== undefined && !location.pathname.includes('/create'));
   
   console.log('InvoiceCreate rendered with path:', location.pathname, 'isEditView:', isEditView);
   

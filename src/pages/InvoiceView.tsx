@@ -45,6 +45,8 @@ const InvoiceView = () => {
     !location.pathname.includes('/admin') && !user, 
     [location.pathname, user]
   );
+  
+  const isEditView = false;
 
   const formatCurrency = useCallback((amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -120,7 +122,6 @@ const InvoiceView = () => {
           return;
         }
         
-        // Additional debugging directly from db record if needed
         if (fetchedInvoice.id) {
           try {
             const { data: rawInvoice, error: rawError } = await supabase
@@ -133,7 +134,6 @@ const InvoiceView = () => {
               console.log('[InvoiceView] Direct DB query for invoice_accepted_by:', rawInvoice.invoice_accepted_by);
               console.log('[InvoiceView] Direct DB query for contract_accepted_at:', rawInvoice.contract_accepted_at);
               
-              // Add additional debug information
               console.log('[InvoiceView] DETAILED DEBUG - Before update:');
               console.log('[InvoiceView] fetchedInvoice.invoice_accepted_by =', 
                 fetchedInvoice.invoice_accepted_by, 
@@ -148,7 +148,6 @@ const InvoiceView = () => {
                 rawInvoice.contract_accepted_at,
                 'type:', typeof rawInvoice.contract_accepted_at);
               
-              // If we have data from DB but it's missing in our object, add it
               if (rawInvoice.invoice_accepted_by && !fetchedInvoice.invoice_accepted_by) {
                 console.log('[InvoiceView] Updating fetchedInvoice.invoice_accepted_by with DB value');
                 fetchedInvoice.invoice_accepted_by = rawInvoice.invoice_accepted_by;
@@ -412,7 +411,6 @@ const InvoiceView = () => {
 
       toast.success('Contract terms accepted successfully');
       
-      // Update the invoice state with the new values
       setInvoice(prev => {
         if (!prev) return prev;
         return {
@@ -808,6 +806,7 @@ const InvoiceView = () => {
                       paymentSchedules={invoice.paymentSchedules}
                       amount={invoice.amount}
                       isClientView={isClientView}
+                      isEditView={isEditView}
                       updatingPaymentId={updatingPaymentId}
                       onUpdateStatus={handlePaymentStatusUpdate}
                       formatCurrency={formatCurrency}

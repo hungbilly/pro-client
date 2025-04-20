@@ -29,8 +29,8 @@ const InvoiceCreate = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Update the isEditView logic to correctly handle both edit paths and create paths
-  const isEditView = location.pathname.includes('/edit') || (invoiceId !== undefined && !location.pathname.includes('/create'));
+  // Update the isEditView logic to correctly handle the paths
+  const isEditView = location.pathname.includes('/edit');
   
   console.log('InvoiceCreate rendered with path:', location.pathname, 'isEditView:', isEditView);
   

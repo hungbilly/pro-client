@@ -27,6 +27,17 @@ import { Badge } from '@/components/ui/badge';
 import AddDiscountDialog from './AddDiscountDialog';
 import PaymentScheduleTable from './invoice/PaymentScheduleTable';
 
+export interface InvoiceFormProps {
+  invoice?: Invoice;
+  clientId?: string;
+  jobId?: string;
+  invoiceId?: string;
+  isEditView?: boolean;
+  contractTemplates: ContractTemplate[];
+  checkDuplicateInvoiceNumber: (number: string, currentInvoiceId?: string) => Promise<boolean>;
+  onInvoiceDeleted: (invoiceId: string) => void;
+}
+
 interface ContractTemplate {
   id: string;
   name: string;
@@ -38,16 +49,6 @@ interface Template {
   id: string;
   name: string;
   content: string;
-}
-
-interface InvoiceFormProps {
-  invoice?: Invoice;
-  clientId?: string;
-  jobId?: string;
-  invoiceId?: string;
-  contractTemplates?: ContractTemplate[];
-  checkDuplicateInvoiceNumber?: (number: string, currentInvoiceId?: string) => Promise<boolean>;
-  onInvoiceDeleted?: (invoiceId: string) => void;
 }
 
 const generateId = () => {
@@ -81,6 +82,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   clientId: propClientId, 
   jobId: propJobId, 
   invoiceId: propInvoiceId,
+  isEditView = false,
   contractTemplates = [],
   checkDuplicateInvoiceNumber,
   onInvoiceDeleted
@@ -88,6 +90,8 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   const navigate = useNavigate();
   const { user } = useAuth();
   const { selectedCompany } = useCompany();
+
+  console.log("InvoiceForm received isEditView prop:", isEditView);
 
   const [invoice, setInvoice] = useState<Invoice>(
     propInvoice || defaultInvoice

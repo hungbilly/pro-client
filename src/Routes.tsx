@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Route, Routes as ReactRoutes } from 'react-router-dom';
 import Index from './pages/Index';
@@ -27,7 +28,6 @@ import SubscriptionGuard from './components/SubscriptionGuard';
 import Admin from './pages/Admin';
 import AdminLayout from './components/AdminLayout';
 import Debug from './pages/Debug';
-import CalendarTest from './pages/CalendarTest';
 import GoogleOAuthDiagnostic from './pages/GoogleOAuthDiagnostic';
 
 const Routes = () => {

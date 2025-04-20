@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Client, Invoice, InvoiceItem, Job, PaymentSchedule, PaymentStatus } from '@/types';
+import { Client, Invoice, InvoiceItem, Job, PaymentSchedule, PaymentStatus, InvoiceStatus, ContractStatus } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -58,7 +58,7 @@ const generateViewLink = () => {
   return Math.random().toString(36).substring(2, 15);
 };
 
-const defaultInvoice = useMemo(() => ({
+const defaultInvoice = {
   id: '', 
   clientId: '',
   jobId: '',
@@ -74,7 +74,7 @@ const defaultInvoice = useMemo(() => ({
   paymentSchedules: [],
   companyId: '',
   viewLink: '',
-}), []);
+};
 
 const InvoiceForm: React.FC<InvoiceFormProps> = ({ 
   invoice: propInvoice, 

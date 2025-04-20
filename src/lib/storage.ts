@@ -532,14 +532,16 @@ export const getInvoice = async (invoiceId: string): Promise<Invoice | null> => 
       dueDate: invoiceData.due_date,
       amount: invoiceData.amount,
       status: invoiceData.status as InvoiceStatus,
-      contractStatus: invoiceData.contract_status as ContractStatus,
-      notes: invoiceData.notes,
-      contractTerms: invoiceData.contract_terms,
+      contractStatus: (invoiceData.contract_status || 'pending') as ContractStatus,
+      notes: invoiceData.notes || '',
+      contractTerms: invoiceData.contract_terms || '',
       viewLink: invoiceData.view_link,
       shootingDate: invoiceData.shooting_date,
       items,
       paymentSchedules,
-      pdfUrl: invoiceData.pdf_url
+      pdfUrl: invoiceData.pdf_url,
+      contract_accepted_at: invoiceData.contract_accepted_at || '',
+      invoice_accepted_by: invoiceData.invoice_accepted_by || ''
     };
   } catch (error) {
     console.error('Error in getInvoice:', error);

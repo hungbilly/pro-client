@@ -109,7 +109,8 @@ const InvoiceView = () => {
           hasContractTerms: !!fetchedInvoice.contractTerms,
           contractTermsLength: fetchedInvoice.contractTerms?.length || 0,
           contractStatus: fetchedInvoice.contractStatus,
-          contractTermsPreview: fetchedInvoice.contractTerms?.substring(0, 100)
+          contractTermsPreview: fetchedInvoice.contractTerms?.substring(0, 100),
+          invoice_accepted_by: fetchedInvoice.invoice_accepted_by
         });
         
         if (selectedCompanyId && fetchedInvoice.companyId !== selectedCompanyId && !isClientView) {
@@ -416,11 +417,12 @@ const InvoiceView = () => {
 
   useEffect(() => {
     if (invoice) {
-      console.log('[InvoiceView] Current invoice contract terms:', {
+      console.log('[InvoiceView] Current invoice data:', {
         hasContractTerms: !!invoice.contractTerms,
         contractTermsLength: invoice.contractTerms?.length || 0,
         contractStatus: invoice.contractStatus,
-        contractPreview: invoice.contractTerms?.substring(0, 100)
+        contractPreview: invoice.contractTerms?.substring(0, 100),
+        invoice_accepted_by: invoice.invoice_accepted_by
       });
     }
   }, [invoice]);
@@ -759,9 +761,12 @@ const InvoiceView = () => {
                 {invoice.contractStatus === 'accepted' && (
                   <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-md flex items-center gap-2">
                     <FileCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
-                    <span className="text-green-800 dark:text-green-400">
-                      This contract has been accepted
-                    </span>
+                    <div className="text-green-800 dark:text-green-400">
+                      <p>This contract has been accepted</p>
+                      {invoice.invoice_accepted_by && (
+                        <p className="text-sm mt-1">Accepted by: {invoice.invoice_accepted_by}</p>
+                      )}
+                    </div>
                   </div>
                 )}
                   

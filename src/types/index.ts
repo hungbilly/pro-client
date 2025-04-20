@@ -24,7 +24,7 @@ export interface Job {
   isFullDay: boolean;
   createdAt: string;
   updatedAt: string;
-  calendarEventId: string | null;
+  calendarEventId?: string | null;
   timezone: string;
 }
 
@@ -35,6 +35,8 @@ export interface InvoiceItem {
   description: string;
   quantity: number;
   price: number;
+  rate: number;
+  amount: number;
 }
 
 export interface PaymentSchedule {
@@ -47,28 +49,28 @@ export interface PaymentSchedule {
   amount: number;
 }
 
-export type PaymentStatus = 'pending' | 'paid' | 'overdue';
+export type PaymentStatus = 'pending' | 'paid' | 'overdue' | 'unpaid' | 'write-off';
 export type ContractStatus = 'pending' | 'accepted' | 'rejected';
 
 export interface Invoice {
   id: string;
   clientId: string;
   companyId: string;
-  jobId: string;
+  jobId?: string;
   number: string;
   amount: number;
   date: string;
   dueDate: string;
-  status: 'draft' | 'sent' | 'paid' | 'overdue' | 'void';
+  status: 'draft' | 'sent' | 'paid' | 'overdue' | 'void' | 'accepted';
   contractStatus: ContractStatus;
   items: InvoiceItem[];
   notes: string;
-  contractTerms: string;
+  contractTerms?: string;
   viewLink: string;
   paymentSchedules: PaymentSchedule[];
-  pdfUrl: string;
-  shootingDate: string;
-  templateId: string;
+  pdfUrl?: string;
+  shootingDate?: string;
+  templateId?: string;
   contractAcceptedAt?: string;
   invoiceAcceptedAt?: string;
 }
@@ -79,14 +81,25 @@ export interface Package {
   description: string;
   price: number;
   items: InvoiceItem[];
+  tax_rate?: number;
+  user_id: string;
+  company_id?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface CompanyClientView {
   id: string;
   company_id: string;
-  client_id: string;
+  client_id?: string;
   created_at: string;
   updated_at: string;
+  name: string;
+  logo_url?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  website?: string;
 }
 
 // Updated Company interface to match the database schema
@@ -101,21 +114,25 @@ export interface Company {
   country?: string;
   currency?: string;
   timezone: string;
-  is_default?: boolean;
-  user_id?: string;
+  is_default: boolean;
+  user_id: string;
   created_at: string;
   updated_at?: string;
 }
 
-// Updated InvoiceTemplate interface to match the database schema
+// Updated InvoiceTemplate interface to support both database schema and frontend usage
 export interface InvoiceTemplate {
   id: string;
   name: string;
   content: string;
   description?: string;
-  company_id?: string;
+  company_id: string;
+  companyId?: string;
   user_id: string;
+  userId?: string;
   created_at: string;
+  createdAt?: string;
   updated_at: string;
+  updatedAt?: string;
   items?: any[]; // Replace with proper type definition if available
 }

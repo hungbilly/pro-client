@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import JobList from '@/components/JobList';
 import InvoiceList from '@/components/InvoiceList';
-import { getClient, updateClient, deleteClient, getInvoices, getJobs, getClientInvoices, getClientJobs } from '@/lib/storage';
+import { getClient, updateClient, deleteClient, getClientInvoices, getClientJobs } from '@/lib/storage';
 import { useCompany } from '@/components/CompanySelector';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
@@ -28,7 +28,7 @@ const ClientDetail = () => {
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   const [notes, setNotes] = useState('');
-  const { selectedCompanyId } = useCompany();
+  const { selectedCompany } = useCompany();
 
   const { data: client, isLoading: isLoadingClient, isError: isErrorClient } = useQuery({
     queryKey: ['client', id],
@@ -68,7 +68,9 @@ const ClientDetail = () => {
   }, [client]);
 
   const updateClientMutation = useMutation({
-    mutationFn: (updatedClient: Client) => updateClient(updatedClient),
+    mutationFn: async (updatedClient: Client) => {
+      return await updateClient(updatedClient);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client', id] });
       setIsEditing(false);
@@ -80,7 +82,9 @@ const ClientDetail = () => {
   });
 
   const deleteClientMutation = useMutation({
-    mutationFn: (clientId: string) => deleteClient(clientId),
+    mutationFn: async (clientId: string) => {
+      return await deleteClient(clientId);
+    },
     onSuccess: () => {
       toast.success('Client deleted successfully.');
       navigate('/clients');
@@ -349,7 +353,7 @@ const ClientDetail = () => {
                 {isLoadingJobs ? (
                   <div className="text-center p-4">Loading jobs...</div>
                 ) : (
-                  <JobList client={client} jobs={jobs} onJobDelete={handleJobDeleted} />
+                  <JobList jobs={jobs} onJobDelete={handleJobDeleted} />
                 )}
               </div>
               
@@ -369,7 +373,7 @@ const ClientDetail = () => {
                 {isLoadingInvoices ? (
                   <div className="text-center p-4">Loading invoices...</div>
                 ) : (
-                  <InvoiceList invoices={invoices} client={client} showCreateButton={false} />
+                  <InvoiceList invoices={invoices} showCreateButton={false} />
                 )}
               </div>
             </div>

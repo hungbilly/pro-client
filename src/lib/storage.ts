@@ -1,3 +1,4 @@
+
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -118,6 +119,39 @@ const mapPaymentScheduleForDatabase = (schedule: PaymentSchedule, invoiceId: str
   };
 };
 
+// Map invoice template from database format
+const mapInvoiceTemplateFromDatabase = (templateData: any): InvoiceTemplate => {
+  return {
+    id: templateData.id,
+    name: templateData.name,
+    content: templateData.content,
+    description: templateData.description || '',
+    company_id: templateData.company_id || '',
+    companyId: templateData.company_id || '',
+    user_id: templateData.user_id,
+    userId: templateData.user_id,
+    created_at: templateData.created_at,
+    createdAt: templateData.created_at,
+    updated_at: templateData.updated_at,
+    updatedAt: templateData.updated_at,
+    items: []
+  };
+};
+
+// Map invoice template to database format
+const mapInvoiceTemplateForDatabase = (template: InvoiceTemplate): any => {
+  return {
+    id: template.id,
+    name: template.name,
+    content: template.content,
+    description: template.description,
+    company_id: template.company_id || template.companyId,
+    user_id: template.user_id || template.userId,
+    created_at: template.created_at || template.createdAt,
+    updated_at: template.updated_at || template.updatedAt
+  };
+};
+
 // Map invoice from database format
 const mapInvoiceFromDatabase = (invoiceData: any): Invoice => {
   return {
@@ -141,35 +175,6 @@ const mapInvoiceFromDatabase = (invoiceData: any): Invoice => {
     templateId: invoiceData.template_id,
     contractAcceptedAt: invoiceData.contract_accepted_at,
     invoiceAcceptedAt: invoiceData.invoice_accepted_at,
-  };
-};
-
-// Map invoice template from database format
-const mapInvoiceTemplateFromDatabase = (templateData: any): InvoiceTemplate => {
-  return {
-    id: templateData.id,
-    name: templateData.name,
-    content: templateData.content,
-    description: templateData.description || '',
-    company_id: templateData.company_id || '',
-    user_id: templateData.user_id,
-    created_at: templateData.created_at,
-    updated_at: templateData.updated_at,
-    items: []
-  };
-};
-
-// Map invoice template to database format
-const mapInvoiceTemplateForDatabase = (template: InvoiceTemplate): any => {
-  return {
-    id: template.id,
-    name: template.name,
-    content: template.content,
-    description: template.description,
-    company_id: template.company_id,
-    user_id: template.user_id,
-    created_at: template.created_at,
-    updated_at: template.updated_at
   };
 };
 
@@ -220,6 +225,71 @@ export const getClients = async (companyId?: string): Promise<Client[]> => {
     return (clients || []).map(mapClientFromDatabase);
   } catch (error) {
     console.error("Unexpected error fetching clients:", error);
+    return [];
+  }
+};
+
+// Function to get client's jobs
+export const getClientJobs = async (clientId: string): Promise<Job[]> => {
+  try {
+    const { data: jobs, error } = await supabase
+      .from('jobs')
+      .select('*')
+      .eq('client_id', clientId)
+      .order('date', { ascending: false });
+
+    if (error) {
+      console.error(`Error fetching jobs for client ${clientId}:`, error);
+      return [];
+    }
+
+    return (jobs || []).map(mapJobFromDatabase);
+  } catch (error) {
+    console.error(`Unexpected error fetching jobs for client ${clientId}:`, error);
+    return [];
+  }
+};
+
+// Function to get client's invoices
+export const getClientInvoices = async (clientId: string): Promise<Invoice[]> => {
+  try {
+    const { data: invoices, error } = await supabase
+      .from('invoices')
+      .select('*')
+      .eq('client_id', clientId)
+      .order('date', { ascending: false });
+
+    if (error) {
+      console.error(`Error fetching invoices for client ${clientId}:`, error);
+      return [];
+    }
+
+    const mappedInvoices = invoices.map(mapInvoiceFromDatabase);
+    
+    // Fetch items and payment schedules for each invoice
+    for (const invoice of mappedInvoices) {
+      const { data: items } = await supabase
+        .from('invoice_items')
+        .select('*')
+        .eq('invoice_id', invoice.id);
+      
+      if (items) {
+        invoice.items = items as InvoiceItem[];
+      }
+      
+      const { data: schedules } = await supabase
+        .from('payment_schedules')
+        .select('*')
+        .eq('invoice_id', invoice.id);
+      
+      if (schedules) {
+        invoice.paymentSchedules = schedules.map(mapPaymentScheduleFromDatabase);
+      }
+    }
+
+    return mappedInvoices;
+  } catch (error) {
+    console.error(`Unexpected error fetching invoices for client ${clientId}:`, error);
     return [];
   }
 };
@@ -323,22 +393,7 @@ export const getCompanies = async (userId: string): Promise<Company[]> => {
       return [];
     }
 
-    return companies.map(company => ({
-      id: company.id,
-      name: company.name,
-      email: company.email,
-      phone: company.phone,
-      address: company.address,
-      website: company.website,
-      logo_url: company.logo_url,
-      country: company.country,
-      currency: company.currency || 'USD',
-      timezone: company.timezone || 'UTC',
-      is_default: company.is_default,
-      user_id: company.user_id,
-      created_at: company.created_at,
-      updated_at: company.updated_at
-    })) || [];
+    return companies || [];
   } catch (error) {
     console.error("Unexpected error fetching companies:", error);
     return [];
@@ -358,24 +413,7 @@ export const getCompany = async (id: string): Promise<Company | null> => {
       return null;
     }
 
-    if (!company) return null;
-
-    return {
-      id: company.id,
-      name: company.name,
-      email: company.email,
-      phone: company.phone,
-      address: company.address,
-      website: company.website,
-      logo_url: company.logo_url,
-      country: company.country,
-      currency: company.currency || 'USD',
-      timezone: company.timezone || 'UTC',
-      is_default: company.is_default,
-      user_id: company.user_id,
-      created_at: company.created_at,
-      updated_at: company.updated_at
-    };
+    return company || null;
   } catch (error) {
     console.error(`Unexpected error fetching company with id ${id}:`, error);
     return null;
@@ -410,22 +448,7 @@ export const saveCompany = async (company: Company): Promise<Company> => {
       throw error;
     }
 
-    return {
-      id: data.id,
-      name: data.name,
-      email: data.email,
-      phone: data.phone,
-      address: data.address,
-      website: data.website,
-      logo_url: data.logo_url,
-      country: data.country,
-      currency: data.currency,
-      timezone: data.timezone,
-      is_default: data.is_default,
-      user_id: data.user_id,
-      created_at: data.created_at,
-      updated_at: data.updated_at
-    };
+    return data;
   } catch (error) {
     console.error("Unexpected error saving company:", error);
     throw error;
@@ -461,22 +484,7 @@ export const updateCompany = async (company: Company): Promise<Company> => {
       throw error;
     }
 
-    return {
-      id: data.id,
-      name: data.name,
-      email: data.email,
-      phone: data.phone,
-      address: data.address,
-      website: data.website,
-      logo_url: data.logo_url,
-      country: data.country,
-      currency: data.currency,
-      timezone: data.timezone,
-      is_default: data.is_default,
-      user_id: data.user_id,
-      created_at: data.created_at,
-      updated_at: data.updated_at
-    };
+    return data;
   } catch (error) {
     console.error(`Unexpected error updating company with id ${company.id}:`, error);
     throw error;
@@ -657,38 +665,16 @@ export const deleteJob = async (id: string): Promise<void> => {
 // ================================  Invoice Functions =================================
 // ===================================================================================
 
-// Function to map database invoice data to the Invoice interface
-const mapInvoiceFromDatabase = (invoiceData: any): Invoice => {
-  return {
-    id: invoiceData.id,
-    clientId: invoiceData.client_id,
-    companyId: invoiceData.company_id || '',
-    jobId: invoiceData.job_id,
-    number: invoiceData.number,
-    amount: invoiceData.amount,
-    date: invoiceData.date,
-    dueDate: invoiceData.due_date,
-    status: invoiceData.status,
-    contractStatus: invoiceData.contract_status || 'pending',
-    items: [], // This will be populated later
-    notes: invoiceData.notes,
-    contractTerms: invoiceData.contract_terms,
-    viewLink: invoiceData.view_link,
-    paymentSchedules: [], // This will be populated later
-    pdfUrl: invoiceData.pdf_url,
-    shootingDate: invoiceData.shooting_date,
-    templateId: invoiceData.template_id,
-    contractAcceptedAt: invoiceData.contract_accepted_at,
-    invoiceAcceptedAt: invoiceData.invoice_accepted_at,
-  };
-};
-
-export const getInvoices = async (): Promise<Invoice[]> => {
+export const getInvoices = async (companyId?: string): Promise<Invoice[]> => {
   try {
-    const { data: invoicesData, error } = await supabase
-      .from('invoices')
-      .select('*')
-      .order('created_at', { ascending: false });
+    let query = supabase.from('invoices').select('*').order('created_at', { ascending: false });
+    
+    // If companyId is provided, filter by it
+    if (companyId) {
+      query = query.eq('company_id', companyId);
+    }
+
+    const { data: invoicesData, error } = await query;
 
     if (error) {
       console.error("Error fetching invoices:", error);
@@ -1042,4 +1028,39 @@ export const updateInvoiceStatus = async (id: string, status: Invoice['status'])
   }
 };
 
-export const
+// Functions to update contract and payment status
+export const updateContractStatus = async (id: string, contractStatus: ContractStatus): Promise<void> => {
+  try {
+    const { error } = await supabase
+      .from('invoices')
+      .update({ contract_status: contractStatus })
+      .eq('id', id);
+
+    if (error) {
+      console.error(`Error updating contract status for invoice id ${id}:`, error);
+      throw error;
+    }
+  } catch (error) {
+    console.error(`Unexpected error updating contract status for invoice id ${id}:`, error);
+    throw error;
+  }
+};
+
+export const updatePaymentScheduleStatus = async (id: string, status: PaymentStatus): Promise<void> => {
+  try {
+    const { error } = await supabase
+      .from('payment_schedules')
+      .update({ status })
+      .eq('id', id);
+
+    if (error) {
+      console.error(`Error updating payment schedule status for id ${id}:`, error);
+      throw error;
+    }
+  } catch (error) {
+    console.error(`Unexpected error updating payment schedule status for id ${id}:`, error);
+    throw error;
+  }
+};
+
+// Export any other necessary functions

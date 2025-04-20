@@ -82,10 +82,31 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
         .select('*')
         .eq('company_id', selectedCompany.id)
         .order('created_at', { ascending: false });
-      return data || [];
+        
+      return data ? data.map(job => mapJobFromDatabase(job)) : [];
     },
     enabled: !!selectedCompany
   });
+
+  const mapJobFromDatabase = (data: any): Job => {
+    return {
+      id: data.id,
+      clientId: data.client_id,
+      companyId: data.company_id || '',
+      title: data.title,
+      description: data.description || '',
+      status: data.status,
+      date: data.date || '',
+      location: data.location || '',
+      startTime: data.start_time || '',
+      endTime: data.end_time || '',
+      isFullDay: data.is_full_day || false,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+      calendarEventId: data.calendar_event_id,
+      timezone: data.timezone || 'UTC'
+    };
+  };
 
   const { data: hasCalendarIntegration, isLoading: checkingIntegration } = useQuery({
     queryKey: ['calendar-integration', user?.id],
@@ -244,10 +265,10 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
           title,
           description,
           status,
-          date: formattedDate,
+          date: formattedDate || '',
           location,
-          startTime: isFullDay ? undefined : startTime,
-          endTime: isFullDay ? undefined : endTime,
+          startTime: isFullDay ? '' : startTime,
+          endTime: isFullDay ? '' : endTime,
           isFullDay,
           createdAt: existingJob.createdAt,
           updatedAt: new Date().toISOString(),

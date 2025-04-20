@@ -28,6 +28,13 @@ const Invoices = () => {
           ) : (
             <div className="grid gap-4">
               {/* Render invoice list here */}
+              {invoices.map(invoice => (
+                <div key={invoice.id} className="border p-4 rounded">
+                  <p>Invoice #{invoice.number}</p>
+                  <p>Amount: ${invoice.amount}</p>
+                  <p>Status: {invoice.status}</p>
+                </div>
+              ))}
             </div>
           )}
         </div>

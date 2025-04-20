@@ -88,8 +88,9 @@ export interface Package {
   updated_at: string;
 }
 
-export type InvoiceStatus = 'draft' | 'sent' | 'accepted' | 'paid';
 export type ContractStatus = 'pending' | 'accepted';
+export type InvoiceStatus = 'draft' | 'sent' | 'accepted' | 'paid';
+
 export type PaymentStatus = 'paid' | 'unpaid' | 'write-off';
 
 export interface PaymentSchedule {
@@ -112,7 +113,7 @@ export interface Invoice {
   date: string;
   dueDate: string;
   status: InvoiceStatus;
-  contractStatus?: ContractStatus;
+  contractStatus: ContractStatus;
   items: InvoiceItem[];
   notes?: string;
   contractTerms?: string;
@@ -121,8 +122,8 @@ export interface Invoice {
   shootingDate?: string;
   pdfUrl?: string;
   templateId?: string;
-  invoice_accepted_by?: string;
   contract_accepted_at?: string;
+  invoice_accepted_by?: string;
 }
 
 export interface InvoiceItem {

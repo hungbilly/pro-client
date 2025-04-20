@@ -393,7 +393,7 @@ const InvoiceView = () => {
       const { data, error } = await supabase
         .from('invoices')
         .update({ 
-          contract_status: 'accepted', 
+          contract_status: 'accepted' as ContractStatus, 
           contract_accepted_at: new Date().toISOString(),
           invoice_accepted_by: name 
         })
@@ -412,22 +412,14 @@ const InvoiceView = () => {
       // Update the invoice state with the new values
       setInvoice(prev => {
         if (!prev) return prev;
-        
-        const updatedInvoice = { 
-          ...prev, 
-          contractStatus: 'accepted',
+        return {
+          ...prev,
+          contractStatus: 'accepted' as ContractStatus,
           invoice_accepted_by: name,
           contract_accepted_at: new Date().toISOString()
         };
-        
-        console.log('[InvoiceView] Updated invoice state:', {
-          contractStatus: updatedInvoice.contractStatus,
-          invoice_accepted_by: updatedInvoice.invoice_accepted_by,
-          contract_accepted_at: updatedInvoice.contract_accepted_at
-        });
-        
-        return updatedInvoice;
       });
+      
     } catch (err) {
       console.error('[InvoiceView] Failed to accept contract:', err);
       toast.error('Error accepting contract terms');

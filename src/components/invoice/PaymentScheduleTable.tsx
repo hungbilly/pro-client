@@ -1,3 +1,4 @@
+
 import React, { memo, useState, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -72,7 +73,8 @@ const PaymentScheduleTable = memo(({
   }, [totalPercentage]);
 
   const location = useLocation();
-  const isEditView = location.pathname.includes('/edit/');
+  // Remove the duplicate isEditView declaration
+  // const isEditView = location.pathname.includes('/edit/');
 
   const handleDateSelect = (paymentId: string, date: Date | undefined) => {
     if (!date || !onUpdatePaymentDate) return;

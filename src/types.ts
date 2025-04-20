@@ -50,6 +50,7 @@ export interface InvoiceItem {
   rate: number;
   amount: number;
   discount?: string;
+  productName?: string; // Adding this for backwards compatibility
 }
 
 export interface Invoice {
@@ -100,6 +101,19 @@ export interface InvoiceTemplate {
   company_id: string;
   user_id: string;
   content: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Add the Package interface that was missing
+export interface Package {
+  id: string;
+  name: string;
+  description?: string;
+  price: number;
+  tax_rate?: number;
+  user_id: string;
+  company_id?: string;
   created_at: string;
   updated_at: string;
 }

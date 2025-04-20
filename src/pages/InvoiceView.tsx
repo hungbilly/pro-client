@@ -332,13 +332,27 @@ const InvoiceView = () => {
     }
   };
 
-  const handleAcceptContract = async () => {
+  const handleAcceptContract = async (name: string) => {
     if (!invoice) return;
     
     try {
-      await updateContractStatus(invoice.id, 'accepted');
+      const { data, error } = await supabase
+        .from('invoices')
+        .update({ 
+          contract_status: 'accepted', 
+          contract_accepted_at: new Date().toISOString(),
+          invoice_accepted_by: name 
+        })
+        .eq('id', invoice.id);
+
+      if (error) throw error;
+
       toast.success('Contract terms accepted successfully');
-      setInvoice(prev => prev ? { ...prev, contractStatus: 'accepted' } : null);
+      setInvoice(prev => prev ? { 
+        ...prev, 
+        contractStatus: 'accepted',
+        invoice_accepted_by: name 
+      } : null);
     } catch (err) {
       console.error('Failed to accept contract:', err);
       toast.error('Error accepting contract terms');

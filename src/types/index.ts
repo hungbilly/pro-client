@@ -121,6 +121,7 @@ export interface Invoice {
   shootingDate?: string;
   pdfUrl?: string;
   templateId?: string; // Added to track which template was used
+  invoice_accepted_by?: string; // Optional field for the name of who accepted the invoice
 }
 
 export interface InvoiceItem {

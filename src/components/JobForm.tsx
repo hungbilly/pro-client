@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CalendarIcon, Clock, User, Mail, Phone, MapPin, Globe, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { getClient, saveJob, updateJob, getJob, getJobs } from '@/lib/storage';
+import { getClient, saveJob, updateJob, getJob } from '@/lib/storage';
 import { format } from 'date-fns';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -59,10 +59,12 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
   console.log('Company timezone:', selectedCompany?.timezone);
   console.log('Timezone to use:', timezoneToUse);
 
-  // Fetch clients for the dropdown
   const { data: clients = [], isLoading: isClientsLoading } = useQuery({
     queryKey: ['clients', selectedCompany?.id],
-    queryFn: () => getClients(selectedCompany?.id),
+    queryFn: async () => {
+      if (!selectedCompany?.id) return [];
+      return await getClients(selectedCompany.id);
+    },
     enabled: !!selectedCompany
   });
 

@@ -1068,3 +1068,135 @@ export const deleteInvoiceTemplate = async (id: string): Promise<void> => {
     throw error;
   }
 };
+
+// ===================================================================================
+// ================================  Client Related Functions =========================
+// ===================================================================================
+
+export const getClientInvoices = async (clientId: string): Promise<Invoice[]> => {
+  try {
+    const { data: invoicesData, error } = await supabase
+      .from('invoices')
+      .select('*')
+      .eq('client_id', clientId)
+      .order('date', { ascending: false });
+
+    if (error) {
+      console.error(`Error fetching invoices for client ${clientId}:`, error);
+      return [];
+    }
+
+    const invoices: Invoice[] = [];
+    for (const invoiceData of invoicesData || []) {
+      const invoice = mapInvoiceFromDatabase(invoiceData);
+      
+      // Fetch invoice items
+      const { data: itemsData, error: itemsError } = await supabase
+        .from('invoice_items')
+        .select('*')
+        .eq('invoice_id', invoice.id);
+
+      if (itemsError) {
+        console.error(`Error fetching invoice items for invoice id ${invoice.id}:`, itemsError);
+      } else {
+        invoice.items = itemsData || [];
+      }
+
+      // Fetch payment schedules
+      const { data: schedulesData, error: schedulesError } = await supabase
+        .from('payment_schedules')
+        .select('*')
+        .eq('invoice_id', invoice.id)
+        .order('due_date', { ascending: true });
+
+      if (schedulesError) {
+        console.error(`Error fetching payment schedules for invoice id ${invoice.id}:`, schedulesError);
+      } else {
+        invoice.paymentSchedules = (schedulesData || []).map(mapPaymentScheduleFromDatabase);
+      }
+
+      invoices.push(invoice);
+    }
+
+    return invoices;
+  } catch (error) {
+    console.error(`Unexpected error fetching invoices for client ${clientId}:`, error);
+    return [];
+  }
+};
+
+export const getClientJobs = async (clientId: string): Promise<Job[]> => {
+  try {
+    const { data: jobs, error } = await supabase
+      .from('jobs')
+      .select('*')
+      .eq('client_id', clientId)
+      .order('date', { ascending: false });
+
+    if (error) {
+      console.error(`Error fetching jobs for client ${clientId}:`, error);
+      return [];
+    }
+
+    return (jobs || []).map(mapJobFromDatabase);
+  } catch (error) {
+    console.error(`Unexpected error fetching jobs for client ${clientId}:`, error);
+    return [];
+  }
+};
+
+// ===================================================================================
+// ================================  Job Related Functions ============================
+// ===================================================================================
+
+export const getJobInvoices = async (jobId: string): Promise<Invoice[]> => {
+  try {
+    const { data: invoicesData, error } = await supabase
+      .from('invoices')
+      .select('*')
+      .eq('job_id', jobId)
+      .order('date', { ascending: false });
+
+    if (error) {
+      console.error(`Error fetching invoices for job ${jobId}:`, error);
+      return [];
+    }
+
+    const invoices: Invoice[] = [];
+    for (const invoiceData of invoicesData || []) {
+      const invoice = mapInvoiceFromDatabase(invoiceData);
+      
+      // Fetch invoice items
+      const { data: itemsData, error: itemsError } = await supabase
+        .from('invoice_items')
+        .select('*')
+        .eq('invoice_id', invoice.id);
+
+      if (itemsError) {
+        console.error(`Error fetching invoice items for invoice id ${invoice.id}:`, itemsError);
+      } else {
+        invoice.items = itemsData || [];
+      }
+
+      // Fetch payment schedules
+      const { data: schedulesData, error: schedulesError } = await supabase
+        .from('payment_schedules')
+        .select('*')
+        .eq('invoice_id', invoice.id)
+        .order('due_date', { ascending: true });
+
+      if (schedulesError) {
+        console.error(`Error fetching payment schedules for invoice id ${invoice.id}:`, schedulesError);
+      } else {
+        invoice.paymentSchedules = (schedulesData || []).map(mapPaymentScheduleFromDatabase);
+      }
+
+      invoices.push(invoice);
+    }
+
+    return invoices;
+  } catch (error) {
+    console.error(`Unexpected error fetching invoices for job ${jobId}:`, error);
+    return [];
+  }
+};

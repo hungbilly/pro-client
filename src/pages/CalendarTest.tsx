@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/components/ui/use-toast";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Client, Job } from '@/types';
 import { saveClient, saveJob, getClients } from '@/lib/storage';
 import { v4 as generateUUID } from 'uuid';
@@ -349,7 +350,12 @@ const CalendarTest = () => {
               <Label htmlFor="isFullDay" className="text-right">
                 Full Day
               </Label>
-              <Checkbox id="isFullDay" checked={isFullDay} onCheckedChange={setIsFullDay} className="col-span-3" />
+              <Checkbox 
+                id="isFullDay" 
+                checked={isFullDay} 
+                onCheckedChange={(checked) => setIsFullDay(checked === true)}
+                className="col-span-3" 
+              />
             </div>
           </div>
           <DialogFooter>

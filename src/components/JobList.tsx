@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Job, Client } from '@/types';
@@ -13,14 +12,21 @@ import { useCompany } from './CompanySelector';
 
 interface JobListProps {
   client?: Client;
+  jobs?: Job[];
+  onJobDelete?: (jobId: string) => void;
 }
 
-const JobList: React.FC<JobListProps> = ({ client }) => {
+const JobList: React.FC<JobListProps> = ({ client, jobs: providedJobs, onJobDelete }) => {
   const navigate = useNavigate();
   const [jobs, setJobs] = useState<Job[]>([]);
   const { selectedCompany } = useCompany();
 
   useEffect(() => {
+    if (providedJobs) {
+      setJobs(providedJobs);
+      return;
+    }
+
     const fetchJobs = async () => {
       if (!selectedCompany) return;
       try {
@@ -33,14 +39,18 @@ const JobList: React.FC<JobListProps> = ({ client }) => {
     };
 
     fetchJobs();
-  }, [selectedCompany]);
+  }, [selectedCompany, providedJobs]);
 
   const handleDeleteJob = async (jobId: string) => {
     try {
       await deleteJob(jobId);
-      // After deletion is successful, remove the job from state
       setJobs(jobs.filter(job => job.id !== jobId));
-      toast.success("Job deleted successfully");
+      
+      if (onJobDelete) {
+        onJobDelete(jobId);
+      } else {
+        toast.success("Job deleted successfully");
+      }
     } catch (error) {
       console.error("Failed to delete job:", error);
       toast.error("Failed to delete job");

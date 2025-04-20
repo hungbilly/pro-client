@@ -1,16 +1,7 @@
-import React, { useState, useEffect, useMemo, useCallback, memo, useRef } from 'react';
-import { useParams, Link, useLocation } from 'react-router-dom';
-import { 
-  getInvoiceByViewLink, 
-  getClient, 
-  updateInvoiceStatus, 
-  getInvoice, 
-  updateContractStatus,
-  updatePaymentScheduleStatus,
-  getJob
-} from '@/lib/storage';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useParams, useLocation, Link } from 'react-router-dom';
 import { Invoice, Client, Job, CompanyClientView, PaymentSchedule } from '@/types';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardFooter, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +17,10 @@ import RichTextEditor from '@/components/RichTextEditor';
 import PaymentScheduleTable from '@/components/invoice/PaymentScheduleTable';
 import isEqual from 'lodash/isEqual';
 import ContractAcceptance from '@/components/invoice/ContractAcceptance';
+import InvoiceHeader from '@/components/invoice/InvoiceHeader';
+import InvoiceCompanyInfo from '@/components/invoice/InvoiceCompanyInfo';
+import InvoiceStatusBadges from '@/components/invoice/InvoiceStatusBadges';
+import InvoiceFooterActions from '@/components/invoice/InvoiceFooterActions';
 
 const InvoiceView = () => {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
@@ -279,6 +274,56 @@ const InvoiceView = () => {
     }
   }, [invoice]);
 
+  const handleAcceptInvoice = async () => {
+    if (!invoice) return;
+    
+    try {
+      await updateInvoiceStatus(invoice.id, 'accepted');
+      toast.success('Invoice accepted successfully');
+      setInvoice(prev => prev ? { ...prev, status: 'accepted' } : null);
+    } catch (err) {
+      console.error('Failed to accept invoice:', err);
+      toast.error('Error accepting invoice');
+    }
+  };
+
+  const handleAcceptContract = async (name: string) => {
+    if (!invoice) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('invoices')
+        .update({ 
+          contract_status: 'accepted', 
+          contract_accepted_at: new Date().toISOString(),
+          invoice_accepted_by: name 
+        })
+        .eq('id', invoice.id);
+
+      if (error) throw error;
+
+      toast.success('Contract terms accepted successfully');
+      setInvoice(prev => prev ? { 
+        ...prev, 
+        contractStatus: 'accepted',
+        invoice_accepted_by: name 
+      } : null);
+      
+      console.log('[InvoiceView] Updated invoice with acceptor name:', name);
+    } catch (err) {
+      console.error('Failed to accept contract:', err);
+      toast.error('Error accepting contract terms');
+    }
+  };
+
+  const formatCurrency = useCallback((amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    }).format(amount);
+  }, []);
+
   const handleCopyInvoiceLink = () => {
     if (!invoice) return;
     
@@ -352,48 +397,6 @@ const InvoiceView = () => {
     } catch (err) {
       console.error('Error downloading invoice:', err);
       toast.error('Failed to download invoice');
-    }
-  };
-
-  const handleAcceptInvoice = async () => {
-    if (!invoice) return;
-    
-    try {
-      await updateInvoiceStatus(invoice.id, 'accepted');
-      toast.success('Invoice accepted successfully');
-      setInvoice(prev => prev ? { ...prev, status: 'accepted' } : null);
-    } catch (err) {
-      console.error('Failed to accept invoice:', err);
-      toast.error('Error accepting invoice');
-    }
-  };
-
-  const handleAcceptContract = async (name: string) => {
-    if (!invoice) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from('invoices')
-        .update({ 
-          contract_status: 'accepted', 
-          contract_accepted_at: new Date().toISOString(),
-          invoice_accepted_by: name 
-        })
-        .eq('id', invoice.id);
-
-      if (error) throw error;
-
-      toast.success('Contract terms accepted successfully');
-      setInvoice(prev => prev ? { 
-        ...prev, 
-        contractStatus: 'accepted',
-        invoice_accepted_by: name 
-      } : null);
-      
-      console.log('[InvoiceView] Updated invoice with acceptor name:', name);
-    } catch (err) {
-      console.error('Failed to accept contract:', err);
-      toast.error('Error accepting contract terms');
     }
   };
 
@@ -511,100 +514,17 @@ const InvoiceView = () => {
   return (
     <PageTransition>
       <div className="container-fluid px-4 py-8 max-w-[95%] mx-auto">
-        {!isClientView && (
-          <div className="flex gap-2 mb-4">
-            <Button asChild variant="ghost">
-              <Link to="/">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Dashboard
-              </Link>
-            </Button>
-            
-            {invoice?.jobId && (
-              <Button asChild variant="ghost">
-                <Link to={`/job/${invoice.jobId}`}>
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back to Job
-                </Link>
-              </Button>
-            )}
-            
-            {invoice?.clientId && (
-              <Button asChild variant="ghost">
-                <Link to={`/client/${invoice.clientId}`}>
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back to Client
-                </Link>
-              </Button>
-            )}
-          </div>
-        )}
-        
-        {isClientView && (
-          <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold mb-2">Invoice #{invoice.number}</h1>
-            <p className="text-muted-foreground">
-              Please review and accept this invoice and contract terms.
-            </p>
-          </div>
-        )}
+        <InvoiceHeader 
+          isClientView={isClientView}
+          invoiceNumber={invoice.number}
+          jobId={invoice.jobId}
+          clientId={invoice.clientId}
+        />
         
         <Card className="w-full mx-auto bg-white dark:bg-gray-900 shadow-sm" ref={invoiceRef}>
           <CardHeader className="pb-0">
-            {!isClientView && (
-              <div className="flex justify-end mb-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => {
-                    if (invoice.jobId) {
-                      window.location.href = `/job/${invoice.jobId}/invoice/${invoice.id}/edit`;
-                    } else {
-                      window.location.href = `/client/${client.id}/invoice/${invoice.id}/edit`;
-                    }
-                  }}
-                  className="flex items-center gap-1"
-                >
-                  <Edit className="h-3 w-3" />
-                  Edit Invoice
-                </Button>
-              </div>
-            )}
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-4">
-              <div className="flex flex-col justify-between">
-                <div className="flex items-start mb-6 h-80">
-                  {displayCompany?.logo_url ? (
-                    <img 
-                      src={displayCompany.logo_url} 
-                      alt={`${displayCompany.name} Logo`}
-                      className="h-full max-h-80 w-auto object-contain" 
-                    />
-                  ) : (
-                    <div className="h-24 w-24 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center text-gray-400">
-                      <Building className="h-14 w-14" />
-                    </div>
-                  )}
-                </div>
-                
-                <div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400">INVOICE</div>
-                  <div className="text-2xl font-bold"># {invoice.number}</div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">INVOICE ISSUE DATE</div>
-                  <div className="text-sm">{new Date(invoice.date).toLocaleDateString()}</div>
-                  <div className="mt-1 flex items-center">
-                    <Badge className={statusColors[invoice.status] || 'bg-gray-100 text-gray-800'}>
-                      {invoice.status.toUpperCase()}
-                    </Badge>
-                    {invoice.contractStatus === 'accepted' && (
-                      <Badge variant="outline" className={`ml-2 flex items-center gap-1 ${contractStatusColor}`}>
-                        <FileCheck className="h-3 w-3" />
-                        Contract Accepted
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              </div>
+              <InvoiceCompanyInfo company={displayCompany} />
               
               <div className="space-y-4">
                 <div>
@@ -650,6 +570,8 @@ const InvoiceView = () => {
                   )}
                 </div>
               </div>
+              
+              <InvoiceStatusBadges invoice={invoice} />
             </div>
             <Separator className="mt-6" />
           </CardHeader>
@@ -847,30 +769,16 @@ const InvoiceView = () => {
             </Tabs>
           </CardContent>
           
-          <CardFooter className="justify-end gap-2 flex-wrap pt-4 border-t">
-            <Button
-              variant="outline"
-              onClick={handleCopyInvoiceLink}
-            >
-              <LinkIcon className="h-4 w-4 mr-2" />
-              Copy Invoice Link
-            </Button>
-            <Button
-              variant="default"
-              onClick={handleDownloadInvoice}
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Download Invoice
-            </Button>
-            {!isClientView && isAdmin && (
-              <Button
-                variant="outline"
-                onClick={handleDebugPdf}
-              >
-                <Bug className="h-4 w-4 mr-2" />
-                Debug PDF
-              </Button>
-            )}
+          <CardFooter>
+            <InvoiceFooterActions
+              invoiceId={invoice.id}
+              invoiceNumber={invoice.number}
+              viewLink={invoice.viewLink}
+              pdfUrl={invoice.pdfUrl}
+              isClientView={isClientView}
+              isAdmin={isAdmin}
+              onPdfGenerated={(url) => setInvoice(prev => prev ? { ...prev, pdfUrl: url } : null)}
+            />
           </CardFooter>
         </Card>
       </div>

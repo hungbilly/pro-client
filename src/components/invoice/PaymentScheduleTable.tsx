@@ -1,3 +1,4 @@
+
 import React, { memo, useState, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -253,7 +254,8 @@ const PaymentScheduleTable = memo(({
     const paymentAmount = getPaymentAmount(schedule);
     const percentage = schedule.percentage || 0;
     
-    if (editingAmountId === schedule.id && isEditView) {
+    // Check if we're in edit mode and editing this specific amount
+    if (editingAmountId === schedule.id) {
       return (
         <div className="flex flex-col space-y-2">
           <div className="flex items-center space-x-2 mb-2">
@@ -333,7 +335,7 @@ const PaymentScheduleTable = memo(({
           <CircleDollarSign className="h-3.5 w-3.5 text-muted-foreground" />
           <span>{formatCurrency(paymentAmount)}</span>
         </div>
-        {!isClientView && isEditView && (
+        {!isClientView && (
           <Button 
             variant="ghost" 
             size="icon" 

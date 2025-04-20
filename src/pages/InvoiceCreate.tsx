@@ -1,6 +1,6 @@
 import React from 'react';
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import InvoiceForm from '@/components/InvoiceForm';
 import { getInvoice, getClient, getJob } from '@/lib/storage';
 import { Invoice, Client, Job, InvoiceTemplate } from '@/types';
@@ -26,6 +26,11 @@ interface ContractTemplate {
 const InvoiceCreate = () => {
   const { clientId, jobId, invoiceId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isEditView = location.pathname.includes('/edit/');
+  
+  console.log('InvoiceCreate rendered with path:', location.pathname, 'isEditView:', isEditView);
+  
   const [invoice, setInvoice] = useState<Invoice | undefined>(undefined);
   const [client, setClient] = useState<Client | null>(null);
   const [job, setJob] = useState<Job | null>(null);
@@ -405,6 +410,7 @@ const InvoiceCreate = () => {
           clientId={clientId || job?.clientId}
           jobId={jobId}
           invoiceId={invoiceId}
+          isEditView={isEditView}
           contractTemplates={contractTemplates}
           checkDuplicateInvoiceNumber={checkDuplicateInvoiceNumber}
           onInvoiceDeleted={handleInvoiceDeleted}

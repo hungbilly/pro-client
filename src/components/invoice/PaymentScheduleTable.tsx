@@ -1,4 +1,3 @@
-
 import React, { memo, useState, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -43,6 +42,8 @@ const PaymentScheduleTable = memo(({
   onUpdateDescription,
   onRemovePaymentSchedule
 }: PaymentScheduleTableProps) => {
+  console.log('PaymentScheduleTable rendered with props:', { isClientView, isEditView });
+  
   const paymentStatusColors: { [key: string]: string } = {
     paid: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
     unpaid: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
@@ -73,8 +74,8 @@ const PaymentScheduleTable = memo(({
   }, [totalPercentage]);
 
   const location = useLocation();
-  // Remove the duplicate isEditView declaration
-  // const isEditView = location.pathname.includes('/edit/');
+  const currentPath = location.pathname;
+  console.log('Current path:', currentPath, 'isEditView from props:', isEditView);
 
   const handleDateSelect = (paymentId: string, date: Date | undefined) => {
     if (!date || !onUpdatePaymentDate) return;
@@ -340,7 +341,10 @@ const PaymentScheduleTable = memo(({
             variant="ghost" 
             size="icon" 
             className="h-6 w-6 ml-2"
-            onClick={() => setEditingAmountId(schedule.id)}
+            onClick={() => {
+              console.log('Edit amount button clicked for schedule:', schedule.id);
+              setEditingAmountId(schedule.id);
+            }}
           >
             <Edit2 className="h-3 w-3" />
           </Button>
@@ -351,6 +355,13 @@ const PaymentScheduleTable = memo(({
 
   return (
     <div className="border rounded-md overflow-hidden">
+      {process.env.NODE_ENV === 'development' && (
+        <div className="bg-gray-100 p-2 text-xs">
+          <p>Debug: isClientView={String(isClientView)} | isEditView={String(isEditView)}</p>
+          <p>Current Path: {currentPath}</p>
+        </div>
+      )}
+      
       {!isPercentageValid && (
         <Alert variant="destructive" className="mb-4">
           <AlertCircle className="h-4 w-4" />
@@ -403,7 +414,7 @@ const PaymentScheduleTable = memo(({
                         <span>
                           {format(new Date(schedule.paymentDate), 'MMM d, yyyy')}
                         </span>
-                        {!isClientView && (
+                        {!isClientView && isEditView && (
                           <Popover open={editingDateId === schedule.id} onOpenChange={(open) => {
                             if (open) setEditingDateId(schedule.id);
                             else setEditingDateId(null);
@@ -413,7 +424,10 @@ const PaymentScheduleTable = memo(({
                                 variant="ghost" 
                                 size="icon" 
                                 className="h-8 w-8"
-                                onClick={() => setEditingDateId(schedule.id)}
+                                onClick={() => {
+                                  console.log('Edit date button clicked');
+                                  setEditingDateId(schedule.id);
+                                }}
                               >
                                 <Edit2 className="h-4 w-4" />
                               </Button>
@@ -476,7 +490,7 @@ const PaymentScheduleTable = memo(({
                         )}
                       </DropdownMenuContent>
                     </DropdownMenu>
-                    {onRemovePaymentSchedule && (
+                    {onRemovePaymentSchedule && isEditView && (
                       <Button
                         variant="ghost"
                         size="sm"

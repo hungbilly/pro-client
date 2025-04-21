@@ -161,17 +161,35 @@ serve(async (req) => {
       }
     }
 
-    // First, check if user is within free trial period (90 days from account creation)
+    // Get trial days setting from admin_settings
+    const { data: settingsData, error: settingsError } = await supabase
+      .from('admin_settings')
+      .select('default_trial_days')
+      .limit(1)
+      .single();
+    
+    let trialDays = 90; // Default fallback value
+    if (!settingsError && settingsData) {
+      trialDays = settingsData.default_trial_days;
+      console.log(`Using trial period from admin_settings: ${trialDays} days`);
+    } else {
+      console.log(`Could not fetch trial days from settings, using default: ${trialDays} days`);
+      if (settingsError) {
+        console.error('Error fetching trial days:', settingsError);
+      }
+    }
+
+    // First, check if user is within free trial period based on admin settings
     const userCreatedAt = new Date(user.created_at || Date.now());
     const trialEndDate = new Date(userCreatedAt);
-    trialEndDate.setDate(trialEndDate.getDate() + 90); // 90-day trial
+    trialEndDate.setDate(trialEndDate.getDate() + trialDays); // Use dynamic trial days
     
     const now = new Date();
-    const isInTrialPeriod = now < trialEndDate;
+    const isInTrialPeriod = trialDays > 0 && now < trialEndDate;
     
     // If user is in trial period, they have access
     if (isInTrialPeriod) {
-      console.log(`User ${userId} is in trial period until ${trialEndDate}`);
+      console.log(`User ${userId} is in trial period until ${trialEndDate}, trial days: ${trialDays}`);
       return new Response(
         JSON.stringify({
           hasAccess: true,
@@ -185,6 +203,8 @@ serve(async (req) => {
           status: 200,
         }
       );
+    } else if (trialDays <= 0) {
+      console.log(`Trial period is disabled (${trialDays} days), user has no access`);
     }
 
     // Check Stripe for customer

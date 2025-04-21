@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import UserSubscriptionsDebugging from '@/components/debug/UserSubscriptionsDebugging';
+import { Input } from "@/components/ui/input";
 
 interface UserSubscription {
   id: string;
@@ -26,6 +27,9 @@ const Admin = () => {
   const [users, setUsers] = useState<UserSubscription[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [trialDays, setTrialDays] = useState<number>(90);
+  const [trialSettingsLoading, setTrialSettingsLoading] = useState(true);
+  const [savingTrialDays, setSavingTrialDays] = useState(false);
 
   useEffect(() => {
     if (!isAdmin) {
@@ -88,7 +92,37 @@ const Admin = () => {
     fetchUsers();
   }, [isAdmin, navigate]);
 
-  if (!isAdmin) return null;
+  useEffect(() => {
+    const loadTrialSettings = async () => {
+      setTrialSettingsLoading(true);
+      const { data, error } = await supabase
+        .from("admin_settings")
+        .select("default_trial_days")
+        .limit(1)
+        .single();
+      if (data && typeof data.default_trial_days === "number") {
+        setTrialDays(data.default_trial_days);
+      }
+      setTrialSettingsLoading(false);
+    };
+    if (isAdmin) loadTrialSettings();
+  }, [isAdmin]);
+
+  const saveTrialDays = async () => {
+    setSavingTrialDays(true);
+    const { error } = await supabase
+      .from("admin_settings")
+      .update({ default_trial_days: trialDays })
+      .neq("default_trial_days", trialDays);
+
+    if (!error) {
+      toast.success("Trial period updated!");
+    } else {
+      toast.error("Failed to update trial period.");
+      console.error(error);
+    }
+    setSavingTrialDays(false);
+  };
 
   const formatDate = (dateString: string | null): string => {
     if (!dateString) {
@@ -139,6 +173,49 @@ const Admin = () => {
                 Open Calendar Test Page
               </Link>
             </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">Trial Period Settings</CardTitle>
+            <CardDescription>
+              Configure the number of days users can use the app before a subscription is required.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {trialSettingsLoading ? (
+              <span className="text-gray-500">Loading current trial settings...</span>
+            ) : (
+              <form
+                className="flex flex-col gap-3"
+                onSubmit={e => {
+                  e.preventDefault();
+                  saveTrialDays();
+                }}
+              >
+                <label className="font-medium flex items-center gap-2">
+                  Trial Period (days)
+                  <Input
+                    type="number"
+                    min={0}
+                    value={trialDays}
+                    onChange={e => setTrialDays(Number(e.target.value))}
+                    className="w-32 ml-2"
+                  />
+                </label>
+                <Button
+                  type="submit"
+                  disabled={savingTrialDays}
+                  className="w-fit"
+                >
+                  {savingTrialDays ? "Saving..." : "Save"}
+                </Button>
+              </form>
+            )}
+            <div className="text-xs text-muted-foreground mt-2">
+              This setting affects all new users who sign up without an active subscription.
+            </div>
           </CardContent>
         </Card>
       </div>

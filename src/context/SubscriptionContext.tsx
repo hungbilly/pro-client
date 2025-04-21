@@ -50,6 +50,22 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [hasCheckedSubscription, setHasCheckedSubscription] = useState<boolean>(false);
   const [isCancelling, setIsCancelling] = useState<boolean>(false);
+  const [trialDaysConfig, setTrialDaysConfig] = useState<number>(90);
+
+  useEffect(() => {
+    const loadConfig = async () => {
+      const { data, error } = await supabase
+        .from("admin_settings")
+        .select("default_trial_days")
+        .limit(1)
+        .single();
+      if (data && typeof data.default_trial_days === "number") {
+        setTrialDaysConfig(data.default_trial_days);
+        console.log("Fetched trialDaysConfig from admin_settings:", data.default_trial_days);
+      }
+    };
+    loadConfig();
+  }, []);
 
   const checkSubscription = useCallback(async () => {
     if (!user || !session) {
@@ -206,7 +222,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         subscription
       });
     }
-  }, [user, session]);
+  }, [user, session, trialDaysConfig]);
 
   const handleTrialFallback = () => {
     if (!user) return;
@@ -214,8 +230,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     console.log('Falling back to trial period check based on user creation date...');
     const userCreatedAt = new Date(user.created_at || Date.now());
     const trialEndDate = new Date(userCreatedAt);
-    trialEndDate.setDate(trialEndDate.getDate() + 90);
-    
+    trialEndDate.setDate(trialEndDate.getDate() + trialDaysConfig);
+
     const now = new Date();
     const isInTrialPeriod = now < trialEndDate;
     

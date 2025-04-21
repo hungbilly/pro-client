@@ -76,12 +76,13 @@ serve(async (req) => {
 
     console.log(`User profile verified for user ${userId}`);
 
-    // Get the current active subscription for the user (bypassing RLS for now)
+    // Get the current subscription for the user (active OR trialing)
+    // Modified to include both active and trialing subscriptions
     const { data: subscriptions, error: subError } = await supabaseAdmin
       .from('user_subscriptions')
       .select('*')
       .eq('user_id', userId)
-      .eq('status', 'active')
+      .in('status', ['active', 'trialing'])
       .order('created_at', { ascending: false });
 
     if (subError) {
@@ -96,9 +97,9 @@ serve(async (req) => {
     }
 
     // Log the retrieved subscriptions for debugging
-    console.log(`Found ${subscriptions?.length || 0} active subscriptions for user ${userId}:`, subscriptions);
+    console.log(`Found ${subscriptions?.length || 0} active/trialing subscriptions for user ${userId}:`, subscriptions);
 
-    // Check if an active subscription exists
+    // Check if a subscription exists
     if (!subscriptions || subscriptions.length === 0) {
       // Check if there are any subscriptions at all (regardless of status)
       const { data: allSubscriptions } = await supabaseAdmin
@@ -107,43 +108,14 @@ serve(async (req) => {
         .eq('user_id', userId);
 
       if (allSubscriptions && allSubscriptions.length > 0) {
-        console.log(`No active subscriptions found, but user has ${allSubscriptions.length} subscriptions with statuses:`, allSubscriptions.map(sub => sub.status));
+        console.log(`No active/trialing subscriptions found, but user has ${allSubscriptions.length} subscriptions with statuses:`, allSubscriptions.map(sub => sub.status));
         return new Response(
-          JSON.stringify({ error: 'No active subscription found to cancel' }),
+          JSON.stringify({ error: 'No active or trialing subscription found to cancel' }),
           { 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 400,
           }
         );
-      }
-
-      // If no subscriptions exist in the database, check Stripe directly using stripe_customer_id from user_subscriptions
-      const { data: subscriptionData } = await supabaseAdmin
-        .from('user_subscriptions')
-        .select('stripe_customer_id')
-        .eq('user_id', userId)
-        .single();
-
-      if (subscriptionData?.stripe_customer_id) {
-        const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
-          apiVersion: '2023-10-16',
-        });
-
-        const stripeSubscriptions = await stripe.subscriptions.list({
-          customer: subscriptionData.stripe_customer_id,
-          status: 'active',
-        });
-
-        if (stripeSubscriptions.data.length > 0) {
-          console.log(`Found ${stripeSubscriptions.data.length} active subscriptions in Stripe for user ${userId}, but not in database`);
-          return new Response(
-            JSON.stringify({ error: 'Active subscription found in Stripe but not in database. Please contact support.' }),
-            { 
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-              status: 500,
-            }
-          );
-        }
       }
 
       console.log('No subscriptions found for user:', userId);
@@ -156,7 +128,7 @@ serve(async (req) => {
       );
     }
 
-    // Select the most recent active subscription
+    // Select the most recent active/trialing subscription
     const subscription = subscriptions[0];
     console.log('Selected subscription for cancellation:', subscription);
 
@@ -178,7 +150,7 @@ serve(async (req) => {
       );
     }
 
-    // Handle manual subscriptions
+    // Handle manual subscriptions (including trial subscriptions with 'manual' ID)
     if (stripeSubscriptionId === 'manual') {
       const { error: updateError } = await supabaseAdmin
         .from('user_subscriptions')
@@ -196,7 +168,9 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           success: true, 
-          message: 'Trial subscription canceled successfully',
+          message: subscription.status === 'trialing' ? 
+            'Trial subscription canceled successfully' : 
+            'Manual subscription canceled successfully',
           cancelDate: new Date().toISOString(),
         }),
         { 

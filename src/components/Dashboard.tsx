@@ -12,29 +12,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from './ui/badge';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useCompany } from './CompanySelector';
 import AddClientButton from './ui-custom/AddClientButton';
 import AddJobButton from './ui-custom/AddJobButton';
 import RevenueChart from './RevenueChart';
 import { supabase } from '@/integrations/supabase/client';
 import { logDebug } from '@/integrations/supabase/client';
-
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const [clientToDelete, setClientToDelete] = React.useState<string | null>(null);
@@ -44,58 +29,60 @@ const Dashboard: React.FC = () => {
   const [jobSearchQuery, setJobSearchQuery] = useState('');
   const [invoiceSearchQuery, setInvoiceSearchQuery] = useState('');
   const [localInvoices, setLocalInvoices] = useState<any[]>([]);
-  
-  const { companies, selectedCompanyId, loading: companyLoading } = useCompany();
-  
+  const {
+    companies,
+    selectedCompanyId,
+    loading: companyLoading
+  } = useCompany();
   useEffect(() => {
     if (selectedCompanyId) {
-      queryClient.invalidateQueries({ queryKey: ['clients', selectedCompanyId] });
-      queryClient.invalidateQueries({ queryKey: ['jobs', selectedCompanyId] });
-      queryClient.invalidateQueries({ queryKey: ['invoices', selectedCompanyId] });
+      queryClient.invalidateQueries({
+        queryKey: ['clients', selectedCompanyId]
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['jobs', selectedCompanyId]
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['invoices', selectedCompanyId]
+      });
     }
   }, [selectedCompanyId, queryClient]);
-
-  const { data: clients = [], isLoading: clientsLoading } = useQuery({
+  const {
+    data: clients = [],
+    isLoading: clientsLoading
+  } = useQuery({
     queryKey: ['clients', selectedCompanyId],
     queryFn: () => getClients(selectedCompanyId),
     enabled: !!selectedCompanyId
   });
-
   const fetchInvoicesWithSchedules = async (companyId: string) => {
     try {
-      const { data: invoicesData, error: invoicesError } = await supabase
-        .from('invoices')
-        .select('*')
-        .eq('company_id', companyId);
-        
+      const {
+        data: invoicesData,
+        error: invoicesError
+      } = await supabase.from('invoices').select('*').eq('company_id', companyId);
       if (invoicesError) {
         logDebug('Error fetching invoices:', invoicesError);
         return [];
       }
-      
-      const { data: schedulesData, error: schedulesError } = await supabase
-        .from('payment_schedules')
-        .select('*');
-        
+      const {
+        data: schedulesData,
+        error: schedulesError
+      } = await supabase.from('payment_schedules').select('*');
       if (schedulesError) {
         logDebug('Error fetching payment schedules:', schedulesError);
         return [];
       }
-      
       logDebug(`Fetched ${invoicesData.length} invoices and ${schedulesData.length} payment schedules`);
-      
       const invoicesWithSchedules = invoicesData.map(invoice => {
-        const invoiceSchedules = schedulesData
-          .filter(schedule => schedule.invoice_id === invoice.id)
-          .map(schedule => ({
-            id: schedule.id,
-            dueDate: schedule.due_date,
-            percentage: schedule.percentage,
-            description: schedule.description || '',
-            status: schedule.status || 'unpaid',
-            paymentDate: schedule.payment_date
-          }));
-        
+        const invoiceSchedules = schedulesData.filter(schedule => schedule.invoice_id === invoice.id).map(schedule => ({
+          id: schedule.id,
+          dueDate: schedule.due_date,
+          percentage: schedule.percentage,
+          description: schedule.description || '',
+          status: schedule.status || 'unpaid',
+          paymentDate: schedule.payment_date
+        }));
         if (invoiceSchedules.length > 0) {
           logDebug(`Invoice ${invoice.id} has ${invoiceSchedules.length} payment schedules`);
           logDebug('Sample schedule:', {
@@ -105,7 +92,6 @@ const Dashboard: React.FC = () => {
             paymentDate: invoiceSchedules[0].paymentDate
           });
         }
-        
         return {
           id: invoice.id,
           clientId: invoice.client_id,
@@ -124,7 +110,6 @@ const Dashboard: React.FC = () => {
           paymentSchedules: invoiceSchedules
         };
       });
-      
       logDebug('Processed invoices with schedules:', {
         totalInvoices: invoicesWithSchedules.length,
         sampleInvoice: invoicesWithSchedules.length > 0 ? {
@@ -134,43 +119,40 @@ const Dashboard: React.FC = () => {
           paymentDates: invoicesWithSchedules[0].paymentSchedules.map(s => s.paymentDate)
         } : null
       });
-      
       return invoicesWithSchedules;
     } catch (error) {
       logDebug('Unexpected error fetching invoices with schedules:', error);
       return [];
     }
   };
-
-  const { data: invoices = [], isLoading: invoicesLoading } = useQuery({
+  const {
+    data: invoices = [],
+    isLoading: invoicesLoading
+  } = useQuery({
     queryKey: ['invoices', selectedCompanyId],
     queryFn: () => selectedCompanyId ? fetchInvoicesWithSchedules(selectedCompanyId) : [],
     enabled: !!selectedCompanyId
   });
-
   React.useEffect(() => {
     setLocalInvoices(invoices);
   }, [invoices]);
-
-  const { data: jobs = [], isLoading: jobsLoading } = useQuery({
+  const {
+    data: jobs = [],
+    isLoading: jobsLoading
+  } = useQuery({
     queryKey: ['jobs', selectedCompanyId],
     queryFn: () => getJobs(selectedCompanyId),
     enabled: !!selectedCompanyId
   });
-
   if (companyLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
+    return <div className="flex items-center justify-center h-screen">
         <div className="text-center">
           <p className="text-lg">Loading company data...</p>
         </div>
-      </div>
-    );
+      </div>;
   }
-
   if (companies.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-screen">
+    return <div className="flex items-center justify-center h-screen">
         <div className="text-center p-8 max-w-md">
           <h2 className="text-2xl font-bold mb-4">Welcome to Wedding Studio Manager</h2>
           <p className="mb-6">To get started, you need to create a company first.</p>
@@ -178,72 +160,44 @@ const Dashboard: React.FC = () => {
             <Link to="/settings">Create Your Company</Link>
           </Button>
         </div>
-      </div>
-    );
+      </div>;
   }
-
-  const sortedClients = [...clients]
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .filter(client => 
-      client.name.toLowerCase().includes(clientSearchQuery.toLowerCase()) ||
-      client.email.toLowerCase().includes(clientSearchQuery.toLowerCase()) ||
-      client.phone.toLowerCase().includes(clientSearchQuery.toLowerCase())
-    );
-  
-  const filteredJobs = [...jobs]
-    .filter(job => 
-      job.title.toLowerCase().includes(jobSearchQuery.toLowerCase()) ||
-      clients.find(c => c.id === job.clientId)?.name.toLowerCase().includes(jobSearchQuery.toLowerCase()) ||
-      (job.location && job.location.toLowerCase().includes(jobSearchQuery.toLowerCase()))
-    );
-  
-  const filteredInvoices = [...localInvoices]
-    .filter(invoice => 
-      invoice.number.toLowerCase().includes(invoiceSearchQuery.toLowerCase()) ||
-      clients.find(c => c.id === invoice.clientId)?.name.toLowerCase().includes(invoiceSearchQuery.toLowerCase()) ||
-      invoice.status.toLowerCase().includes(invoiceSearchQuery.toLowerCase())
-    );
-
+  const sortedClients = [...clients].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).filter(client => client.name.toLowerCase().includes(clientSearchQuery.toLowerCase()) || client.email.toLowerCase().includes(clientSearchQuery.toLowerCase()) || client.phone.toLowerCase().includes(clientSearchQuery.toLowerCase()));
+  const filteredJobs = [...jobs].filter(job => job.title.toLowerCase().includes(jobSearchQuery.toLowerCase()) || clients.find(c => c.id === job.clientId)?.name.toLowerCase().includes(jobSearchQuery.toLowerCase()) || job.location && job.location.toLowerCase().includes(jobSearchQuery.toLowerCase()));
+  const filteredInvoices = [...localInvoices].filter(invoice => invoice.number.toLowerCase().includes(invoiceSearchQuery.toLowerCase()) || clients.find(c => c.id === invoice.clientId)?.name.toLowerCase().includes(invoiceSearchQuery.toLowerCase()) || invoice.status.toLowerCase().includes(invoiceSearchQuery.toLowerCase()));
   const handleClientRowClick = (clientId: string) => {
     navigate(`/client/${clientId}`);
   };
-
   const handleJobRowClick = (jobId: string) => {
     navigate(`/job/${jobId}`);
   };
-
   const handleInvoiceRowClick = (invoiceId: string) => {
     navigate(`/invoice/${invoiceId}`);
   };
-
   const handleInvoiceDeleted = (invoiceId: string) => {
     setLocalInvoices(prev => prev.filter(invoice => invoice.id !== invoiceId));
   };
-
   const confirmDeleteClient = (e: React.MouseEvent, clientId: string) => {
     e.stopPropagation();
     setClientToDelete(clientId);
   };
-
   const handleDeleteClient = async () => {
     if (!clientToDelete) return;
-    
     try {
       await deleteClient(clientToDelete);
       toast.success("Client deleted successfully");
       setClientToDelete(null);
-      
-      queryClient.invalidateQueries({ queryKey: ['clients', selectedCompanyId] });
+      queryClient.invalidateQueries({
+        queryKey: ['clients', selectedCompanyId]
+      });
     } catch (error) {
       console.error("Error deleting client:", error);
       toast.error("Failed to delete client");
     }
   };
-
   const cancelDeleteClient = () => {
     setClientToDelete(null);
   };
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
@@ -261,22 +215,16 @@ const Dashboard: React.FC = () => {
         return 'bg-gray-100 text-gray-800';
     }
   };
-
   const isLoading = clientsLoading || invoicesLoading || jobsLoading;
-
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
+    return <div className="flex items-center justify-center h-screen">
         <div className="text-center">
           <p className="text-lg">Loading data...</p>
         </div>
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <AnimatedBackground className="py-6">
-      <AlertDialog open={!!clientToDelete} onOpenChange={(open) => !open && setClientToDelete(null)}>
+  return <AnimatedBackground className="py-6">
+      <AlertDialog open={!!clientToDelete} onOpenChange={open => !open && setClientToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure you want to delete this client?</AlertDialogTitle>
@@ -296,7 +244,7 @@ const Dashboard: React.FC = () => {
 
       <div className="container px-4 mx-auto">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
-          <h1 className="text-3xl font-bold mb-3 md:mb-0">Wedding Client Management</h1>
+          <h1 className="text-3xl font-bold mb-3 md:mb-0">Client Management</h1>
           <div className="flex flex-wrap gap-2">
             <AddClientButton />
           </div>
@@ -335,30 +283,20 @@ const Dashboard: React.FC = () => {
                 </div>
                 
                 <div className="relative mb-4">
-                  <Input
-                    placeholder="Search clients by name, email, or phone..."
-                    value={clientSearchQuery}
-                    onChange={(e) => setClientSearchQuery(e.target.value)}
-                    className="pr-10"
-                  />
+                  <Input placeholder="Search clients by name, email, or phone..." value={clientSearchQuery} onChange={e => setClientSearchQuery(e.target.value)} className="pr-10" />
                   <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 </div>
                 
-                {clients.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                {clients.length === 0 ? <div className="flex flex-col items-center justify-center py-8 text-center">
                     <Users className="h-12 w-12 text-muted-foreground mb-4" />
                     <h3 className="text-lg font-medium mb-2">No Clients Yet</h3>
                     <p className="text-muted-foreground mb-6 max-w-md">
                       You haven't added any clients yet. Add your first client to get started.
                     </p>
                     <AddClientButton />
-                  </div>
-                ) : sortedClients.length === 0 ? (
-                  <div className="text-center py-8">
+                  </div> : sortedClients.length === 0 ? <div className="text-center py-8">
                     <p className="text-muted-foreground">No clients match your search</p>
-                  </div>
-                ) : (
-                  <div className="rounded-md border">
+                  </div> : <div className="rounded-md border">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -370,12 +308,7 @@ const Dashboard: React.FC = () => {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {sortedClients.map((client) => (
-                          <TableRow 
-                            key={client.id} 
-                            onClick={() => handleClientRowClick(client.id)}
-                            className="cursor-pointer"
-                          >
+                        {sortedClients.map(client => <TableRow key={client.id} onClick={() => handleClientRowClick(client.id)} className="cursor-pointer">
                             <TableCell className="font-medium">{client.name}</TableCell>
                             <TableCell>{client.email}</TableCell>
                             <TableCell>{client.phone}</TableCell>
@@ -383,7 +316,7 @@ const Dashboard: React.FC = () => {
                               {new Date(client.createdAt).toLocaleDateString()}
                             </TableCell>
                             <TableCell className="text-right">
-                              <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex justify-end" onClick={e => e.stopPropagation()}>
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
@@ -391,17 +324,11 @@ const Dashboard: React.FC = () => {
                                     </Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end" className="bg-popover">
-                                    <DropdownMenuItem 
-                                      onClick={() => navigate(`/client/${client.id}/job/create`)}
-                                      className="cursor-pointer"
-                                    >
+                                    <DropdownMenuItem onClick={() => navigate(`/client/${client.id}/job/create`)} className="cursor-pointer">
                                       <Briefcase className="mr-2 h-4 w-4" />
                                       <span>Add Job</span>
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem 
-                                      onClick={() => navigate(`/client/${client.id}/edit`)}
-                                      className="cursor-pointer"
-                                    >
+                                    <DropdownMenuItem onClick={() => navigate(`/client/${client.id}/edit`)} className="cursor-pointer">
                                       <FileEdit className="mr-2 h-4 w-4" />
                                       <span>Edit</span>
                                     </DropdownMenuItem>
@@ -409,49 +336,33 @@ const Dashboard: React.FC = () => {
                                 </DropdownMenu>
                               </div>
                             </TableCell>
-                          </TableRow>
-                        ))}
+                          </TableRow>)}
                       </TableBody>
                     </Table>
-                  </div>
-                )}
+                  </div>}
               </TabsContent>
               
               <TabsContent value="jobs">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-semibold">Current Jobs</h2>
-                  {clients.length > 0 && (
-                    <AddJobButton />
-                  )}
+                  {clients.length > 0 && <AddJobButton />}
                 </div>
                 
                 <div className="relative mb-4">
-                  <Input
-                    placeholder="Search jobs by title, client name, or location..."
-                    value={jobSearchQuery}
-                    onChange={(e) => setJobSearchQuery(e.target.value)}
-                    className="pr-10"
-                  />
+                  <Input placeholder="Search jobs by title, client name, or location..." value={jobSearchQuery} onChange={e => setJobSearchQuery(e.target.value)} className="pr-10" />
                   <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 </div>
                 
-                {jobs.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                {jobs.length === 0 ? <div className="flex flex-col items-center justify-center py-8 text-center">
                     <Briefcase className="h-12 w-12 text-muted-foreground mb-4" />
                     <h3 className="text-lg font-medium mb-2">No Jobs Yet</h3>
                     <p className="text-muted-foreground mb-6 max-w-md">
                       You haven't created any jobs yet. Select a client to create your first job.
                     </p>
-                    {clients.length > 0 && (
-                      <AddJobButton />
-                    )}
-                  </div>
-                ) : filteredJobs.length === 0 ? (
-                  <div className="text-center py-8">
+                    {clients.length > 0 && <AddJobButton />}
+                  </div> : filteredJobs.length === 0 ? <div className="text-center py-8">
                     <p className="text-muted-foreground">No jobs match your search</p>
-                  </div>
-                ) : (
-                  <div className="rounded-md border">
+                  </div> : <div className="rounded-md border">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -463,14 +374,9 @@ const Dashboard: React.FC = () => {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {filteredJobs.map((job) => {
-                          const jobClient = clients.find((c) => c.id === job.clientId) || null;
-                          return (
-                            <TableRow 
-                              key={job.id}
-                              onClick={() => handleJobRowClick(job.id)}
-                              className="cursor-pointer"
-                            >
+                        {filteredJobs.map(job => {
+                      const jobClient = clients.find(c => c.id === job.clientId) || null;
+                      return <TableRow key={job.id} onClick={() => handleJobRowClick(job.id)} className="cursor-pointer">
                               <TableCell className="font-medium">{job.title}</TableCell>
                               <TableCell>{jobClient?.name}</TableCell>
                               <TableCell className="hidden md:table-cell">
@@ -482,7 +388,7 @@ const Dashboard: React.FC = () => {
                                 </Badge>
                               </TableCell>
                               <TableCell className="text-right">
-                                <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                                <div className="flex justify-end gap-2" onClick={e => e.stopPropagation()}>
                                   <Button variant="outline" size="sm" asChild>
                                     <Link to={`/job/${job.id}`}>
                                       <MoreHorizontal className="h-4 w-4" />
@@ -490,58 +396,42 @@ const Dashboard: React.FC = () => {
                                   </Button>
                                 </div>
                               </TableCell>
-                            </TableRow>
-                          );
-                        })}
+                            </TableRow>;
+                    })}
                       </TableBody>
                     </Table>
-                  </div>
-                )}
+                  </div>}
               </TabsContent>
               
               <TabsContent value="invoices">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-semibold">Your Invoices</h2>
-                  {jobs.length > 0 && (
-                    <Button asChild size="sm">
+                  {jobs.length > 0 && <Button asChild size="sm">
                       <Link to={`/jobs`}>
                         View Jobs
                       </Link>
-                    </Button>
-                  )}
+                    </Button>}
                 </div>
                 
                 <div className="relative mb-4">
-                  <Input
-                    placeholder="Search invoices by number, client name, or status..."
-                    value={invoiceSearchQuery}
-                    onChange={(e) => setInvoiceSearchQuery(e.target.value)}
-                    className="pr-10"
-                  />
+                  <Input placeholder="Search invoices by number, client name, or status..." value={invoiceSearchQuery} onChange={e => setInvoiceSearchQuery(e.target.value)} className="pr-10" />
                   <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 </div>
                 
-                {localInvoices.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                {localInvoices.length === 0 ? <div className="flex flex-col items-center justify-center py-8 text-center">
                     <FilePlus className="h-12 w-12 text-muted-foreground mb-4" />
                     <h3 className="text-lg font-medium mb-2">No Invoices Yet</h3>
                     <p className="text-muted-foreground mb-6 max-w-md">
                       You haven't created any invoices yet. Select a job to create your first invoice.
                     </p>
-                    {jobs.length > 0 && (
-                      <Button asChild>
+                    {jobs.length > 0 && <Button asChild>
                         <Link to={`/job/${jobs[0].id}`}>
                           Select a Job
                         </Link>
-                      </Button>
-                    )}
-                  </div>
-                ) : filteredInvoices.length === 0 ? (
-                  <div className="text-center py-8">
+                      </Button>}
+                  </div> : filteredInvoices.length === 0 ? <div className="text-center py-8">
                     <p className="text-muted-foreground">No invoices match your search</p>
-                  </div>
-                ) : (
-                  <div className="rounded-md border">
+                  </div> : <div className="rounded-md border">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -555,14 +445,9 @@ const Dashboard: React.FC = () => {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {filteredInvoices.map((invoice) => {
-                          const invoiceClient = clients.find((c) => c.id === invoice.clientId) || null;
-                          return (
-                            <TableRow 
-                              key={invoice.id}
-                              onClick={() => handleInvoiceRowClick(invoice.id)}
-                              className="cursor-pointer"
-                            >
+                        {filteredInvoices.map(invoice => {
+                      const invoiceClient = clients.find(c => c.id === invoice.clientId) || null;
+                      return <TableRow key={invoice.id} onClick={() => handleInvoiceRowClick(invoice.id)} className="cursor-pointer">
                               <TableCell className="font-medium">{invoice.number}</TableCell>
                               <TableCell>{invoiceClient?.name}</TableCell>
                               <TableCell className="hidden md:table-cell">
@@ -578,7 +463,7 @@ const Dashboard: React.FC = () => {
                                 </Badge>
                               </TableCell>
                               <TableCell className="text-right">
-                                <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                                <div className="flex justify-end gap-2" onClick={e => e.stopPropagation()}>
                                   <Button variant="outline" size="sm" asChild>
                                     <Link to={`/invoice/${invoice.id}`}>
                                       <Eye className="h-4 w-4" />
@@ -586,20 +471,16 @@ const Dashboard: React.FC = () => {
                                   </Button>
                                 </div>
                               </TableCell>
-                            </TableRow>
-                          );
-                        })}
+                            </TableRow>;
+                    })}
                       </TableBody>
                     </Table>
-                  </div>
-                )}
+                  </div>}
               </TabsContent>
             </Tabs>
           </CardContent>
         </Card>
       </div>
-    </AnimatedBackground>
-  );
+    </AnimatedBackground>;
 };
-
 export default Dashboard;

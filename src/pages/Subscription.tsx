@@ -30,6 +30,10 @@ const Subscription = () => {
 
   const isPendingCancellation = subscription?.status === 'active' && subscription?.cancel_at;
 
+  const canCancelSubscription = 
+    subscription &&
+    (subscription.status === 'active' || subscription.status === 'trialing');
+
   const handleSubscribe = async (withTrial: boolean = true) => {
     if (!user) {
       toast.error("You must be logged in to subscribe");
@@ -188,15 +192,7 @@ const Subscription = () => {
                       Manage Billing
                     </Button>
                   )}
-                  {isInTrialPeriod ? (
-                    <Button 
-                      variant="default"
-                      onClick={() => handleSubscribe(false)}
-                      disabled={isLoading}
-                    >
-                      {isLoading ? 'Processing...' : 'Subscribe Now'}
-                    </Button>
-                  ) : subscription?.status !== 'canceled' && !isPendingCancellation && (
+                  {canCancelSubscription && (
                     <Button 
                       variant="destructive"
                       onClick={() => setShowCancelDialog(true)}
@@ -235,7 +231,9 @@ const Subscription = () => {
             <DialogHeader>
               <DialogTitle>Cancel Subscription</DialogTitle>
               <DialogDescription>
-                Are you sure you want to cancel your subscription? You will still have access until the end of your current billing period ({formatDate(subscription?.currentPeriodEnd)}).
+                {subscription?.status === 'trialing'
+                  ? 'Are you sure you want to cancel your subscription? You will lose access at the end of your 30-day trial and will not be charged.'
+                  : `Are you sure you want to cancel your subscription? You will still have access until the end of your current billing period (${formatDate(subscription?.currentPeriodEnd)}).`}
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>

@@ -43,7 +43,12 @@ const SubscriptionManagement = () => {
     return format(new Date(dateString), 'MMMM d, yyyy');
   };
 
-  if (!hasAccess || isInTrialPeriod || !subscription) {
+  // Check if subscription can be canceled - now also includes trialing state
+  const canCancelSubscription = subscription && 
+    (subscription.status === 'active' || subscription.status === 'trialing');
+
+  // Don't show anything if user doesn't have access
+  if (!hasAccess) {
     return null;
   }
 
@@ -64,15 +69,21 @@ const SubscriptionManagement = () => {
           </div>
         ) : (
           <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-600">Cancel your current subscription</p>
-            <Button 
-              variant="destructive" 
-              size="sm" 
-              onClick={() => setShowCancelDialog(true)}
-              disabled={isCancelling}
-            >
-              {isCancelling ? 'Cancelling...' : 'Cancel Subscription'}
-            </Button>
+            <p className="text-sm text-gray-600">
+              {subscription?.status === 'trialing' 
+                ? 'Cancel your trial subscription' 
+                : 'Cancel your current subscription'}
+            </p>
+            {canCancelSubscription && (
+              <Button 
+                variant="destructive" 
+                size="sm" 
+                onClick={() => setShowCancelDialog(true)}
+                disabled={isCancelling}
+              >
+                {isCancelling ? 'Cancelling...' : 'Cancel Subscription'}
+              </Button>
+            )}
           </div>
         )}
       </div>
@@ -82,7 +93,9 @@ const SubscriptionManagement = () => {
           <DialogHeader>
             <DialogTitle>Cancel Subscription</DialogTitle>
             <DialogDescription>
-              Are you sure you want to cancel your subscription? You will still have access until the end of your current billing period.
+              {subscription?.status === 'trialing'
+                ? 'Are you sure you want to cancel your subscription? You will lose access at the end of your 30-day trial and will not be charged.'
+                : `Are you sure you want to cancel your subscription? You will still have access until the end of your current billing period.`}
             </DialogDescription>
           </DialogHeader>
           

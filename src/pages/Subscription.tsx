@@ -218,9 +218,7 @@ const Subscription = () => {
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold mb-2">Upgrade Your Business</h1>
-            <p className="text-gray-600 max-w-xl mx-auto">
-              Get access to all features and take your photography business to the next level
-            </p>
+            <p className="text-gray-600 max-w-xl mx-auto">Get access to all features and take your business to the next level</p>
             <div className="mt-4 flex justify-center">
               <Button variant="outline" size="sm" className="flex items-center gap-2" onClick={() => setShowTestInfo(!showTestInfo)}>
                 <Info className="h-4 w-4" />

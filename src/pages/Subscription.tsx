@@ -317,7 +317,7 @@ const Subscription = () => {
                 </ul>
               </CardContent>
               <CardFooter>
-                <Button variant="outline" className="w-full" onClick={() => handleSubscribe(false)} disabled={isLoading}>
+                <Button variant="outline" onClick={() => handleSubscribe(false)} disabled={isLoading} className="w-full bg-rose-400 hover:bg-rose-300 text-zinc-50">
                   {isLoading ? 'Processing...' : 'Subscribe Now'}
                 </Button>
               </CardFooter>

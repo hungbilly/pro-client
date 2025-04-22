@@ -176,102 +176,161 @@ const Auth = () => {
     }
   };
 
-  return <PageTransition>
+  return (
+    <PageTransition>
       <AnimatedBackground className="flex items-center justify-center min-h-screen bg-sky-100">
-        <Card className="w-full max-w-md backdrop-blur-sm bg-white/80 border-transparent shadow-soft">
-          <CardHeader className="space-y-1 flex flex-col items-center">
-            <img alt="ProClient Logo" className="h-48 w-auto mb-4" src="/lovable-uploads/0d307c1b-40a3-4803-bddc-725d45fa24a9.png" />
-            <CardTitle className="text-2xl text-center">
-              {isForgotPassword ? 'Reset Password' : isLogin ? 'Sign In' : 'Create Account'}
-            </CardTitle>
-            <CardDescription className="text-center">
-              {isForgotPassword 
-                ? 'Enter your email to receive password reset instructions'
-                : `Enter your credentials to ${isLogin ? 'sign in to' : 'create'} your account`}
-            </CardDescription>
-          </CardHeader>
-          
-          {errorMessage && <div className="px-6">
-              <Alert variant="destructive">
-                <AlertDescription>
-                  {errorMessage}
-                </AlertDescription>
-              </Alert>
-            </div>}
-          
-          <form onSubmit={handleAuth}>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder="email@example.com" value={email} onChange={e => setEmail(e.target.value)} required />
-              </div>
+        <div className="w-full max-w-7xl grid grid-cols-1 lg:grid-cols-2 gap-8 p-4 md:p-8">
+          <div className="flex flex-col justify-center space-y-6">
+            <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
+              ProClient
+              <span className="text-primary"> Management System</span>
+            </h1>
+            <p className="text-xl text-muted-foreground">
+              Simply define your services and manage your clients. Track jobs, create professional invoices, and get paid faster.
+            </p>
+            <div className="flex flex-col space-y-4">
+              <p className="text-lg">
+                ✓ Easy client management
+                <br />
+                ✓ Professional invoicing
+                <br />
+                ✓ Job tracking & scheduling
+                <br />
+                ✓ Payment processing
+              </p>
+              <p className="text-sm text-muted-foreground italic">No credit card needed for trial</p>
+            </div>
+          </div>
+
+          <div className="space-y-8">
+            <Card className="w-full backdrop-blur-sm bg-white/80 border-transparent shadow-soft">
+              <CardHeader className="space-y-1">
+                <CardTitle className="text-2xl text-center">
+                  {isForgotPassword ? 'Reset Password' : isLogin ? 'Welcome Back' : 'Start Your Free Trial'}
+                </CardTitle>
+                <CardDescription className="text-center">
+                  {isForgotPassword 
+                    ? 'Enter your email to receive password reset instructions'
+                    : isLogin 
+                      ? 'Sign in to access your account'
+                      : 'Create your account and start managing clients today'}
+                </CardDescription>
+              </CardHeader>
               
-              {!isForgotPassword && (
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <Input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} required />
+              {errorMessage && (
+                <div className="px-6">
+                  <Alert variant="destructive">
+                    <AlertDescription>{errorMessage}</AlertDescription>
+                  </Alert>
                 </div>
               )}
               
-              {!isForgotPassword && (
-                <>
-                  <div className="flex items-center gap-4 py-2">
-                    <Separator className="flex-1" />
-                    <span className="text-sm text-muted-foreground">or</span>
-                    <Separator className="flex-1" />
+              <form onSubmit={handleAuth}>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input 
+                      id="email" 
+                      type="email" 
+                      placeholder="email@example.com" 
+                      value={email} 
+                      onChange={e => setEmail(e.target.value)} 
+                      required 
+                    />
                   </div>
                   
-                  <Button type="button" variant="outline" className="w-full flex gap-2 items-center justify-center" onClick={handleGoogleSignIn} disabled={loading}>
-                    <svg viewBox="0 0 48 48" className="w-5 h-5">
-                      <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path>
-                      <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path>
-                      <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path>
-                      <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path>
-                    </svg>
-                    Continue with Google
+                  {!isForgotPassword && (
+                    <div className="space-y-2">
+                      <Label htmlFor="password">Password</Label>
+                      <Input 
+                        id="password" 
+                        type="password" 
+                        value={password} 
+                        onChange={e => setPassword(e.target.value)} 
+                        required 
+                      />
+                    </div>
+                  )}
+                  
+                  {!isForgotPassword && (
+                    <>
+                      <div className="flex items-center gap-4 py-2">
+                        <Separator className="flex-1" />
+                        <span className="text-sm text-muted-foreground">or</span>
+                        <Separator className="flex-1" />
+                      </div>
+                      
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        className="w-full flex gap-2 items-center justify-center" 
+                        onClick={handleGoogleSignIn} 
+                        disabled={loading}
+                      >
+                        <svg viewBox="0 0 48 48" className="w-5 h-5">
+                          <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z" />
+                          <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z" />
+                          <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z" />
+                          <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z" />
+                        </svg>
+                        Continue with Google
+                      </Button>
+                    </>
+                  )}
+                </CardContent>
+                <CardFooter className="flex flex-col space-y-4">
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading 
+                      ? isForgotPassword 
+                        ? 'Sending reset instructions...' 
+                        : isLogin 
+                          ? 'Signing in...' 
+                          : 'Creating account...'
+                      : isForgotPassword
+                        ? 'Send reset instructions'
+                        : isLogin 
+                          ? 'Sign in' 
+                          : 'Start Free Trial'}
                   </Button>
-                </>
-              )}
-            </CardContent>
-            <CardFooter className="flex flex-col space-y-4">
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading 
-                  ? isForgotPassword 
-                    ? 'Sending reset instructions...' 
-                    : isLogin 
-                      ? 'Signing in...' 
-                      : 'Creating account...'
-                  : isForgotPassword
-                    ? 'Send reset instructions'
-                    : isLogin 
-                      ? 'Sign in' 
-                      : 'Create account'}
-              </Button>
-              
-              {!isForgotPassword && (
-                <Button type="button" variant="link" className="w-full" onClick={() => setIsLogin(!isLogin)}>
-                  Not a member yet? Sign up for 30 days trial
-                </Button>
-              )}
-              
-              <Button 
-                type="button" 
-                variant="link" 
-                className="w-full text-sm"
-                onClick={() => {
-                  setIsForgotPassword(!isForgotPassword);
-                  setErrorMessage(null);
-                }}
-              >
-                {isForgotPassword 
-                  ? 'Back to login' 
-                  : 'Forgot password?'}
-              </Button>
-            </CardFooter>
-          </form>
-        </Card>
+                  
+                  {!isForgotPassword && (
+                    <Button 
+                      type="button" 
+                      variant="link" 
+                      className="w-full" 
+                      onClick={() => setIsLogin(!isLogin)}
+                    >
+                      {isLogin ? "Not a member yet? Start your free trial" : "Already have an account? Sign in"}
+                    </Button>
+                  )}
+                  
+                  <Button 
+                    type="button" 
+                    variant="link" 
+                    className="w-full text-sm"
+                    onClick={() => {
+                      setIsForgotPassword(!isForgotPassword);
+                      setErrorMessage(null);
+                    }}
+                  >
+                    {isForgotPassword ? 'Back to login' : 'Forgot password?'}
+                  </Button>
+                </CardFooter>
+              </form>
+            </Card>
+
+            <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-black/5 border-2 border-dashed border-gray-200 flex items-center justify-center">
+              <p className="text-muted-foreground text-center p-4">
+                Tutorial video placeholder
+                <br />
+                <span className="text-sm">Coming soon</span>
+              </p>
+            </div>
+          </div>
+        </div>
       </AnimatedBackground>
-    </PageTransition>;
+    </PageTransition>
+  );
 };
 
 export default Auth;

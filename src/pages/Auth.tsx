@@ -175,7 +175,7 @@ const Auth = () => {
     }
   };
   return <PageTransition>
-      <AnimatedBackground className="flex items-center justify-center min-h-screen">
+      <AnimatedBackground className="flex items-center justify-center min-h-screen bg-sky-100">
         <Card className="w-full max-w-md backdrop-blur-sm bg-white/80 border-transparent shadow-soft">
           <CardHeader className="space-y-1 flex flex-col items-center">
             <img alt="ProClient Logo" className="h-48 w-auto mb-4" src="/lovable-uploads/0d307c1b-40a3-4803-bddc-725d45fa24a9.png" />

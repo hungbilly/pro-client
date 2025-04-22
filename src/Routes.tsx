@@ -2,6 +2,7 @@ import React from 'react';
 import { Route, Routes as ReactRoutes } from 'react-router-dom';
 import Index from './pages/Index';
 import Auth from './pages/Auth';
+import Dashboard from './components/Dashboard';
 import NotFound from './pages/NotFound';
 import Clients from './pages/Clients';
 import ClientDetail from './pages/ClientDetail';
@@ -31,6 +32,9 @@ import Debug from './pages/Debug';
 const Routes = () => {
   return (
     <ReactRoutes>
+      {/* Public landing page */}
+      <Route path="/" element={<Index />} />
+      
       {/* Auth routes outside of the layout */}
       <Route path="/auth" element={<Auth />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
@@ -41,20 +45,9 @@ const Routes = () => {
         <Route path="/debug" element={<Debug />} />
       </Route>
       
-      {/* Subscription routes */}
-      <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-        <Route path="/subscription" element={<Subscription />} />
-        <Route path="/subscription/success" element={<SubscriptionSuccess />} />
-        <Route path="/subscription/cancel" element={<SubscriptionCancel />} />
-      </Route>
-      
-      {/* Public invoice views without AppLayout for client view */}
-      <Route path="/invoice/:idOrViewLink" element={<InvoiceView />} />
-      <Route path="/invoice/pdf/:viewLink" element={<InvoicePdfView />} />
-      
       {/* Protected routes with layout that require subscription */}
       <Route element={<ProtectedRoute><SubscriptionGuard><AppLayout /></SubscriptionGuard></ProtectedRoute>}>
-        <Route path="/" element={<Index />} />
+        <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/clients" element={<Clients />} />
         <Route path="/client/new" element={<ClientNew />} />
         <Route path="/client/:id" element={<ClientDetail />} />

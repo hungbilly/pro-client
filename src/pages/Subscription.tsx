@@ -9,16 +9,17 @@ import PageTransition from '@/components/ui-custom/PageTransition';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-
 const Subscription = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const { 
-    hasAccess, 
-    isInTrialPeriod, 
-    trialDaysLeft, 
+  const {
+    user
+  } = useAuth();
+  const {
+    hasAccess,
+    isInTrialPeriod,
+    trialDaysLeft,
     trialEndDate,
-    subscription, 
+    subscription,
     createSubscription,
     cancelSubscription,
     isCancelling
@@ -27,20 +28,14 @@ const Subscription = () => {
   const [showDialog, setShowDialog] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [showTestInfo, setShowTestInfo] = useState(false);
-
   const isPendingCancellation = subscription?.status === 'active' && subscription?.cancel_at;
-
-  const canCancelSubscription = 
-    subscription &&
-    (subscription.status === 'active' || subscription.status === 'trialing');
-
+  const canCancelSubscription = subscription && (subscription.status === 'active' || subscription.status === 'trialing');
   const handleSubscribe = async (withTrial: boolean = true) => {
     if (!user) {
       toast.error("You must be logged in to subscribe");
       navigate("/auth");
       return;
     }
-
     setIsLoading(true);
     try {
       const url = await createSubscription(withTrial);
@@ -55,26 +50,22 @@ const Subscription = () => {
       setIsLoading(false);
     }
   };
-
   const handleCancelSubscription = async () => {
     const success = await cancelSubscription();
     if (success) {
       setShowCancelDialog(false);
     }
   };
-
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString(undefined, {
       year: 'numeric',
       month: 'long',
-      day: 'numeric',
+      day: 'numeric'
     });
   };
-
   if (!user) {
-    return (
-      <PageTransition>
+    return <PageTransition>
         <div className="container mx-auto py-12 px-4">
           <div className="max-w-md mx-auto">
             <Card className="border-orange-200 shadow-lg">
@@ -95,13 +86,10 @@ const Subscription = () => {
             </Card>
           </div>
         </div>
-      </PageTransition>
-    );
+      </PageTransition>;
   }
-
   if (hasAccess) {
-    return (
-      <PageTransition>
+    return <PageTransition>
         <div className="container mx-auto py-12 px-4">
           <div className="max-w-3xl mx-auto">
             <Card className="border-green-200 shadow-lg">
@@ -119,26 +107,21 @@ const Subscription = () => {
                 </div>
               </CardHeader>
               <CardContent className="pt-6">
-                {subscription?.status === 'canceled' && (
-                  <Alert variant="warning" className="mb-4">
+                {subscription?.status === 'canceled' && <Alert variant="warning" className="mb-4">
                     <AlertTriangle className="h-4 w-4" />
                     <AlertDescription>
                       Your subscription has been canceled but you still have access until the end of your current billing period.
                     </AlertDescription>
-                  </Alert>
-                )}
+                  </Alert>}
 
-                {isPendingCancellation && (
-                  <Alert variant="warning" className="mb-4">
+                {isPendingCancellation && <Alert variant="warning" className="mb-4">
                     <CalendarX className="h-4 w-4" />
                     <AlertDescription>
                       Your subscription is scheduled to be canceled on {formatDate(subscription.cancel_at)}. You will continue to have access until this date.
                     </AlertDescription>
-                  </Alert>
-                )}
+                  </Alert>}
                 
-                {isInTrialPeriod ? (
-                  <div className="space-y-4">
+                {isInTrialPeriod ? <div className="space-y-4">
                     <div className="flex items-center gap-3">
                       <Clock className="h-5 w-5 text-blue-500" />
                       <div>
@@ -153,9 +136,7 @@ const Subscription = () => {
                         Enjoy your free 3-month trial. No payment information required until your trial ends.
                       </p>
                     </div>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
+                  </div> : <div className="space-y-4">
                     <div>
                       <h3 className="font-medium">Subscription Details</h3>
                       <p className="text-sm text-gray-500">Premium Photography Business Management</p>
@@ -170,37 +151,23 @@ const Subscription = () => {
                           {isPendingCancellation ? 'Access Until' : 'Next Payment'}
                         </p>
                         <p>
-                          {isPendingCancellation 
-                            ? formatDate(subscription?.cancel_at || null)
-                            : formatDate(subscription?.currentPeriodEnd || null)}
+                          {isPendingCancellation ? formatDate(subscription?.cancel_at || null) : formatDate(subscription?.currentPeriodEnd || null)}
                         </p>
                       </div>
                     </div>
-                  </div>
-                )}
+                  </div>}
               </CardContent>
               <CardFooter className="flex justify-between bg-gray-50 rounded-b-lg">
                 <Button variant="outline" onClick={() => navigate('/')}>
                   Return to Dashboard
                 </Button>
                 <div className="flex gap-2">
-                  {subscription && !isInTrialPeriod && (
-                    <Button 
-                      variant="outline" 
-                      onClick={() => window.open('https://billing.stripe.com/p/login/test_5kA5kSdUY9Sn0qA6oo', '_blank')}
-                    >
+                  {subscription && !isInTrialPeriod && <Button variant="outline" onClick={() => window.open('https://billing.stripe.com/p/login/test_5kA5kSdUY9Sn0qA6oo', '_blank')}>
                       Manage Billing
-                    </Button>
-                  )}
-                  {canCancelSubscription && (
-                    <Button 
-                      variant="destructive"
-                      onClick={() => setShowCancelDialog(true)}
-                      disabled={isCancelling}
-                    >
+                    </Button>}
+                  {canCancelSubscription && <Button variant="destructive" onClick={() => setShowCancelDialog(true)} disabled={isCancelling}>
                       {isCancelling ? 'Cancelling...' : 'Cancel Subscription'}
-                    </Button>
-                  )}
+                    </Button>}
                 </div>
               </CardFooter>
             </Card>
@@ -231,51 +198,36 @@ const Subscription = () => {
             <DialogHeader>
               <DialogTitle>Cancel Subscription</DialogTitle>
               <DialogDescription>
-                {subscription?.status === 'trialing'
-                  ? 'Are you sure you want to cancel your subscription? You will lose access at the end of your 30-day trial and will not be charged.'
-                  : `Are you sure you want to cancel your subscription? You will still have access until the end of your current billing period (${formatDate(subscription?.currentPeriodEnd)}).`}
+                {subscription?.status === 'trialing' ? 'Are you sure you want to cancel your subscription? You will lose access at the end of your 30-day trial and will not be charged.' : `Are you sure you want to cancel your subscription? You will still have access until the end of your current billing period (${formatDate(subscription?.currentPeriodEnd)}).`}
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowCancelDialog(false)}>
                 Keep Subscription
               </Button>
-              <Button 
-                variant="destructive" 
-                onClick={handleCancelSubscription}
-                disabled={isCancelling}
-              >
+              <Button variant="destructive" onClick={handleCancelSubscription} disabled={isCancelling}>
                 {isCancelling ? 'Cancelling...' : 'Confirm Cancellation'}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </PageTransition>
-    );
+      </PageTransition>;
   }
-
-  return (
-    <PageTransition>
+  return <PageTransition>
       <div className="container mx-auto py-12 px-4">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold mb-2">Upgrade Your Photography Business</h1>
+            <h1 className="text-3xl font-bold mb-2">Upgrade Your Business</h1>
             <p className="text-gray-600 max-w-xl mx-auto">
               Get access to all features and take your photography business to the next level
             </p>
             <div className="mt-4 flex justify-center">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="flex items-center gap-2"
-                onClick={() => setShowTestInfo(!showTestInfo)}
-              >
+              <Button variant="outline" size="sm" className="flex items-center gap-2" onClick={() => setShowTestInfo(!showTestInfo)}>
                 <Info className="h-4 w-4" />
                 Test Mode Information
               </Button>
             </div>
-            {showTestInfo && (
-              <div className="mt-4 p-4 bg-blue-50 rounded-lg max-w-2xl mx-auto">
+            {showTestInfo && <div className="mt-4 p-4 bg-blue-50 rounded-lg max-w-2xl mx-auto">
                 <h3 className="font-medium text-blue-700">Test Mode Information</h3>
                 <p className="text-sm text-blue-600 mt-2">
                   This is running in Stripe Test Mode. You can use test card number <code className="bg-blue-100 px-1 rounded">4242 4242 4242 4242</code> with any future expiration date and any 3-digit CVC to test the subscription process.
@@ -283,20 +235,17 @@ const Subscription = () => {
                 <p className="text-sm text-blue-600 mt-2">
                   No real charges will be made in test mode. To test the subscription, simply complete the checkout process with the test card.
                 </p>
-              </div>
-            )}
+              </div>}
           </div>
 
           <div className="grid md:grid-cols-2 gap-8 mb-12">
             <Card className="border-gray-200">
               <CardHeader>
                 <CardTitle>Free Trial</CardTitle>
-                <CardDescription>
-                  Try all premium features for 3 months
-                </CardDescription>
+                <CardDescription>Try all premium features for 30 days</CardDescription>
                 <div className="mt-4">
                   <span className="text-3xl font-bold">HK$0</span>
-                  <span className="text-gray-500 ml-1">/ 3 months</span>
+                  <span className="text-gray-500 ml-1">/30 days</span>
                 </div>
               </CardHeader>
               <CardContent>
@@ -324,11 +273,7 @@ const Subscription = () => {
                 </ul>
               </CardContent>
               <CardFooter>
-                <Button
-                  className="w-full"
-                  onClick={() => handleSubscribe(true)}
-                  disabled={isLoading}
-                >
+                <Button className="w-full" onClick={() => handleSubscribe(true)} disabled={isLoading}>
                   {isLoading ? 'Processing...' : 'Start Free Trial'}
                 </Button>
               </CardFooter>
@@ -374,12 +319,7 @@ const Subscription = () => {
                 </ul>
               </CardContent>
               <CardFooter>
-                <Button 
-                  variant="outline" 
-                  className="w-full"
-                  onClick={() => handleSubscribe(false)}
-                  disabled={isLoading}
-                >
+                <Button variant="outline" className="w-full" onClick={() => handleSubscribe(false)} disabled={isLoading}>
                   {isLoading ? 'Processing...' : 'Subscribe Now'}
                 </Button>
               </CardFooter>
@@ -394,8 +334,6 @@ const Subscription = () => {
           </div>
         </div>
       </div>
-    </PageTransition>
-  );
+    </PageTransition>;
 };
-
 export default Subscription;

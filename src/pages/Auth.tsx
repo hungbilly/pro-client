@@ -181,7 +181,12 @@ const Auth = () => {
     <PageTransition>
       <AnimatedBackground className="flex items-center justify-center min-h-screen">
         <Card className="w-full max-w-md backdrop-blur-sm bg-white/80 border-transparent shadow-soft">
-          <CardHeader className="space-y-1">
+          <CardHeader className="space-y-1 flex flex-col items-center">
+            <img 
+              src="/public/lovable-uploads/105c9bc3-de9b-4bd9-8051-5eba1249a6fe.png" 
+              alt="App Logo" 
+              className="h-24 w-24 mb-4"
+            />
             <CardTitle className="text-2xl text-center">
               {isLogin ? 'Sign In' : 'Create Account'}
             </CardTitle>

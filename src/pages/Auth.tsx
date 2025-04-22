@@ -11,6 +11,7 @@ import PageTransition from '@/components/ui-custom/PageTransition';
 import { useAuth } from '@/context/AuthContext';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+
 const Auth = () => {
   const navigate = useNavigate();
   const {
@@ -22,10 +23,9 @@ const Auth = () => {
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Application home page URL - where we want users to land after authentication
   const appCallbackUrl = `${window.location.origin}/auth/callback`;
+
   useEffect(() => {
-    // Check if we're returning after a logout
     const checkForLogoutRedirect = async () => {
       if (window.location.search.includes('logout')) {
         try {
@@ -33,7 +33,6 @@ const Auth = () => {
           window.localStorage.clear();
           window.sessionStorage.clear();
           try {
-            // Attempt to explicitly sign out from Supabase - this will clear any remaining session tokens
             await supabase.auth.signOut({
               scope: 'global'
             });
@@ -41,8 +40,6 @@ const Auth = () => {
           } catch (error) {
             console.log('Already signed out or error signing out:', error);
           }
-
-          // Remove the logout parameter from URL
           window.history.replaceState({}, document.title, window.location.pathname);
         } catch (error) {
           console.error('Error during cleanup:', error);
@@ -51,15 +48,15 @@ const Auth = () => {
     };
     checkForLogoutRedirect();
   }, []);
+
   useEffect(() => {
-    // If user is already logged in, redirect to home page
     if (user) {
       console.log('Auth page: User already logged in, redirecting to home');
       navigate('/');
     }
   }, [user, navigate]);
+
   useEffect(() => {
-    // Check for authentication errors in URL
     const urlParams = new URLSearchParams(window.location.search);
     const errorParam = urlParams.get('error');
     const errorDescription = urlParams.get('error_description');
@@ -70,11 +67,10 @@ const Auth = () => {
         errorParam,
         errorDescription
       });
-
-      // Clean up URL parameters
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -116,7 +112,6 @@ const Auth = () => {
         if (error) throw error;
         console.log('Sign up successful:', data);
         if (data?.user?.identities?.length === 0) {
-          // User already exists
           toast.error('This email is already registered. Please sign in instead.');
           setIsLogin(true);
         } else {
@@ -131,6 +126,7 @@ const Auth = () => {
       setLoading(false);
     }
   };
+
   const handleGoogleSignIn = async () => {
     try {
       setLoading(true);
@@ -160,8 +156,6 @@ const Auth = () => {
       }
       if (data && data.url) {
         console.log('Redirecting to Google auth URL:', data.url);
-        // We use location.href to do a full page navigation rather than React Router
-        // This ensures cookies and tokens are properly handled
         window.location.href = data.url;
       } else {
         console.error('No redirect URL received from Supabase');
@@ -174,6 +168,7 @@ const Auth = () => {
       setLoading(false);
     }
   };
+
   return <PageTransition>
       <AnimatedBackground className="flex items-center justify-center min-h-screen bg-sky-100">
         <Card className="w-full max-w-md backdrop-blur-sm bg-white/80 border-transparent shadow-soft">
@@ -227,7 +222,7 @@ const Auth = () => {
                 {loading ? isLogin ? 'Signing in...' : 'Creating account...' : isLogin ? 'Sign in' : 'Create account'}
               </Button>
               <Button type="button" variant="link" className="w-full" onClick={() => setIsLogin(!isLogin)}>
-                {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
+                Not a member yet? Sign up for 30 days trial
               </Button>
             </CardFooter>
           </form>
@@ -235,4 +230,5 @@ const Auth = () => {
       </AnimatedBackground>
     </PageTransition>;
 };
+
 export default Auth;

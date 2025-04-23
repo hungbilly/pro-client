@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { getCurrencySymbol, formatCurrency } from '@/lib/utils';
+import { formatCurrency } from '@/lib/utils';
 import { useCompanyContext } from '@/context/CompanyContext';
 
 interface PaymentScheduleTableProps {

@@ -200,6 +200,8 @@ const Invoices = () => {
     toast.success(`Invoices exported as ${format.toUpperCase()} successfully`);
   };
 
+  const companyCurrency = selectedCompany?.currency || 'USD';
+
   return (
     <PageTransition>
       <AlertDialog open={!!invoiceToDelete} onOpenChange={(open) => !open && setInvoiceToDelete(null)}>
@@ -323,7 +325,7 @@ const Invoices = () => {
                           {invoice.date ? new Date(invoice.date).toLocaleDateString() : '-'}
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
-                          {formatCurrency(invoice.amount || 0, 'USD')}
+                          {formatCurrency(invoice.amount || 0, companyCurrency)}
                         </TableCell>
                         <TableCell>
                           <Badge className={getStatusColor(invoice.status)}>

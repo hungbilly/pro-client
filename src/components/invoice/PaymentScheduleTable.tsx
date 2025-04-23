@@ -1,4 +1,3 @@
-
 import React, { memo, useState, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -39,7 +38,7 @@ const PaymentScheduleTable = memo(({
   isEditView = false,
   updatingPaymentId,
   onUpdateStatus,
-  formatCurrency: propFormatCurrency, // Rename to avoid collision
+  formatCurrency: propFormatCurrency,
   onUpdatePaymentDate,
   onUpdateAmount,
   onUpdateDescription,
@@ -361,9 +360,7 @@ const PaymentScheduleTable = memo(({
     );
   };
 
-  // Use the utils formatCurrency but with our currency
   const trueFormatCurrency = (amt: number) => {
-    // Using imported formatCurrency from utils, not the prop
     return formatCurrency(amt, currency);
   };
 

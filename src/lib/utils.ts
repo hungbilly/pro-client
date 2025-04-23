@@ -1,3 +1,4 @@
+
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 
@@ -42,11 +43,19 @@ export function formatCurrency(amount: number, currency: string = 'USD', opts?: 
   if (opts?.symbolOnly) {
     return getCurrencySymbol(currency);
   }
-  return `${getCurrencySymbol(currency)}${new Intl.NumberFormat('en-US', {
+  
+  // Get the currency symbol to use for formatting
+  const symbol = getCurrencySymbol(currency);
+  
+  // Use Intl NumberFormat to format the number according to locale standards
+  const formattedNumber = new Intl.NumberFormat('en-US', {
     style: 'decimal',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(amount)}`;
+  }).format(amount);
+  
+  // Combine the symbol and formatted number
+  return `${symbol}${formattedNumber}`;
 }
 
 /**

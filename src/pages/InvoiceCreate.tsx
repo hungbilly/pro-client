@@ -15,7 +15,7 @@ import { FormLabel } from '@/components/ui/form';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { useCompanyContext } from '@/context/CompanyContext';
-import { getCurrencySymbol, formatCurrency as trueFormatCurrency } from '@/lib/utils';
+import { formatCurrency } from '@/lib/utils';
 
 interface ContractTemplate {
   id: string;
@@ -53,6 +53,10 @@ const InvoiceCreate = () => {
     const suffixes = ['th', 'st', 'nd', 'rd'];
     const v = num % 100;
     return num + (suffixes[(v - 20) % 10] || suffixes[v] || suffixes[0]);
+  };
+
+  const formatCurrencyWithSelected = (amount: number): string => {
+    return formatCurrency(amount, currency);
   };
 
   useEffect(() => {

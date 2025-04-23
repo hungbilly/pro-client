@@ -115,4 +115,3 @@ const PackageSettings: React.FC = () => {
 };
 
 export default PackageSettings;
-

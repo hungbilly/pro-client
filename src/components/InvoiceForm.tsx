@@ -36,6 +36,7 @@ export interface InvoiceFormProps {
   contractTemplates: ContractTemplate[];
   checkDuplicateInvoiceNumber: (number: string, currentInvoiceId?: string) => Promise<boolean>;
   onInvoiceDeleted: (invoiceId: string) => void;
+  currency?: string;
 }
 
 interface ContractTemplate {
@@ -85,7 +86,8 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   isEditView = false,
   contractTemplates = [],
   checkDuplicateInvoiceNumber,
-  onInvoiceDeleted
+  onInvoiceDeleted,
+  currency = 'USD'
 }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -617,7 +619,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD',
+      currency: currency || 'USD',
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     }).format(amount);

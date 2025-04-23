@@ -36,6 +36,7 @@ const InvoiceView = () => {
   const [error, setError] = useState<string | null>(null);
   const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null);
   const invoiceRef = useRef<HTMLDivElement>(null);
+  const [clientViewCompany, setClientViewCompany] = useState<CompanyClientView | null>(null);
 
   const { isAdmin, user } = useAuth();
   const { selectedCompanyId, selectedCompany } = useCompanyContext();
@@ -58,8 +59,6 @@ const InvoiceView = () => {
     (amount: number) => utilFormatCurrency(amount, companyCurrency),
     [companyCurrency]
   );
-
-  const [clientViewCompany, setClientViewCompany] = useState<CompanyClientView | null>(null);
 
   useEffect(() => {
     const fetchInvoice = async () => {

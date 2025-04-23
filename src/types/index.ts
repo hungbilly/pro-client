@@ -35,6 +35,7 @@ export interface CompanyClientView {
   address?: string;
   website?: string;
   logo_url?: string;
+  currency?: string;
   created_at: string;
   updated_at: string;
 }

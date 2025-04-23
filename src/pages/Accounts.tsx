@@ -47,8 +47,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FormMessage } from '@/components/ui/form';
 import ExportDialog from '@/components/ExportDialog';
 import { exportDataToFile, formatPaymentsForExport, formatExpensesForExport } from '@/utils/exportUtils';
+import { formatCurrency } from '@/lib/utils';
 
-// Income tab - PaymentScheduleWithDetails type
 type PaymentScheduleWithDetails = {
   id: string;
   description: string;
@@ -64,7 +64,6 @@ type PaymentScheduleWithDetails = {
   companyId?: string;
 };
 
-// Expense tab - Expense type
 type Expense = {
   id: string;
   description: string;
@@ -77,7 +76,6 @@ type Expense = {
   company_id?: string;
 };
 
-// New expense category type
 type ExpenseCategory = {
   id: string;
   name: string;
@@ -94,18 +92,17 @@ type AccountStats = {
   writeOff: number;
   expenses: number;
   profit: number;
-}
+};
 
 const Accounts = () => {
   const navigate = useNavigate();
   const { selectedCompany, selectedCompanyId } = useCompanyContext();
+  const companyCurrency = selectedCompany?.currency || 'USD';
   const [activeTab, setActiveTab] = useState("income");
   
-  // Income state
   const [payments, setPayments] = useState<PaymentScheduleWithDetails[]>([]);
   const [filteredPayments, setFilteredPayments] = useState<PaymentScheduleWithDetails[]>([]);
   
-  // Expense state
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [filteredExpenses, setFilteredExpenses] = useState<Expense[]>([]);
   const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
@@ -126,7 +123,6 @@ const Accounts = () => {
   });
   const [isEditMode, setIsEditMode] = useState(false);
   
-  // Shared state
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -148,7 +144,6 @@ const Accounts = () => {
   });
   const [showCustomDateRange, setShowCustomDateRange] = useState(false);
   
-  // Form validation state for expense dialog
   const [expenseFormErrors, setExpenseFormErrors] = useState<{
     description?: string;
     date?: string;
@@ -221,7 +216,6 @@ const Accounts = () => {
     try {
       console.log("Fetching payments for company ID:", selectedCompanyId);
       
-      // Get the invoices that belong to the current company
       const { data: invoicesData, error: invoicesError } = await supabase
         .from('invoices')
         .select('id')
@@ -241,7 +235,6 @@ const Accounts = () => {
       const invoiceIds = invoicesData.map(invoice => invoice.id);
       console.log("Found invoice IDs:", invoiceIds);
       
-      // Get payment schedules only for invoices that belong to the current company
       const { data: schedulesData, error: schedulesError } = await supabase
         .from('payment_schedules')
         .select(`
@@ -313,10 +306,7 @@ const Accounts = () => {
 
       setExpenseCategories(data || []);
       
-      // If there are no expense categories with this company ID,
-      // it means we need to associate the default categories with this company
       if (data?.length === 0) {
-        // Fetch the default categories (those without company_id)
         const { data: defaultCategories, error: defaultError } = await supabase
           .from('expense_categories')
           .select('*')
@@ -326,49 +316,22 @@ const Accounts = () => {
           throw defaultError;
         }
         
-        // Associate these categories with the current company
-        if (defaultCategories && defaultCategories.length > 0) {
-          // Add Uncategorized category if it doesn't exist
-          if (!defaultCategories.some(cat => cat.name.toLowerCase() === 'uncategorized')) {
-            defaultCategories.push({ 
-              name: 'Uncategorized', 
-              id: 'default',
-              company_id: null,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            });
-          }
-          
-          const categoriesToInsert = defaultCategories.map(cat => ({
-            name: cat.name,
-            company_id: selectedCompanyId
-          }));
-          
-          const { data: insertedData, error: insertError } = await supabase
-            .from('expense_categories')
-            .insert(categoriesToInsert)
-            .select();
+        const categoriesToInsert = defaultCategories.map(cat => ({
+          name: cat.name,
+          company_id: selectedCompanyId
+        }));
+        
+        const { data: insertedData, error: insertError } = await supabase
+          .from('expense_categories')
+          .insert(categoriesToInsert)
+          .select();
             
-          if (insertError) {
-            throw insertError;
-          }
-          
-          setExpenseCategories(insertedData || []);
-        } else {
-          // Create an Uncategorized category if no default categories exist
-          const { data: uncategorizedData, error: uncategorizedError } = await supabase
-            .from('expense_categories')
-            .insert({ name: 'Uncategorized', company_id: selectedCompanyId })
-            .select();
-            
-          if (uncategorizedError) {
-            throw uncategorizedError;
-          }
-          
-          setExpenseCategories(uncategorizedData || []);
+        if (insertError) {
+          throw insertError;
         }
+        
+        setExpenseCategories(insertedData || []);
       } else {
-        // Check if Uncategorized category exists, if not, create it
         if (!data.some(cat => cat.name.toLowerCase() === 'uncategorized')) {
           const { data: uncategorizedData, error: uncategorizedError } = await supabase
             .from('expense_categories')
@@ -439,7 +402,6 @@ const Accounts = () => {
   const filterItems = () => {
     const { start, end } = getDateRange();
     
-    // Filter payments
     let filteredPayments = [...payments];
     
     if (start && end) {
@@ -464,7 +426,6 @@ const Accounts = () => {
     
     setFilteredPayments(filteredPayments);
     
-    // Filter expenses
     let filteredExpenses = [...expenses];
     
     if (start && end) {
@@ -484,7 +445,6 @@ const Accounts = () => {
     
     setFilteredExpenses(filteredExpenses);
     
-    // Calculate stats for the filtered data
     const dateFilteredPayments = start && end 
       ? payments.filter(payment => {
           const dueDate = parseISO(payment.dueDate);
@@ -572,14 +532,12 @@ const Accounts = () => {
       
       setPayments(updatedPayments);
       
-      // Fix: Use the found payment instead of undefined 'payment' variable
       const updatedPayment = updatedPayments.find(p => p.id === paymentId);
       
       if (updatedPayment) {
         setAccountStats((prevStats) => {
           const newStats = { ...prevStats };
           
-          // First remove the old amount from whatever category it was in
           if (status === 'paid' && updatedPayment.status !== 'paid') {
             newStats.paid += updatedPayment.amount;
             if (updatedPayment.status === 'unpaid') newStats.unpaid -= updatedPayment.amount;
@@ -594,7 +552,6 @@ const Accounts = () => {
             if (updatedPayment.status === 'unpaid') newStats.unpaid -= updatedPayment.amount;
           }
           
-          // Update profit
           newStats.profit = newStats.paid - newStats.expenses;
           
           return newStats;
@@ -640,7 +597,6 @@ const Accounts = () => {
   };
   
   const addExpense = async () => {
-    // Reset form errors
     setExpenseFormErrors({});
     
     const newErrors: {
@@ -666,7 +622,6 @@ const Accounts = () => {
       }
     }
     
-    // Check if there are any errors
     if (Object.keys(newErrors).length > 0) {
       setExpenseFormErrors(newErrors);
       return;
@@ -674,13 +629,11 @@ const Accounts = () => {
     
     const amount = parseFloat(newExpense.amount);
     
-    // Use the uncategorized category if no category is selected
     const categoryId = newExpense.categoryId || getUncategorizedCategoryId();
     
     setIsUpdating(true);
     try {
       if (isEditMode && newExpense.id) {
-        // Update existing expense
         const { data, error } = await supabase
           .from('expenses')
           .update({
@@ -723,7 +676,6 @@ const Accounts = () => {
           });
         }
       } else {
-        // Add new expense
         const { data, error } = await supabase
           .from('expenses')
           .insert({
@@ -743,7 +695,6 @@ const Accounts = () => {
         
         if (error) throw error;
         
-        // Add the new expense to the state
         if (data && data.length > 0) {
           const newExpenseItem: Expense = {
             id: data[0].id,
@@ -773,7 +724,6 @@ const Accounts = () => {
         }
       }
       
-      // Reset form
       resetExpenseForm();
       setIsExpenseDialogOpen(false);
     } catch (error) {
@@ -985,15 +935,6 @@ const Accounts = () => {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2, 
-      maximumFractionDigits: 2
-    }).format(amount);
-  };
-
   return (
     <div className="container mx-auto px-4 py-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
@@ -1004,23 +945,33 @@ const Accounts = () => {
         
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mt-4 md:mt-0 w-full md:w-auto">
           <div className="rounded-lg p-3 bg-green-50 border border-green-100">
-            <span className="text-xl font-bold text-green-600">{formatCurrency(accountStats.paid)}</span>
+            <span className="text-xl font-bold text-green-600">
+              {formatCurrency(accountStats.paid, companyCurrency)}
+            </span>
             <p className="text-sm text-gray-500">Income</p>
           </div>
           <div className="rounded-lg p-3 bg-amber-50 border border-amber-100">
-            <span className="text-xl font-bold text-amber-600">{formatCurrency(accountStats.unpaid)}</span>
+            <span className="text-xl font-bold text-amber-600">
+              {formatCurrency(accountStats.unpaid, companyCurrency)}
+            </span>
             <p className="text-sm text-gray-500">Unpaid</p>
           </div>
           <div className="rounded-lg p-3 bg-gray-50 border border-gray-100">
-            <span className="text-xl font-bold text-gray-600">{formatCurrency(accountStats.writeOff)}</span>
+            <span className="text-xl font-bold text-gray-600">
+              {formatCurrency(accountStats.writeOff, companyCurrency)}
+            </span>
             <p className="text-sm text-gray-500">Write-off</p>
           </div>
           <div className="rounded-lg p-3 bg-red-50 border border-red-100">
-            <span className="text-xl font-bold text-red-600">{formatCurrency(accountStats.expenses)}</span>
+            <span className="text-xl font-bold text-red-600">
+              {formatCurrency(accountStats.expenses, companyCurrency)}
+            </span>
             <p className="text-sm text-gray-500">Expenses</p>
           </div>
           <div className="rounded-lg p-3 bg-blue-50 border border-blue-100">
-            <span className="text-xl font-bold text-blue-600">{formatCurrency(accountStats.profit)}</span>
+            <span className="text-xl font-bold text-blue-600">
+              {formatCurrency(accountStats.profit, companyCurrency)}
+            </span>
             <p className="text-sm text-gray-500">Profit</p>
           </div>
         </div>
@@ -1224,7 +1175,7 @@ const Accounts = () => {
                         <TableCell>{payment.clientName}</TableCell>
                         <TableCell className="max-w-[200px] truncate">{payment.jobTitle || 'N/A'}</TableCell>
                         <TableCell className="text-right font-medium">
-                          {formatCurrency(payment.amount)}
+                          {formatCurrency(payment.amount, companyCurrency)}
                         </TableCell>
                       </TableRow>
                     ))
@@ -1272,7 +1223,7 @@ const Accounts = () => {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right font-medium">
-                          {formatCurrency(expense.amount)}
+                          {formatCurrency(expense.amount, companyCurrency)}
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end space-x-2">
@@ -1302,7 +1253,6 @@ const Accounts = () => {
         </TabsContent>
       </Tabs>
       
-      {/* Payment Dialog */}
       <Dialog open={isPaymentDialogOpen} onOpenChange={(open) => {
         if (!open) closePaymentDialog();
         else setIsPaymentDialogOpen(true);
@@ -1346,7 +1296,6 @@ const Accounts = () => {
         </DialogContent>
       </Dialog>
       
-      {/* Add/Edit Expense Dialog */}
       <Dialog open={isExpenseDialogOpen} onOpenChange={(open) => {
         if (!open) {
           resetExpenseForm();
@@ -1462,7 +1411,6 @@ const Accounts = () => {
         </DialogContent>
       </Dialog>
       
-      {/* Add Category Dialog */}
       <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -1493,7 +1441,6 @@ const Accounts = () => {
         </DialogContent>
       </Dialog>
       
-      {/* Export Dialog */}
       <ExportDialog
         isOpen={isExportDialogOpen}
         onClose={() => setIsExportDialogOpen(false)}

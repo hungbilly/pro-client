@@ -1,13 +1,15 @@
-
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
+import SignUpDialog from "./SignUpDialog";
 import { useNavigate } from "react-router-dom";
 
 export default function AuthPricingGrid() {
+  const [dialogOpen, setDialogOpen] = useState(false);
+
   const navigate = useNavigate();
 
-  const handleSignUp = () => {
-    navigate("/auth", { state: { signUp: true } });
+  const handleSignUpClick = () => {
+    setDialogOpen(true);
   };
 
   return (
@@ -46,11 +48,12 @@ export default function AuthPricingGrid() {
         
         <div className="flex justify-center mt-8">
           <Button 
-            onClick={handleSignUp} 
+            onClick={handleSignUpClick} 
             className="bg-primary hover:bg-primary/90 text-white font-bold py-3 px-8 rounded-lg text-lg transition-colors"
           >
             Sign Up Now
           </Button>
+          <SignUpDialog open={dialogOpen} onOpenChange={setDialogOpen} />
         </div>
       </div>
     </section>

@@ -26,6 +26,7 @@ import RichTextEditor from '@/components/RichTextEditor';
 import PaymentScheduleTable from '@/components/invoice/PaymentScheduleTable';
 import isEqual from 'lodash/isEqual';
 import ContractAcceptance from '@/components/invoice/ContractAcceptance';
+import { formatCurrency as utilFormatCurrency } from "@/lib/utils";
 
 const InvoiceView = () => {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
@@ -48,13 +49,15 @@ const InvoiceView = () => {
   
   const isEditView = false;
 
-  const formatCurrency = useCallback((amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-    }).format(amount);
-  }, []);
+  const companyCurrency =
+    (isClientView
+      ? clientViewCompany?.currency
+      : selectedCompany?.currency) || "USD";
+
+  const formatCurrency = useCallback(
+    (amount: number) => utilFormatCurrency(amount, companyCurrency),
+    [companyCurrency]
+  );
 
   const [clientViewCompany, setClientViewCompany] = useState<CompanyClientView | null>(null);
 

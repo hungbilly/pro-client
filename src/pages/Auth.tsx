@@ -12,6 +12,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import AuthFeaturesGrid from "@/components/ui-custom/AuthFeaturesGrid";
+import AuthPricingGrid from "@/components/ui-custom/AuthPricingGrid";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -288,6 +289,7 @@ const Auth = () => {
         </div>
       </AnimatedBackground>
       <AuthFeaturesGrid />
+      <AuthPricingGrid />
     </PageTransition>;
 };
 

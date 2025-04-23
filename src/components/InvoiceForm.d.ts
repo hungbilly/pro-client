@@ -10,8 +10,8 @@ export interface InvoiceFormProps {
   contractTemplates: ContractTemplate[];
   checkDuplicateInvoiceNumber: (number: string, currentInvoiceId?: string) => Promise<boolean>;
   onInvoiceDeleted: (invoiceId: string) => void;
+  currency?: string;
 }
 
 declare const InvoiceForm: React.FC<InvoiceFormProps>;
 export default InvoiceForm;
-

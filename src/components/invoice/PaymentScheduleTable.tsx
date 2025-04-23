@@ -1,3 +1,4 @@
+
 import React, { memo, useState, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -14,7 +15,7 @@ import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { getCurrencySymbol } from '@/lib/utils';
+import { getCurrencySymbol, formatCurrency } from '@/lib/utils';
 import { useCompanyContext } from '@/context/CompanyContext';
 
 interface PaymentScheduleTableProps {
@@ -38,7 +39,7 @@ const PaymentScheduleTable = memo(({
   isEditView = false,
   updatingPaymentId,
   onUpdateStatus,
-  formatCurrency,
+  formatCurrency: propFormatCurrency, // Rename to avoid collision
   onUpdatePaymentDate,
   onUpdateAmount,
   onUpdateDescription,
@@ -360,7 +361,9 @@ const PaymentScheduleTable = memo(({
     );
   };
 
+  // Use the utils formatCurrency but with our currency
   const trueFormatCurrency = (amt: number) => {
+    // Using imported formatCurrency from utils, not the prop
     return formatCurrency(amt, currency);
   };
 

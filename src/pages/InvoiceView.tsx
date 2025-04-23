@@ -1,12 +1,11 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { getInvoice, getClient, getJob, updateInvoice } from '@/lib/storage';
+import { getInvoice, getClient, getJob, updateInvoice, generatePdf } from '@/lib/storage';
 import { Invoice, Client, Job, ContractStatus, InvoiceStatus, PaymentSchedule, PaymentStatus } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { CalendarDays, Check, Download, Edit, Loader2, Mail, Save, ArrowUpRight, CircleDollarSign, X, Copy, Calendar, Share2, Printer } from 'lucide-react';
+import { CalendarDays, Check, Download, Edit, Loader2, Mail, Save, ArrowUpRight, CircleDollarSign, X, Copy, Calendar, Share2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -20,7 +19,8 @@ import { Copy as CopyIcon } from 'lucide-react';
 import { cn, formatCurrency } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AddToCalendarDialog } from '@/components/AddToCalendarDialog';
+import AddToCalendarDialog from '@/components/AddToCalendarDialog';
+import { Printer } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/context/AuthContext';
@@ -29,7 +29,7 @@ import { useCompanyContext } from '@/context/CompanyContext';
 const InvoiceView: React.FC = () => {
   const { invoiceId } = useParams<{ invoiceId: string }>();
   const navigate = useNavigate();
-  const { toast: uiToast } = useToast();
+  const { toast } = useToast();
   const { user } = useAuth();
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [client, setClient] = useState<Client | null>(null);
@@ -53,7 +53,7 @@ const InvoiceView: React.FC = () => {
       try {
         if (!invoiceId) {
           console.error("No invoice ID provided");
-          uiToast({
+          toast({
             variant: "destructive",
             title: "Error",
             description: "No invoice ID provided.",
@@ -64,7 +64,7 @@ const InvoiceView: React.FC = () => {
         const invoiceData = await getInvoice(invoiceId);
         if (!invoiceData) {
           console.error(`Invoice with ID ${invoiceId} not found`);
-          uiToast({
+          toast({
             variant: "destructive",
             title: "Error",
             description: `Invoice with ID ${invoiceId} not found.`,
@@ -82,7 +82,7 @@ const InvoiceView: React.FC = () => {
         setIsContractAccepted(invoiceData.contractStatus === 'accepted');
       } catch (error) {
         console.error("Failed to fetch invoice:", error);
-        uiToast({
+        toast({
           variant: "destructive",
           title: "Error",
           description: "Failed to load invoice details.",
@@ -93,7 +93,7 @@ const InvoiceView: React.FC = () => {
     };
     
     fetchInvoice();
-  }, [invoiceId, uiToast]);
+  }, [invoiceId, toast]);
 
   const handleStatusChange = async (newStatus: InvoiceStatus) => {
     if (!invoice) return;
@@ -102,13 +102,13 @@ const InvoiceView: React.FC = () => {
       const updatedInvoice = { ...invoice, status: newStatus };
       await updateInvoice(updatedInvoice);
       setInvoice(updatedInvoice);
-      uiToast({
+      toast({
         title: "Success",
         description: "Invoice status updated successfully.",
       });
     } catch (error) {
       console.error("Failed to update invoice status:", error);
-      uiToast({
+      toast({
         variant: "destructive",
         title: "Error",
         description: "Failed to update invoice status.",
@@ -122,18 +122,18 @@ const InvoiceView: React.FC = () => {
     if (!invoice) return;
     setIsSaving(true);
     try {
-      const newContractStatus = accepted ? 'accepted' : 'pending' as ContractStatus;
+      const newContractStatus = accepted ? 'accepted' : 'pending';
       const updatedInvoice = { ...invoice, contractStatus: newContractStatus };
       await updateInvoice(updatedInvoice);
       setInvoice(updatedInvoice);
       setIsContractAccepted(accepted);
-      uiToast({
+      toast({
         title: "Success",
         description: "Contract acceptance status updated.",
       });
     } catch (error) {
       console.error("Failed to update contract acceptance:", error);
-      uiToast({
+      toast({
         variant: "destructive",
         title: "Error",
         description: "Failed to update contract acceptance.",
@@ -147,23 +147,22 @@ const InvoiceView: React.FC = () => {
     if (!invoiceId) return;
     setIsPdfLoading(true);
     try {
-      // Since generatePdf is not available, we'll use a different approach for now
-      // This is a placeholder - in a real implementation, you would need to implement the PDF generation
-      toast.success("PDF generation is not yet implemented", {
-        duration: 3000,
-      });
-      
-      uiToast({
-        title: "Information",
-        description: "PDF generation is not implemented yet.",
+      const pdfBlob = await generatePdf(invoiceId);
+      const url = window.URL.createObjectURL(pdfBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `invoice-${invoiceId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      toast({
+        title: "Success",
+        description: "PDF generated successfully.",
       });
     } catch (error) {
       console.error("Failed to generate PDF:", error);
-      toast.error("Failed to generate PDF", {
-        duration: 3000,
-      });
-      
-      uiToast({
+      toast({
         variant: "destructive",
         title: "Error",
         description: "Failed to generate PDF.",
@@ -189,11 +188,13 @@ const InvoiceView: React.FC = () => {
       setInvoice(updatedInvoice);
       toast.success('Payment status updated successfully', {
         duration: 3000,
+        position: 'top-center'
       });
     } catch (error) {
       console.error('Error updating payment status:', error);
       toast.error('Failed to update payment status', {
         duration: 3000,
+        position: 'top-center'
       });
     } finally {
       setUpdatingPaymentId(null);
@@ -215,11 +216,13 @@ const InvoiceView: React.FC = () => {
       await navigator.clipboard.writeText(shareLink);
       toast.success('Link copied to clipboard!', {
         duration: 3000,
+        position: 'top-center'
       });
     } catch (err) {
       console.error('Failed to copy: ', err);
       toast.error('Failed to copy link to clipboard', {
         duration: 3000,
+        position: 'top-center'
       });
     } finally {
       setIsCopying(false);
@@ -229,22 +232,6 @@ const InvoiceView: React.FC = () => {
   // Add a currency-aware formatter
   const formatInvoiceCurrency = (amount: number) => {
     return formatCurrency(amount, currency);
-  };
-
-  // Convert invoice to job structure for AddToCalendarDialog
-  const convertInvoiceToJobForCalendar = () => {
-    if (!invoice) return null;
-    
-    // Create a minimal job structure with just the fields needed by AddToCalendarDialog
-    return {
-      id: invoice.id,
-      title: `Invoice ${invoice.number}`,
-      description: `Invoice for ${client?.name || 'Client'}`,
-      date: invoice.dueDate,
-      calendarEventId: invoice.calendarEventId,
-      location: '',
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
-    };
   };
 
   // Only update the sections with currency formatting
@@ -434,7 +421,7 @@ const InvoiceView: React.FC = () => {
                     <div className="flex items-center space-x-3">
                       <Badge variant="secondary">{invoice.status}</Badge>
                       <Button variant="outline" size="sm" onClick={() => setIsAddToCalendarDialogOpen(true)}>
-                        <Calendar className="mr-2 h-4 w-4" />
+                        <CalendarPlus className="mr-2 h-4 w-4" />
                         Add to Calendar
                       </Button>
                     </div>
@@ -445,8 +432,10 @@ const InvoiceView: React.FC = () => {
                       <Badge variant="outline">Accepted</Badge>
                     ) : (
                       <ContractAcceptance
-                        companyName={selectedCompany?.name || "Our Company"}
+                        contractStatus={invoice.contractStatus}
                         onAccept={async () => await handleContractAcceptance(true)}
+                        onReject={async () => await handleContractAcceptance(false)}
+                        isSaving={isSaving}
                       />
                     )}
                   </div>
@@ -458,7 +447,7 @@ const InvoiceView: React.FC = () => {
           <AddToCalendarDialog
             isOpen={isAddToCalendarDialogOpen}
             onClose={() => setIsAddToCalendarDialogOpen(false)}
-            job={convertInvoiceToJobForCalendar()}
+            invoice={invoice}
             client={client}
           />
           

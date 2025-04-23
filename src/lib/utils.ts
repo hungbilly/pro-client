@@ -11,9 +11,7 @@ export function cn(...inputs: ClassValue[]) {
  * Gets currency symbol for given code
  */
 export function getCurrencySymbol(currency: string) {
-  if (!currency) return "$";
-  
-  switch (currency.toLowerCase()) {
+  switch (currency?.toLowerCase?.()) {
     case "hkd": return "HK$";
     case "usd": return "$";
     case "eur": return "€";

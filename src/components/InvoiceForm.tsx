@@ -13,7 +13,7 @@ import { getClient, saveInvoice, updateInvoice, getJob, getInvoice, getInvoicesB
 import { format } from 'date-fns';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { cn, formatCurrency } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { useCompany } from './CompanySelector';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -26,6 +26,31 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import AddDiscountDialog from './AddDiscountDialog';
 import PaymentScheduleTable from './invoice/PaymentScheduleTable';
+
+export interface InvoiceFormProps {
+  invoice?: Invoice;
+  clientId?: string;
+  jobId?: string;
+  invoiceId?: string;
+  isEditView?: boolean;
+  contractTemplates: ContractTemplate[];
+  checkDuplicateInvoiceNumber: (number: string, currentInvoiceId?: string) => Promise<boolean>;
+  onInvoiceDeleted: (invoiceId: string) => void;
+  currency?: string;
+}
+
+interface ContractTemplate {
+  id: string;
+  name: string;
+  content?: string;
+  description?: string;
+}
+
+interface Template {
+  id: string;
+  name: string;
+  content: string;
+}
 
 const generateId = () => {
   return Math.random().toString(36).substring(2, 15);
@@ -591,8 +616,13 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     return { __html: content };
   };
 
-  const trueFormatCurrency = (amt: number) => {
-    return formatCurrency(amt, selectedCompany?.currency || currency);
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency || 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(amount);
   };
 
   const handleRemovePaymentSchedule = (id: string) => {
@@ -624,7 +654,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
             dangerouslySetInnerHTML={renderRichTextContent(item.description)}
           />
         </TableCell>
-        <TableCell>{trueFormatCurrency(Math.abs(item.rate))}</TableCell>
+        <TableCell>${Math.abs(item.rate).toFixed(2)}</TableCell>
         <TableCell>{item.quantity}</TableCell>
         <TableCell>{item.discount || '0%'}</TableCell>
         <TableCell>No Tax</TableCell>
@@ -632,7 +662,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
           "text-right font-medium",
           item.rate < 0 && "text-blue-600 dark:text-blue-400"
         )}>
-          {trueFormatCurrency(item.quantity * Math.abs(item.rate))}
+          ${(item.quantity * Math.abs(item.rate)).toFixed(2)}
         </TableCell>
         <TableCell>
           <div className="flex items-center justify-end space-x-1">
@@ -656,7 +686,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
         <TableCell className="font-medium">{item.name}</TableCell>
         <TableCell>{item.description}</TableCell>
         <TableCell className="text-right font-medium text-blue-600 dark:text-blue-400">
-          -{trueFormatCurrency(Math.abs(item.rate * item.quantity))}
+          -${Math.abs(item.rate * item.quantity).toFixed(2)}
         </TableCell>
         <TableCell>
           <div className="flex items-center justify-end space-x-1">
@@ -846,11 +876,11 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                   <div className="space-y-2 text-right">
                     <div className="flex justify-between">
                       <span className="font-medium mr-8">Subtotal:</span>
-                      <span className="font-medium">{trueFormatCurrency(calculateTotal())}</span>
+                      <span className="font-medium">${calculateTotal().toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500 mr-8">Total Due:</span>
-                      <span className="font-bold">{trueFormatCurrency(calculateTotal())}</span>
+                      <span className="font-bold">${calculateTotal().toFixed(2)}</span>
                     </div>
                   </div>
                 </div>

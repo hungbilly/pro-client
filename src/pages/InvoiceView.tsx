@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { getInvoice, getClient, getJob, updateInvoice } from '@/lib/storage';
 import { Invoice, Client, Job, ContractStatus, InvoiceStatus, PaymentSchedule, PaymentStatus } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { CalendarDays, Check, Download, Edit, Loader2, Mail, Save, ArrowUpRight, CircleDollarSign, X, Copy, Calendar, Share2, CalendarPlus, Printer } from 'lucide-react';
+import { CalendarDays, Check, Download, Edit, Loader2, Mail, Save, ArrowUpRight, CircleDollarSign, X, Copy, Calendar, Share2, Printer } from 'lucide-react';
 import { format } from 'date-fns';
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -231,6 +231,22 @@ const InvoiceView: React.FC = () => {
     return formatCurrency(amount, currency);
   };
 
+  // Convert invoice to job structure for AddToCalendarDialog
+  const convertInvoiceToJobForCalendar = () => {
+    if (!invoice) return null;
+    
+    // Create a minimal job structure with just the fields needed by AddToCalendarDialog
+    return {
+      id: invoice.id,
+      title: `Invoice ${invoice.number}`,
+      description: `Invoice for ${client?.name || 'Client'}`,
+      date: invoice.dueDate,
+      calendarEventId: invoice.calendarEventId,
+      location: '',
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+    };
+  };
+
   // Only update the sections with currency formatting
   return (
     <div className="container mx-auto py-6 space-y-8">
@@ -442,7 +458,7 @@ const InvoiceView: React.FC = () => {
           <AddToCalendarDialog
             isOpen={isAddToCalendarDialogOpen}
             onClose={() => setIsAddToCalendarDialogOpen(false)}
-            invoice={invoice}
+            job={convertInvoiceToJobForCalendar()}
             client={client}
           />
           

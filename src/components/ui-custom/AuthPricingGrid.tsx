@@ -1,7 +1,15 @@
 
 import React from "react";
+import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 
 export default function AuthPricingGrid() {
+  const navigate = useNavigate();
+
+  const handleSignUp = () => {
+    navigate("/auth", { state: { signUp: true } });
+  };
+
   return (
     <section className="w-full bg-gradient-to-b from-slate-100 via-slate-50 to-white py-12">
       <div className="max-w-3xl mx-auto px-4">
@@ -34,6 +42,15 @@ export default function AuthPricingGrid() {
               After your free trial period <br /> Cancel anytime
             </div>
           </div>
+        </div>
+        
+        <div className="flex justify-center mt-8">
+          <Button 
+            onClick={handleSignUp} 
+            className="bg-primary hover:bg-primary/90 text-white font-bold py-3 px-8 rounded-lg text-lg transition-colors"
+          >
+            Sign Up Now
+          </Button>
         </div>
       </div>
     </section>

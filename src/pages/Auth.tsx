@@ -11,6 +11,7 @@ import PageTransition from '@/components/ui-custom/PageTransition';
 import { useAuth } from '@/context/AuthContext';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import AuthFeaturesGrid from "@/components/ui-custom/AuthFeaturesGrid";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -286,6 +287,7 @@ const Auth = () => {
           </div>
         </div>
       </AnimatedBackground>
+      <AuthFeaturesGrid />
     </PageTransition>;
 };
 

@@ -175,7 +175,7 @@ const Auth = () => {
       <AnimatedBackground className="flex items-center justify-center min-h-screen bg-sky-100">
         <div className="w-full max-w-7xl grid grid-cols-1 lg:grid-cols-2 gap-8 p-4 md:p-8">
           <div className="flex flex-col justify-center space-y-6 my-0">
-            <img alt="ProClient Logo" src="/lovable-uploads/8c0f5bf3-bdf8-4023-a830-f851e0fce7fa.png" className="h-60 mb-4 self-start" />
+            <img alt="ProClient Logo" src="/lovable-uploads/579af3e1-b8cc-4711-a29d-6df75a633902.png" className="h- mb-4 self-start object-none" />
             <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
               ProClient
               <span className="text-primary"> Management System</span>

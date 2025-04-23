@@ -11,6 +11,7 @@ import PageTransition from '@/components/ui-custom/PageTransition';
 import { useAuth } from '@/context/AuthContext';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+
 const Auth = () => {
   const navigate = useNavigate();
   const {
@@ -23,6 +24,7 @@ const Auth = () => {
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const appCallbackUrl = `${window.location.origin}/auth/callback`;
+
   useEffect(() => {
     const checkForLogoutRedirect = async () => {
       if (window.location.search.includes('logout')) {
@@ -46,12 +48,14 @@ const Auth = () => {
     };
     checkForLogoutRedirect();
   }, []);
+
   useEffect(() => {
     if (user) {
       console.log('Auth page: User already logged in, redirecting to home');
       navigate('/');
     }
   }, [user, navigate]);
+
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const errorParam = urlParams.get('error');
@@ -66,6 +70,7 @@ const Auth = () => {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -130,6 +135,7 @@ const Auth = () => {
       setLoading(false);
     }
   };
+
   const handleGoogleSignIn = async () => {
     try {
       setLoading(true);
@@ -171,11 +177,16 @@ const Auth = () => {
       setLoading(false);
     }
   };
+
   return <PageTransition>
       <AnimatedBackground className="flex items-center justify-center min-h-screen bg-sky-100">
         <div className="w-full max-w-7xl grid grid-cols-1 lg:grid-cols-2 gap-8 p-4 md:p-8">
           <div className="flex flex-col justify-center space-y-6 my-0">
-            <img alt="ProClient Logo" src="/lovable-uploads/579af3e1-b8cc-4711-a29d-6df75a633902.png" className="h- mb-4 self-start object-none" />
+            <img 
+              alt="ProClient Logo" 
+              src="/lovable-uploads/9fd4660b-36e4-4596-9ee9-60b3c52c8c69.png" 
+              className="h-16 mb-4 self-start object-contain" 
+            />
             <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
               ProClient
               <span className="text-primary"> Management System</span>
@@ -275,4 +286,5 @@ const Auth = () => {
       </AnimatedBackground>
     </PageTransition>;
 };
+
 export default Auth;

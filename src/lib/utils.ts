@@ -1,16 +1,52 @@
-
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 
+// currency helpers
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function formatCurrency(amount: number, currency: string = 'USD'): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: currency,
-  }).format(amount);
+/**
+ * Gets currency symbol for given code
+ */
+export function getCurrencySymbol(currency: string) {
+  switch (currency?.toLowerCase?.()) {
+    case "hkd": return "HK$";
+    case "usd": return "$";
+    case "eur": return "€";
+    case "jpy": return "¥";
+    case "aud": return "A$";
+    case "gbp": return "£";
+    case "cad": return "CA$";
+    case "chf": return "CHF";
+    case "cny": return "¥";
+    case "inr": return "₹";
+    case "mxn": return "MX$";
+    case "brl": return "R$";
+    case "rub": return "₽";
+    case "krw": return "₩";
+    case "sgd": return "S$";
+    case "nzd": return "NZ$";
+    case "sek": return "kr";
+    case "zar": return "R";
+    case "thb": return "฿";
+    case "dkk": return "kr";
+    default: return "$";
+  }
+}
+
+/**
+ * Formats amount as currency using given code
+ */
+export function formatCurrency(amount: number, currency: string = 'USD', opts?: { symbolOnly?: boolean }) {
+  if (opts?.symbolOnly) {
+    return getCurrencySymbol(currency);
+  }
+  return `${getCurrencySymbol(currency)}${new Intl.NumberFormat('en-US', {
+    style: 'decimal',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount)}`;
 }
 
 /**

@@ -15,6 +15,7 @@ import { FormLabel } from '@/components/ui/form';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { useCompanyContext } from '@/context/CompanyContext';
+import { getCurrencySymbol, formatCurrency as trueFormatCurrency } from '@/lib/utils';
 
 interface ContractTemplate {
   id: string;
@@ -41,13 +42,11 @@ const InvoiceCreate = () => {
   const [templates, setTemplates] = useState<InvoiceTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const { selectedCompany } = useCompanyContext();
+  const currency = selectedCompany?.currency || "USD";
 
   const calculateTotal = (): number => {
     if (!invoice || !invoice.items) return 0;
-    
-    return invoice.items.reduce((total, item) => {
-      return total + (item.quantity * item.rate);
-    }, 0);
+    return invoice.items.reduce((total, item) => total + (item.quantity * item.rate), 0);
   };
 
   const getOrdinalNumber = (num: number): string => {
@@ -427,6 +426,7 @@ const InvoiceCreate = () => {
           contractTemplates={contractTemplates}
           checkDuplicateInvoiceNumber={checkDuplicateInvoiceNumber}
           onInvoiceDeleted={handleInvoiceDeleted}
+          currency={currency}
         />
       </div>
     </PageTransition>

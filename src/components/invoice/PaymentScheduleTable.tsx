@@ -14,6 +14,8 @@ import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { getCurrencySymbol } from '@/lib/utils';
+import { useCompanyContext } from '@/context/CompanyContext';
 
 interface PaymentScheduleTableProps {
   paymentSchedules: PaymentSchedule[];
@@ -42,8 +44,9 @@ const PaymentScheduleTable = memo(({
   onUpdateDescription,
   onRemovePaymentSchedule
 }: PaymentScheduleTableProps) => {
-  console.log('PaymentScheduleTable rendered with props:', { isClientView, isEditView });
-  
+  const { selectedCompany } = useCompanyContext();
+  const currency = selectedCompany?.currency || "USD";
+
   const paymentStatusColors: { [key: string]: string } = {
     paid: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
     unpaid: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
@@ -338,7 +341,7 @@ const PaymentScheduleTable = memo(({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1">
           <CircleDollarSign className="h-3.5 w-3.5 text-muted-foreground" />
-          <span>{formatCurrency(paymentAmount)}</span>
+          <span>{trueFormatCurrency(paymentAmount)}</span>
         </div>
         {!isClientView && shouldEnableEditing && (
           <Button 
@@ -355,6 +358,10 @@ const PaymentScheduleTable = memo(({
         )}
       </div>
     );
+  };
+
+  const trueFormatCurrency = (amt: number) => {
+    return formatCurrency(amt, currency);
   };
 
   return (
@@ -525,7 +532,7 @@ const PaymentScheduleTable = memo(({
           </div>
           <div>
             <Badge variant="outline" className="bg-blue-100 text-blue-800">
-              Total Amount: {formatCurrency(amount)}
+              Total Amount: {trueFormatCurrency(amount)}
             </Badge>
           </div>
         </div>

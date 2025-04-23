@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { Client, Invoice, InvoiceItem, Job, PaymentSchedule, InvoiceStatus, ContractStatus, PaymentStatus, Package } from '@/types';
+import { Client, Invoice, InvoiceItem, Job, PaymentSchedule, InvoiceStatus, ContractStatus, PaymentStatus } from '@/types';
 import { format } from 'date-fns';
 
 // Job functions
@@ -1209,120 +1209,6 @@ export const updatePaymentScheduleStatus = async (scheduleId: string, status: Pa
     };
   } catch (error) {
     console.error('Error in updatePaymentScheduleStatus:', error);
-    return false;
-  }
-};
-
-// Package functions
-export const getPackages = async (companyId?: string): Promise<Package[]> => {
-  try {
-    let query = supabase
-      .from('packages')
-      .select('*')
-      .order('name');
-    
-    if (companyId) {
-      query = query.eq('company_id', companyId);
-    }
-    
-    const { data, error } = await query;
-
-    if (error) {
-      console.error('Error fetching packages:', error);
-      return [];
-    }
-
-    return data.map(pkg => ({
-      id: pkg.id,
-      name: pkg.name,
-      description: pkg.description || '',
-      price: pkg.price,
-      companyId: pkg.company_id
-    }));
-  } catch (error) {
-    console.error('Error in getPackages:', error);
-    return [];
-  }
-};
-
-export const createPackage = async (pkg: Omit<Package, 'id'>): Promise<Package> => {
-  try {
-    const { data, error } = await supabase
-      .from('packages')
-      .insert({
-        name: pkg.name,
-        description: pkg.description,
-        price: pkg.price,
-        company_id: pkg.companyId
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error creating package:', error);
-      throw new Error(error.message);
-    }
-
-    return {
-      id: data.id,
-      name: data.name,
-      description: data.description || '',
-      price: data.price,
-      companyId: data.company_id
-    };
-  } catch (error) {
-    console.error('Error in createPackage:', error);
-    throw error;
-  }
-};
-
-export const updatePackage = async (pkg: Package): Promise<Package> => {
-  try {
-    const { data, error } = await supabase
-      .from('packages')
-      .update({
-        name: pkg.name,
-        description: pkg.description,
-        price: pkg.price,
-        company_id: pkg.companyId
-      })
-      .eq('id', pkg.id)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error updating package:', error);
-      throw new Error(error.message);
-    }
-
-    return {
-      id: data.id,
-      name: data.name,
-      description: data.description || '',
-      price: data.price,
-      companyId: data.company_id
-    };
-  } catch (error) {
-    console.error('Error in updatePackage:', error);
-    throw error;
-  }
-};
-
-export const deletePackage = async (packageId: string): Promise<boolean> => {
-  try {
-    const { error } = await supabase
-      .from('packages')
-      .delete()
-      .eq('id', packageId);
-
-    if (error) {
-      console.error('Error deleting package:', error);
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    console.error('Error in deletePackage:', error);
     return false;
   }
 };

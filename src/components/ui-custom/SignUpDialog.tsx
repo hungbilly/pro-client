@@ -17,6 +17,7 @@ const appCallbackUrl = `${window.location.origin}/auth/callback`;
 const SignUpDialog: React.FC<SignUpDialogProps> = ({ open, onOpenChange }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -24,6 +25,13 @@ const SignUpDialog: React.FC<SignUpDialogProps> = ({ open, onOpenChange }) => {
     e.preventDefault();
     setLoading(true);
     setErrorMsg(null);
+
+    if (password !== confirmPassword) {
+      setErrorMsg("Passwords do not match");
+      setLoading(false);
+      return;
+    }
+
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -41,6 +49,7 @@ const SignUpDialog: React.FC<SignUpDialogProps> = ({ open, onOpenChange }) => {
         onOpenChange(false);
         setEmail("");
         setPassword("");
+        setConfirmPassword("");
         setErrorMsg(null);
       }
     } catch (error: any) {
@@ -82,6 +91,18 @@ const SignUpDialog: React.FC<SignUpDialogProps> = ({ open, onOpenChange }) => {
                 disabled={loading}
                 onChange={e => setPassword(e.target.value)}
                 placeholder="Password"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="signup-confirm-password">Confirm Password</Label>
+              <Input
+                id="signup-confirm-password"
+                type="password"
+                value={confirmPassword}
+                required
+                disabled={loading}
+                onChange={e => setConfirmPassword(e.target.value)}
+                placeholder="Confirm Password"
               />
             </div>
             {errorMsg && (

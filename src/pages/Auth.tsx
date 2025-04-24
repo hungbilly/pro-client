@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -26,10 +25,10 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const appCallbackUrl = `${window.location.origin}/auth/callback`;
 
-  // Check if we should show signup form based on navigation state
   useEffect(() => {
     if (location.state && location.state.signUp === true) {
       setIsLogin(false);
@@ -116,6 +115,9 @@ const Auth = () => {
         toast.success('Successfully signed in!');
         navigate('/');
       } else {
+        if (password !== confirmPassword) {
+          throw new Error('Passwords do not match');
+        }
         console.log('Attempting to sign up with email:', email);
         const {
           error,
@@ -250,6 +252,19 @@ const Auth = () => {
                       <Label htmlFor="password">Password</Label>
                       <Input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} required />
                     </div>}
+                  
+                  {!isForgotPassword && !isLogin && (
+                    <div className="space-y-2">
+                      <Label htmlFor="confirm-password">Confirm Password</Label>
+                      <Input 
+                        id="confirm-password" 
+                        type="password" 
+                        value={confirmPassword} 
+                        onChange={e => setConfirmPassword(e.target.value)} 
+                        required 
+                      />
+                    </div>
+                  )}
                   
                   {!isForgotPassword && <>
                       <div className="flex items-center gap-4 py-2">

@@ -45,7 +45,7 @@ const Settings = () => {
         
         <CompanyProvider>
           <Tabs defaultValue="company" className="space-y-4">
-            <TabsList>
+            <TabsList className="flex flex-wrap gap-2 h-auto">
               <TabsTrigger value="company">Company</TabsTrigger>
               <TabsTrigger value="packages">Packages &amp; Discounts</TabsTrigger>
               <TabsTrigger value="templates">Invoice Templates</TabsTrigger>

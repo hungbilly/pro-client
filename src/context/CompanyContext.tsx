@@ -28,6 +28,8 @@ interface CompanyContextType {
   loading: boolean;
   refreshCompanies: () => Promise<void>;
   error: Error | null;
+  addCompany: (company: Omit<Company, 'id'>) => Promise<Company | null>;
+  updateCompany: (company: Company) => Promise<boolean>;
 }
 
 const STORAGE_KEY = 'selectedCompanyId';
@@ -129,6 +131,63 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
     }
   };
 
+  // Add a new company and update state immediately
+  const addCompany = async (newCompany: Omit<Company, 'id'>): Promise<Company | null> => {
+    try {
+      const { data, error } = await supabase
+        .from('companies')
+        .insert(newCompany)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      // Update local state
+      const updatedCompanies = [...companies, data];
+      setCompanies(updatedCompanies);
+      
+      // If this is the first company or marked as default, select it
+      if (updatedCompanies.length === 1 || data.is_default) {
+        setSelectedCompany(data);
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Error adding company:', error);
+      toast.error('Failed to add company');
+      return null;
+    }
+  };
+
+  // Update an existing company and update state immediately
+  const updateCompany = async (updatedCompany: Company): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from('companies')
+        .update(updatedCompany)
+        .eq('id', updatedCompany.id);
+      
+      if (error) throw error;
+      
+      // Update local state
+      const updatedCompanies = companies.map(company => 
+        company.id === updatedCompany.id ? updatedCompany : company
+      );
+      setCompanies(updatedCompanies);
+      
+      // Update selected company if this is the one that was modified
+      if (selectedCompany && selectedCompany.id === updatedCompany.id) {
+        setSelectedCompany(updatedCompany);
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error updating company:', error);
+      toast.error('Failed to update company');
+      return false;
+    }
+  };
+
   useEffect(() => {
     if (user) {
       fetchCompanies();
@@ -150,7 +209,9 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       setSelectedCompanyId,
       loading, 
       refreshCompanies: fetchCompanies,
-      error
+      error,
+      addCompany,
+      updateCompany
     }}>
       {children}
     </CompanyContext.Provider>

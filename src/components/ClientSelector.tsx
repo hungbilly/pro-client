@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { getClients } from '@/lib/storage';
 import { PlusCircle, UserSearch } from 'lucide-react';
 import AddClientModal from '@/components/ui-custom/AddClientModal';
-import { useCompany } from './CompanySelector';
+import { useCompany } from '@/hooks/useCompany';
 
 interface ClientSelectorProps {
   selectedClientId?: string;

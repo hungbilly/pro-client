@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { useCompany } from './CompanySelector';
+import { useCompany } from '@/hooks/useCompany';
 import AddClientButton from './ui-custom/AddClientButton';
 import AddJobButton from './ui-custom/AddJobButton';
 import RevenueChart from './RevenueChart';

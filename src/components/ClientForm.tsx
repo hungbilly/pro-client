@@ -7,8 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { saveClient, updateClient } from '@/lib/storage';
-import CompanySelector, { useCompany } from './CompanySelector';
+import CompanySelector from './CompanySelector';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useCompany } from '@/hooks/useCompany';
 
 interface ClientFormProps {
   existingClient?: Client;

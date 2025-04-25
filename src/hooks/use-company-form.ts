@@ -4,10 +4,10 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/components/CompanySelector';
 
+// Update the interface to match what's in the database
 interface Company {
   id: string;
   name: string;
-  description?: string;
   logo_url?: string;
   country?: string;
   timezone: string;
@@ -15,6 +15,25 @@ interface Company {
   is_default: boolean;
   user_id: string;
   created_at: string;
+  updated_at?: string;
+  // Add fields that exist in the database but weren't in our interface
+  address?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  theme?: string;
+}
+
+interface CompanyFormData {
+  name: string;
+  logo_url?: string;
+  country?: string;
+  timezone: string;
+  currency?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
 }
 
 export const useCompanyForm = (userId: string | undefined) => {
@@ -23,9 +42,8 @@ export const useCompanyForm = (userId: string | undefined) => {
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [uploadingLogo, setUploadingLogo] = useState(false);
-  const [formData, setFormData] = useState<Partial<Company>>({
+  const [formData, setFormData] = useState<CompanyFormData>({
     name: '',
-    description: '',
     country: '',
     timezone: 'UTC',
     currency: '',
@@ -41,10 +59,13 @@ export const useCompanyForm = (userId: string | undefined) => {
       if (company) {
         setFormData({
           name: company.name,
-          description: company.description || '',
           country: company.country || '',
           timezone: company.timezone || 'UTC',
           currency: company.currency || '',
+          address: company.address || '',
+          phone: company.phone || '',
+          email: company.email || '',
+          website: company.website || '',
         });
         setLogoPreview(company.logo_url || null);
       }
@@ -99,6 +120,11 @@ export const useCompanyForm = (userId: string | undefined) => {
     setIsLoading(true);
     try {
       if (isAddingNew) {
+        // Ensure name is provided as it's required in the database
+        if (!formData.name) {
+          throw new Error('Company name is required');
+        }
+
         const newCompany = {
           ...formData,
           user_id: userId,

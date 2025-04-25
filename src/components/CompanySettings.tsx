@@ -64,7 +64,6 @@ const CompanySettings = () => {
             setSelectedCompanyId(null);
             setFormData({
               name: '',
-              description: '',
               country: '',
               timezone: 'UTC',
               currency: '',
@@ -115,13 +114,52 @@ const CompanySettings = () => {
         </div>
 
         <div>
-          <Label htmlFor="description">Description</Label>
-          <Textarea
-            id="description"
-            name="description"
-            value={formData.description || ''}
+          <Label htmlFor="website">Website</Label>
+          <Input
+            id="website"
+            name="website"
+            value={formData.website || ''}
             onChange={handleInputChange}
             disabled={isLoading}
+            placeholder="https://example.com"
+          />
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              value={formData.email || ''}
+              onChange={handleInputChange}
+              disabled={isLoading}
+              placeholder="contact@example.com"
+            />
+          </div>
+          <div>
+            <Label htmlFor="phone">Phone</Label>
+            <Input
+              id="phone"
+              name="phone"
+              value={formData.phone || ''}
+              onChange={handleInputChange}
+              disabled={isLoading}
+              placeholder="+1 (555) 123-4567"
+            />
+          </div>
+        </div>
+
+        <div>
+          <Label htmlFor="address">Address</Label>
+          <Textarea
+            id="address"
+            name="address"
+            value={formData.address || ''}
+            onChange={handleInputChange}
+            disabled={isLoading}
+            placeholder="123 Main St, City, Country"
           />
         </div>
 

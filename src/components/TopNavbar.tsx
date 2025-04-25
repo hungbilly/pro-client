@@ -7,7 +7,6 @@ import { Button } from './ui/button';
 import { useCompanyContext } from '@/context/CompanyContext';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
-import CompanySelector from './CompanySelector';
 import { useIsMobile } from '@/hooks/use-mobile';
 import UserProfileModal from './ui-custom/UserProfileModal';
 import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
@@ -40,7 +39,6 @@ const TopNavbar = () => {
   useEffect(() => {
     console.log("TopNavbar: Companies list updated, count:", companies.length);
     console.log("TopNavbar: Current selectedCompany:", selectedCompany?.name);
-    console.log("TopNavbar: All companies:", companies.map(c => c.name));
     
     // Force re-render of the CompanySelector
     setForceUpdateKey(Date.now());
@@ -196,15 +194,7 @@ const TopNavbar = () => {
       
       <div className="bg-slate-800 w-full py-2">
         <div className="max-w-screen-2xl mx-auto px-4">
-          <div className="flex items-center justify-between">
-            <div className="w-full md:w-auto">
-              <CompanySelector 
-                key={`top-company-selector-${companies.length}-${forceUpdateKey}`} 
-                className="w-full md:w-[300px]" 
-                showLabel={false} 
-              />
-            </div>
-            
+          <div className="flex items-center justify-end">
             <div className="hidden md:flex items-center gap-4">
               {user && <Button variant="ghost" size="sm" className="text-slate-300 hover:bg-slate-700 flex items-center gap-1 overflow-hidden" onClick={() => setIsProfileModalOpen(true)}>
                   <User className="h-4 w-4 text-slate-400 flex-shrink-0" />

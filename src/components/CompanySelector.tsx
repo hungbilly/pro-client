@@ -1,4 +1,3 @@
-
 import React, { useEffect, useId, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -43,20 +42,26 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({
   
   // Force re-render when companies or selectedCompany changes
   useEffect(() => {
-    console.log(`CompanySelector (${instanceId}): render with ${companies.length} companies`);
-    console.log(`CompanySelector (${instanceId}): selectedCompany =`, selectedCompany?.name);
-    console.log(`CompanySelector (${instanceId}): Companies available:`, companies.map(c => c.name));
+    console.log(`[CompanySelector ${instanceId}] Companies or selection changed:`, {
+      companiesCount: companies.length,
+      companyNames: companies.map(c => c.name),
+      selectedCompany: selectedCompany?.name,
+      location: location.pathname
+    });
     
-    // Force re-render to ensure dropdown reflects current state
     setKey(Date.now());
-  }, [selectedCompany, companies, instanceId]);
+  }, [selectedCompany, companies, location.pathname, instanceId]);
 
   const handleCompanyChange = (value: string) => {
-    console.log(`CompanySelector (${instanceId}): Company changed to:`, value);
+    console.log(`[CompanySelector ${instanceId}] Company selection changed:`, {
+      newValue: value,
+      availableCompanies: companies.map(c => ({ id: c.id, name: c.name }))
+    });
+
     const company = companies.find(c => c.id === value);
     if (company) {
+      console.log(`[CompanySelector ${instanceId}] Setting selected company:`, company.name);
       setSelectedCompany(company);
-      console.log(`CompanySelector (${instanceId}): Selected company updated to:`, company.name);
       
       if (onCompanySelect) {
         onCompanySelect({id: company.id, name: company.name});
@@ -64,11 +69,21 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({
       
       // Only redirect to dashboard if not on /settings page
       const currentPath = location.pathname;
+      console.log(`[CompanySelector ${instanceId}] Current path:`, currentPath);
+      
       if (currentPath !== '/' && currentPath !== '/settings') {
+        console.log(`[CompanySelector ${instanceId}] Navigating to dashboard`);
         navigate('/');
       }
     }
   };
+
+  console.log(`[CompanySelector ${instanceId}] Rendering with key ${key}:`, {
+    loading,
+    companiesCount: companies.length,
+    selectedCompanyId: selectedCompany?.id,
+    showLabel
+  });
 
   if (loading) {
     return <div className="text-sm text-muted-foreground">Loading companies...</div>;

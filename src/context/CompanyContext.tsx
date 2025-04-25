@@ -42,10 +42,8 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  // Computed property based on selectedCompany
   const selectedCompanyId = selectedCompany?.id || null;
 
-  // Wrapper function that also persists to localStorage
   const setSelectedCompany = (company: Company | null) => {
     console.log("CompanyProvider: Setting selected company to:", company?.name || "null");
     setSelectedCompanyState(company);
@@ -58,7 +56,6 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
     }
   };
 
-  // Function to set selectedCompany by ID
   const setSelectedCompanyId = (id: string | null) => {
     if (!id) {
       setSelectedCompany(null);
@@ -72,19 +69,19 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
   };
 
   const fetchCompanies = async () => {
-    console.log("CompanyProvider: fetchCompanies called");
+    console.log("[CompanyContext] fetchCompanies called");
     setLoading(true);
     setError(null);
     try {
       if (!user) {
-        console.log("No user found in CompanyProvider, aborting fetch");
+        console.log("[CompanyContext] No user found, aborting fetch");
         setLoading(false);
         setCompanies([]);
         setSelectedCompany(null);
         return;
       }
       
-      console.log("CompanyProvider: Fetching companies for user:", user.id);
+      console.log("[CompanyContext] Fetching companies for user:", user.id);
       const { data, error } = await supabase
         .from('companies')
         .select('*')
@@ -93,39 +90,38 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       
       if (error) throw error;
       
-      console.log("CompanyProvider: Fetched companies:", data?.length);
-      console.log("CompanyProvider: Company names:", data?.map(c => c.name));
+      console.log("[CompanyContext] Fetched companies:", {
+        count: data?.length,
+        names: data?.map(c => c.name)
+      });
       
       if (data && data.length > 0) {
         setCompanies(data);
         
-        // Get the saved company ID from localStorage
         const savedCompanyId = localStorage.getItem(STORAGE_KEY);
-        console.log("CompanyProvider: Saved company ID from localStorage:", savedCompanyId);
+        console.log("[CompanyContext] Saved company ID from localStorage:", savedCompanyId);
         
-        // Check if the current selectedCompany or localStorage ID is still valid in the new data
         const currentSelectedId = selectedCompany?.id || savedCompanyId;
         const currentSelectionStillValid = currentSelectedId && 
           data.some(company => company.id === currentSelectedId);
         
         if (currentSelectionStillValid) {
-          // Keep the current selection but update it with fresh data
           const updatedSelection = data.find(c => c.id === currentSelectedId)!;
-          console.log("CompanyProvider: Keeping current selection:", updatedSelection.name);
+          console.log("[CompanyContext] Keeping current selection:", updatedSelection.name);
           setSelectedCompany(updatedSelection);
         } else {
-          // Only select default if no valid selection exists
           const defaultCompany = data.find(c => c.is_default);
           const company = defaultCompany ? defaultCompany : data[0];
-          console.log("CompanyProvider: Setting selected company to:", company.name);
+          console.log("[CompanyContext] Setting selected company to:", company.name);
           setSelectedCompany(company);
         }
       } else {
+        console.log("[CompanyContext] No companies found, clearing state");
         setCompanies([]);
         setSelectedCompany(null);
       }
     } catch (error) {
-      console.error('Error fetching companies:', error);
+      console.error('[CompanyContext] Error fetching companies:', error);
       setError(error instanceof Error ? error : new Error('Failed to load companies'));
       toast.error('Failed to load companies. Please refresh the page.');
     } finally {
@@ -133,7 +129,6 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
     }
   };
 
-  // Add a new company and update state immediately
   const addCompany = async (newCompany: Omit<Company, 'id'>): Promise<Company | null> => {
     try {
       console.log("CompanyProvider: Adding new company:", newCompany.name);
@@ -148,7 +143,6 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       
       console.log("CompanyProvider: Successfully added company with ID:", data.id);
       
-      // Fetch all companies again to ensure consistency
       await fetchCompanies();
       
       console.log("CompanyProvider: Successfully refreshed companies list after adding new company");
@@ -161,7 +155,6 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
     }
   };
 
-  // Update an existing company and update state immediately
   const updateCompany = async (updatedCompany: Company): Promise<boolean> => {
     try {
       console.log("CompanyProvider: Updating company:", updatedCompany.name);
@@ -175,7 +168,6 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       
       console.log("CompanyProvider: Successfully updated company");
       
-      // Fetch all companies again to ensure consistency
       await fetchCompanies();
       
       console.log("CompanyProvider: Successfully refreshed companies list after updating company");
@@ -189,6 +181,12 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
   };
 
   useEffect(() => {
+    console.log("[CompanyContext] Provider effect triggered:", {
+      hasUser: !!user,
+      companiesCount: companies.length,
+      selectedCompany: selectedCompany?.name
+    });
+
     if (user) {
       fetchCompanies();
     } else {
@@ -198,8 +196,11 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
     }
   }, [user]);
 
-  console.log("CompanyProvider rendering with selectedCompany:", selectedCompany?.name);
-  console.log("CompanyProvider companies count:", companies.length);
+  console.log("[CompanyContext] Provider rendering:", {
+    companiesCount: companies.length,
+    selectedCompany: selectedCompany?.name,
+    loading
+  });
 
   return (
     <CompanyContext.Provider value={{ 

@@ -158,6 +158,8 @@ const CompanySettings = () => {
           await updateDefaultCompany(createdCompany.id);
         }
         
+        setSelectedCompany(createdCompany);
+        
         toast.success('Company created successfully');
         setIsAddingNew(false);
         setSelectedCompanyId(createdCompany.id);

@@ -1,31 +1,13 @@
 
-import React, { useEffect, useId, useState } from 'react';
+import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCompanyContext } from '@/context/CompanyContext';
 import { cn } from '@/lib/utils';
 import { Building } from 'lucide-react';
 
-export const useCompany = () => {
-  const { 
-    selectedCompany, 
-    selectedCompanyId, 
-    companies, 
-    loading, 
-    setSelectedCompany 
-  } = useCompanyContext();
-
-  return { 
-    selectedCompany, 
-    selectedCompanyId, 
-    companies, 
-    loading, 
-    setSelectedCompany 
-  };
-};
-
 interface CompanySelectorProps {
-  onCompanySelect?: (company: {id: string, name: string}) => void;
+  onCompanySelect?: (company: { id: string, name: string }) => void;
   className?: string;
   showLabel?: boolean;
 }
@@ -35,56 +17,37 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({
   className, 
   showLabel = true 
 }) => {
-  const { companies, selectedCompany, setSelectedCompany, loading } = useCompanyContext();
+  const { companies, selectedCompanyId, setSelectedCompanyId, loading } = useCompanyContext();
   const navigate = useNavigate();
   const location = useLocation();
-  const instanceId = useId(); // Generate a unique ID for this instance
-  const [key, setKey] = useState(Date.now()); // Local state for forcing re-render
-  
-  // Force re-render when companies or selectedCompany changes
-  useEffect(() => {
-    console.log(`[CompanySelector ${instanceId}] Companies or selection changed:`, {
-      companiesCount: companies.length,
-      companyNames: companies.map(c => c.name),
-      selectedCompany: selectedCompany?.name,
-      location: location.pathname
-    });
-    
-    // Force a re-render to ensure the selector shows the correct selected company
-    setKey(Date.now());
-  }, [selectedCompany?.id, companies.length, location.pathname, instanceId]);
 
   const handleCompanyChange = (value: string) => {
-    console.log(`[CompanySelector ${instanceId}] Company selection changed:`, {
+    console.log(`[CompanySelector] Company selection changed:`, {
       newValue: value,
       availableCompanies: companies.map(c => ({ id: c.id, name: c.name }))
     });
 
+    setSelectedCompanyId(value);
+    
     const company = companies.find(c => c.id === value);
-    if (company) {
-      console.log(`[CompanySelector ${instanceId}] Setting selected company:`, company.name);
-      setSelectedCompany(company);
-      
-      if (onCompanySelect) {
-        onCompanySelect({id: company.id, name: company.name});
-      }
-      
-      // Only redirect to dashboard if not on /settings page
-      const currentPath = location.pathname;
-      console.log(`[CompanySelector ${instanceId}] Current path:`, currentPath);
-      
-      if (currentPath !== '/' && currentPath !== '/settings') {
-        console.log(`[CompanySelector ${instanceId}] Navigating to dashboard`);
-        navigate('/');
-      }
+    if (company && onCompanySelect) {
+      onCompanySelect({ id: company.id, name: company.name });
+    }
+    
+    // Only redirect to dashboard if not on /settings page
+    const currentPath = location.pathname;
+    console.log(`[CompanySelector] Current path:`, currentPath);
+    
+    if (currentPath !== '/' && currentPath !== '/settings') {
+      console.log(`[CompanySelector] Navigating to dashboard`);
+      navigate('/');
     }
   };
 
-  console.log(`[CompanySelector ${instanceId}] Rendering with key ${key}:`, {
+  console.log(`[CompanySelector] Rendering:`, {
     loading,
     companiesCount: companies.length,
-    selectedCompanyId: selectedCompany?.id,
-    showLabel
+    selectedCompanyId
   });
 
   if (loading) {
@@ -115,17 +78,14 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({
           Current Company:
         </span>
         <Select 
-          key={`company-selector-${key}`}
-          value={selectedCompany?.id || ''}
+          value={selectedCompanyId || ''}
           onValueChange={handleCompanyChange}
           disabled={companies.length === 0}
         >
           <SelectTrigger 
             className="w-full text-white border-slate-700 bg-slate-800 hover:bg-slate-700"
           >
-            <SelectValue placeholder="Select a company">
-              {selectedCompany?.name || "Select a company"}
-            </SelectValue>
+            <SelectValue placeholder="Select a company" />
           </SelectTrigger>
           <SelectContent className="bg-white border-slate-200">
             {companies.map(company => (

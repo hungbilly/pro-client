@@ -1,3 +1,4 @@
+
 import React, { useEffect, useId, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -49,8 +50,9 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({
       location: location.pathname
     });
     
+    // Force a re-render to ensure the selector shows the correct selected company
     setKey(Date.now());
-  }, [selectedCompany, companies, location.pathname, instanceId]);
+  }, [selectedCompany?.id, companies.length, location.pathname, instanceId]);
 
   const handleCompanyChange = (value: string) => {
     console.log(`[CompanySelector ${instanceId}] Company selection changed:`, {

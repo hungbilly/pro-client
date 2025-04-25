@@ -158,13 +158,14 @@ const CompanySettings = () => {
           await updateDefaultCompany(createdCompany.id);
         }
         
-        setSelectedCompany(createdCompany);
-        
-        toast.success('Company created successfully');
         setIsAddingNew(false);
         setSelectedCompanyId(createdCompany.id);
         
         await refreshCompanies();
+        
+        setSelectedCompany(createdCompany);
+        
+        toast.success('Company created successfully');
       } else if (selectedCompanyId) {
         const updatedCompany = {
           id: selectedCompanyId,
@@ -195,6 +196,11 @@ const CompanySettings = () => {
         toast.success('Company updated successfully');
         
         await refreshCompanies();
+        
+        const currentCompany = companies.find(c => c.id === selectedCompanyId);
+        if (currentCompany) {
+          setSelectedCompany(currentCompany);
+        }
       }
     } catch (error) {
       console.error('Error saving company:', error);

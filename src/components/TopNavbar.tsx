@@ -26,7 +26,8 @@ const TopNavbar = () => {
     selectedCompany,
     companies,
     loading: companyContextLoading,
-    refreshCompanies
+    refreshCompanies,
+    hasAttemptedFetch
   } = useCompanyContext();
   const {
     signOut,
@@ -56,6 +57,16 @@ const TopNavbar = () => {
       console.error("[TopNavbar] Error refreshing companies:", error);
     });
   }, []);
+
+  useEffect(() => {
+    if (companies.length === 0 && !companyContextLoading && !hasAttemptedFetch) {
+      console.log("[TopNavbar] Initial company load, triggering refresh");
+      refreshCompanies().catch(error => {
+        console.error("[TopNavbar] Error refreshing companies:", error);
+        toast.error('Failed to load companies');
+      });
+    }
+  }, [companies.length, companyContextLoading, hasAttemptedFetch]);
 
   useEffect(() => {
     if (companies.length === 0 && !companyContextLoading) {

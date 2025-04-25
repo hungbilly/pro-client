@@ -29,6 +29,7 @@ interface CompanyContextType {
   error: Error | null;
   addCompany: (company: Omit<Company, 'id'>) => Promise<Company | null>;
   updateCompany: (company: Company) => Promise<boolean>;
+  hasAttemptedFetch: boolean;
 }
 
 const STORAGE_KEY = 'selectedCompanyId';
@@ -42,6 +43,7 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [pendingNewCompanyId, setPendingNewCompanyId] = useState<string | null>(null);
+  const [hasAttemptedFetch, setHasAttemptedFetch] = useState(false);
 
   const selectedCompanyId = selectedCompany?.id || null;
 
@@ -74,7 +76,8 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
     console.log("[CompanyContext] fetchCompanies called, current state:", {
       pendingNewCompanyId,
       currentSelectedId: selectedCompanyId,
-      loadingState: loading
+      loadingState: loading,
+      hasAttemptedFetch
     });
     
     setLoading(true);
@@ -96,6 +99,8 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
         .order('name');
       
       if (error) throw error;
+      
+      setHasAttemptedFetch(true);
       
       if (data && data.length > 0) {
         console.log("[CompanyContext] Fetched companies:", {
@@ -223,6 +228,7 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       setLoading(false);
       setCompanies([]);
       setSelectedCompany(null);
+      setHasAttemptedFetch(false);
     }
   }, [user]);
 
@@ -237,7 +243,8 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       refreshCompanies: fetchCompanies,
       error,
       addCompany,
-      updateCompany
+      updateCompany,
+      hasAttemptedFetch
     }}>
       {children}
     </CompanyContext.Provider>

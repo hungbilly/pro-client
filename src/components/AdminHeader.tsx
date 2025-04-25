@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { 
@@ -22,7 +22,13 @@ import { SubscriptionStatusBadge } from './SubscriptionStatus';
 const AdminHeader = () => {
   const { signOut, user } = useAuth();
   const navigate = useNavigate();
-  const { selectedCompany } = useCompany();
+  const { selectedCompany, companies } = useCompany();
+
+  // Add logging to track company updates
+  useEffect(() => {
+    console.log("AdminHeader: Companies list updated, count:", companies.length);
+    console.log("AdminHeader: Current selectedCompany:", selectedCompany?.name);
+  }, [companies, selectedCompany]);
 
   const handleSignOut = async () => {
     try {

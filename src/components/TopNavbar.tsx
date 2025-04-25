@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Home, Users, Briefcase, Settings, CreditCard, LogOut, Building, Menu, User, UserCog, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -23,7 +23,8 @@ const TopNavbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const {
-    selectedCompany
+    selectedCompany,
+    companies
   } = useCompany();
   const {
     signOut,
@@ -32,6 +33,11 @@ const TopNavbar = () => {
   const isMobile = useIsMobile();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+
+  useEffect(() => {
+    console.log("TopNavbar: Companies list updated, count:", companies.length);
+    console.log("TopNavbar: Current selectedCompany:", selectedCompany?.name);
+  }, [companies, selectedCompany]);
 
   const isActive = (path: string) => {
     if (path === '/') {
@@ -179,7 +185,7 @@ const TopNavbar = () => {
         <div className="max-w-screen-2xl mx-auto px-4">
           <div className="flex items-center justify-between">
             <div className="w-full md:w-auto">
-              <CompanySelector className="w-full md:w-[300px]" showLabel={false} />
+              <CompanySelector key={`company-selector-${companies.length}`} className="w-full md:w-[300px]" showLabel={false} />
             </div>
             
             <div className="hidden md:flex items-center gap-4">

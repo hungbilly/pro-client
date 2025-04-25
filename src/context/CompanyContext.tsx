@@ -71,7 +71,12 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
   };
 
   const fetchCompanies = async () => {
-    console.log("[CompanyContext] fetchCompanies called");
+    console.log("[CompanyContext] fetchCompanies called, current state:", {
+      pendingNewCompanyId,
+      currentSelectedId: selectedCompanyId,
+      loadingState: loading
+    });
+    
     setLoading(true);
     setError(null);
     try {
@@ -93,6 +98,11 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       if (error) throw error;
       
       if (data && data.length > 0) {
+        console.log("[CompanyContext] Fetched companies:", {
+          count: data.length,
+          companies: data.map(c => ({ id: c.id, name: c.name, isDefault: c.is_default }))
+        });
+        
         setCompanies(data);
         
         // Check for pending new company
@@ -101,23 +111,39 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
           const pendingCompany = data.find(c => c.id === pendingNewCompanyId);
           
           if (pendingCompany) {
-            console.log("[CompanyContext] Found pending company, selecting:", pendingCompany.name);
+            console.log("[CompanyContext] Found and selecting pending company:", {
+              id: pendingCompany.id,
+              name: pendingCompany.name
+            });
             setSelectedCompanyState(pendingCompany);
             localStorage.setItem(STORAGE_KEY, pendingCompany.id);
             setPendingNewCompanyId(null);
             setLoading(false);
             return;
+          } else {
+            console.log("[CompanyContext] Pending company not found in fetched data");
           }
         }
         
         // No pending company, check saved company ID
         const savedCompanyId = localStorage.getItem(STORAGE_KEY);
+        console.log("[CompanyContext] Checking saved company ID:", savedCompanyId);
+        
         if (savedCompanyId && data.some(company => company.id === savedCompanyId)) {
           const savedCompany = data.find(c => c.id === savedCompanyId)!;
+          console.log("[CompanyContext] Using saved company:", {
+            id: savedCompany.id,
+            name: savedCompany.name
+          });
           setSelectedCompanyState(savedCompany);
         } else {
           // Fall back to default company or first company
           const defaultCompany = data.find(c => c.is_default) || data[0];
+          console.log("[CompanyContext] Using fallback company:", {
+            id: defaultCompany.id,
+            name: defaultCompany.name,
+            isDefault: defaultCompany.is_default
+          });
           setSelectedCompanyState(defaultCompany);
           localStorage.setItem(STORAGE_KEY, defaultCompany.id);
         }
@@ -132,6 +158,7 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       setError(error instanceof Error ? error : new Error('Failed to load companies'));
       toast.error('Failed to load companies');
     } finally {
+      console.log("[CompanyContext] fetchCompanies completed");
       setLoading(false);
     }
   };

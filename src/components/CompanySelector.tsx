@@ -23,7 +23,8 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({
 
   const handleCompanyChange = (value: string) => {
     console.log(`[CompanySelector] Company selection changed:`, {
-      newValue: value,
+      previousId: selectedCompanyId,
+      newId: value,
       availableCompanies: companies.map(c => ({ id: c.id, name: c.name }))
     });
 
@@ -31,6 +32,10 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({
     
     const company = companies.find(c => c.id === value);
     if (company && onCompanySelect) {
+      console.log('[CompanySelector] Calling onCompanySelect with:', {
+        id: company.id,
+        name: company.name
+      });
       onCompanySelect({ id: company.id, name: company.name });
     }
     
@@ -41,13 +46,16 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({
     if (currentPath !== '/' && currentPath !== '/settings') {
       console.log(`[CompanySelector] Navigating to dashboard`);
       navigate('/');
+    } else {
+      console.log('[CompanySelector] Staying on current page:', currentPath);
     }
   };
 
   console.log(`[CompanySelector] Rendering:`, {
     loading,
     companiesCount: companies.length,
-    selectedCompanyId
+    selectedCompanyId,
+    currentPath: location.pathname
   });
 
   if (loading) {

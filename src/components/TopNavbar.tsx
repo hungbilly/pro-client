@@ -41,7 +41,8 @@ const TopNavbar = () => {
     console.log("[TopNavbar] Companies list updated:", {
       count: companies.length,
       names: companies.map(c => c.name),
-      selectedCompany: selectedCompany?.name
+      selectedCompany: selectedCompany?.name,
+      companyContextLoading
     });
     
     setForceUpdateKey(Date.now());
@@ -58,6 +59,7 @@ const TopNavbar = () => {
 
   useEffect(() => {
     if (companies.length === 0 && !companyContextLoading) {
+      console.log("[TopNavbar] No companies found, triggering refresh");
       refreshCompanies().catch(error => {
         console.error("[TopNavbar] Error refreshing companies:", error);
         toast.error('Failed to load companies');
@@ -155,7 +157,8 @@ const TopNavbar = () => {
   console.log("[TopNavbar] Rendering with:", {
     companiesCount: companies.length,
     selectedCompany: selectedCompany?.name,
-    companyContextLoading
+    companyContextLoading,
+    path: location.pathname
   });
 
   return (

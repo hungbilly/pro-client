@@ -1,10 +1,8 @@
-
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/components/CompanySelector';
 
-// Update the interface to match what's in the database
 interface Company {
   id: string;
   name: string;
@@ -16,7 +14,6 @@ interface Company {
   user_id: string;
   created_at: string;
   updated_at?: string;
-  // Add fields that exist in the database but weren't in our interface
   address?: string;
   phone?: string;
   email?: string;
@@ -120,22 +117,19 @@ export const useCompanyForm = (userId: string | undefined) => {
     setIsLoading(true);
     try {
       if (isAddingNew) {
-        // Ensure name is provided as it's required in the database
         if (!formData.name) {
           throw new Error('Company name is required');
         }
 
-        const newCompany = {
-          ...formData,
-          user_id: userId,
-          created_at: new Date().toISOString(),
-          is_default: companies.length === 0,
-          timezone: formData.timezone || 'UTC',
-        };
-
         const { data, error } = await supabase
           .from('companies')
-          .insert(newCompany)
+          .insert({
+            ...formData,
+            user_id: userId,
+            created_at: new Date().toISOString(),
+            is_default: companies.length === 0,
+            timezone: formData.timezone || 'UTC',
+          })
           .select()
           .single();
 

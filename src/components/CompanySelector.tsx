@@ -6,7 +6,6 @@ import { useCompanyContext } from '@/context/CompanyContext';
 import { cn } from '@/lib/utils';
 import { Building } from 'lucide-react';
 
-// Create a custom hook to use the company context
 export const useCompany = () => {
   const { 
     selectedCompany, 

@@ -1,4 +1,5 @@
-import React, { useEffect, useId } from 'react';
+
+import React, { useEffect, useId, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCompanyContext } from '@/context/CompanyContext';
@@ -39,11 +40,16 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({
   const navigate = useNavigate();
   const location = useLocation();
   const instanceId = useId(); // Generate a unique ID for this instance
+  const [key, setKey] = useState(Date.now()); // Local state for forcing re-render
   
+  // Force re-render when companies or selectedCompany changes
   useEffect(() => {
     console.log(`CompanySelector (${instanceId}): render with ${companies.length} companies`);
     console.log(`CompanySelector (${instanceId}): selectedCompany =`, selectedCompany?.name);
     console.log(`CompanySelector (${instanceId}): Companies available:`, companies.map(c => c.name));
+    
+    // Force re-render to ensure dropdown reflects current state
+    setKey(Date.now());
   }, [selectedCompany, companies, instanceId]);
 
   const handleCompanyChange = (value: string) => {
@@ -57,9 +63,9 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({
         onCompanySelect({id: company.id, name: company.name});
       }
       
-      // Redirect to dashboard unless we're already there
+      // Only redirect to dashboard if not on /settings page
       const currentPath = location.pathname;
-      if (currentPath !== '/') {
+      if (currentPath !== '/' && currentPath !== '/settings') {
         navigate('/');
       }
     }
@@ -93,6 +99,7 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({
           Current Company:
         </span>
         <Select 
+          key={`company-selector-${key}`}
           value={selectedCompany?.id || ''}
           onValueChange={handleCompanyChange}
           disabled={companies.length === 0}
@@ -104,7 +111,7 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({
               {selectedCompany?.name || "Select a company"}
             </SelectValue>
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="bg-white border-slate-200">
             {companies.map(company => (
               <SelectItem key={company.id} value={company.id}>
                 {company.name} {company.is_default && "(Default)"}

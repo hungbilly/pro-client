@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
@@ -41,6 +42,7 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
   const [selectedCompany, setSelectedCompanyState] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [pendingNewCompanyId, setPendingNewCompanyId] = useState<string | null>(null);
 
   const selectedCompanyId = selectedCompany?.id || null;
 
@@ -50,9 +52,12 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
     if (company) {
       console.log("CompanyProvider: Saving company ID to localStorage:", company.id);
       localStorage.setItem(STORAGE_KEY, company.id);
+      // Set pending company ID to ensure it stays selected after refresh
+      setPendingNewCompanyId(company.id);
     } else {
       console.log("CompanyProvider: Removing company ID from localStorage");
       localStorage.removeItem(STORAGE_KEY);
+      setPendingNewCompanyId(null);
     }
   };
 
@@ -98,6 +103,22 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       if (data && data.length > 0) {
         setCompanies(data);
         
+        // Check for pending new company first (highest priority)
+        if (pendingNewCompanyId) {
+          console.log("[CompanyContext] Checking for pending new company:", pendingNewCompanyId);
+          const pendingCompany = data.find(c => c.id === pendingNewCompanyId);
+          
+          if (pendingCompany) {
+            console.log("[CompanyContext] Found pending company, selecting:", pendingCompany.name);
+            setSelectedCompanyState(pendingCompany);
+            setPendingNewCompanyId(null); // Clear after using it
+            return;
+          }
+          // If we didn't find the pending company, clear it and proceed with normal selection
+          setPendingNewCompanyId(null);
+        }
+        
+        // Normal selection logic (saved ID or default)
         const savedCompanyId = localStorage.getItem(STORAGE_KEY);
         console.log("[CompanyContext] Saved company ID from localStorage:", savedCompanyId);
         
@@ -108,17 +129,17 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
         if (currentSelectionStillValid) {
           const updatedSelection = data.find(c => c.id === currentSelectedId)!;
           console.log("[CompanyContext] Keeping current selection:", updatedSelection.name);
-          setSelectedCompany(updatedSelection);
+          setSelectedCompanyState(updatedSelection);
         } else {
           const defaultCompany = data.find(c => c.is_default);
           const company = defaultCompany ? defaultCompany : data[0];
           console.log("[CompanyContext] Setting selected company to:", company.name);
-          setSelectedCompany(company);
+          setSelectedCompanyState(company);
         }
       } else {
         console.log("[CompanyContext] No companies found, clearing state");
         setCompanies([]);
-        setSelectedCompany(null);
+        setSelectedCompanyState(null);
       }
     } catch (error) {
       console.error('[CompanyContext] Error fetching companies:', error);
@@ -142,6 +163,9 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       if (error) throw error;
       
       console.log("CompanyProvider: Successfully added company with ID:", data.id);
+      
+      // Mark this company ID as pending selection
+      setPendingNewCompanyId(data.id);
       
       await fetchCompanies();
       
@@ -184,7 +208,8 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
     console.log("[CompanyContext] Provider effect triggered:", {
       hasUser: !!user,
       companiesCount: companies.length,
-      selectedCompany: selectedCompany?.name
+      selectedCompany: selectedCompany?.name,
+      pendingCompanyId: pendingNewCompanyId
     });
 
     if (user) {
@@ -199,7 +224,8 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
   console.log("[CompanyContext] Provider rendering:", {
     companiesCount: companies.length,
     selectedCompany: selectedCompany?.name,
-    loading
+    loading,
+    pendingCompanyId: pendingNewCompanyId
   });
 
   return (

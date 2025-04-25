@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
@@ -52,12 +51,10 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
     if (company) {
       console.log("CompanyProvider: Saving company ID to localStorage:", company.id);
       localStorage.setItem(STORAGE_KEY, company.id);
-      // Set pending company ID to ensure it stays selected after refresh
-      setPendingNewCompanyId(company.id);
+      setPendingNewCompanyId(null); // Clear pending ID when explicitly setting a company
     } else {
       console.log("CompanyProvider: Removing company ID from localStorage");
       localStorage.removeItem(STORAGE_KEY);
-      setPendingNewCompanyId(null);
     }
   };
 
@@ -103,43 +100,42 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       if (data && data.length > 0) {
         setCompanies(data);
         
-        // Check for pending new company first (highest priority)
+        // Always prioritize pending new company if it exists
         if (pendingNewCompanyId) {
-          console.log("[CompanyContext] Checking for pending new company:", pendingNewCompanyId);
+          console.log("[CompanyContext] Looking for pending company:", pendingNewCompanyId);
           const pendingCompany = data.find(c => c.id === pendingNewCompanyId);
           
           if (pendingCompany) {
             console.log("[CompanyContext] Found pending company, selecting:", pendingCompany.name);
-            setSelectedCompanyState(pendingCompany);
-            setPendingNewCompanyId(null); // Clear after using it
+            setSelectedCompanyState(pendingCompany); // Use internal state setter to avoid clearing pendingId
+            localStorage.setItem(STORAGE_KEY, pendingCompany.id);
             return;
           }
-          // If we didn't find the pending company, clear it and proceed with normal selection
+          console.log("[CompanyContext] Pending company not found, clearing pending ID");
           setPendingNewCompanyId(null);
         }
         
-        // Normal selection logic (saved ID or default)
-        const savedCompanyId = localStorage.getItem(STORAGE_KEY);
-        console.log("[CompanyContext] Saved company ID from localStorage:", savedCompanyId);
-        
-        const currentSelectedId = selectedCompany?.id || savedCompanyId;
-        const currentSelectionStillValid = currentSelectedId && 
-          data.some(company => company.id === currentSelectedId);
-        
-        if (currentSelectionStillValid) {
-          const updatedSelection = data.find(c => c.id === currentSelectedId)!;
-          console.log("[CompanyContext] Keeping current selection:", updatedSelection.name);
-          setSelectedCompanyState(updatedSelection);
-        } else {
-          const defaultCompany = data.find(c => c.is_default);
-          const company = defaultCompany ? defaultCompany : data[0];
-          console.log("[CompanyContext] Setting selected company to:", company.name);
-          setSelectedCompanyState(company);
+        // Only check saved company if we don't have a pending one
+        if (!pendingNewCompanyId) {
+          const savedCompanyId = localStorage.getItem(STORAGE_KEY);
+          console.log("[CompanyContext] No pending company, checking saved ID:", savedCompanyId);
+          
+          if (savedCompanyId && data.some(company => company.id === savedCompanyId)) {
+            const savedCompany = data.find(c => c.id === savedCompanyId)!;
+            console.log("[CompanyContext] Using saved company:", savedCompany.name);
+            setSelectedCompanyState(savedCompany);
+          } else {
+            const defaultCompany = data.find(c => c.is_default) || data[0];
+            console.log("[CompanyContext] Using default company:", defaultCompany.name);
+            setSelectedCompanyState(defaultCompany);
+            localStorage.setItem(STORAGE_KEY, defaultCompany.id);
+          }
         }
       } else {
         console.log("[CompanyContext] No companies found, clearing state");
         setCompanies([]);
-        setSelectedCompanyState(null);
+        setSelectedCompany(null);
+        localStorage.removeItem(STORAGE_KEY);
       }
     } catch (error) {
       console.error('[CompanyContext] Error fetching companies:', error);
@@ -163,13 +159,9 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       if (error) throw error;
       
       console.log("CompanyProvider: Successfully added company with ID:", data.id);
-      
-      // Mark this company ID as pending selection
       setPendingNewCompanyId(data.id);
       
       await fetchCompanies();
-      
-      console.log("CompanyProvider: Successfully refreshed companies list after adding new company");
       
       return data;
     } catch (error) {
@@ -192,9 +184,12 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       
       console.log("CompanyProvider: Successfully updated company");
       
-      await fetchCompanies();
+      // If we're updating the currently selected company, set it as pending
+      if (selectedCompanyId === updatedCompany.id) {
+        setPendingNewCompanyId(updatedCompany.id);
+      }
       
-      console.log("CompanyProvider: Successfully refreshed companies list after updating company");
+      await fetchCompanies();
       
       return true;
     } catch (error) {

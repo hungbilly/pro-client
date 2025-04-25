@@ -25,7 +25,7 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({
   useEffect(() => {
     console.log(`CompanySelector (${instanceId}): render with ${companies.length} companies`);
     console.log(`CompanySelector (${instanceId}): selectedCompany =`, selectedCompany?.name);
-    console.log(`CompanySelector (${instanceId}): Companies available:`, companies.length, companies.map(c => ({ id: c.id, name: c.name })));
+    console.log(`CompanySelector (${instanceId}): Companies available:`, companies.map(c => c.name));
   }, [selectedCompany, companies, instanceId]);
 
   const handleCompanyChange = (value: string) => {
@@ -99,6 +99,4 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({
   );
 };
 
-// Export the useCompanyContext hook with the alias useCompany
-export { useCompanyContext as useCompany } from '@/context/CompanyContext';
 export default CompanySelector;

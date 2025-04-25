@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -12,12 +12,23 @@ import { SubscriptionStatusBadge } from './SubscriptionStatus';
 const MainNavbar = () => {
   const navigate = useNavigate();
   const { signOut, user } = useAuth();
-  const { selectedCompany, companies } = useCompanyContext();
+  const { selectedCompany, companies, refreshCompanies } = useCompanyContext();
+  const [forceUpdateKey, setForceUpdateKey] = useState(Date.now());
   
   useEffect(() => {
     console.log("MainNavbar: Companies list updated, count:", companies.length);
     console.log("MainNavbar: Current selectedCompany:", selectedCompany?.name);
+    console.log("MainNavbar: All companies:", companies.map(c => c.name));
+    
+    // Force re-render of component when companies change
+    setForceUpdateKey(Date.now());
   }, [companies, selectedCompany]);
+  
+  // Force refresh companies when component mounts
+  useEffect(() => {
+    console.log("MainNavbar: Component mounted, refreshing companies");
+    refreshCompanies();
+  }, []);
   
   const handleLogout = async () => {
     try {
@@ -48,7 +59,7 @@ const MainNavbar = () => {
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center">
           <CompanySelector 
-            key={`main-company-selector-${companies.length}-${Date.now()}`} 
+            key={`main-company-selector-${companies.length}-${forceUpdateKey}`} 
             className="w-64" 
             showLabel={true} 
           />

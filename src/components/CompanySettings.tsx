@@ -9,7 +9,7 @@ import { PlusCircle, Trash2, Check, Upload, X, Image, Clock } from 'lucide-react
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
-import { useCompany } from './CompanySelector';
+import { useCompanyContext } from '@/context/CompanyContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CountryDropdown } from './ui/country-dropdown';
 import { CurrencyDropdown } from './ui/currency-dropdown';
@@ -38,7 +38,7 @@ const CompanySettings = () => {
     setSelectedCompany,
     addCompany,
     updateCompany
-  } = useCompany();
+  } = useCompanyContext();
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -147,6 +147,7 @@ const CompanySettings = () => {
           is_default: isDefault
         };
         
+        console.log("CompanySettings: Creating new company:", name);
         const createdCompany = await addCompany(newCompany);
         
         if (!createdCompany) {
@@ -160,6 +161,8 @@ const CompanySettings = () => {
         toast.success('Company created successfully');
         setIsAddingNew(false);
         setSelectedCompanyId(createdCompany.id);
+        
+        await refreshCompanies();
       } else if (selectedCompanyId) {
         const updatedCompany = {
           id: selectedCompanyId,
@@ -176,6 +179,7 @@ const CompanySettings = () => {
           is_default: isDefault
         };
         
+        console.log("CompanySettings: Updating company:", name);
         const success = await updateCompany(updatedCompany);
         
         if (!success) {
@@ -187,6 +191,8 @@ const CompanySettings = () => {
         }
         
         toast.success('Company updated successfully');
+        
+        await refreshCompanies();
       }
     } catch (error) {
       console.error('Error saving company:', error);

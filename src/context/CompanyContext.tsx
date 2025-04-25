@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
@@ -48,6 +47,7 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
 
   // Wrapper function that also persists to localStorage
   const setSelectedCompany = (company: Company | null) => {
+    console.log("CompanyProvider: Setting selected company to:", company?.name || "null");
     setSelectedCompanyState(company);
     if (company) {
       console.log("CompanyProvider: Saving company ID to localStorage:", company.id);
@@ -72,6 +72,7 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
   };
 
   const fetchCompanies = async () => {
+    console.log("CompanyProvider: fetchCompanies called");
     setLoading(true);
     setError(null);
     try {
@@ -93,6 +94,7 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       if (error) throw error;
       
       console.log("CompanyProvider: Fetched companies:", data?.length);
+      console.log("CompanyProvider: Company names:", data?.map(c => c.name));
       
       if (data && data.length > 0) {
         setCompanies(data);
@@ -109,13 +111,13 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
         if (currentSelectionStillValid) {
           // Keep the current selection but update it with fresh data
           const updatedSelection = data.find(c => c.id === currentSelectedId)!;
-          console.log("CompanyProvider: Keeping current selection:", updatedSelection.id);
+          console.log("CompanyProvider: Keeping current selection:", updatedSelection.name);
           setSelectedCompany(updatedSelection);
         } else {
           // Only select default if no valid selection exists
           const defaultCompany = data.find(c => c.is_default);
           const company = defaultCompany ? defaultCompany : data[0];
-          console.log("CompanyProvider: Setting selected company to:", company.id);
+          console.log("CompanyProvider: Setting selected company to:", company.name);
           setSelectedCompany(company);
         }
       } else {
@@ -146,16 +148,10 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       
       console.log("CompanyProvider: Successfully added company with ID:", data.id);
       
-      // Update local state with the new company
-      const updatedCompanies = [...companies, data];
-      console.log("CompanyProvider: Updating companies list, new count:", updatedCompanies.length);
-      setCompanies(updatedCompanies);
+      // Fetch all companies again to ensure consistency
+      await fetchCompanies();
       
-      // If this is the first company or marked as default, select it
-      if (updatedCompanies.length === 1 || data.is_default) {
-        console.log("CompanyProvider: Setting newly created company as selected");
-        setSelectedCompany(data);
-      }
+      console.log("CompanyProvider: Successfully refreshed companies list after adding new company");
       
       return data;
     } catch (error) {
@@ -168,7 +164,7 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
   // Update an existing company and update state immediately
   const updateCompany = async (updatedCompany: Company): Promise<boolean> => {
     try {
-      console.log("CompanyProvider: Updating company:", updatedCompany.id);
+      console.log("CompanyProvider: Updating company:", updatedCompany.name);
       
       const { error } = await supabase
         .from('companies')
@@ -179,17 +175,10 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       
       console.log("CompanyProvider: Successfully updated company");
       
-      // Update local state
-      const updatedCompanies = companies.map(company => 
-        company.id === updatedCompany.id ? updatedCompany : company
-      );
-      setCompanies(updatedCompanies);
+      // Fetch all companies again to ensure consistency
+      await fetchCompanies();
       
-      // Update selected company if this is the one that was modified
-      if (selectedCompany && selectedCompany.id === updatedCompany.id) {
-        console.log("CompanyProvider: Updating selected company state");
-        setSelectedCompany(updatedCompany);
-      }
+      console.log("CompanyProvider: Successfully refreshed companies list after updating company");
       
       return true;
     } catch (error) {
@@ -209,7 +198,8 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
     }
   }, [user]);
 
-  console.log("CompanyProvider rendering with selectedCompany:", selectedCompany?.id);
+  console.log("CompanyProvider rendering with selectedCompany:", selectedCompany?.name);
+  console.log("CompanyProvider companies count:", companies.length);
 
   return (
     <CompanyContext.Provider value={{ 

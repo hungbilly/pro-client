@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Home, Users, Briefcase, Settings, CreditCard, LogOut, Building, Menu, User, UserCog, FileText } from 'lucide-react';
@@ -24,7 +25,8 @@ const TopNavbar = () => {
   const navigate = useNavigate();
   const {
     selectedCompany,
-    companies
+    companies,
+    refreshCompanies
   } = useCompanyContext();
   const {
     signOut,
@@ -38,8 +40,17 @@ const TopNavbar = () => {
   useEffect(() => {
     console.log("TopNavbar: Companies list updated, count:", companies.length);
     console.log("TopNavbar: Current selectedCompany:", selectedCompany?.name);
+    console.log("TopNavbar: All companies:", companies.map(c => c.name));
+    
+    // Force re-render of the CompanySelector
     setForceUpdateKey(Date.now());
   }, [companies, selectedCompany]);
+
+  // Force refresh companies when component mounts
+  useEffect(() => {
+    console.log("TopNavbar: Component mounted, refreshing companies");
+    refreshCompanies();
+  }, []);
 
   const isActive = (path: string) => {
     if (path === '/') {

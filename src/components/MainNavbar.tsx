@@ -12,7 +12,7 @@ import { SubscriptionStatusBadge } from './SubscriptionStatus';
 const MainNavbar = () => {
   const navigate = useNavigate();
   const { signOut, user } = useAuth();
-  const { selectedCompany, companies, refreshCompanies } = useCompanyContext();
+  const { selectedCompany, companies, refreshCompanies, hasAttemptedFetch } = useCompanyContext();
   const [forceUpdateKey, setForceUpdateKey] = useState(Date.now());
   
   useEffect(() => {
@@ -24,11 +24,13 @@ const MainNavbar = () => {
     setForceUpdateKey(Date.now());
   }, [companies, selectedCompany]);
   
-  // Force refresh companies when component mounts
+  // Force refresh companies once when component mounts
   useEffect(() => {
-    console.log("MainNavbar: Component mounted, refreshing companies");
-    refreshCompanies();
-  }, []);
+    if (!hasAttemptedFetch) {
+      console.log("MainNavbar: Component mounted, refreshing companies");
+      refreshCompanies();
+    }
+  }, [hasAttemptedFetch, refreshCompanies]);
   
   const handleLogout = async () => {
     try {

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
@@ -79,6 +80,12 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       loadingState: loading,
       hasAttemptedFetch
     });
+    
+    // If we're already loading, don't trigger another fetch
+    if (loading) {
+      console.log("[CompanyContext] Already loading, skipping fetch");
+      return;
+    }
     
     setLoading(true);
     setError(null);
@@ -223,6 +230,7 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
 
   useEffect(() => {
     if (user) {
+      // Only fetch companies once on initial mount with user
       fetchCompanies();
     } else {
       setLoading(false);

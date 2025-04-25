@@ -50,7 +50,7 @@ const TopNavbar = () => {
   }, [companies, selectedCompany]);
 
   useEffect(() => {
-    console.log("[TopNavbar] Component mounted, refreshing companies");
+    console.log("[TopNavbar] Component mounted, refreshing companies - one time only");
     refreshCompanies().then(() => {
       console.log("[TopNavbar] Companies refresh completed");
     }).catch(error => {
@@ -66,17 +66,7 @@ const TopNavbar = () => {
         toast.error('Failed to load companies');
       });
     }
-  }, [companies.length, companyContextLoading, hasAttemptedFetch]);
-
-  useEffect(() => {
-    if (companies.length === 0 && !companyContextLoading) {
-      console.log("[TopNavbar] No companies found, triggering refresh");
-      refreshCompanies().catch(error => {
-        console.error("[TopNavbar] Error refreshing companies:", error);
-        toast.error('Failed to load companies');
-      });
-    }
-  }, [companies, companyContextLoading, refreshCompanies]);
+  }, [companies.length, companyContextLoading, hasAttemptedFetch, refreshCompanies]);
 
   const isActive = (path: string) => {
     if (path === '/') {

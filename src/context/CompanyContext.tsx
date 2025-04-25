@@ -23,14 +23,11 @@ interface CompanyContextType {
   companies: Company[];
   selectedCompany: Company | null;
   selectedCompanyId: string | null; 
-  setSelectedCompany: (company: Company | null) => void;
+  setSelectedCompany: (company: Company) => void;
   setSelectedCompanyId: (id: string | null) => void; 
   loading: boolean;
   refreshCompanies: () => Promise<void>;
   error: Error | null;
-  addCompany: (company: Omit<Company, 'id'>) => Promise<Company | null>;
-  updateCompany: (company: Company) => Promise<boolean>;
-  hasAttemptedFetch: boolean;
 }
 
 const STORAGE_KEY = 'selectedCompanyId';
@@ -43,24 +40,23 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
   const [selectedCompany, setSelectedCompanyState] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const [pendingNewCompanyId, setPendingNewCompanyId] = useState<string | null>(null);
-  const [hasAttemptedFetch, setHasAttemptedFetch] = useState(false);
 
+  // Computed property based on selectedCompany
   const selectedCompanyId = selectedCompany?.id || null;
 
+  // Wrapper function that also persists to localStorage
   const setSelectedCompany = (company: Company | null) => {
-    console.log("CompanyProvider: Setting selected company to:", company?.name || "null");
     setSelectedCompanyState(company);
     if (company) {
       console.log("CompanyProvider: Saving company ID to localStorage:", company.id);
       localStorage.setItem(STORAGE_KEY, company.id);
-      setPendingNewCompanyId(null); // Clear pending ID when explicitly setting a company
     } else {
       console.log("CompanyProvider: Removing company ID from localStorage");
       localStorage.removeItem(STORAGE_KEY);
     }
   };
 
+  // Function to set selectedCompany by ID
   const setSelectedCompanyId = (id: string | null) => {
     if (!id) {
       setSelectedCompany(null);
@@ -74,31 +70,18 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
   };
 
   const fetchCompanies = async () => {
-    console.log("[CompanyContext] fetchCompanies called, current state:", {
-      pendingNewCompanyId,
-      currentSelectedId: selectedCompanyId,
-      loadingState: loading,
-      hasAttemptedFetch
-    });
-    
-    // If we're already loading, don't trigger another fetch
-    if (loading) {
-      console.log("[CompanyContext] Already loading, skipping fetch");
-      return;
-    }
-    
     setLoading(true);
     setError(null);
     try {
       if (!user) {
-        console.log("[CompanyContext] No user found, aborting fetch");
+        console.log("No user found in CompanyProvider, aborting fetch");
         setLoading(false);
         setCompanies([]);
         setSelectedCompany(null);
         return;
       }
       
-      console.log("[CompanyContext] Fetching companies for user:", user.id);
+      console.log("CompanyProvider: Fetching companies for user:", user.id);
       const { data, error } = await supabase
         .from('companies')
         .select('*')
@@ -107,138 +90,56 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       
       if (error) throw error;
       
-      setHasAttemptedFetch(true);
+      console.log("CompanyProvider: Fetched companies:", data?.length);
       
       if (data && data.length > 0) {
-        console.log("[CompanyContext] Fetched companies:", {
-          count: data.length,
-          companies: data.map(c => ({ id: c.id, name: c.name, isDefault: c.is_default }))
-        });
-        
         setCompanies(data);
         
-        // Check for pending new company
-        if (pendingNewCompanyId) {
-          console.log("[CompanyContext] Looking for pending company:", pendingNewCompanyId);
-          const pendingCompany = data.find(c => c.id === pendingNewCompanyId);
-          
-          if (pendingCompany) {
-            console.log("[CompanyContext] Found and selecting pending company:", {
-              id: pendingCompany.id,
-              name: pendingCompany.name
-            });
-            setSelectedCompanyState(pendingCompany);
-            localStorage.setItem(STORAGE_KEY, pendingCompany.id);
-            setPendingNewCompanyId(null);
-            setLoading(false);
-            return;
-          } else {
-            console.log("[CompanyContext] Pending company not found in fetched data");
-          }
-        }
-        
-        // No pending company, check saved company ID
+        // Get the saved company ID from localStorage
         const savedCompanyId = localStorage.getItem(STORAGE_KEY);
-        console.log("[CompanyContext] Checking saved company ID:", savedCompanyId);
+        console.log("CompanyProvider: Saved company ID from localStorage:", savedCompanyId);
         
-        if (savedCompanyId && data.some(company => company.id === savedCompanyId)) {
-          const savedCompany = data.find(c => c.id === savedCompanyId)!;
-          console.log("[CompanyContext] Using saved company:", {
-            id: savedCompany.id,
-            name: savedCompany.name
-          });
-          setSelectedCompanyState(savedCompany);
+        // Check if the current selectedCompany or localStorage ID is still valid in the new data
+        const currentSelectedId = selectedCompany?.id || savedCompanyId;
+        const currentSelectionStillValid = currentSelectedId && 
+          data.some(company => company.id === currentSelectedId);
+        
+        if (currentSelectionStillValid) {
+          // Keep the current selection but update it with fresh data
+          const updatedSelection = data.find(c => c.id === currentSelectedId)!;
+          console.log("CompanyProvider: Keeping current selection:", updatedSelection.id);
+          setSelectedCompany(updatedSelection);
         } else {
-          // Fall back to default company or first company
-          const defaultCompany = data.find(c => c.is_default) || data[0];
-          console.log("[CompanyContext] Using fallback company:", {
-            id: defaultCompany.id,
-            name: defaultCompany.name,
-            isDefault: defaultCompany.is_default
-          });
-          setSelectedCompanyState(defaultCompany);
-          localStorage.setItem(STORAGE_KEY, defaultCompany.id);
+          // Only select default if no valid selection exists
+          const defaultCompany = data.find(c => c.is_default);
+          const company = defaultCompany ? defaultCompany : data[0];
+          console.log("CompanyProvider: Setting selected company to:", company.id);
+          setSelectedCompany(company);
         }
       } else {
-        console.log("[CompanyContext] No companies found, clearing state");
         setCompanies([]);
         setSelectedCompany(null);
-        localStorage.removeItem(STORAGE_KEY);
       }
     } catch (error) {
-      console.error('[CompanyContext] Error fetching companies:', error);
+      console.error('Error fetching companies:', error);
       setError(error instanceof Error ? error : new Error('Failed to load companies'));
-      toast.error('Failed to load companies');
+      toast.error('Failed to load companies. Please refresh the page.');
     } finally {
-      console.log("[CompanyContext] fetchCompanies completed");
       setLoading(false);
-    }
-  };
-
-  const addCompany = async (newCompany: Omit<Company, 'id'>): Promise<Company | null> => {
-    try {
-      console.log("CompanyProvider: Adding new company:", newCompany.name);
-      
-      const { data, error } = await supabase
-        .from('companies')
-        .insert(newCompany)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      
-      console.log("CompanyProvider: Successfully added company with ID:", data.id);
-      setPendingNewCompanyId(data.id);
-      
-      await fetchCompanies();
-      
-      return data;
-    } catch (error) {
-      console.error('Error adding company:', error);
-      toast.error('Failed to add company');
-      return null;
-    }
-  };
-
-  const updateCompany = async (updatedCompany: Company): Promise<boolean> => {
-    try {
-      console.log("CompanyProvider: Updating company:", updatedCompany.name);
-      
-      const { error } = await supabase
-        .from('companies')
-        .update(updatedCompany)
-        .eq('id', updatedCompany.id);
-      
-      if (error) throw error;
-      
-      console.log("CompanyProvider: Successfully updated company");
-      
-      // If we're updating the currently selected company, set it as pending
-      if (selectedCompanyId === updatedCompany.id) {
-        setPendingNewCompanyId(updatedCompany.id);
-      }
-      
-      await fetchCompanies();
-      
-      return true;
-    } catch (error) {
-      console.error('Error updating company:', error);
-      toast.error('Failed to update company');
-      return false;
     }
   };
 
   useEffect(() => {
     if (user) {
-      // Only fetch companies once on initial mount with user
       fetchCompanies();
     } else {
       setLoading(false);
       setCompanies([]);
       setSelectedCompany(null);
-      setHasAttemptedFetch(false);
     }
   }, [user]);
+
+  console.log("CompanyProvider rendering with selectedCompany:", selectedCompany?.id);
 
   return (
     <CompanyContext.Provider value={{ 
@@ -249,10 +150,7 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       setSelectedCompanyId,
       loading, 
       refreshCompanies: fetchCompanies,
-      error,
-      addCompany,
-      updateCompany,
-      hasAttemptedFetch
+      error
     }}>
       {children}
     </CompanyContext.Provider>

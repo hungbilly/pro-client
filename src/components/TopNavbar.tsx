@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Home, Users, Briefcase, Settings, CreditCard, LogOut, Building, Menu, User, UserCog, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
-import { useCompanyContext } from '@/context/CompanyContext';
+import { useCompany } from './CompanySelector';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import CompanySelector from './CompanySelector';
@@ -23,12 +23,8 @@ const TopNavbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const {
-    selectedCompany,
-    companies,
-    loading: companyContextLoading,
-    refreshCompanies,
-    hasAttemptedFetch
-  } = useCompanyContext();
+    selectedCompany
+  } = useCompany();
   const {
     signOut,
     user
@@ -36,37 +32,6 @@ const TopNavbar = () => {
   const isMobile = useIsMobile();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const [forceUpdateKey, setForceUpdateKey] = useState(Date.now());
-
-  useEffect(() => {
-    console.log("[TopNavbar] Companies list updated:", {
-      count: companies.length,
-      names: companies.map(c => c.name),
-      selectedCompany: selectedCompany?.name,
-      companyContextLoading
-    });
-    
-    setForceUpdateKey(Date.now());
-  }, [companies, selectedCompany]);
-
-  useEffect(() => {
-    console.log("[TopNavbar] Component mounted, refreshing companies - one time only");
-    refreshCompanies().then(() => {
-      console.log("[TopNavbar] Companies refresh completed");
-    }).catch(error => {
-      console.error("[TopNavbar] Error refreshing companies:", error);
-    });
-  }, []);
-
-  useEffect(() => {
-    if (companies.length === 0 && !companyContextLoading && !hasAttemptedFetch) {
-      console.log("[TopNavbar] Initial company load, triggering refresh");
-      refreshCompanies().catch(error => {
-        console.error("[TopNavbar] Error refreshing companies:", error);
-        toast.error('Failed to load companies');
-      });
-    }
-  }, [companies.length, companyContextLoading, hasAttemptedFetch, refreshCompanies]);
 
   const isActive = (path: string) => {
     if (path === '/') {
@@ -79,13 +44,19 @@ const TopNavbar = () => {
     try {
       console.log('TopNavbar: Initiating logout');
       await signOut();
-      localStorage.removeItem('selectedCompanyId');
+      console.log('TopNavbar: Logout successful');
       toast.success('Logged out successfully');
-      window.location.replace('/auth');
+      window.localStorage.clear();
+      window.sessionStorage.clear();
+      setTimeout(() => {
+        window.location.replace('/auth');
+      }, 100);
     } catch (error) {
       console.error('Logout error:', error);
       toast.error('Failed to log out');
-      window.location.replace('/auth');
+      setTimeout(() => {
+        window.location.replace('/auth');
+      }, 500);
     }
   };
 
@@ -123,53 +94,23 @@ const TopNavbar = () => {
   ];
 
   const renderMenuItems = () => {
-    return menuItems.map(item => (
-      <Button
-        key={item.path}
-        variant="ghost"
-        size="sm"
-        asChild={!item.disabled}
-        disabled={item.disabled}
-        className={cn(
-          "flex items-center gap-2 px-4 py-2 text-sm rounded-md transition-colors w-full justify-start",
-          isActive(item.path) ? "bg-slate-800 text-white" : "text-slate-300 hover:text-white hover:bg-slate-800",
-          item.disabled && "opacity-50 cursor-not-allowed"
-        )}
-      >
-        {!item.disabled ? (
-          <Link
-            to={item.path}
-            className="flex items-center gap-2 w-full"
-            onClick={() => isMobile && setIsDrawerOpen(false)}
-          >
+    return menuItems.map(item => <Button key={item.path} variant="ghost" size="sm" asChild={!item.disabled} disabled={item.disabled} className={cn("flex items-center gap-2 px-4 py-2 text-sm rounded-md transition-colors w-full justify-start", isActive(item.path) ? "bg-slate-800 text-white" : "text-slate-300 hover:text-white hover:bg-slate-800", item.disabled && "opacity-50 cursor-not-allowed")}>
+        {!item.disabled ? <Link to={item.path} className="flex items-center gap-2 w-full" onClick={() => isMobile && setIsDrawerOpen(false)}>
             {item.icon}
             <span>{item.label}</span>
-          </Link>
-        ) : (
-          <div className="flex items-center gap-2 w-full">
+          </Link> : <div className="flex items-center gap-2 w-full">
             {item.icon}
             <span>{item.label}</span>
-          </div>
-        )}
-      </Button>
-    ));
+          </div>}
+      </Button>);
   };
 
-  console.log("[TopNavbar] Rendering with:", {
-    companiesCount: companies.length,
-    selectedCompany: selectedCompany?.name,
-    companyContextLoading,
-    path: location.pathname
-  });
-
-  return (
-    <div className="w-full">
+  return <div className="w-full">
       <div className="bg-slate-900 w-full">
         <div className="max-w-screen-2xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between w-full relative">
             <div className="flex items-center z-10">
-              {isMobile && (
-                <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
+              {isMobile && <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
                   <DrawerTrigger asChild>
                     <Button variant="ghost" size="icon" className="mr-2 text-white hover:bg-slate-800">
                       <Menu className="h-5 w-5" />
@@ -185,29 +126,20 @@ const TopNavbar = () => {
                       </div>
                       <div className="mt-auto pt-4 border-t border-slate-800">
                         <div className="flex flex-col items-center justify-center space-y-4">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-white hover:bg-slate-800 flex flex-col items-center w-full"
-                            onClick={() => {
-                              setIsDrawerOpen(false);
-                              setIsProfileModalOpen(true);
-                            }}
-                          >
+                          <Button variant="ghost" size="sm" className="text-white hover:bg-slate-800 flex flex-col items-center w-full" onClick={() => {
+                        setIsDrawerOpen(false);
+                        setIsProfileModalOpen(true);
+                      }}>
                             <div className="flex items-center justify-center w-full">
                               <UserCog className="w-4 h-4 mr-2" />
                               <span>Edit Profile</span>
                             </div>
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-white hover:bg-slate-800 flex flex-col items-center w-full"
-                            onClick={() => {
-                              setIsDrawerOpen(false);
-                              handleLogout();
-                            }}
-                          >
+                          
+                          <Button variant="ghost" size="sm" className="text-white hover:bg-slate-800 flex flex-col items-center w-full" onClick={() => {
+                        setIsDrawerOpen(false);
+                        handleLogout();
+                      }}>
                             <div className="flex items-center justify-center w-full">
                               <LogOut className="w-4 h-4 mr-2" />
                               <span>Logout</span>
@@ -218,73 +150,48 @@ const TopNavbar = () => {
                       </div>
                     </div>
                   </DrawerContent>
-                </Drawer>
-              )}
+                </Drawer>}
               <Link to="/" className="flex items-center mr-8">
                 <img src="/lovable-uploads/5f353837-9102-43b7-ab18-7950b403147a.png" alt="PRO CLIENT" className="h-12" />
               </Link>
             </div>
+            
             <nav className="hidden md:flex items-center justify-center absolute left-1/2 transform -translate-x-1/2 space-x-1">
-              {menuItems.map(item => (
-                <Button
-                  key={item.path}
-                  variant="ghost"
-                  size="sm"
-                  asChild={!item.disabled}
-                  disabled={item.disabled}
-                  className={cn(
-                    "flex items-center gap-2 px-4 py-2 text-sm rounded-md transition-colors",
-                    isActive(item.path) ? "bg-slate-800 text-white" : "text-slate-300 hover:text-white hover:bg-slate-800",
-                    item.disabled && "opacity-50 cursor-not-allowed"
-                  )}
-                >
-                  {!item.disabled ? (
-                    <Link to={item.path} className="flex items-center gap-2">
+              {menuItems.map(item => <Button key={item.path} variant="ghost" size="sm" asChild={!item.disabled} disabled={item.disabled} className={cn("flex items-center gap-2 px-4 py-2 text-sm rounded-md transition-colors", isActive(item.path) ? "bg-slate-800 text-white" : "text-slate-300 hover:text-white hover:bg-slate-800", item.disabled && "opacity-50 cursor-not-allowed")}>
+                  {!item.disabled ? <Link to={item.path} className="flex items-center gap-2">
                       {item.icon}
                       <span>{item.label}</span>
-                    </Link>
-                  ) : (
-                    <div className="flex items-center gap-2">
+                    </Link> : <div className="flex items-center gap-2">
                       {item.icon}
                       <span>{item.label}</span>
-                    </div>
-                  )}
-                </Button>
-              ))}
+                    </div>}
+                </Button>)}
             </nav>
+            
             <div className="flex items-center z-10">
               {/* Right-side empty div to balance the layout */}
             </div>
           </div>
         </div>
       </div>
+      
       <div className="bg-slate-800 w-full py-2">
         <div className="max-w-screen-2xl mx-auto px-4">
           <div className="flex items-center justify-between">
             <div className="w-full md:w-auto">
               <CompanySelector className="w-full md:w-[300px]" showLabel={false} />
             </div>
+            
             <div className="hidden md:flex items-center gap-4">
-              {user && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-slate-300 hover:bg-slate-700 flex items-center gap-1 overflow-hidden"
-                  onClick={() => setIsProfileModalOpen(true)}
-                >
+              {user && <Button variant="ghost" size="sm" className="text-slate-300 hover:bg-slate-700 flex items-center gap-1 overflow-hidden" onClick={() => setIsProfileModalOpen(true)}>
                   <User className="h-4 w-4 text-slate-400 flex-shrink-0" />
                   <span className="text-xs truncate">
                     {user.email}
                   </span>
                   <SubscriptionStatusBadge />
-                </Button>
-              )}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-white hover:bg-slate-700 flex items-center gap-2"
-                onClick={handleLogout}
-              >
+                </Button>}
+              
+              <Button variant="ghost" size="sm" className="text-white hover:bg-slate-700 flex items-center gap-2" onClick={handleLogout}>
                 <LogOut className="h-4 w-4" />
                 <span>Logout</span>
               </Button>
@@ -292,9 +199,9 @@ const TopNavbar = () => {
           </div>
         </div>
       </div>
+      
       {isProfileModalOpen && <UserProfileModal isOpen={isProfileModalOpen} onClose={() => setIsProfileModalOpen(false)} />}
-    </div>
-  );
+    </div>;
 };
 
 export default TopNavbar;

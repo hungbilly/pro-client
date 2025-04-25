@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCompanyContext } from '@/context/CompanyContext';
@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { Building } from 'lucide-react';
 
 interface CompanySelectorProps {
-  onCompanySelect?: (company: { id: string, name: string }) => void;
+  onCompanySelect?: (company: {id: string, name: string}) => void;
   className?: string;
   showLabel?: boolean;
 }
@@ -17,46 +17,33 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({
   className, 
   showLabel = true 
 }) => {
-  const { companies, selectedCompanyId, setSelectedCompanyId, loading } = useCompanyContext();
+  const { companies, selectedCompany, setSelectedCompany, loading } = useCompanyContext();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const handleCompanyChange = (value: string) => {
-    console.log(`[CompanySelector] Company selection changed:`, {
-      previousId: selectedCompanyId,
-      newId: value,
-      availableCompanies: companies.map(c => ({ id: c.id, name: c.name }))
-    });
+  useEffect(() => {
+    console.log("CompanySelector render: selectedCompany =", selectedCompany?.name);
+    console.log("Companies available:", companies.map(c => c.name).join(', '));
+  }, [selectedCompany, companies]);
 
-    setSelectedCompanyId(value);
-    
+  const handleCompanyChange = (value: string) => {
+    console.log("CompanySelector: Company changed to:", value);
     const company = companies.find(c => c.id === value);
-    if (company && onCompanySelect) {
-      console.log('[CompanySelector] Calling onCompanySelect with:', {
-        id: company.id,
-        name: company.name
-      });
-      onCompanySelect({ id: company.id, name: company.name });
-    }
-    
-    // Only redirect to dashboard if not on /settings page
-    const currentPath = location.pathname;
-    console.log(`[CompanySelector] Current path:`, currentPath);
-    
-    if (currentPath !== '/' && currentPath !== '/settings') {
-      console.log(`[CompanySelector] Navigating to dashboard`);
-      navigate('/');
-    } else {
-      console.log('[CompanySelector] Staying on current page:', currentPath);
+    if (company) {
+      setSelectedCompany(company);
+      console.log("CompanySelector: Selected company updated to:", company.name);
+      
+      if (onCompanySelect) {
+        onCompanySelect({id: company.id, name: company.name});
+      }
+      
+      // Redirect to dashboard unless we're already there
+      const currentPath = location.pathname;
+      if (currentPath !== '/') {
+        navigate('/');
+      }
     }
   };
-
-  console.log(`[CompanySelector] Rendering:`, {
-    loading,
-    companiesCount: companies.length,
-    selectedCompanyId,
-    currentPath: location.pathname
-  });
 
   if (loading) {
     return <div className="text-sm text-muted-foreground">Loading companies...</div>;
@@ -86,16 +73,18 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({
           Current Company:
         </span>
         <Select 
-          value={selectedCompanyId || ''}
+          value={selectedCompany?.id || ''}
           onValueChange={handleCompanyChange}
           disabled={companies.length === 0}
         >
           <SelectTrigger 
             className="w-full text-white border-slate-700 bg-slate-800 hover:bg-slate-700"
           >
-            <SelectValue placeholder="Select a company" />
+            <SelectValue placeholder="Select a company">
+              {selectedCompany?.name || "Select a company"}
+            </SelectValue>
           </SelectTrigger>
-          <SelectContent className="bg-white border-slate-200">
+          <SelectContent>
             {companies.map(company => (
               <SelectItem key={company.id} value={company.id}>
                 {company.name} {company.is_default && "(Default)"}
@@ -108,4 +97,6 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({
   );
 };
 
+// Export the useCompanyContext hook with the alias useCompany
+export { useCompanyContext as useCompany } from '@/context/CompanyContext';
 export default CompanySelector;

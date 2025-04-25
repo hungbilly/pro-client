@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Client } from '@/types';
@@ -7,9 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { saveClient, updateClient } from '@/lib/storage';
-import CompanySelector from './CompanySelector';
+import CompanySelector, { useCompany } from './CompanySelector';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useCompany } from '@/hooks/useCompany';
 
 interface ClientFormProps {
   existingClient?: Client;

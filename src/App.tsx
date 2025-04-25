@@ -19,22 +19,20 @@ const queryClient = new QueryClient({
 });
 
 function App() {
-  console.log("App rendering - App.tsx");
-  
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <AuthProvider>
-          <CompanyProvider>
-            <SubscriptionProvider>
-              <Toaster 
-                position="top-right"
-                richColors
-                closeButton
-              />
+          <Toaster 
+            position="top-right"
+            richColors
+            closeButton
+          />
+          <SubscriptionProvider>
+            <CompanyProvider>
               <Routes />
-            </SubscriptionProvider>
-          </CompanyProvider>
+            </CompanyProvider>
+          </SubscriptionProvider>
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>

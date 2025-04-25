@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,7 +10,7 @@ import { PlusCircle, Trash2, Check, Upload, X, Image, Clock } from 'lucide-react
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
-import { useCompanyContext } from '@/context/CompanyContext';
+import { useCompany } from './CompanySelector';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CountryDropdown } from './ui/country-dropdown';
 import { CurrencyDropdown } from './ui/currency-dropdown';
@@ -31,14 +32,7 @@ interface Company {
 
 const CompanySettings = () => {
   const { user } = useAuth();
-  const { 
-    companies, 
-    loading: companyContextLoading, 
-    refreshCompanies, 
-    setSelectedCompany,
-    addCompany,
-    updateCompany
-  } = useCompanyContext();
+  const { companies, loading: companyContextLoading, refreshCompanies } = useCompany();
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -75,6 +69,7 @@ const CompanySettings = () => {
     }
   }, [companies, companyContextLoading]);
 
+  // Get user's local timezone for default value when creating a new company
   const userLocalTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   const populateFormWithCompany = (company: Company) => {
@@ -99,7 +94,7 @@ const CompanySettings = () => {
     setLogoUrl('');
     setCountry('hk');
     setCurrency('hkd');
-    setTimezone(userLocalTimezone);
+    setTimezone(userLocalTimezone); // Set to user's local timezone by default for new companies
     setIsDefault(companies.length === 0);
   };
 
@@ -133,74 +128,60 @@ const CompanySettings = () => {
     setIsLoading(true);
     try {
       if (isAddingNew) {
-        const newCompany = {
-          user_id: user.id,
-          name,
-          address,
-          phone,
-          email,
-          website,
-          logo_url: logoUrl,
-          country,
-          currency,
-          timezone,
-          is_default: isDefault
-        };
+        const { data, error } = await supabase
+          .from('companies')
+          .insert({
+            user_id: user.id,
+            name,
+            address,
+            phone,
+            email,
+            website,
+            logo_url: logoUrl,
+            country,
+            currency,
+            timezone,
+            is_default: isDefault
+          })
+          .select()
+          .single();
         
-        console.log("CompanySettings: Creating new company:", name);
-        const createdCompany = await addCompany(newCompany);
-        
-        if (!createdCompany) {
-          throw new Error('Failed to add company');
-        }
+        if (error) throw error;
         
         if (isDefault) {
-          await updateDefaultCompany(createdCompany.id);
+          await updateDefaultCompany(data.id);
         }
-        
-        setIsAddingNew(false);
-        setSelectedCompanyId(createdCompany.id);
-        
-        await refreshCompanies();
-        
-        setSelectedCompany(createdCompany);
         
         toast.success('Company created successfully');
+        setIsAddingNew(false);
+        setSelectedCompanyId(data.id);
+        await refreshCompanies();
       } else if (selectedCompanyId) {
-        const updatedCompany = {
-          id: selectedCompanyId,
-          user_id: user.id,
-          name,
-          address,
-          phone,
-          email,
-          website,
-          logo_url: logoUrl,
-          country,
-          currency,
-          timezone,
-          is_default: isDefault
-        };
+        const { error } = await supabase
+          .from('companies')
+          .update({
+            name,
+            address,
+            phone,
+            email,
+            website,
+            logo_url: logoUrl,
+            country,
+            currency,
+            timezone,
+            is_default: isDefault,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', selectedCompanyId);
         
-        console.log("CompanySettings: Updating company:", name);
-        const success = await updateCompany(updatedCompany);
-        
-        if (!success) {
-          throw new Error('Failed to update company');
-        }
+        if (error) throw error;
         
         if (isDefault) {
           await updateDefaultCompany(selectedCompanyId);
         }
         
         toast.success('Company updated successfully');
-        
         await refreshCompanies();
-        
-        const currentCompany = companies.find(c => c.id === selectedCompanyId);
-        if (currentCompany) {
-          setSelectedCompany(currentCompany);
-        }
       }
     } catch (error) {
       console.error('Error saving company:', error);

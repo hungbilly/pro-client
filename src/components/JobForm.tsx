@@ -14,7 +14,7 @@ import { format } from 'date-fns';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from '@/lib/utils';
-import { useCompany } from '@/hooks/useCompany';
+import { useCompany } from './CompanySelector';
 import { Checkbox } from '@/components/ui/checkbox';
 import JobWarningDialog from './JobWarningDialog';
 import { AddToCalendarDialog } from './AddToCalendarDialog';

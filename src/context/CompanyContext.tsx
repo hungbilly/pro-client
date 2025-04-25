@@ -134,6 +134,8 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
   // Add a new company and update state immediately
   const addCompany = async (newCompany: Omit<Company, 'id'>): Promise<Company | null> => {
     try {
+      console.log("CompanyProvider: Adding new company:", newCompany.name);
+      
       const { data, error } = await supabase
         .from('companies')
         .insert(newCompany)
@@ -142,12 +144,16 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       
       if (error) throw error;
       
-      // Update local state
+      console.log("CompanyProvider: Successfully added company with ID:", data.id);
+      
+      // Update local state with the new company
       const updatedCompanies = [...companies, data];
+      console.log("CompanyProvider: Updating companies list, new count:", updatedCompanies.length);
       setCompanies(updatedCompanies);
       
       // If this is the first company or marked as default, select it
       if (updatedCompanies.length === 1 || data.is_default) {
+        console.log("CompanyProvider: Setting newly created company as selected");
         setSelectedCompany(data);
       }
       
@@ -162,12 +168,16 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
   // Update an existing company and update state immediately
   const updateCompany = async (updatedCompany: Company): Promise<boolean> => {
     try {
+      console.log("CompanyProvider: Updating company:", updatedCompany.id);
+      
       const { error } = await supabase
         .from('companies')
         .update(updatedCompany)
         .eq('id', updatedCompany.id);
       
       if (error) throw error;
+      
+      console.log("CompanyProvider: Successfully updated company");
       
       // Update local state
       const updatedCompanies = companies.map(company => 
@@ -177,6 +187,7 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       
       // Update selected company if this is the one that was modified
       if (selectedCompany && selectedCompany.id === updatedCompany.id) {
+        console.log("CompanyProvider: Updating selected company state");
         setSelectedCompany(updatedCompany);
       }
       

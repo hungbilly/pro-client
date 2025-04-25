@@ -23,7 +23,7 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({
 
   useEffect(() => {
     console.log("CompanySelector render: selectedCompany =", selectedCompany?.name);
-    console.log("Companies available:", companies.map(c => c.name).join(', '));
+    console.log("CompanySelector: Companies available:", companies.length, companies.map(c => ({ id: c.id, name: c.name })));
   }, [selectedCompany, companies]);
 
   const handleCompanyChange = (value: string) => {

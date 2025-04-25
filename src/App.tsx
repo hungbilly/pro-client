@@ -19,6 +19,8 @@ const queryClient = new QueryClient({
 });
 
 function App() {
+  console.log("App rendering - App.tsx");
+  
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>

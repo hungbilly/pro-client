@@ -6,12 +6,13 @@ import { useAuth } from '@/context/AuthContext';
 import { Button } from './ui/button';
 import { toast } from 'sonner';
 import CompanySelector from './CompanySelector';
+import { useCompanyContext } from '@/context/CompanyContext';
 import { SubscriptionStatusBadge } from './SubscriptionStatus';
 
 const MainNavbar = () => {
   const navigate = useNavigate();
   const { signOut, user } = useAuth();
-  const { selectedCompany, companies } = CompanySelector.useCompany();
+  const { selectedCompany, companies } = useCompanyContext();
   
   useEffect(() => {
     console.log("MainNavbar: Companies list updated, count:", companies.length);
@@ -47,7 +48,7 @@ const MainNavbar = () => {
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center">
           <CompanySelector 
-            key={`main-company-selector-${companies.length}`} 
+            key={`main-company-selector-${companies.length}-${Date.now()}`} 
             className="w-64" 
             showLabel={true} 
           />

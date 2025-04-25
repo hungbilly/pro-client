@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -15,13 +16,13 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
-import { useCompany } from './CompanySelector';
+import { useCompanyContext } from '@/context/CompanyContext';
 import { SubscriptionStatusBadge } from './SubscriptionStatus';
 
 const AdminHeader = () => {
   const { signOut, user } = useAuth();
   const navigate = useNavigate();
-  const { selectedCompany, companies } = useCompany();
+  const { selectedCompany, companies } = useCompanyContext();
 
   // Add logging to track company updates
   useEffect(() => {

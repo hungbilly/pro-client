@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Home, Users, Briefcase, Settings, CreditCard, LogOut, Building, Menu, User, UserCog, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
-import { useCompany } from './CompanySelector';
+import { useCompanyContext } from '@/context/CompanyContext';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import CompanySelector from './CompanySelector';
@@ -25,7 +25,7 @@ const TopNavbar = () => {
   const {
     selectedCompany,
     companies
-  } = useCompany();
+  } = useCompanyContext();
   const {
     signOut,
     user
@@ -33,10 +33,12 @@ const TopNavbar = () => {
   const isMobile = useIsMobile();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [forceUpdateKey, setForceUpdateKey] = useState(Date.now());
 
   useEffect(() => {
     console.log("TopNavbar: Companies list updated, count:", companies.length);
     console.log("TopNavbar: Current selectedCompany:", selectedCompany?.name);
+    setForceUpdateKey(Date.now());
   }, [companies, selectedCompany]);
 
   const isActive = (path: string) => {
@@ -186,7 +188,7 @@ const TopNavbar = () => {
           <div className="flex items-center justify-between">
             <div className="w-full md:w-auto">
               <CompanySelector 
-                key={`top-company-selector-${companies.length}-${Date.now()}`} 
+                key={`top-company-selector-${companies.length}-${forceUpdateKey}`} 
                 className="w-full md:w-[300px]" 
                 showLabel={false} 
               />

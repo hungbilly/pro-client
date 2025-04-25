@@ -23,7 +23,7 @@ interface CompanyContextType {
   companies: Company[];
   selectedCompany: Company | null;
   selectedCompanyId: string | null; 
-  setSelectedCompany: (company: Company) => void;
+  setSelectedCompany: (company: Company | null) => void;
   setSelectedCompanyId: (id: string | null) => void; 
   loading: boolean;
   refreshCompanies: () => Promise<void>;

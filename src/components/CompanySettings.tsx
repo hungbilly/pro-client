@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -32,7 +31,7 @@ interface Company {
 
 const CompanySettings = () => {
   const { user } = useAuth();
-  const { companies, loading: companyContextLoading, refreshCompanies } = useCompany();
+  const { companies, loading: companyContextLoading, refreshCompanies, setSelectedCompany } = useCompany();
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -153,8 +152,15 @@ const CompanySettings = () => {
         }
         
         toast.success('Company created successfully');
+        
+        // Update the UI immediately with the new company
         setIsAddingNew(false);
         setSelectedCompanyId(data.id);
+        
+        // Set as selected company in context to update the CompanySelector
+        setSelectedCompany(data);
+        
+        // Refresh companies list to update UI
         await refreshCompanies();
       } else if (selectedCompanyId) {
         const { error } = await supabase
@@ -181,7 +187,28 @@ const CompanySettings = () => {
         }
         
         toast.success('Company updated successfully');
+        
+        // Refresh companies to update UI
         await refreshCompanies();
+        
+        // If this is the selected company, update it in context
+        if (selectedCompanyId) {
+          const updatedCompany = {
+            id: selectedCompanyId,
+            name,
+            address,
+            phone,
+            email,
+            website,
+            logo_url: logoUrl,
+            country,
+            currency,
+            timezone,
+            is_default: isDefault,
+            user_id: user.id
+          };
+          setSelectedCompany(updatedCompany);
+        }
       }
     } catch (error) {
       console.error('Error saving company:', error);

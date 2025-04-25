@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -11,6 +11,12 @@ import { SubscriptionStatusBadge } from './SubscriptionStatus';
 const MainNavbar = () => {
   const navigate = useNavigate();
   const { signOut, user } = useAuth();
+  const { selectedCompany, companies } = CompanySelector.useCompany();
+  
+  useEffect(() => {
+    console.log("MainNavbar: Companies list updated, count:", companies.length);
+    console.log("MainNavbar: Current selectedCompany:", selectedCompany?.name);
+  }, [companies, selectedCompany]);
   
   const handleLogout = async () => {
     try {
@@ -40,7 +46,11 @@ const MainNavbar = () => {
     <nav className="bg-white border-b border-gray-200 shadow-sm py-2">
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center">
-          <CompanySelector className="w-64" showLabel={true} />
+          <CompanySelector 
+            key={`main-company-selector-${companies.length}`} 
+            className="w-64" 
+            showLabel={true} 
+          />
           
           <div className="flex items-center space-x-2">
             {user && (

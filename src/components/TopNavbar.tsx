@@ -185,7 +185,11 @@ const TopNavbar = () => {
         <div className="max-w-screen-2xl mx-auto px-4">
           <div className="flex items-center justify-between">
             <div className="w-full md:w-auto">
-              <CompanySelector key={`company-selector-${companies.length}`} className="w-full md:w-[300px]" showLabel={false} />
+              <CompanySelector 
+                key={`top-company-selector-${companies.length}-${Date.now()}`} 
+                className="w-full md:w-[300px]" 
+                showLabel={false} 
+              />
             </div>
             
             <div className="hidden md:flex items-center gap-4">

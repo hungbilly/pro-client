@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -26,7 +25,7 @@ const AdminHeader = () => {
 
   // Add logging to track company updates
   useEffect(() => {
-    console.log("AdminHeader: Companies list updated, count:", companies.length);
+    console.log("AdminHeader: Companies list updated, count:", companies?.length || 0);
     console.log("AdminHeader: Current selectedCompany:", selectedCompany?.name);
   }, [companies, selectedCompany]);
 

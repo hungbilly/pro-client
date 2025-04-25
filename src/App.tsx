@@ -25,13 +25,13 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <AuthProvider>
-          <Toaster 
-            position="top-right"
-            richColors
-            closeButton
-          />
           <SubscriptionProvider>
             <CompanyProvider>
+              <Toaster 
+                position="top-right"
+                richColors
+                closeButton
+              />
               <Routes />
             </CompanyProvider>
           </SubscriptionProvider>

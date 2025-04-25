@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useId } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCompanyContext } from '@/context/CompanyContext';
@@ -20,18 +20,20 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({
   const { companies, selectedCompany, setSelectedCompany, loading } = useCompanyContext();
   const navigate = useNavigate();
   const location = useLocation();
-
+  const instanceId = useId(); // Generate a unique ID for this instance
+  
   useEffect(() => {
-    console.log("CompanySelector render: selectedCompany =", selectedCompany?.name);
-    console.log("CompanySelector: Companies available:", companies.length, companies.map(c => ({ id: c.id, name: c.name })));
-  }, [selectedCompany, companies]);
+    console.log(`CompanySelector (${instanceId}): render with ${companies.length} companies`);
+    console.log(`CompanySelector (${instanceId}): selectedCompany =`, selectedCompany?.name);
+    console.log(`CompanySelector (${instanceId}): Companies available:`, companies.length, companies.map(c => ({ id: c.id, name: c.name })));
+  }, [selectedCompany, companies, instanceId]);
 
   const handleCompanyChange = (value: string) => {
-    console.log("CompanySelector: Company changed to:", value);
+    console.log(`CompanySelector (${instanceId}): Company changed to:`, value);
     const company = companies.find(c => c.id === value);
     if (company) {
       setSelectedCompany(company);
-      console.log("CompanySelector: Selected company updated to:", company.name);
+      console.log(`CompanySelector (${instanceId}): Selected company updated to:`, company.name);
       
       if (onCompanySelect) {
         onCompanySelect({id: company.id, name: company.name});

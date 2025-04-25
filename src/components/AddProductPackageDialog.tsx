@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -13,15 +12,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import QuillEditor from './QuillEditor';
 
 interface AddProductPackageDialogProps {
-  open: boolean; // Changed from isOpen to open
-  onOpenChange: (open: boolean) => void; // Changed from onClose to onOpenChange
-  onAddItems: (items: InvoiceItem[]) => void; // Changed from onPackageSelect
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onAddItems: (items: InvoiceItem[]) => void;
 }
 
 const AddProductPackageDialog: React.FC<AddProductPackageDialogProps> = ({
-  open, // Updated prop name
-  onOpenChange, // Updated prop name
-  onAddItems, // Updated prop name
+  open,
+  onOpenChange,
+  onAddItems,
 }) => {
   const [selectedPackageId, setSelectedPackageId] = useState<string>('');
   const [customName, setCustomName] = useState('');
@@ -49,7 +48,7 @@ const AddProductPackageDialog: React.FC<AddProductPackageDialogProps> = ({
       
       return data || [];
     },
-    enabled: !!selectedCompany?.id && open, // Updated condition
+    enabled: !!selectedCompany?.id && open,
   });
 
   const handlePackageChange = (packageId: string) => {
@@ -89,13 +88,13 @@ const AddProductPackageDialog: React.FC<AddProductPackageDialogProps> = ({
       discount: discount > 0 ? discount.toString() : undefined
     };
     
-    onAddItems([newItem]); // Updated function call
+    onAddItems([newItem]);
     toast.success(`Added "${customName}" to invoice`);
-    onOpenChange(false); // Updated function call
+    onOpenChange(false);
   };
 
   useEffect(() => {
-    if (!open) { // Updated condition
+    if (!open) {
       setSelectedPackageId('');
       setCustomName('');
       setCustomDescription('');
@@ -103,7 +102,7 @@ const AddProductPackageDialog: React.FC<AddProductPackageDialogProps> = ({
       setQuantity(1);
       setDiscount(0);
     }
-  }, [open]); // Updated dependency
+  }, [open]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

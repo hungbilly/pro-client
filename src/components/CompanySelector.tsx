@@ -1,10 +1,28 @@
-
 import React, { useEffect, useId } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCompanyContext } from '@/context/CompanyContext';
 import { cn } from '@/lib/utils';
 import { Building } from 'lucide-react';
+
+// Create a custom hook to use the company context
+export const useCompany = () => {
+  const { 
+    selectedCompany, 
+    selectedCompanyId, 
+    companies, 
+    loading, 
+    setSelectedCompany 
+  } = useCompanyContext();
+
+  return { 
+    selectedCompany, 
+    selectedCompanyId, 
+    companies, 
+    loading, 
+    setSelectedCompany 
+  };
+};
 
 interface CompanySelectorProps {
   onCompanySelect?: (company: {id: string, name: string}) => void;

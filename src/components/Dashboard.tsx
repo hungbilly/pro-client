@@ -20,6 +20,7 @@ import AddJobButton from './ui-custom/AddJobButton';
 import RevenueChart from './RevenueChart';
 import { supabase } from '@/integrations/supabase/client';
 import { logDebug } from '@/integrations/supabase/client';
+
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const [clientToDelete, setClientToDelete] = React.useState<string | null>(null);
@@ -34,6 +35,7 @@ const Dashboard: React.FC = () => {
     selectedCompanyId,
     loading: companyLoading
   } = useCompany();
+
   useEffect(() => {
     if (selectedCompanyId) {
       queryClient.invalidateQueries({
@@ -47,6 +49,7 @@ const Dashboard: React.FC = () => {
       });
     }
   }, [selectedCompanyId, queryClient]);
+
   const {
     data: clients = [],
     isLoading: clientsLoading
@@ -55,6 +58,7 @@ const Dashboard: React.FC = () => {
     queryFn: () => getClients(selectedCompanyId),
     enabled: !!selectedCompanyId
   });
+
   const fetchInvoicesWithSchedules = async (companyId: string) => {
     try {
       const {
@@ -125,6 +129,7 @@ const Dashboard: React.FC = () => {
       return [];
     }
   };
+
   const {
     data: invoices = [],
     isLoading: invoicesLoading
@@ -133,9 +138,11 @@ const Dashboard: React.FC = () => {
     queryFn: () => selectedCompanyId ? fetchInvoicesWithSchedules(selectedCompanyId) : [],
     enabled: !!selectedCompanyId
   });
+
   React.useEffect(() => {
     setLocalInvoices(invoices);
   }, [invoices]);
+
   const {
     data: jobs = [],
     isLoading: jobsLoading
@@ -144,6 +151,7 @@ const Dashboard: React.FC = () => {
     queryFn: () => getJobs(selectedCompanyId),
     enabled: !!selectedCompanyId
   });
+
   if (companyLoading) {
     return <div className="flex items-center justify-center h-screen">
         <div className="text-center">
@@ -151,6 +159,7 @@ const Dashboard: React.FC = () => {
         </div>
       </div>;
   }
+
   if (companies.length === 0) {
     return <div className="flex items-center justify-center h-screen">
         <div className="text-center p-8 max-w-md">
@@ -162,25 +171,32 @@ const Dashboard: React.FC = () => {
         </div>
       </div>;
   }
+
   const sortedClients = [...clients].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).filter(client => client.name.toLowerCase().includes(clientSearchQuery.toLowerCase()) || client.email.toLowerCase().includes(clientSearchQuery.toLowerCase()) || client.phone.toLowerCase().includes(clientSearchQuery.toLowerCase()));
   const filteredJobs = [...jobs].filter(job => job.title.toLowerCase().includes(jobSearchQuery.toLowerCase()) || clients.find(c => c.id === job.clientId)?.name.toLowerCase().includes(jobSearchQuery.toLowerCase()) || job.location && job.location.toLowerCase().includes(jobSearchQuery.toLowerCase()));
   const filteredInvoices = [...localInvoices].filter(invoice => invoice.number.toLowerCase().includes(invoiceSearchQuery.toLowerCase()) || clients.find(c => c.id === invoice.clientId)?.name.toLowerCase().includes(invoiceSearchQuery.toLowerCase()) || invoice.status.toLowerCase().includes(invoiceSearchQuery.toLowerCase()));
+
   const handleClientRowClick = (clientId: string) => {
     navigate(`/client/${clientId}`);
   };
+
   const handleJobRowClick = (jobId: string) => {
     navigate(`/job/${jobId}`);
   };
+
   const handleInvoiceRowClick = (invoiceId: string) => {
     navigate(`/invoice/${invoiceId}`);
   };
+
   const handleInvoiceDeleted = (invoiceId: string) => {
     setLocalInvoices(prev => prev.filter(invoice => invoice.id !== invoiceId));
   };
+
   const confirmDeleteClient = (e: React.MouseEvent, clientId: string) => {
     e.stopPropagation();
     setClientToDelete(clientId);
   };
+
   const handleDeleteClient = async () => {
     if (!clientToDelete) return;
     try {
@@ -195,9 +211,11 @@ const Dashboard: React.FC = () => {
       toast.error("Failed to delete client");
     }
   };
+
   const cancelDeleteClient = () => {
     setClientToDelete(null);
   };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
@@ -215,7 +233,9 @@ const Dashboard: React.FC = () => {
         return 'bg-gray-100 text-gray-800';
     }
   };
+
   const isLoading = clientsLoading || invoicesLoading || jobsLoading;
+
   if (isLoading) {
     return <div className="flex items-center justify-center h-screen">
         <div className="text-center">
@@ -223,6 +243,7 @@ const Dashboard: React.FC = () => {
         </div>
       </div>;
   }
+
   return <AnimatedBackground className="py-6">
       <AlertDialog open={!!clientToDelete} onOpenChange={open => !open && setClientToDelete(null)}>
         <AlertDialogContent>
@@ -483,4 +504,5 @@ const Dashboard: React.FC = () => {
       </div>
     </AnimatedBackground>;
 };
+
 export default Dashboard;

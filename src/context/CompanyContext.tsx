@@ -92,44 +92,34 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       
       if (error) throw error;
       
-      console.log("[CompanyContext] Fetched companies:", {
-        count: data?.length,
-        names: data?.map(c => c.name)
-      });
-      
       if (data && data.length > 0) {
         setCompanies(data);
         
-        // Always prioritize pending new company if it exists
+        // Check for pending new company
         if (pendingNewCompanyId) {
           console.log("[CompanyContext] Looking for pending company:", pendingNewCompanyId);
           const pendingCompany = data.find(c => c.id === pendingNewCompanyId);
           
           if (pendingCompany) {
             console.log("[CompanyContext] Found pending company, selecting:", pendingCompany.name);
-            setSelectedCompanyState(pendingCompany); // Use internal state setter to avoid clearing pendingId
+            setSelectedCompanyState(pendingCompany);
             localStorage.setItem(STORAGE_KEY, pendingCompany.id);
+            setPendingNewCompanyId(null);
+            setLoading(false);
             return;
           }
-          console.log("[CompanyContext] Pending company not found, clearing pending ID");
-          setPendingNewCompanyId(null);
         }
         
-        // Only check saved company if we don't have a pending one
-        if (!pendingNewCompanyId) {
-          const savedCompanyId = localStorage.getItem(STORAGE_KEY);
-          console.log("[CompanyContext] No pending company, checking saved ID:", savedCompanyId);
-          
-          if (savedCompanyId && data.some(company => company.id === savedCompanyId)) {
-            const savedCompany = data.find(c => c.id === savedCompanyId)!;
-            console.log("[CompanyContext] Using saved company:", savedCompany.name);
-            setSelectedCompanyState(savedCompany);
-          } else {
-            const defaultCompany = data.find(c => c.is_default) || data[0];
-            console.log("[CompanyContext] Using default company:", defaultCompany.name);
-            setSelectedCompanyState(defaultCompany);
-            localStorage.setItem(STORAGE_KEY, defaultCompany.id);
-          }
+        // No pending company, check saved company ID
+        const savedCompanyId = localStorage.getItem(STORAGE_KEY);
+        if (savedCompanyId && data.some(company => company.id === savedCompanyId)) {
+          const savedCompany = data.find(c => c.id === savedCompanyId)!;
+          setSelectedCompanyState(savedCompany);
+        } else {
+          // Fall back to default company or first company
+          const defaultCompany = data.find(c => c.is_default) || data[0];
+          setSelectedCompanyState(defaultCompany);
+          localStorage.setItem(STORAGE_KEY, defaultCompany.id);
         }
       } else {
         console.log("[CompanyContext] No companies found, clearing state");
@@ -140,7 +130,7 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
     } catch (error) {
       console.error('[CompanyContext] Error fetching companies:', error);
       setError(error instanceof Error ? error : new Error('Failed to load companies'));
-      toast.error('Failed to load companies. Please refresh the page.');
+      toast.error('Failed to load companies');
     } finally {
       setLoading(false);
     }
@@ -200,13 +190,6 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
   };
 
   useEffect(() => {
-    console.log("[CompanyContext] Provider effect triggered:", {
-      hasUser: !!user,
-      companiesCount: companies.length,
-      selectedCompany: selectedCompany?.name,
-      pendingCompanyId: pendingNewCompanyId
-    });
-
     if (user) {
       fetchCompanies();
     } else {
@@ -215,13 +198,6 @@ const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
       setSelectedCompany(null);
     }
   }, [user]);
-
-  console.log("[CompanyContext] Provider rendering:", {
-    companiesCount: companies.length,
-    selectedCompany: selectedCompany?.name,
-    loading,
-    pendingCompanyId: pendingNewCompanyId
-  });
 
   return (
     <CompanyContext.Provider value={{ 

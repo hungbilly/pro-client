@@ -155,7 +155,7 @@ const Dashboard: React.FC = () => {
     return <div className="flex items-center justify-center h-screen">
         <div className="text-center p-8 max-w-md">
           <h2 className="text-2xl font-bold mb-4">Welcome to Wedding Studio Manager</h2>
-          <p className="mb-6">To get started, you need to create a company first.</p>
+          <p className="mb-6 text-red-500">To get started, you need to create a company first. please refresh the page if you don't see the new company after added</p>
           <Button asChild>
             <Link to="/settings">Create Your Company</Link>
           </Button>

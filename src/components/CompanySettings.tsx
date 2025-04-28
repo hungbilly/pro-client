@@ -152,10 +152,11 @@ const CompanySettings = () => {
           await updateDefaultCompany(data.id);
         }
         
+        await refreshCompanies();
+        window.location.reload(); // Add force refresh here
         toast.success('Company created successfully');
         setIsAddingNew(false);
         setSelectedCompanyId(data.id);
-        await refreshCompanies();
       } else if (selectedCompanyId) {
         const { error } = await supabase
           .from('companies')

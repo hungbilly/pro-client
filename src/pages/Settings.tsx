@@ -51,7 +51,6 @@ const Settings = () => {
               <TabsTrigger value="templates">Invoice Templates</TabsTrigger>
               <TabsTrigger value="contracts">Contract Templates</TabsTrigger>
               <TabsTrigger value="integrations">Integrations</TabsTrigger>
-              <TabsTrigger value="account">Account</TabsTrigger>
               <TabsTrigger value="notifications">Notifications</TabsTrigger>
               <TabsTrigger value="billing">Billing</TabsTrigger>
             </TabsList>
@@ -82,13 +81,6 @@ const Settings = () => {
                 <div className="space-y-6">
                   <GoogleCalendarIntegration />
                 </div>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="account" className="space-y-4">
-              <div className="rounded-lg border p-6">
-                <h2 className="text-xl font-semibold mb-4">Account Settings</h2>
-                <p className="text-muted-foreground">Account settings will be available in a future update.</p>
               </div>
             </TabsContent>
             

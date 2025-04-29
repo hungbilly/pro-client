@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getInvoices, deleteInvoice } from '@/lib/storage';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, MoreHorizontal, Receipt, Download, ArrowUp, ArrowDown } from 'lucide-react';
+import { FileText, MoreHorizontal, Receipt, Download, ArrowUp, ArrowDown, CalendarDays } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { formatCurrency } from '@/lib/utils';
@@ -164,11 +163,9 @@ const Invoices = () => {
     }
   };
 
-  // Function to handle sorting
   const handleSort = (key: string) => {
     setSortConfig(prevConfig => {
       if (prevConfig.key === key) {
-        // Toggle through sorting states: asc -> desc -> null -> asc
         let direction: 'asc' | 'desc' | null;
         if (prevConfig.direction === 'asc') {
           direction = 'desc';
@@ -180,12 +177,10 @@ const Invoices = () => {
         return { key, direction };
       }
       
-      // New column, default to ascending
       return { key, direction: 'asc' };
     });
   };
 
-  // Function to get sorting indicator
   const getSortIndicator = (columnKey: string) => {
     if (sortConfig.key === columnKey) {
       if (sortConfig.direction === 'asc') {
@@ -197,7 +192,6 @@ const Invoices = () => {
     return null;
   };
 
-  // Filter invoices based on search query and date range
   const filteredInvoices = localInvoices.filter(invoice => {
     const matchesSearch = 
       invoice.number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -224,7 +218,6 @@ const Invoices = () => {
     return matchesSearch && matchesDateRange;
   });
 
-  // Apply sorting to filtered invoices
   const sortedInvoices = React.useMemo(() => {
     if (!sortConfig.direction) {
       return filteredInvoices;
@@ -233,7 +226,6 @@ const Invoices = () => {
     return [...filteredInvoices].sort((a, b) => {
       let aValue, bValue;
       
-      // Extract values based on the sorting column
       switch (sortConfig.key) {
         case 'number':
           aValue = a.number || '';
@@ -251,12 +243,15 @@ const Invoices = () => {
           aValue = new Date(a.date || 0).getTime();
           bValue = new Date(b.date || 0).getTime();
           break;
+        case 'shootingDate':
+          aValue = new Date(a.shootingDate || 0).getTime();
+          bValue = new Date(b.shootingDate || 0).getTime();
+          break;
         case 'amount':
           aValue = a.amount || 0;
           bValue = b.amount || 0;
           break;
         case 'status':
-          // Custom order for status: paid -> sent -> draft
           const statusOrder = { 'paid': 1, 'accepted': 2, 'sent': 3, 'draft': 4, 'overdue': 5 };
           aValue = statusOrder[a.status] || 999;
           bValue = statusOrder[b.status] || 999;
@@ -266,7 +261,6 @@ const Invoices = () => {
           bValue = b[sortConfig.key];
       }
       
-      // Handle string comparison
       if (typeof aValue === 'string' && typeof bValue === 'string') {
         if (sortConfig.direction === 'asc') {
           return aValue.localeCompare(bValue);
@@ -275,7 +269,6 @@ const Invoices = () => {
         }
       }
       
-      // Handle numeric comparison
       if (sortConfig.direction === 'asc') {
         return (aValue > bValue) ? 1 : -1;
       } else {
@@ -427,7 +420,13 @@ const Invoices = () => {
                         className="hidden md:table-cell cursor-pointer" 
                         onClick={() => handleSort('date')}
                       >
-                        Date {getSortIndicator('date')}
+                        Invoice Date {getSortIndicator('date')}
+                      </TableHead>
+                      <TableHead 
+                        className="hidden md:table-cell cursor-pointer" 
+                        onClick={() => handleSort('shootingDate')}
+                      >
+                        Job Date {getSortIndicator('shootingDate')}
                       </TableHead>
                       <TableHead 
                         className="hidden md:table-cell cursor-pointer" 
@@ -455,6 +454,14 @@ const Invoices = () => {
                         <TableCell className="hidden md:table-cell">{getJobName(invoice.jobId)}</TableCell>
                         <TableCell className="hidden md:table-cell">
                           {invoice.date ? new Date(invoice.date).toLocaleDateString() : '-'}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          {invoice.shootingDate ? (
+                            <div className="flex items-center">
+                              <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+                              {new Date(invoice.shootingDate).toLocaleDateString()}
+                            </div>
+                          ) : '-'}
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
                           {formatCurrency(invoice.amount || 0, companyCurrency)}

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Invoice, Client } from '@/types';
@@ -146,6 +145,10 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
             aValue = a.contractStatus === 'accepted' ? 1 : 2;
             bValue = b.contractStatus === 'accepted' ? 1 : 2;
             break;
+          case 'shootingDate':
+            aValue = a.shootingDate ? new Date(a.shootingDate).getTime() : 0;
+            bValue = b.shootingDate ? new Date(b.shootingDate).getTime() : 0;
+            break;
           default:
             aValue = a[sortConfig.key];
             bValue = b[sortConfig.key];
@@ -290,7 +293,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
                   className="cursor-pointer"
                   onClick={() => handleSort('date')}
                 >
-                  Date {getSortIndicator('date')}
+                  Invoice Date {getSortIndicator('date')}
                 </TableHead>
                 <TableHead 
                   className="cursor-pointer"
@@ -298,14 +301,12 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
                 >
                   Due Date {getSortIndicator('dueDate')}
                 </TableHead>
-                {sortBy === 'job-date' && (
-                  <TableHead 
-                    className="cursor-pointer"
-                    onClick={() => handleSort('shootingDate')}
-                  >
-                    Job Date {getSortIndicator('shootingDate')}
-                  </TableHead>
-                )}
+                <TableHead 
+                  className="cursor-pointer"
+                  onClick={() => handleSort('shootingDate')}
+                >
+                  Job Date {getSortIndicator('shootingDate')}
+                </TableHead>
                 <TableHead 
                   className="cursor-pointer"
                   onClick={() => handleSort('amount')}
@@ -338,16 +339,14 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
                       {new Date(invoice.dueDate).toLocaleDateString()}
                     </div>
                   </TableCell>
-                  {sortBy === 'job-date' && (
-                    <TableCell>
-                      {invoice.shootingDate && (
-                        <div className="flex items-center">
-                          <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
-                          {new Date(invoice.shootingDate).toLocaleDateString()}
-                        </div>
-                      )}
-                    </TableCell>
-                  )}
+                  <TableCell>
+                    {invoice.shootingDate && (
+                      <div className="flex items-center">
+                        <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+                        {new Date(invoice.shootingDate).toLocaleDateString()}
+                      </div>
+                    )}
+                  </TableCell>
                   <TableCell className="font-semibold">${invoice.amount.toFixed(2)}</TableCell>
                   <TableCell>
                     <Badge className={getStatusColor(invoice.status)}>

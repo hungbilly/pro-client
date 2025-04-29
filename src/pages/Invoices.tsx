@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getInvoices, deleteInvoice } from '@/lib/storage';
@@ -73,28 +72,6 @@ const Invoices = () => {
 
   useEffect(() => {
     if (invoices) {
-      console.log("Invoices page: Received raw invoices data:", invoices);
-      
-      // Check if shootingDate exists in any invoice
-      const hasShootingDates = invoices.some(inv => !!inv.shootingDate);
-      console.log("Invoices page: Any invoices have shootingDate?", hasShootingDates);
-      
-      if (hasShootingDates) {
-        // Log a sample invoice with shootingDate
-        const sampleInvoice = invoices.find(inv => !!inv.shootingDate);
-        console.log("Invoices page: Sample invoice with shootingDate:", {
-          id: sampleInvoice.id,
-          shootingDate: sampleInvoice.shootingDate,
-          formattedDate: sampleInvoice.shootingDate ? new Date(sampleInvoice.shootingDate).toLocaleDateString() : null
-        });
-      } else {
-        // Log invoice structure to see what fields are available
-        if (invoices.length > 0) {
-          console.log("Invoices page: Invoice structure sample (first invoice):", 
-            Object.keys(invoices[0]).filter(key => key !== 'items'));
-        }
-      }
-      
       setLocalInvoices(invoices);
     }
   }, [invoices]);
@@ -244,13 +221,6 @@ const Invoices = () => {
     if (!sortConfig.direction) {
       return filteredInvoices;
     }
-    
-    // Add debugging for sorting
-    console.log("Invoices page: Sorting invoices, checking for shootingDate field");
-    const sample = filteredInvoices.length > 0 ? 
-      { id: filteredInvoices[0].id, hasShootingDate: !!filteredInvoices[0].shootingDate } : 
-      "No invoices to sort";
-    console.log("Invoices page: Sample invoice for sorting:", sample);
     
     return [...filteredInvoices].sort((a, b) => {
       let aValue, bValue;
@@ -472,9 +442,7 @@ const Invoices = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {sortedInvoices.map((invoice) => {
-                      console.log(`Invoices page: Rendering invoice ${invoice.id}, shootingDate:`, invoice.shootingDate);
-                      return (
+                    {sortedInvoices.map((invoice) => (
                       <TableRow 
                         key={invoice.id} 
                         className="cursor-pointer"
@@ -505,7 +473,7 @@ const Invoices = () => {
                           </Badge>
                         </TableCell>
                       </TableRow>
-                    )})}
+                    ))}
                   </TableBody>
                 </Table>
               </div>

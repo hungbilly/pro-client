@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Invoice, Client } from '@/types';
@@ -35,6 +36,7 @@ interface InvoiceListProps {
   onInvoiceDeleted?: (invoiceId: string) => void;
 }
 
+// Type for sorting configuration
 type SortConfig = {
   key: string;
   direction: 'asc' | 'desc';
@@ -74,26 +76,22 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
   const { id: jobId } = useParams();
   
   React.useEffect(() => {
-    console.log("InvoiceList: Received invoices", invoices);
-    console.log("InvoiceList: Sample invoice with shootingDate check:", 
-      invoices.length > 0 ? {
-        id: invoices[0].id,
-        number: invoices[0].number,
-        shootingDate: invoices[0].shootingDate,
-        hasShootingDate: !!invoices[0].shootingDate
-      } : "No invoices");
     setLocalInvoices(invoices);
   }, [invoices]);
   
+  // Function to handle column sorting
   const handleSort = (key: string) => {
     setSortConfig(prevConfig => {
       if (prevConfig.key === key) {
+        // Toggle direction
         return { key, direction: prevConfig.direction === 'asc' ? 'desc' : 'asc' };
       }
+      // New column, default to ascending
       return { key, direction: 'asc' };
     });
   };
 
+  // Function to get sorting indicator
   const getSortIndicator = (columnKey: string) => {
     if (sortConfig.key === columnKey) {
       if (sortConfig.direction === 'asc') {
@@ -106,16 +104,9 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
   };
   
   const sortedInvoices = React.useMemo(() => {
-    console.log("InvoiceList: Sorting invoices, checking shootingDate availability");
     let result = [...localInvoices];
     
-    const hasSomeShootingDates = result.some(invoice => !!invoice.shootingDate);
-    console.log("InvoiceList: Any invoices have shootingDate?", hasSomeShootingDates);
-    if (hasSomeShootingDates) {
-      console.log("InvoiceList: Sample shootingDate:", 
-        result.find(inv => !!inv.shootingDate)?.shootingDate);
-    }
-    
+    // First apply the select box filter (invoice-date or job-date)
     result = result.sort((a, b) => {
       if (sortBy === 'invoice-date') {
         return new Date(b.date).getTime() - new Date(a.date).getTime();
@@ -126,10 +117,12 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
       }
     });
     
+    // Then apply the column sorting if it's not based on the dropdown
     if (sortConfig.key !== 'date' && sortConfig.key !== 'shootingDate') {
       result = result.sort((a, b) => {
         let aValue, bValue;
         
+        // Extract values based on the sort column
         switch (sortConfig.key) {
           case 'number':
             aValue = a.number || '';
@@ -144,6 +137,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
             bValue = b.amount || 0;
             break;
           case 'status':
+            // Custom order for status: paid -> accepted -> sent -> draft
             const statusOrder = { 'paid': 1, 'accepted': 2, 'sent': 3, 'draft': 4 };
             aValue = statusOrder[a.status] || 999;
             bValue = statusOrder[b.status] || 999;
@@ -161,12 +155,14 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
             bValue = b[sortConfig.key];
         }
         
+        // Handle string comparison
         if (typeof aValue === 'string' && typeof bValue === 'string') {
           return sortConfig.direction === 'asc' 
             ? aValue.localeCompare(bValue) 
             : bValue.localeCompare(aValue);
         }
         
+        // Handle numeric comparison
         return sortConfig.direction === 'asc'
           ? (aValue > bValue ? 1 : -1)
           : (aValue < bValue ? 1 : -1);
@@ -334,9 +330,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedInvoices.map((invoice) => {
-                console.log(`InvoiceList: Rendering invoice ${invoice.id}, shootingDate:`, invoice.shootingDate);
-                return (
+              {sortedInvoices.map((invoice) => (
                 <TableRow key={invoice.id}>
                   <TableCell className="font-medium">{invoice.number}</TableCell>
                   <TableCell>{new Date(invoice.date).toLocaleDateString()}</TableCell>

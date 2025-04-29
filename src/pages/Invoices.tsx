@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getInvoices, deleteInvoice } from '@/lib/storage';
@@ -47,7 +46,6 @@ import {
 import { useCompanyContext } from '@/context/CompanyContext';
 import { supabase } from '@/integrations/supabase/client';
 
-// Define the type for sorting configuration
 type SortConfig = {
   key: string;
   direction: 'asc' | 'desc' | null;
@@ -74,6 +72,34 @@ const Invoices = () => {
 
   useEffect(() => {
     if (invoices) {
+      console.log('[Invoices] Fetched invoices from database:', invoices);
+      
+      const hasShootingDates = invoices.some(inv => inv.shootingDate);
+      console.log('[Invoices] Any invoices have shootingDate?', hasShootingDates);
+      
+      if (hasShootingDates) {
+        const samplesWithDates = invoices
+          .filter(inv => inv.shootingDate)
+          .map(inv => ({ 
+            id: inv.id, 
+            number: inv.number, 
+            shootingDate: inv.shootingDate 
+          }));
+        console.log('[Invoices] Samples with shooting dates:', samplesWithDates);
+      } else {
+        console.log('[Invoices] No shooting dates found in any invoices');
+        
+        if (invoices.length > 0) {
+          console.log('[Invoices] Sample invoice full structure:', JSON.stringify(invoices[0], null, 2));
+          
+          const firstInvoice = invoices[0];
+          const possibleDateFields = Object.keys(firstInvoice).filter(
+            key => key.toLowerCase().includes('date') || key.toLowerCase().includes('shooting')
+          );
+          console.log('[Invoices] Possible date-related fields found:', possibleDateFields);
+        }
+      }
+      
       setLocalInvoices(invoices);
     }
   }, [invoices]);
@@ -164,11 +190,9 @@ const Invoices = () => {
     }
   };
 
-  // Function to handle sorting
   const handleSort = (key: string) => {
     setSortConfig(prevConfig => {
       if (prevConfig.key === key) {
-        // Toggle through sorting states: asc -> desc -> null -> asc
         let direction: 'asc' | 'desc' | null;
         if (prevConfig.direction === 'asc') {
           direction = 'desc';
@@ -180,12 +204,10 @@ const Invoices = () => {
         return { key, direction };
       }
       
-      // New column, default to ascending
       return { key, direction: 'asc' };
     });
   };
 
-  // Function to get sorting indicator
   const getSortIndicator = (columnKey: string) => {
     if (sortConfig.key === columnKey) {
       if (sortConfig.direction === 'asc') {
@@ -197,7 +219,6 @@ const Invoices = () => {
     return null;
   };
 
-  // Filter invoices based on search query and date range
   const filteredInvoices = localInvoices.filter(invoice => {
     const matchesSearch = 
       invoice.number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -224,7 +245,6 @@ const Invoices = () => {
     return matchesSearch && matchesDateRange;
   });
 
-  // Apply sorting to filtered invoices
   const sortedInvoices = React.useMemo(() => {
     if (!sortConfig.direction) {
       return filteredInvoices;
@@ -233,7 +253,6 @@ const Invoices = () => {
     return [...filteredInvoices].sort((a, b) => {
       let aValue, bValue;
       
-      // Extract values based on the sorting column
       switch (sortConfig.key) {
         case 'number':
           aValue = a.number || '';
@@ -251,12 +270,15 @@ const Invoices = () => {
           aValue = new Date(a.date || 0).getTime();
           bValue = new Date(b.date || 0).getTime();
           break;
+        case 'shootingDate':
+          aValue = a.shootingDate ? new Date(a.shootingDate).getTime() : 0;
+          bValue = b.shootingDate ? new Date(b.shootingDate).getTime() : 0;
+          break;
         case 'amount':
           aValue = a.amount || 0;
           bValue = b.amount || 0;
           break;
         case 'status':
-          // Custom order for status: paid -> sent -> draft
           const statusOrder = { 'paid': 1, 'accepted': 2, 'sent': 3, 'draft': 4, 'overdue': 5 };
           aValue = statusOrder[a.status] || 999;
           bValue = statusOrder[b.status] || 999;
@@ -266,7 +288,6 @@ const Invoices = () => {
           bValue = b[sortConfig.key];
       }
       
-      // Handle string comparison
       if (typeof aValue === 'string' && typeof bValue === 'string') {
         if (sortConfig.direction === 'asc') {
           return aValue.localeCompare(bValue);
@@ -275,7 +296,6 @@ const Invoices = () => {
         }
       }
       
-      // Handle numeric comparison
       if (sortConfig.direction === 'asc') {
         return (aValue > bValue) ? 1 : -1;
       } else {
@@ -283,6 +303,18 @@ const Invoices = () => {
       }
     });
   }, [filteredInvoices, sortConfig, clients, jobs]);
+
+  React.useEffect(() => {
+    if (sortedInvoices.length > 0) {
+      console.log('[Invoices] First few sorted invoices:', sortedInvoices.slice(0, 3).map(inv => ({
+        id: inv.id,
+        number: inv.number,
+        date: inv.date,
+        shootingDate: inv.shootingDate,
+        jobId: inv.jobId
+      })));
+    }
+  }, [sortedInvoices]);
 
   const handleExportOpen = () => {
     setIsExportDialogOpen(true);
@@ -427,7 +459,13 @@ const Invoices = () => {
                         className="hidden md:table-cell cursor-pointer" 
                         onClick={() => handleSort('date')}
                       >
-                        Date {getSortIndicator('date')}
+                        Invoice Date {getSortIndicator('date')}
+                      </TableHead>
+                      <TableHead 
+                        className="hidden md:table-cell cursor-pointer" 
+                        onClick={() => handleSort('shootingDate')}
+                      >
+                        Job Date {getSortIndicator('shootingDate')}
                       </TableHead>
                       <TableHead 
                         className="hidden md:table-cell cursor-pointer" 
@@ -444,28 +482,36 @@ const Invoices = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {sortedInvoices.map((invoice) => (
-                      <TableRow 
-                        key={invoice.id} 
-                        className="cursor-pointer"
-                        onClick={() => handleRowClick(invoice.id)}
-                      >
-                        <TableCell className="font-medium">{invoice.number || '-'}</TableCell>
-                        <TableCell>{getClientName(invoice.clientId)}</TableCell>
-                        <TableCell className="hidden md:table-cell">{getJobName(invoice.jobId)}</TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          {invoice.date ? new Date(invoice.date).toLocaleDateString() : '-'}
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          {formatCurrency(invoice.amount || 0, companyCurrency)}
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={getStatusColor(invoice.status)}>
-                            {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {sortedInvoices.map((invoice) => {
+                      console.log(`[Invoices] Rendering invoice row for ${invoice.id}, shootingDate:`, invoice.shootingDate);
+                      return (
+                        <TableRow 
+                          key={invoice.id} 
+                          className="cursor-pointer"
+                          onClick={() => handleRowClick(invoice.id)}
+                        >
+                          <TableCell className="font-medium">{invoice.number || '-'}</TableCell>
+                          <TableCell>{getClientName(invoice.clientId)}</TableCell>
+                          <TableCell className="hidden md:table-cell">{getJobName(invoice.jobId)}</TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            {invoice.date ? new Date(invoice.date).toLocaleDateString() : '-'}
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            {invoice.shootingDate ? new Date(invoice.shootingDate).toLocaleDateString() : (
+                              <span className="text-muted-foreground text-sm">Not set</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            {formatCurrency(invoice.amount || 0, companyCurrency)}
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={getStatusColor(invoice.status)}>
+                              {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>

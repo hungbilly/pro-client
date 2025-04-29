@@ -77,6 +77,28 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
   
   React.useEffect(() => {
     setLocalInvoices(invoices);
+    
+    // Debug logging for received invoices
+    console.log('[InvoiceList] Received invoices:', invoices);
+    
+    // Check for shootingDate field
+    const hasShootingDates = invoices.some(inv => inv.shootingDate);
+    console.log('[InvoiceList] Any invoices have shootingDate?', hasShootingDates);
+    
+    if (hasShootingDates) {
+      const samplesWithDates = invoices
+        .filter(inv => inv.shootingDate)
+        .map(inv => ({ 
+          id: inv.id, 
+          number: inv.number, 
+          shootingDate: inv.shootingDate 
+        }));
+      console.log('[InvoiceList] Samples with shooting dates:', samplesWithDates);
+    } else {
+      console.log('[InvoiceList] No shooting dates found in any invoices');
+      console.log('[InvoiceList] Sample invoice structure:', 
+        invoices.length > 0 ? JSON.stringify(invoices[0], null, 2) : 'No invoices');
+    }
   }, [invoices]);
   
   // Function to handle column sorting
@@ -104,6 +126,8 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
   };
   
   const sortedInvoices = React.useMemo(() => {
+    console.log('[InvoiceList] Sorting invoices with config:', { sortBy, sortConfig });
+    
     let result = [...localInvoices];
     
     // First apply the select box filter (invoice-date or job-date)
@@ -164,6 +188,15 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
           : (aValue < bValue ? 1 : -1);
       });
     }
+
+    console.log('[InvoiceList] Sorted invoices (first few):', 
+      result.slice(0, 3).map(inv => ({
+        id: inv.id,
+        number: inv.number,
+        date: inv.date,
+        shootingDate: inv.shootingDate
+      }))
+    );
     
     return result;
   }, [localInvoices, sortBy, sortConfig]);
@@ -290,7 +323,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
                   className="cursor-pointer"
                   onClick={() => handleSort('date')}
                 >
-                  Date {getSortIndicator('date')}
+                  Invoice Date {getSortIndicator('date')}
                 </TableHead>
                 <TableHead 
                   className="cursor-pointer"
@@ -298,14 +331,12 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
                 >
                   Due Date {getSortIndicator('dueDate')}
                 </TableHead>
-                {sortBy === 'job-date' && (
-                  <TableHead 
-                    className="cursor-pointer"
-                    onClick={() => handleSort('shootingDate')}
-                  >
-                    Job Date {getSortIndicator('shootingDate')}
-                  </TableHead>
-                )}
+                <TableHead 
+                  className="cursor-pointer"
+                  onClick={() => handleSort('shootingDate')}
+                >
+                  Job Date {getSortIndicator('shootingDate')}
+                </TableHead>
                 <TableHead 
                   className="cursor-pointer"
                   onClick={() => handleSort('amount')}
@@ -328,75 +359,78 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedInvoices.map((invoice) => (
-                <TableRow key={invoice.id}>
-                  <TableCell className="font-medium">{invoice.number}</TableCell>
-                  <TableCell>{new Date(invoice.date).toLocaleDateString()}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center">
-                      <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
-                      {new Date(invoice.dueDate).toLocaleDateString()}
-                    </div>
-                  </TableCell>
-                  {sortBy === 'job-date' && (
+              {sortedInvoices.map((invoice) => {
+                console.log(`[InvoiceList] Rendering invoice ${invoice.id}, shootingDate:`, invoice.shootingDate);
+                return (
+                  <TableRow key={invoice.id}>
+                    <TableCell className="font-medium">{invoice.number}</TableCell>
+                    <TableCell>{new Date(invoice.date).toLocaleDateString()}</TableCell>
                     <TableCell>
-                      {invoice.shootingDate && (
+                      <div className="flex items-center">
+                        <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+                        {new Date(invoice.dueDate).toLocaleDateString()}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {invoice.shootingDate ? (
                         <div className="flex items-center">
                           <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
                           {new Date(invoice.shootingDate).toLocaleDateString()}
                         </div>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">Not set</span>
                       )}
                     </TableCell>
-                  )}
-                  <TableCell className="font-semibold">${invoice.amount.toFixed(2)}</TableCell>
-                  <TableCell>
-                    <Badge className={getStatusColor(invoice.status)}>
-                      {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {invoice.contractStatus && (
-                      <Badge className={getContractStatusColor(invoice.contractStatus)}>
-                        {invoice.contractStatus === 'accepted' ? 'Accepted' : 'Not Accepted'}
+                    <TableCell className="font-semibold">${invoice.amount.toFixed(2)}</TableCell>
+                    <TableCell>
+                      <Badge className={getStatusColor(invoice.status)}>
+                        {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
                       </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end items-center gap-1">
-                      {invoice.status !== 'draft' && (
+                    </TableCell>
+                    <TableCell>
+                      {invoice.contractStatus && (
+                        <Badge className={getContractStatusColor(invoice.contractStatus)}>
+                          {invoice.contractStatus === 'accepted' ? 'Accepted' : 'Not Accepted'}
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end items-center gap-1">
+                        {invoice.status !== 'draft' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            title="Copy client link"
+                            onClick={(e) => copyInvoiceLink(invoice, e)}
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
-                          title="Copy client link"
-                          onClick={(e) => copyInvoiceLink(invoice, e)}
+                          asChild
                         >
-                          <Copy className="h-3.5 w-3.5" />
+                          <Link to={`/invoice/${invoice.id}`}>
+                            <Eye className="h-3.5 w-3.5" />
+                          </Link>
                         </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        asChild
-                      >
-                        <Link to={`/invoice/${invoice.id}`}>
-                          <Eye className="h-3.5 w-3.5" />
-                        </Link>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        title="Delete invoice"
-                        onClick={(e) => confirmDeleteInvoice(e, invoice.id)}
-                      >
-                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          title="Delete invoice"
+                          onClick={(e) => confirmDeleteInvoice(e, invoice.id)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>

@@ -46,7 +46,6 @@ import {
 import { useCompanyContext } from '@/context/CompanyContext';
 import { supabase } from '@/integrations/supabase/client';
 
-// Define the type for sorting configuration
 type SortConfig = {
   key: string;
   direction: 'asc' | 'desc' | null;
@@ -461,7 +460,9 @@ const Invoices = () => {
                               <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
                               {new Date(invoice.shootingDate).toLocaleDateString()}
                             </div>
-                          ) : '-'}
+                          ) : (
+                            <span className="text-muted-foreground text-sm">Not set</span>
+                          )}
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
                           {formatCurrency(invoice.amount || 0, companyCurrency)}

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Invoice, Client } from '@/types';
@@ -340,11 +341,13 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
                     </div>
                   </TableCell>
                   <TableCell>
-                    {invoice.shootingDate && (
+                    {invoice.shootingDate ? (
                       <div className="flex items-center">
                         <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
                         {new Date(invoice.shootingDate).toLocaleDateString()}
                       </div>
+                    ) : (
+                      <span className="text-muted-foreground text-sm">Not set</span>
                     )}
                   </TableCell>
                   <TableCell className="font-semibold">${invoice.amount.toFixed(2)}</TableCell>

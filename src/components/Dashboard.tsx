@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Link, useNavigate } from 'react-router-dom';
-import { UserPlus, FileText, Users, Briefcase, FilePlus, Eye, FileEdit, MoreHorizontal, Trash2, Search } from 'lucide-react';
+import { UserPlus, FileText, Users, Briefcase, FilePlus, Eye, FileEdit, MoreHorizontal, Trash2, Search, CalendarDays } from 'lucide-react';
 import { AnimatedBackground } from './ui-custom/AnimatedBackground';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from './ui/badge';
@@ -20,6 +20,7 @@ import AddJobButton from './ui-custom/AddJobButton';
 import RevenueChart from './RevenueChart';
 import { supabase } from '@/integrations/supabase/client';
 import { logDebug } from '@/integrations/supabase/client';
+
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const [clientToDelete, setClientToDelete] = React.useState<string | null>(null);
@@ -29,11 +30,14 @@ const Dashboard: React.FC = () => {
   const [jobSearchQuery, setJobSearchQuery] = useState('');
   const [invoiceSearchQuery, setInvoiceSearchQuery] = useState('');
   const [localInvoices, setLocalInvoices] = useState<any[]>([]);
+  const [jobDates, setJobDates] = useState<Record<string, string>>({});
+  
   const {
     companies,
     selectedCompanyId,
     loading: companyLoading
   } = useCompany();
+
   useEffect(() => {
     if (selectedCompanyId) {
       queryClient.invalidateQueries({
@@ -47,6 +51,7 @@ const Dashboard: React.FC = () => {
       });
     }
   }, [selectedCompanyId, queryClient]);
+
   const {
     data: clients = [],
     isLoading: clientsLoading
@@ -55,6 +60,7 @@ const Dashboard: React.FC = () => {
     queryFn: () => getClients(selectedCompanyId),
     enabled: !!selectedCompanyId
   });
+
   const fetchInvoicesWithSchedules = async (companyId: string) => {
     try {
       const {
@@ -125,6 +131,7 @@ const Dashboard: React.FC = () => {
       return [];
     }
   };
+
   const {
     data: invoices = [],
     isLoading: invoicesLoading
@@ -133,9 +140,11 @@ const Dashboard: React.FC = () => {
     queryFn: () => selectedCompanyId ? fetchInvoicesWithSchedules(selectedCompanyId) : [],
     enabled: !!selectedCompanyId
   });
+
   React.useEffect(() => {
     setLocalInvoices(invoices);
   }, [invoices]);
+
   const {
     data: jobs = [],
     isLoading: jobsLoading
@@ -144,6 +153,17 @@ const Dashboard: React.FC = () => {
     queryFn: () => getJobs(selectedCompanyId),
     enabled: !!selectedCompanyId
   });
+
+  React.useEffect(() => {
+    const dateMap: Record<string, string> = {};
+    jobs.forEach(job => {
+      if (job.id && job.date) {
+        dateMap[job.id] = job.date;
+      }
+    });
+    setJobDates(dateMap);
+  }, [jobs]);
+
   if (companyLoading) {
     return <div className="flex items-center justify-center h-screen">
         <div className="text-center">
@@ -151,6 +171,7 @@ const Dashboard: React.FC = () => {
         </div>
       </div>;
   }
+
   if (companies.length === 0) {
     return <div className="flex items-center justify-center h-screen">
         <div className="text-center p-8 max-w-md">
@@ -162,25 +183,32 @@ const Dashboard: React.FC = () => {
         </div>
       </div>;
   }
+
   const sortedClients = [...clients].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).filter(client => client.name.toLowerCase().includes(clientSearchQuery.toLowerCase()) || client.email.toLowerCase().includes(clientSearchQuery.toLowerCase()) || client.phone.toLowerCase().includes(clientSearchQuery.toLowerCase()));
   const filteredJobs = [...jobs].filter(job => job.title.toLowerCase().includes(jobSearchQuery.toLowerCase()) || clients.find(c => c.id === job.clientId)?.name.toLowerCase().includes(jobSearchQuery.toLowerCase()) || job.location && job.location.toLowerCase().includes(jobSearchQuery.toLowerCase()));
   const filteredInvoices = [...localInvoices].filter(invoice => invoice.number.toLowerCase().includes(invoiceSearchQuery.toLowerCase()) || clients.find(c => c.id === invoice.clientId)?.name.toLowerCase().includes(invoiceSearchQuery.toLowerCase()) || invoice.status.toLowerCase().includes(invoiceSearchQuery.toLowerCase()));
+
   const handleClientRowClick = (clientId: string) => {
     navigate(`/client/${clientId}`);
   };
+
   const handleJobRowClick = (jobId: string) => {
     navigate(`/job/${jobId}`);
   };
+
   const handleInvoiceRowClick = (invoiceId: string) => {
     navigate(`/invoice/${invoiceId}`);
   };
+
   const handleInvoiceDeleted = (invoiceId: string) => {
     setLocalInvoices(prev => prev.filter(invoice => invoice.id !== invoiceId));
   };
+
   const confirmDeleteClient = (e: React.MouseEvent, clientId: string) => {
     e.stopPropagation();
     setClientToDelete(clientId);
   };
+
   const handleDeleteClient = async () => {
     if (!clientToDelete) return;
     try {
@@ -195,9 +223,11 @@ const Dashboard: React.FC = () => {
       toast.error("Failed to delete client");
     }
   };
+
   const cancelDeleteClient = () => {
     setClientToDelete(null);
   };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
@@ -215,7 +245,21 @@ const Dashboard: React.FC = () => {
         return 'bg-gray-100 text-gray-800';
     }
   };
+
+  const getJobDateDisplay = (invoice: any) => {
+    if (invoice.shootingDate) {
+      return <span>{new Date(invoice.shootingDate).toLocaleDateString()}</span>;
+    }
+    
+    if (invoice.jobId && jobDates[invoice.jobId]) {
+      return <span>{new Date(jobDates[invoice.jobId]).toLocaleDateString()}</span>;
+    }
+    
+    return <span className="text-muted-foreground text-sm">Not set</span>;
+  };
+
   const isLoading = clientsLoading || invoicesLoading || jobsLoading;
+
   if (isLoading) {
     return <div className="flex items-center justify-center h-screen">
         <div className="text-center">
@@ -223,6 +267,7 @@ const Dashboard: React.FC = () => {
         </div>
       </div>;
   }
+
   return <AnimatedBackground className="py-6">
       <AlertDialog open={!!clientToDelete} onOpenChange={open => !open && setClientToDelete(null)}>
         <AlertDialogContent>
@@ -418,7 +463,8 @@ const Dashboard: React.FC = () => {
                   <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 </div>
                 
-                {localInvoices.length === 0 ? <div className="flex flex-col items-center justify-center py-8 text-center">
+                {localInvoices.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
                     <FilePlus className="h-12 w-12 text-muted-foreground mb-4" />
                     <h3 className="text-lg font-medium mb-2">No Invoices Yet</h3>
                     <p className="text-muted-foreground mb-6 max-w-md">
@@ -429,16 +475,20 @@ const Dashboard: React.FC = () => {
                           Select a Job
                         </Link>
                       </Button>}
-                  </div> : filteredInvoices.length === 0 ? <div className="text-center py-8">
+                  </div>
+                ) : filteredInvoices.length === 0 ? (
+                  <div className="text-center py-8">
                     <p className="text-muted-foreground">No invoices match your search</p>
-                  </div> : <div className="rounded-md border">
+                  </div>
+                ) : (
+                  <div className="rounded-md border">
                     <Table>
                       <TableHeader>
                         <TableRow>
                           <TableHead>Invoice #</TableHead>
                           <TableHead>Client</TableHead>
                           <TableHead className="hidden md:table-cell">Date</TableHead>
-                          <TableHead className="hidden md:table-cell">Due Date</TableHead>
+                          <TableHead className="hidden md:table-cell">Job Date</TableHead>
                           <TableHead>Amount</TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
@@ -446,36 +496,40 @@ const Dashboard: React.FC = () => {
                       </TableHeader>
                       <TableBody>
                         {filteredInvoices.map(invoice => {
-                      const invoiceClient = clients.find(c => c.id === invoice.clientId) || null;
-                      return <TableRow key={invoice.id} onClick={() => handleInvoiceRowClick(invoice.id)} className="cursor-pointer">
-                              <TableCell className="font-medium">{invoice.number}</TableCell>
-                              <TableCell>{invoiceClient?.name}</TableCell>
-                              <TableCell className="hidden md:table-cell">
-                                {new Date(invoice.date).toLocaleDateString()}
-                              </TableCell>
-                              <TableCell className="hidden md:table-cell">
-                                {new Date(invoice.dueDate).toLocaleDateString()}
-                              </TableCell>
-                              <TableCell>${invoice.amount.toFixed(2)}</TableCell>
-                              <TableCell>
-                                <Badge className={getStatusColor(invoice.status)}>
-                                  {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex justify-end gap-2" onClick={e => e.stopPropagation()}>
-                                  <Button variant="outline" size="sm" asChild>
-                                    <Link to={`/invoice/${invoice.id}`}>
-                                      <Eye className="h-4 w-4" />
-                                    </Link>
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>;
-                    })}
+                          const invoiceClient = clients.find(c => c.id === invoice.clientId) || null;
+                          return <TableRow key={invoice.id} onClick={() => handleInvoiceRowClick(invoice.id)} className="cursor-pointer">
+                            <TableCell className="font-medium">{invoice.number}</TableCell>
+                            <TableCell>{invoiceClient?.name}</TableCell>
+                            <TableCell className="hidden md:table-cell">
+                              {new Date(invoice.date).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell className="hidden md:table-cell">
+                              <div className="flex items-center">
+                                <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+                                {getJobDateDisplay(invoice)}
+                              </div>
+                            </TableCell>
+                            <TableCell>${invoice.amount.toFixed(2)}</TableCell>
+                            <TableCell>
+                              <Badge className={getStatusColor(invoice.status)}>
+                                {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-2" onClick={e => e.stopPropagation()}>
+                                <Button variant="outline" size="sm" asChild>
+                                  <Link to={`/invoice/${invoice.id}`}>
+                                    <Eye className="h-4 w-4" />
+                                  </Link>
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>;
+                        })}
                       </TableBody>
                     </Table>
-                  </div>}
+                  </div>
+                )}
               </TabsContent>
             </Tabs>
           </CardContent>
@@ -483,4 +537,5 @@ const Dashboard: React.FC = () => {
       </div>
     </AnimatedBackground>;
 };
+
 export default Dashboard;

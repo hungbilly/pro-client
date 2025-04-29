@@ -1,5 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import jspdf from 'https://esm.sh/jspdf@2.5.1';
+import { jsPDF } from 'https://esm.sh/jspdf@3.0.1';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import autoTable from 'https://esm.sh/jspdf-autotable@3.8.0';
 
@@ -360,7 +360,8 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
   });
   
   try {
-    const doc = new jspdf({
+    // Updated to use the new jsPDF constructor syntax for v3.x
+    const doc = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
       format: 'a4',
@@ -379,7 +380,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
 
     // Add page footer helper function
     const addPageFooter = () => {
-      const totalPages = doc.internal.getNumberOfPages();
+      const totalPages = doc.getNumberOfPages();
       console.log('Adding footer to', totalPages, 'pages');
       for (let i = 1; i <= totalPages; i++) {
         doc.setPage(i);
@@ -410,6 +411,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
         const logo = await blobToBase64(blob);
       
         const maxLogoHeight = 40;
+        // Updated to match jsPDF v3.x API
         const imgProps = doc.getImageProperties(logo);
       
         const aspectRatio = imgProps.width / imgProps.height;
@@ -417,7 +419,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
         const logoWidth = logoHeight * aspectRatio;
       
         // Adjust logo X position to move more to the left
-        const logoX = margin + (rightColumnX - margin - logoWidth) / 4;  // Moved more to the left
+        const logoX = margin + (rightColumnX - margin - logoWidth) / 4;
     
         doc.addImage(logo, 'PNG', logoX, y, logoWidth, logoHeight);
         leftColumnY += logoHeight + 10; // Update left column position after logo
@@ -786,6 +788,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
     addPageFooter();
     
     console.log('PDF generation completed');
+    // Updated to match jsPDF v3.x API
     return doc.output('arraybuffer');
   } catch (err) {
     console.error('Error generating PDF:', err);

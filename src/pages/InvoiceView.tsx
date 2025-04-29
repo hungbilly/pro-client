@@ -27,7 +27,6 @@ import PaymentScheduleTable from '@/components/invoice/PaymentScheduleTable';
 import isEqual from 'lodash/isEqual';
 import ContractAcceptance from '@/components/invoice/ContractAcceptance';
 import { formatCurrency as utilFormatCurrency } from "@/lib/utils";
-import TopNavbar from '@/components/TopNavbar';
 
 const InvoiceView = () => {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
@@ -541,373 +540,370 @@ const InvoiceView = () => {
     : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
 
   return (
-    <>
-      {!isClientView && user && <TopNavbar />}
-      <PageTransition>
-        <div className="container-fluid px-4 py-8 max-w-[95%] mx-auto">
-          {!isClientView && (
-            <div className="flex gap-2 mb-4">
+    <PageTransition>
+      <div className="container-fluid px-4 py-8 max-w-[95%] mx-auto">
+        {!isClientView && (
+          <div className="flex gap-2 mb-4">
+            <Button asChild variant="ghost">
+              <Link to="/">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Dashboard
+              </Link>
+            </Button>
+            
+            {invoice?.jobId && (
               <Button asChild variant="ghost">
-                <Link to="/">
+                <Link to={`/job/${invoice.jobId}`}>
                   <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back to Dashboard
+                  Back to Job
                 </Link>
               </Button>
-              
-              {invoice?.jobId && (
-                <Button asChild variant="ghost">
-                  <Link to={`/job/${invoice.jobId}`}>
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Back to Job
-                  </Link>
+            )}
+            
+            {invoice?.clientId && (
+              <Button asChild variant="ghost">
+                <Link to={`/client/${invoice.clientId}`}>
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Client
+                </Link>
+              </Button>
+            )}
+          </div>
+        )}
+        
+        {isClientView && (
+          <div className="text-center mb-6">
+            <h1 className="text-2xl font-bold mb-2">Invoice #{invoice.number}</h1>
+            <p className="text-muted-foreground">
+              Please review and accept this invoice and contract terms.
+            </p>
+          </div>
+        )}
+        
+        <Card className="w-full mx-auto bg-white dark:bg-gray-900 shadow-sm" ref={invoiceRef}>
+          <CardHeader className="pb-0">
+            {!isClientView && (
+              <div className="flex justify-end mb-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    if (invoice.jobId) {
+                      window.location.href = `/job/${invoice.jobId}/invoice/${invoice.id}/edit`;
+                    } else {
+                      window.location.href = `/client/${client.id}/invoice/${invoice.id}/edit`;
+                    }
+                  }}
+                  className="flex items-center gap-1"
+                >
+                  <Edit className="h-3 w-3" />
+                  Edit Invoice
                 </Button>
-              )}
-              
-              {invoice?.clientId && (
-                <Button asChild variant="ghost">
-                  <Link to={`/client/${invoice.clientId}`}>
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Back to Client
-                  </Link>
-                </Button>
-              )}
-            </div>
-          )}
-          
-          {isClientView && (
-            <div className="text-center mb-6">
-              <h1 className="text-2xl font-bold mb-2">Invoice #{invoice.number}</h1>
-              <p className="text-muted-foreground">
-                Please review and accept this invoice and contract terms.
-              </p>
-            </div>
-          )}
-          
-          <Card className="w-full mx-auto bg-white dark:bg-gray-900 shadow-sm" ref={invoiceRef}>
-            <CardHeader className="pb-0">
-              {!isClientView && (
-                <div className="flex justify-end mb-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => {
-                      if (invoice.jobId) {
-                        window.location.href = `/job/${invoice.jobId}/invoice/${invoice.id}/edit`;
-                      } else {
-                        window.location.href = `/client/${client.id}/invoice/${invoice.id}/edit`;
-                      }
-                    }}
-                    className="flex items-center gap-1"
-                  >
-                    <Edit className="h-3 w-3" />
-                    Edit Invoice
-                  </Button>
-                </div>
-              )}
+              </div>
+            )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-4">
-                <div className="flex flex-col justify-between">
-                  <div className="flex items-start mb-6 h-80">
-                    {displayCompany?.logo_url ? (
-                      <img 
-                        src={displayCompany.logo_url} 
-                        alt={`${displayCompany.name} Logo`}
-                        className="h-full max-h-80 w-auto object-contain" 
-                      />
-                    ) : (
-                      <div className="h-24 w-24 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center text-gray-400">
-                        <Building className="h-14 w-14" />
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">INVOICE</div>
-                    <div className="text-2xl font-bold"># {invoice.number}</div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">INVOICE ISSUE DATE</div>
-                    <div className="text-sm">{new Date(invoice.date).toLocaleDateString()}</div>
-                    <div className="mt-1 flex items-center">
-                      <Badge className={statusColors[invoice.status] || 'bg-gray-100 text-gray-800'}>
-                        {invoice.status.toUpperCase()}
-                      </Badge>
-                      {invoice.contractStatus === 'accepted' && (
-                        <Badge variant="outline" className={`ml-2 flex items-center gap-1 ${contractStatusColor}`}>
-                          <FileCheck className="h-3 w-3" />
-                          Contract Accepted
-                        </Badge>
-                      )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-4">
+              <div className="flex flex-col justify-between">
+                <div className="flex items-start mb-6 h-80">
+                  {displayCompany?.logo_url ? (
+                    <img 
+                      src={displayCompany.logo_url} 
+                      alt={`${displayCompany.name} Logo`}
+                      className="h-full max-h-80 w-auto object-contain" 
+                    />
+                  ) : (
+                    <div className="h-24 w-24 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center text-gray-400">
+                      <Building className="h-14 w-14" />
                     </div>
-                  </div>
+                  )}
                 </div>
                 
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">FROM</h4>
-                    <div className="font-medium">{displayCompany?.name || 'Company'}</div>
-                    {displayCompany?.email && <div className="text-sm">{displayCompany.email}</div>}
-                    {displayCompany?.phone && <div className="text-sm">{displayCompany.phone}</div>}
-                    {displayCompany?.address && <div className="text-sm">{displayCompany.address}</div>}
-                  </div>
-                  
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">INVOICE FOR</h4>
-                    {job && <div className="font-medium">{job.title}</div>}
-                    <div className="text-sm font-medium mt-1">Client: {client.name}</div>
-                    <div className="text-sm grid grid-cols-1 gap-1 mt-1">
-                      {client.email && (
-                        <div className="flex items-center text-gray-600 dark:text-gray-400">
-                          <Mail className="h-3 w-3 mr-1" />
-                          {client.email}
-                        </div>
-                      )}
-                      {client.phone && (
-                        <div className="flex items-center text-gray-600 dark:text-gray-400">
-                          <Phone className="h-3 w-3 mr-1" />
-                          {client.phone}
-                        </div>
-                      )}
-                      {client.address && (
-                        <div className="flex items-center text-gray-600 dark:text-gray-400">
-                          <MapPin className="h-3 w-3 mr-1" />
-                          {client.address}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center space-x-4">
-                    {job?.date && (
-                      <div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">JOB DATE</div>
-                        <div className="text-sm">{job.date}</div>
-                      </div>
+                <div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400">INVOICE</div>
+                  <div className="text-2xl font-bold"># {invoice.number}</div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">INVOICE ISSUE DATE</div>
+                  <div className="text-sm">{new Date(invoice.date).toLocaleDateString()}</div>
+                  <div className="mt-1 flex items-center">
+                    <Badge className={statusColors[invoice.status] || 'bg-gray-100 text-gray-800'}>
+                      {invoice.status.toUpperCase()}
+                    </Badge>
+                    {invoice.contractStatus === 'accepted' && (
+                      <Badge variant="outline" className={`ml-2 flex items-center gap-1 ${contractStatusColor}`}>
+                        <FileCheck className="h-3 w-3" />
+                        Contract Accepted
+                      </Badge>
                     )}
                   </div>
                 </div>
               </div>
-              <Separator className="mt-6" />
-            </CardHeader>
-            
-            <CardContent className="pt-6">
-              <Tabs defaultValue="invoice" className="w-full">
-                <TabsList className="w-full">
-                  <TabsTrigger value="invoice" className="flex-1">
-                    Invoice Details
-                    {invoice.status === 'accepted' && (
-                      <span className="ml-2">
-                        <FileCheck className="h-3 w-3 inline text-green-600" />
-                      </span>
-                    )}
-                  </TabsTrigger>
-                  <TabsTrigger value="contract" className="flex-1">
-                    Contract Terms
-                    {invoice.contractStatus === 'accepted' && (
-                      <span className="ml-2">
-                        <FileCheck className="h-3 w-3 inline text-green-600" />
-                      </span>
-                    )}
-                  </TabsTrigger>
-                </TabsList>
+              
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">FROM</h4>
+                  <div className="font-medium">{displayCompany?.name || 'Company'}</div>
+                  {displayCompany?.email && <div className="text-sm">{displayCompany.email}</div>}
+                  {displayCompany?.phone && <div className="text-sm">{displayCompany.phone}</div>}
+                  {displayCompany?.address && <div className="text-sm">{displayCompany.address}</div>}
+                </div>
                 
-                <TabsContent value="invoice" className="mt-6">
-                  {isClientView && ['draft', 'sent'].includes(invoice.status) && (
-                    <Button onClick={handleAcceptInvoice} className="mb-4">
-                      <Check className="h-4 w-4 mr-2" />
-                      Accept Invoice
-                    </Button>
-                  )}
-                  
-                  {invoice.status === 'accepted' && (
-                    <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-md flex items-center gap-2">
-                      <FileCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
-                      <span className="text-green-800 dark:text-green-400">
-                        This invoice has been accepted
-                      </span>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">INVOICE FOR</h4>
+                  {job && <div className="font-medium">{job.title}</div>}
+                  <div className="text-sm font-medium mt-1">Client: {client.name}</div>
+                  <div className="text-sm grid grid-cols-1 gap-1 mt-1">
+                    {client.email && (
+                      <div className="flex items-center text-gray-600 dark:text-gray-400">
+                        <Mail className="h-3 w-3 mr-1" />
+                        {client.email}
+                      </div>
+                    )}
+                    {client.phone && (
+                      <div className="flex items-center text-gray-600 dark:text-gray-400">
+                        <Phone className="h-3 w-3 mr-1" />
+                        {client.phone}
+                      </div>
+                    )}
+                    {client.address && (
+                      <div className="flex items-center text-gray-600 dark:text-gray-400">
+                        <MapPin className="h-3 w-3 mr-1" />
+                        {client.address}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-4">
+                  {job?.date && (
+                    <div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">JOB DATE</div>
+                      <div className="text-sm">{job.date}</div>
                     </div>
                   )}
+                </div>
+              </div>
+            </div>
+            <Separator className="mt-6" />
+          </CardHeader>
+          
+          <CardContent className="pt-6">
+            <Tabs defaultValue="invoice" className="w-full">
+              <TabsList className="w-full">
+                <TabsTrigger value="invoice" className="flex-1">
+                  Invoice Details
+                  {invoice.status === 'accepted' && (
+                    <span className="ml-2">
+                      <FileCheck className="h-3 w-3 inline text-green-600" />
+                    </span>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="contract" className="flex-1">
+                  Contract Terms
+                  {invoice.contractStatus === 'accepted' && (
+                    <span className="ml-2">
+                      <FileCheck className="h-3 w-3 inline text-green-600" />
+                    </span>
+                  )}
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="invoice" className="mt-6">
+                {isClientView && ['draft', 'sent'].includes(invoice.status) && (
+                  <Button onClick={handleAcceptInvoice} className="mb-4">
+                    <Check className="h-4 w-4 mr-2" />
+                    Accept Invoice
+                  </Button>
+                )}
+                
+                {invoice.status === 'accepted' && (
+                  <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-md flex items-center gap-2">
+                    <FileCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    <span className="text-green-800 dark:text-green-400">
+                      This invoice has been accepted
+                    </span>
+                  </div>
+                )}
+                
+                <div className="mb-6">
+                  <div className="flex items-center mb-3">
+                    <Package className="h-5 w-5 mr-2" />
+                    <h4 className="text-lg font-semibold">Products / Packages</h4>
+                  </div>
                   
-                  <div className="mb-6">
-                    <div className="flex items-center mb-3">
-                      <Package className="h-5 w-5 mr-2" />
-                      <h4 className="text-lg font-semibold">Products / Packages</h4>
+                  <div className="border rounded-md p-4 bg-gray-50 dark:bg-gray-900/50">
+                    <div className="hidden md:flex justify-between mb-3 text-sm font-medium text-muted-foreground border-b pb-2">
+                      <div className="flex-1">
+                        <div className="mb-1">Package Name</div>
+                      </div>
+                      <div className="flex-1 pr-4">Description</div>
+                      <div className="flex items-center space-x-6 min-w-[260px] justify-end">
+                        <div className="text-right w-16">Quantity</div>
+                        <div className="text-right w-24">Unit Price</div>
+                        <div className="text-right w-24">Amount</div>
+                      </div>
                     </div>
                     
-                    <div className="border rounded-md p-4 bg-gray-50 dark:bg-gray-900/50">
-                      <div className="hidden md:flex justify-between mb-3 text-sm font-medium text-muted-foreground border-b pb-2">
-                        <div className="flex-1">
-                          <div className="mb-1">Package Name</div>
-                        </div>
-                        <div className="flex-1 pr-4">Description</div>
-                        <div className="flex items-center space-x-6 min-w-[260px] justify-end">
-                          <div className="text-right w-16">Quantity</div>
-                          <div className="text-right w-24">Unit Price</div>
-                          <div className="text-right w-24">Amount</div>
-                        </div>
-                      </div>
-                      
-                      {invoice.items && invoice.items.length > 0 ? (
-                        invoice.items.map((item) => (
-                          <div key={item.id} className="mb-4 pb-4 border-b last:mb-0 last:pb-0 last:border-b-0">
-                            <div className="md:flex md-justify-between md:items-start">
-                              <div className="md:flex-1">
-                                <h5 className="font-medium">{item.name || 'Unnamed Package'}</h5>
+                    {invoice.items && invoice.items.length > 0 ? (
+                      invoice.items.map((item) => (
+                        <div key={item.id} className="mb-4 pb-4 border-b last:mb-0 last:pb-0 last:border-b-0">
+                          <div className="md:flex md-justify-between md:items-start">
+                            <div className="md:flex-1">
+                              <h5 className="font-medium">{item.name || 'Unnamed Package'}</h5>
+                            </div>
+                            <div className="md:flex-1 md:pr-4">
+                              {item.description && (
+                                <div className="mt-2 text-sm" dangerouslySetInnerHTML={{ __html: item.description }} />
+                              )}
+                            </div>
+                            <div className="mt-2 md:mt-0 flex flex-col md:flex-row md:items-center md:space-x-6 md:min-w-[260px] md:justify-end">
+                              <div className="text-sm text-muted-foreground md:text-right w-16">
+                                <span className="md:hidden">Quantity: </span>
+                                <span>{item.quantity}</span>
                               </div>
-                              <div className="md:flex-1 md:pr-4">
-                                {item.description && (
-                                  <div className="mt-2 text-sm" dangerouslySetInnerHTML={{ __html: item.description }} />
-                                )}
+                              <div className="text-sm text-muted-foreground md:text-right w-24">
+                                <span className="md:hidden">Unit Price: </span>
+                                <span>{formatCurrency(item.rate)}</span>
                               </div>
-                              <div className="mt-2 md:mt-0 flex flex-col md:flex-row md:items-center md:space-x-6 md:min-w-[260px] md:justify-end">
-                                <div className="text-sm text-muted-foreground md:text-right w-16">
-                                  <span className="md:hidden">Quantity: </span>
-                                  <span>{item.quantity}</span>
-                                </div>
-                                <div className="text-sm text-muted-foreground md:text-right w-24">
-                                  <span className="md:hidden">Unit Price: </span>
-                                  <span>{formatCurrency(item.rate)}</span>
-                                </div>
-                                <div className="font-medium md:text-right w-24">
-                                  <span className="md:hidden">Total: </span>
-                                  <span>{formatCurrency(item.amount)}</span>
-                                </div>
+                              <div className="font-medium md:text-right w-24">
+                                <span className="md:hidden">Total: </span>
+                                <span>{formatCurrency(item.amount)}</span>
                               </div>
                             </div>
                           </div>
-                        ))
-                      ) : (
-                        <p className="text-muted-foreground">No items in this invoice.</p>
-                      )}
-                      
-                      <div className="mt-4 pt-4 border-t">
-                        <div className="flex justify-between font-medium">
-                          <span>Total</span>
-                          <span>{formatCurrency(invoice.amount)}</span>
                         </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h4 className="text-lg font-semibold mb-2">Notes</h4>
-                    <div className="border rounded-md">
-                      <RichTextEditor
-                        value={invoice.notes || 'No notes provided.'}
-                        onChange={() => {}}
-                        readOnly={true}
-                      />
-                    </div>
-                  </div>
-                  
-                  <Separator className="my-6" />
-                  
-                  <div className="mt-6">
-                    <div className="flex items-center mb-3">
-                      <CalendarDays className="h-5 w-5 mr-2" />
-                      <h4 className="text-lg font-semibold">Payment Schedule</h4>
-                    </div>
-                    
-                    {Array.isArray(invoice.paymentSchedules) && invoice.paymentSchedules.length > 0 ? (
-                      <PaymentScheduleTable
-                        paymentSchedules={invoice.paymentSchedules}
-                        amount={invoice.amount}
-                        isClientView={isClientView}
-                        isEditView={isEditView}
-                        updatingPaymentId={updatingPaymentId}
-                        onUpdateStatus={handlePaymentStatusUpdate}
-                        formatCurrency={formatCurrency}
-                        onUpdatePaymentDate={handlePaymentDateUpdate}
-                      />
+                      ))
                     ) : (
-                      <div className="text-muted-foreground border rounded-md p-4 bg-gray-50 dark:bg-gray-900/50">
-                        Full payment of {formatCurrency(invoice.amount)} due on {new Date(invoice.dueDate).toLocaleDateString()}
-                      </div>
+                      <p className="text-muted-foreground">No items in this invoice.</p>
                     )}
+                    
+                    <div className="mt-4 pt-4 border-t">
+                      <div className="flex justify-between font-medium">
+                        <span>Total</span>
+                        <span>{formatCurrency(invoice.amount)}</span>
+                      </div>
+                    </div>
                   </div>
-                </TabsContent>
+                </div>
                 
-                <TabsContent value="contract" className="mt-6">
-                  {isClientView && invoice.contractStatus !== 'accepted' && (
-                    <ContractAcceptance
-                      companyName={displayCompany?.name || 'Company'}
-                      onAccept={handleAcceptContract}
+                <div>
+                  <h4 className="text-lg font-semibold mb-2">Notes</h4>
+                  <div className="border rounded-md">
+                    <RichTextEditor
+                      value={invoice.notes || 'No notes provided.'}
+                      onChange={() => {}}
+                      readOnly={true}
                     />
-                  )}
-                    
-                  {invoice.contractStatus === 'accepted' && (
-                    <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-md flex items-center gap-2">
-                      <FileCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
-                      <div className="text-green-800 dark:text-green-400">
-                        <p>This contract has been accepted</p>
-                        {invoice.invoice_accepted_by ? (
-                          <div>
-                            <p className="text-sm mt-1">Accepted by: {invoice.invoice_accepted_by}</p>
-                            {invoice.contract_accepted_at && (
-                              <p className="text-sm mt-1">
-                                Accepted at: {new Date(invoice.contract_accepted_at).toLocaleString()}
-                              </p>
-                            )}
-                          </div>
-                        ) : null}
-                      </div>
+                  </div>
+                </div>
+                
+                <Separator className="my-6" />
+                
+                <div className="mt-6">
+                  <div className="flex items-center mb-3">
+                    <CalendarDays className="h-5 w-5 mr-2" />
+                    <h4 className="text-lg font-semibold">Payment Schedule</h4>
+                  </div>
+                  
+                  {Array.isArray(invoice.paymentSchedules) && invoice.paymentSchedules.length > 0 ? (
+                    <PaymentScheduleTable
+                      paymentSchedules={invoice.paymentSchedules}
+                      amount={invoice.amount}
+                      isClientView={isClientView}
+                      isEditView={isEditView}
+                      updatingPaymentId={updatingPaymentId}
+                      onUpdateStatus={handlePaymentStatusUpdate}
+                      formatCurrency={formatCurrency}
+                      onUpdatePaymentDate={handlePaymentDateUpdate}
+                    />
+                  ) : (
+                    <div className="text-muted-foreground border rounded-md p-4 bg-gray-50 dark:bg-gray-900/50">
+                      Full payment of {formatCurrency(invoice.amount)} due on {new Date(invoice.dueDate).toLocaleDateString()}
                     </div>
                   )}
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="contract" className="mt-6">
+                {isClientView && invoice.contractStatus !== 'accepted' && (
+                  <ContractAcceptance
+                    companyName={displayCompany?.name || 'Company'}
+                    onAccept={handleAcceptContract}
+                  />
+                )}
                   
-                  <div className="flex items-center mb-3">
-                    <FileText className="h-5 w-5 mr-2" />
-                    <h4 className="text-lg font-semibold">Contract Terms</h4>
+                {invoice.contractStatus === 'accepted' && (
+                  <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-md flex items-center gap-2">
+                    <FileCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    <div className="text-green-800 dark:text-green-400">
+                      <p>This contract has been accepted</p>
+                      {invoice.invoice_accepted_by ? (
+                        <div>
+                          <p className="text-sm mt-1">Accepted by: {invoice.invoice_accepted_by}</p>
+                          {invoice.contract_accepted_at && (
+                            <p className="text-sm mt-1">
+                              Accepted at: {new Date(invoice.contract_accepted_at).toLocaleString()}
+                            </p>
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
-                  <div className="border rounded-md">
-                    {invoice.contractTerms ? (
-                      <RichTextEditor
-                        value={invoice.contractTerms}
-                        onChange={() => {}}
-                        readOnly={true}
-                      />
-                    ) : (
-                      <div className="p-4 text-muted-foreground">
-                        No contract terms provided.
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="hidden">
-                    DEBUG: invoice_accepted_by = {invoice?.invoice_accepted_by || 'null'}, 
-                    type: {invoice?.invoice_accepted_by ? typeof invoice.invoice_accepted_by : 'null'}, 
-                    contract_accepted_at: {invoice?.contract_accepted_at || 'null'}
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-            
-            <CardFooter className="justify-end gap-2 flex-wrap pt-4 border-t">
+                )}
+                
+                <div className="flex items-center mb-3">
+                  <FileText className="h-5 w-5 mr-2" />
+                  <h4 className="text-lg font-semibold">Contract Terms</h4>
+                </div>
+                <div className="border rounded-md">
+                  {invoice.contractTerms ? (
+                    <RichTextEditor
+                      value={invoice.contractTerms}
+                      onChange={() => {}}
+                      readOnly={true}
+                    />
+                  ) : (
+                    <div className="p-4 text-muted-foreground">
+                      No contract terms provided.
+                    </div>
+                  )}
+                </div>
+                
+                <div className="hidden">
+                  DEBUG: invoice_accepted_by = {invoice?.invoice_accepted_by || 'null'}, 
+                  type: {invoice?.invoice_accepted_by ? typeof invoice.invoice_accepted_by : 'null'}, 
+                  contract_accepted_at: {invoice?.contract_accepted_at || 'null'}
+                </div>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+          
+          <CardFooter className="justify-end gap-2 flex-wrap pt-4 border-t">
+            <Button
+              variant="outline"
+              onClick={handleCopyInvoiceLink}
+            >
+              <LinkIcon className="h-4 w-4 mr-2" />
+              Copy Invoice Link
+            </Button>
+            <Button
+              variant="default"
+              onClick={handleDownloadInvoice}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Download Invoice
+            </Button>
+            {!isClientView && isAdmin && (
               <Button
                 variant="outline"
-                onClick={handleCopyInvoiceLink}
+                onClick={handleDebugPdf}
               >
-                <LinkIcon className="h-4 w-4 mr-2" />
-                Copy Invoice Link
+                <Bug className="h-4 w-4 mr-2" />
+                Debug PDF
               </Button>
-              <Button
-                variant="default"
-                onClick={handleDownloadInvoice}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Download Invoice
-              </Button>
-              {!isClientView && isAdmin && (
-                <Button
-                  variant="outline"
-                  onClick={handleDebugPdf}
-                >
-                  <Bug className="h-4 w-4 mr-2" />
-                  Debug PDF
-                </Button>
-              )}
-            </CardFooter>
-          </Card>
-        </div>
-      </PageTransition>
-    </>
+            )}
+          </CardFooter>
+        </Card>
+      </div>
+    </PageTransition>
   );
 };
 

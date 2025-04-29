@@ -4,7 +4,7 @@ import { getInvoices, deleteInvoice } from '@/lib/storage';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, MoreHorizontal, Receipt, Download, ArrowUp, ArrowDown, CalendarDays } from 'lucide-react';
+import { FileText, MoreHorizontal, Receipt, Download } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { formatCurrency } from '@/lib/utils';
@@ -46,11 +46,6 @@ import {
 import { useCompanyContext } from '@/context/CompanyContext';
 import { supabase } from '@/integrations/supabase/client';
 
-type SortConfig = {
-  key: string;
-  direction: 'asc' | 'desc' | null;
-};
-
 const Invoices = () => {
   const { selectedCompany } = useCompanyContext();
   const selectedCompanyId = selectedCompany?.id;
@@ -62,7 +57,6 @@ const Invoices = () => {
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const queryClient = useQueryClient();
   const [localInvoices, setLocalInvoices] = useState<any[]>([]);
-  const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'date', direction: 'desc' });
   
   const { data: invoices = [], isLoading, error } = useQuery({
     queryKey: ['invoices', selectedCompanyId],
@@ -162,38 +156,9 @@ const Invoices = () => {
     }
   };
 
-  const handleSort = (key: string) => {
-    setSortConfig(prevConfig => {
-      if (prevConfig.key === key) {
-        let direction: 'asc' | 'desc' | null;
-        if (prevConfig.direction === 'asc') {
-          direction = 'desc';
-        } else if (prevConfig.direction === 'desc') {
-          direction = 'asc';
-        } else {
-          direction = 'asc';
-        }
-        return { key, direction };
-      }
-      
-      return { key, direction: 'asc' };
-    });
-  };
-
-  const getSortIndicator = (columnKey: string) => {
-    if (sortConfig.key === columnKey) {
-      if (sortConfig.direction === 'asc') {
-        return <ArrowUp className="inline-block ml-1 h-4 w-4" />;
-      } else if (sortConfig.direction === 'desc') {
-        return <ArrowDown className="inline-block ml-1 h-4 w-4" />;
-      }
-    }
-    return null;
-  };
-
   const filteredInvoices = localInvoices.filter(invoice => {
     const matchesSearch = 
-      invoice.number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      invoice.number.toLowerCase().includes(searchQuery.toLowerCase()) ||
       getClientName(invoice.clientId).toLowerCase().includes(searchQuery.toLowerCase()) ||
       invoice.status.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (getJobName(invoice.jobId) && getJobName(invoice.jobId).toLowerCase().includes(searchQuery.toLowerCase()));
@@ -216,65 +181,6 @@ const Invoices = () => {
     
     return matchesSearch && matchesDateRange;
   });
-
-  const sortedInvoices = React.useMemo(() => {
-    if (!sortConfig.direction) {
-      return filteredInvoices;
-    }
-    
-    return [...filteredInvoices].sort((a, b) => {
-      let aValue, bValue;
-      
-      switch (sortConfig.key) {
-        case 'number':
-          aValue = a.number || '';
-          bValue = b.number || '';
-          break;
-        case 'client':
-          aValue = getClientName(a.clientId);
-          bValue = getClientName(b.clientId);
-          break;
-        case 'job':
-          aValue = getJobName(a.jobId);
-          bValue = getJobName(b.jobId);
-          break;
-        case 'date':
-          aValue = new Date(a.date || 0).getTime();
-          bValue = new Date(b.date || 0).getTime();
-          break;
-        case 'shootingDate':
-          aValue = new Date(a.shootingDate || 0).getTime();
-          bValue = new Date(b.shootingDate || 0).getTime();
-          break;
-        case 'amount':
-          aValue = a.amount || 0;
-          bValue = b.amount || 0;
-          break;
-        case 'status':
-          const statusOrder = { 'paid': 1, 'accepted': 2, 'sent': 3, 'draft': 4, 'overdue': 5 };
-          aValue = statusOrder[a.status] || 999;
-          bValue = statusOrder[b.status] || 999;
-          break;
-        default:
-          aValue = a[sortConfig.key];
-          bValue = b[sortConfig.key];
-      }
-      
-      if (typeof aValue === 'string' && typeof bValue === 'string') {
-        if (sortConfig.direction === 'asc') {
-          return aValue.localeCompare(bValue);
-        } else {
-          return bValue.localeCompare(aValue);
-        }
-      }
-      
-      if (sortConfig.direction === 'asc') {
-        return (aValue > bValue) ? 1 : -1;
-      } else {
-        return (aValue < bValue) ? 1 : -1;
-      }
-    });
-  }, [filteredInvoices, sortConfig, clients, jobs]);
 
   const handleExportOpen = () => {
     setIsExportDialogOpen(true);
@@ -397,52 +303,16 @@ const Invoices = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead 
-                        className="cursor-pointer" 
-                        onClick={() => handleSort('number')}
-                      >
-                        Invoice # {getSortIndicator('number')}
-                      </TableHead>
-                      <TableHead 
-                        className="cursor-pointer" 
-                        onClick={() => handleSort('client')}
-                      >
-                        Client {getSortIndicator('client')}
-                      </TableHead>
-                      <TableHead 
-                        className="hidden md:table-cell cursor-pointer" 
-                        onClick={() => handleSort('job')}
-                      >
-                        Job {getSortIndicator('job')}
-                      </TableHead>
-                      <TableHead 
-                        className="hidden md:table-cell cursor-pointer" 
-                        onClick={() => handleSort('date')}
-                      >
-                        Invoice Date {getSortIndicator('date')}
-                      </TableHead>
-                      <TableHead 
-                        className="hidden md:table-cell cursor-pointer" 
-                        onClick={() => handleSort('shootingDate')}
-                      >
-                        Job Date {getSortIndicator('shootingDate')}
-                      </TableHead>
-                      <TableHead 
-                        className="hidden md:table-cell cursor-pointer" 
-                        onClick={() => handleSort('amount')}
-                      >
-                        Amount {getSortIndicator('amount')}
-                      </TableHead>
-                      <TableHead 
-                        className="cursor-pointer" 
-                        onClick={() => handleSort('status')}
-                      >
-                        Status {getSortIndicator('status')}
-                      </TableHead>
+                      <TableHead>Invoice #</TableHead>
+                      <TableHead>Client</TableHead>
+                      <TableHead className="hidden md:table-cell">Job</TableHead>
+                      <TableHead className="hidden md:table-cell">Date</TableHead>
+                      <TableHead className="hidden md:table-cell">Amount</TableHead>
+                      <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {sortedInvoices.map((invoice) => (
+                    {filteredInvoices.map((invoice) => (
                       <TableRow 
                         key={invoice.id} 
                         className="cursor-pointer"
@@ -453,16 +323,6 @@ const Invoices = () => {
                         <TableCell className="hidden md:table-cell">{getJobName(invoice.jobId)}</TableCell>
                         <TableCell className="hidden md:table-cell">
                           {invoice.date ? new Date(invoice.date).toLocaleDateString() : '-'}
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          {invoice.shootingDate ? (
-                            <div className="flex items-center">
-                              <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
-                              {new Date(invoice.shootingDate).toLocaleDateString()}
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground text-sm">Not set</span>
-                          )}
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
                           {formatCurrency(invoice.amount || 0, companyCurrency)}

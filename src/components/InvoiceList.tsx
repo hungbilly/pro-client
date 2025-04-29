@@ -5,7 +5,7 @@ import { Invoice, Client } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { CalendarDays, Copy, Eye, FileEdit, Trash2, AreaChart } from 'lucide-react';
+import { CalendarDays, Copy, Eye, FileEdit, Trash2, AreaChart, ArrowUp, ArrowDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { deleteInvoice } from '@/lib/storage';
@@ -36,6 +36,12 @@ interface InvoiceListProps {
   onInvoiceDeleted?: (invoiceId: string) => void;
 }
 
+// Type for sorting configuration
+type SortConfig = {
+  key: string;
+  direction: 'asc' | 'desc';
+};
+
 const getStatusColor = (status: Invoice['status']) => {
   switch (status) {
     case 'draft':
@@ -65,6 +71,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
   const [invoiceToDelete, setInvoiceToDelete] = React.useState<string | null>(null);
   const [localInvoices, setLocalInvoices] = React.useState<Invoice[]>(invoices);
   const [sortBy, setSortBy] = React.useState<'invoice-date' | 'job-date'>('invoice-date');
+  const [sortConfig, setSortConfig] = React.useState<SortConfig>({ key: 'date', direction: 'desc' });
   const queryClient = useQueryClient();
   const { id: jobId } = useParams();
   
@@ -72,8 +79,35 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
     setLocalInvoices(invoices);
   }, [invoices]);
   
+  // Function to handle column sorting
+  const handleSort = (key: string) => {
+    setSortConfig(prevConfig => {
+      if (prevConfig.key === key) {
+        // Toggle direction
+        return { key, direction: prevConfig.direction === 'asc' ? 'desc' : 'asc' };
+      }
+      // New column, default to ascending
+      return { key, direction: 'asc' };
+    });
+  };
+
+  // Function to get sorting indicator
+  const getSortIndicator = (columnKey: string) => {
+    if (sortConfig.key === columnKey) {
+      if (sortConfig.direction === 'asc') {
+        return <ArrowUp className="inline-block ml-1 h-4 w-4" />;
+      } else {
+        return <ArrowDown className="inline-block ml-1 h-4 w-4" />;
+      }
+    }
+    return null;
+  };
+  
   const sortedInvoices = React.useMemo(() => {
-    return [...localInvoices].sort((a, b) => {
+    let result = [...localInvoices];
+    
+    // First apply the select box filter (invoice-date or job-date)
+    result = result.sort((a, b) => {
       if (sortBy === 'invoice-date') {
         return new Date(b.date).getTime() - new Date(a.date).getTime();
       } else {
@@ -82,7 +116,57 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
         return dateB.getTime() - dateA.getTime();
       }
     });
-  }, [localInvoices, sortBy]);
+    
+    // Then apply the column sorting if it's not based on the dropdown
+    if (sortConfig.key !== 'date' && sortConfig.key !== 'shootingDate') {
+      result = result.sort((a, b) => {
+        let aValue, bValue;
+        
+        // Extract values based on the sort column
+        switch (sortConfig.key) {
+          case 'number':
+            aValue = a.number || '';
+            bValue = b.number || '';
+            break;
+          case 'dueDate':
+            aValue = new Date(a.dueDate).getTime();
+            bValue = new Date(b.dueDate).getTime();
+            break;
+          case 'amount':
+            aValue = a.amount || 0;
+            bValue = b.amount || 0;
+            break;
+          case 'status':
+            // Custom order for status: paid -> accepted -> sent -> draft
+            const statusOrder = { 'paid': 1, 'accepted': 2, 'sent': 3, 'draft': 4 };
+            aValue = statusOrder[a.status] || 999;
+            bValue = statusOrder[b.status] || 999;
+            break;
+          case 'contractStatus':
+            aValue = a.contractStatus === 'accepted' ? 1 : 2;
+            bValue = b.contractStatus === 'accepted' ? 1 : 2;
+            break;
+          default:
+            aValue = a[sortConfig.key];
+            bValue = b[sortConfig.key];
+        }
+        
+        // Handle string comparison
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+          return sortConfig.direction === 'asc' 
+            ? aValue.localeCompare(bValue) 
+            : bValue.localeCompare(aValue);
+        }
+        
+        // Handle numeric comparison
+        return sortConfig.direction === 'asc'
+          ? (aValue > bValue ? 1 : -1)
+          : (aValue < bValue ? 1 : -1);
+      });
+    }
+    
+    return result;
+  }, [localInvoices, sortBy, sortConfig]);
 
   const copyInvoiceLink = (invoice: Invoice, e: React.MouseEvent) => {
     e.preventDefault();
@@ -196,13 +280,50 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Invoice #</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Due Date</TableHead>
-                {sortBy === 'job-date' && <TableHead>Job Date</TableHead>}
-                <TableHead>Amount</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Contract</TableHead>
+                <TableHead 
+                  className="cursor-pointer" 
+                  onClick={() => handleSort('number')}
+                >
+                  Invoice # {getSortIndicator('number')}
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer"
+                  onClick={() => handleSort('date')}
+                >
+                  Date {getSortIndicator('date')}
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer"
+                  onClick={() => handleSort('dueDate')}
+                >
+                  Due Date {getSortIndicator('dueDate')}
+                </TableHead>
+                {sortBy === 'job-date' && (
+                  <TableHead 
+                    className="cursor-pointer"
+                    onClick={() => handleSort('shootingDate')}
+                  >
+                    Job Date {getSortIndicator('shootingDate')}
+                  </TableHead>
+                )}
+                <TableHead 
+                  className="cursor-pointer"
+                  onClick={() => handleSort('amount')}
+                >
+                  Amount {getSortIndicator('amount')}
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer"
+                  onClick={() => handleSort('status')}
+                >
+                  Status {getSortIndicator('status')}
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer"
+                  onClick={() => handleSort('contractStatus')}
+                >
+                  Contract {getSortIndicator('contractStatus')}
+                </TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>

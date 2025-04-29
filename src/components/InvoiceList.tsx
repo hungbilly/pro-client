@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Invoice, Client } from '@/types';
@@ -7,8 +6,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { CalendarDays, Copy, Eye, FileEdit, Trash2, AreaChart, ArrowUp, ArrowDown } from 'lucide-react';
 import { toast } from 'sonner';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { deleteInvoice } from '@/lib/storage';
+import { supabase } from '@/integrations/supabase/client';
 import {
   Table,
   TableBody,
@@ -74,14 +74,34 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
   const [sortConfig, setSortConfig] = React.useState<SortConfig>({ key: 'date', direction: 'desc' });
   const queryClient = useQueryClient();
   const { id: jobId } = useParams();
+  const [jobDates, setJobDates] = React.useState<Record<string, string | null>>({});
+  
+  const { data: jobs = [] } = useQuery({
+    queryKey: ['jobs'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('jobs')
+        .select('id, date');
+      return data || [];
+    },
+  });
+
+  React.useEffect(() => {
+    const jobDateMap: Record<string, string | null> = {};
+    jobs.forEach((job) => {
+      jobDateMap[job.id] = job.date;
+    });
+    
+    console.log('[InvoiceList] Job dates map:', jobDateMap);
+    setJobDates(jobDateMap);
+    
+  }, [jobs]);
   
   React.useEffect(() => {
     setLocalInvoices(invoices);
     
-    // Debug logging for received invoices
     console.log('[InvoiceList] Received invoices:', invoices);
     
-    // Check for shootingDate field
     const hasShootingDates = invoices.some(inv => inv.shootingDate);
     console.log('[InvoiceList] Any invoices have shootingDate?', hasShootingDates);
     
@@ -98,22 +118,22 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
       console.log('[InvoiceList] No shooting dates found in any invoices');
       console.log('[InvoiceList] Sample invoice structure:', 
         invoices.length > 0 ? JSON.stringify(invoices[0], null, 2) : 'No invoices');
+        
+      const invoicesWithJobIds = invoices.filter(inv => inv.jobId);
+      console.log('[InvoiceList] Invoices with jobIds:', 
+        invoicesWithJobIds.map(inv => ({ id: inv.id, number: inv.number, jobId: inv.jobId })));
     }
   }, [invoices]);
   
-  // Function to handle column sorting
   const handleSort = (key: string) => {
     setSortConfig(prevConfig => {
       if (prevConfig.key === key) {
-        // Toggle direction
         return { key, direction: prevConfig.direction === 'asc' ? 'desc' : 'asc' };
       }
-      // New column, default to ascending
       return { key, direction: 'asc' };
     });
   };
 
-  // Function to get sorting indicator
   const getSortIndicator = (columnKey: string) => {
     if (sortConfig.key === columnKey) {
       if (sortConfig.direction === 'asc') {
@@ -130,23 +150,22 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
     
     let result = [...localInvoices];
     
-    // First apply the select box filter (invoice-date or job-date)
     result = result.sort((a, b) => {
       if (sortBy === 'invoice-date') {
         return new Date(b.date).getTime() - new Date(a.date).getTime();
       } else {
-        const dateA = a.shootingDate ? new Date(a.shootingDate) : new Date(a.date);
-        const dateB = b.shootingDate ? new Date(b.shootingDate) : new Date(b.date);
-        return dateB.getTime() - dateA.getTime();
+        const dateA = a.shootingDate ? new Date(a.shootingDate).getTime() : 
+                     (a.jobId && jobDates[a.jobId] ? new Date(jobDates[a.jobId]).getTime() : 0);
+        const dateB = b.shootingDate ? new Date(b.shootingDate).getTime() : 
+                     (b.jobId && jobDates[b.jobId] ? new Date(jobDates[b.jobId]).getTime() : 0);
+        return dateB - dateA;
       }
     });
     
-    // Then apply the column sorting if it's not based on the dropdown
     if (sortConfig.key !== 'date' && sortConfig.key !== 'shootingDate') {
       result = result.sort((a, b) => {
         let aValue, bValue;
         
-        // Extract values based on the sort column
         switch (sortConfig.key) {
           case 'number':
             aValue = a.number || '';
@@ -161,7 +180,6 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
             bValue = b.amount || 0;
             break;
           case 'status':
-            // Custom order for status: paid -> accepted -> sent -> draft
             const statusOrder = { 'paid': 1, 'accepted': 2, 'sent': 3, 'draft': 4 };
             aValue = statusOrder[a.status] || 999;
             bValue = statusOrder[b.status] || 999;
@@ -175,14 +193,12 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
             bValue = b[sortConfig.key];
         }
         
-        // Handle string comparison
         if (typeof aValue === 'string' && typeof bValue === 'string') {
           return sortConfig.direction === 'asc' 
             ? aValue.localeCompare(bValue) 
             : bValue.localeCompare(aValue);
         }
         
-        // Handle numeric comparison
         return sortConfig.direction === 'asc'
           ? (aValue > bValue ? 1 : -1)
           : (aValue < bValue ? 1 : -1);
@@ -194,12 +210,14 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
         id: inv.id,
         number: inv.number,
         date: inv.date,
-        shootingDate: inv.shootingDate
+        shootingDate: inv.shootingDate,
+        jobId: inv.jobId,
+        jobDate: inv.jobId && jobDates[inv.jobId] ? jobDates[inv.jobId] : null
       }))
     );
     
     return result;
-  }, [localInvoices, sortBy, sortConfig]);
+  }, [localInvoices, sortBy, sortConfig, jobDates]);
 
   const copyInvoiceLink = (invoice: Invoice, e: React.MouseEvent) => {
     e.preventDefault();
@@ -242,6 +260,18 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
     e.preventDefault();
     e.stopPropagation();
     setInvoiceToDelete(invoiceId);
+  };
+
+  const getJobDateDisplay = (invoice: Invoice) => {
+    if (invoice.shootingDate) {
+      return new Date(invoice.shootingDate).toLocaleDateString();
+    }
+    
+    if (invoice.jobId && jobDates[invoice.jobId]) {
+      return new Date(jobDates[invoice.jobId]).toLocaleDateString();
+    }
+    
+    return <span className="text-muted-foreground text-sm">Not set</span>;
   };
 
   return (
@@ -360,7 +390,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
             </TableHeader>
             <TableBody>
               {sortedInvoices.map((invoice) => {
-                console.log(`[InvoiceList] Rendering invoice ${invoice.id}, shootingDate:`, invoice.shootingDate);
+                console.log(`[InvoiceList] Rendering invoice ${invoice.id}, jobId: ${invoice.jobId}, shootingDate: ${invoice.shootingDate}, jobDate: ${invoice.jobId ? jobDates[invoice.jobId] : 'no job'}`);
                 return (
                   <TableRow key={invoice.id}>
                     <TableCell className="font-medium">{invoice.number}</TableCell>
@@ -372,14 +402,10 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
                       </div>
                     </TableCell>
                     <TableCell>
-                      {invoice.shootingDate ? (
-                        <div className="flex items-center">
-                          <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
-                          {new Date(invoice.shootingDate).toLocaleDateString()}
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">Not set</span>
-                      )}
+                      <div className="flex items-center">
+                        <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+                        {getJobDateDisplay(invoice)}
+                      </div>
                     </TableCell>
                     <TableCell className="font-semibold">${invoice.amount.toFixed(2)}</TableCell>
                     <TableCell>

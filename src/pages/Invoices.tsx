@@ -1,10 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getInvoices, deleteInvoice } from '@/lib/storage';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, MoreHorizontal, Receipt, Download, ArrowUp, ArrowDown } from 'lucide-react';
+import { FileText, MoreHorizontal, Receipt, Download, ArrowUp, ArrowDown, CalendarDays } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { formatCurrency } from '@/lib/utils';
@@ -15,6 +16,7 @@ import { exportDataToFile, formatInvoicesForExport } from '@/utils/exportUtils';
 import { DateRange } from 'react-day-picker';
 import { toast } from 'sonner';
 import DateRangeFilter from '@/components/ui-custom/DateRangeFilter';
+import { supabase } from '@/integrations/supabase/client';
 
 import {
   Table,
@@ -44,7 +46,6 @@ import {
 } from "@/components/ui/alert-dialog";
 
 import { useCompanyContext } from '@/context/CompanyContext';
-import { supabase } from '@/integrations/supabase/client';
 
 type SortConfig = {
   key: string;
@@ -63,12 +64,41 @@ const Invoices = () => {
   const queryClient = useQueryClient();
   const [localInvoices, setLocalInvoices] = useState<any[]>([]);
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'date', direction: 'desc' });
+  const [jobDates, setJobDates] = useState<Record<string, string>>({});
   
   const { data: invoices = [], isLoading, error } = useQuery({
     queryKey: ['invoices', selectedCompanyId],
     queryFn: () => getInvoices(selectedCompanyId),
     enabled: !!selectedCompanyId,
   });
+
+  // Add query to get all jobs for their dates
+  const { data: allJobs = [] } = useQuery({
+    queryKey: ['all-jobs', selectedCompanyId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('jobs')
+        .select('id, date')
+        .eq('company_id', selectedCompanyId);
+      
+      console.log('[Invoices] Fetched job dates:', data);
+      return data || [];
+    },
+    enabled: !!selectedCompanyId,
+  });
+
+  useEffect(() => {
+    // Process jobs to create a lookup map of job dates
+    const jobDateMap: Record<string, string> = {};
+    allJobs.forEach((job) => {
+      if (job.id && job.date) {
+        jobDateMap[job.id] = job.date;
+      }
+    });
+    
+    console.log('[Invoices] Job dates map:', jobDateMap);
+    setJobDates(jobDateMap);
+  }, [allJobs]);
 
   useEffect(() => {
     if (invoices) {
@@ -98,6 +128,11 @@ const Invoices = () => {
           );
           console.log('[Invoices] Possible date-related fields found:', possibleDateFields);
         }
+
+        // Log invoices with jobIds
+        const invoicesWithJobIds = invoices.filter(inv => inv.jobId);
+        console.log('[Invoices] Invoices with jobIds:', 
+          invoicesWithJobIds.map(inv => ({ id: inv.id, number: inv.number, jobId: inv.jobId })));
       }
       
       setLocalInvoices(invoices);
@@ -137,6 +172,19 @@ const Invoices = () => {
     if (!jobId) return 'N/A';
     const job = jobs.find(job => job.id === jobId);
     return job ? job.title : 'Unknown Job';
+  };
+
+  // Helper function to get job date display
+  const getJobDateDisplay = (invoice: any) => {
+    if (invoice.shootingDate) {
+      return <span>{new Date(invoice.shootingDate).toLocaleDateString()}</span>;
+    }
+    
+    if (invoice.jobId && jobDates[invoice.jobId]) {
+      return <span>{new Date(jobDates[invoice.jobId]).toLocaleDateString()}</span>;
+    }
+    
+    return <span className="text-muted-foreground text-sm">Not set</span>;
   };
 
   const handleRowClick = (invoiceId: string) => {
@@ -271,8 +319,21 @@ const Invoices = () => {
           bValue = new Date(b.date || 0).getTime();
           break;
         case 'shootingDate':
-          aValue = a.shootingDate ? new Date(a.shootingDate).getTime() : 0;
-          bValue = b.shootingDate ? new Date(b.shootingDate).getTime() : 0;
+          if (a.shootingDate) {
+            aValue = new Date(a.shootingDate).getTime();
+          } else if (a.jobId && jobDates[a.jobId]) {
+            aValue = new Date(jobDates[a.jobId]).getTime();
+          } else {
+            aValue = 0;
+          }
+          
+          if (b.shootingDate) {
+            bValue = new Date(b.shootingDate).getTime();
+          } else if (b.jobId && jobDates[b.jobId]) {
+            bValue = new Date(jobDates[b.jobId]).getTime();
+          } else {
+            bValue = 0;
+          }
           break;
         case 'amount':
           aValue = a.amount || 0;
@@ -302,7 +363,7 @@ const Invoices = () => {
         return (aValue < bValue) ? 1 : -1;
       }
     });
-  }, [filteredInvoices, sortConfig, clients, jobs]);
+  }, [filteredInvoices, sortConfig, clients, jobs, jobDates]);
 
   React.useEffect(() => {
     if (sortedInvoices.length > 0) {
@@ -311,10 +372,11 @@ const Invoices = () => {
         number: inv.number,
         date: inv.date,
         shootingDate: inv.shootingDate,
-        jobId: inv.jobId
+        jobId: inv.jobId,
+        jobDate: inv.jobId && jobDates[inv.jobId] ? jobDates[inv.jobId] : null
       })));
     }
-  }, [sortedInvoices]);
+  }, [sortedInvoices, jobDates]);
 
   const handleExportOpen = () => {
     setIsExportDialogOpen(true);
@@ -483,7 +545,7 @@ const Invoices = () => {
                   </TableHeader>
                   <TableBody>
                     {sortedInvoices.map((invoice) => {
-                      console.log(`[Invoices] Rendering invoice row for ${invoice.id}, shootingDate:`, invoice.shootingDate);
+                      console.log(`[Invoices] Rendering invoice row for ${invoice.id}, jobId: ${invoice.jobId}, shootingDate: ${invoice.shootingDate}, jobDate: ${invoice.jobId ? jobDates[invoice.jobId] : 'no job'}`);
                       return (
                         <TableRow 
                           key={invoice.id} 
@@ -497,9 +559,10 @@ const Invoices = () => {
                             {invoice.date ? new Date(invoice.date).toLocaleDateString() : '-'}
                           </TableCell>
                           <TableCell className="hidden md:table-cell">
-                            {invoice.shootingDate ? new Date(invoice.shootingDate).toLocaleDateString() : (
-                              <span className="text-muted-foreground text-sm">Not set</span>
-                            )}
+                            <div className="flex items-center">
+                              <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+                              {getJobDateDisplay(invoice)}
+                            </div>
                           </TableCell>
                           <TableCell className="hidden md:table-cell">
                             {formatCurrency(invoice.amount || 0, companyCurrency)}

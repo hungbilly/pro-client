@@ -1,10 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getInvoices, deleteInvoice } from '@/lib/storage';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, MoreHorizontal, Receipt, Download } from 'lucide-react';
+import { FileText, MoreHorizontal, Receipt, Download, ArrowUp, ArrowDown } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { formatCurrency } from '@/lib/utils';
@@ -46,6 +47,12 @@ import {
 import { useCompanyContext } from '@/context/CompanyContext';
 import { supabase } from '@/integrations/supabase/client';
 
+// Define the type for sorting configuration
+type SortConfig = {
+  key: string;
+  direction: 'asc' | 'desc' | null;
+};
+
 const Invoices = () => {
   const { selectedCompany } = useCompanyContext();
   const selectedCompanyId = selectedCompany?.id;
@@ -57,6 +64,7 @@ const Invoices = () => {
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const queryClient = useQueryClient();
   const [localInvoices, setLocalInvoices] = useState<any[]>([]);
+  const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'date', direction: 'desc' });
   
   const { data: invoices = [], isLoading, error } = useQuery({
     queryKey: ['invoices', selectedCompanyId],
@@ -156,9 +164,43 @@ const Invoices = () => {
     }
   };
 
+  // Function to handle sorting
+  const handleSort = (key: string) => {
+    setSortConfig(prevConfig => {
+      if (prevConfig.key === key) {
+        // Toggle through sorting states: asc -> desc -> null -> asc
+        let direction: 'asc' | 'desc' | null;
+        if (prevConfig.direction === 'asc') {
+          direction = 'desc';
+        } else if (prevConfig.direction === 'desc') {
+          direction = 'asc';
+        } else {
+          direction = 'asc';
+        }
+        return { key, direction };
+      }
+      
+      // New column, default to ascending
+      return { key, direction: 'asc' };
+    });
+  };
+
+  // Function to get sorting indicator
+  const getSortIndicator = (columnKey: string) => {
+    if (sortConfig.key === columnKey) {
+      if (sortConfig.direction === 'asc') {
+        return <ArrowUp className="inline-block ml-1 h-4 w-4" />;
+      } else if (sortConfig.direction === 'desc') {
+        return <ArrowDown className="inline-block ml-1 h-4 w-4" />;
+      }
+    }
+    return null;
+  };
+
+  // Filter invoices based on search query and date range
   const filteredInvoices = localInvoices.filter(invoice => {
     const matchesSearch = 
-      invoice.number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      invoice.number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       getClientName(invoice.clientId).toLowerCase().includes(searchQuery.toLowerCase()) ||
       invoice.status.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (getJobName(invoice.jobId) && getJobName(invoice.jobId).toLowerCase().includes(searchQuery.toLowerCase()));
@@ -181,6 +223,66 @@ const Invoices = () => {
     
     return matchesSearch && matchesDateRange;
   });
+
+  // Apply sorting to filtered invoices
+  const sortedInvoices = React.useMemo(() => {
+    if (!sortConfig.direction) {
+      return filteredInvoices;
+    }
+    
+    return [...filteredInvoices].sort((a, b) => {
+      let aValue, bValue;
+      
+      // Extract values based on the sorting column
+      switch (sortConfig.key) {
+        case 'number':
+          aValue = a.number || '';
+          bValue = b.number || '';
+          break;
+        case 'client':
+          aValue = getClientName(a.clientId);
+          bValue = getClientName(b.clientId);
+          break;
+        case 'job':
+          aValue = getJobName(a.jobId);
+          bValue = getJobName(b.jobId);
+          break;
+        case 'date':
+          aValue = new Date(a.date || 0).getTime();
+          bValue = new Date(b.date || 0).getTime();
+          break;
+        case 'amount':
+          aValue = a.amount || 0;
+          bValue = b.amount || 0;
+          break;
+        case 'status':
+          // Custom order for status: paid -> sent -> draft
+          const statusOrder = { 'paid': 1, 'accepted': 2, 'sent': 3, 'draft': 4, 'overdue': 5 };
+          aValue = statusOrder[a.status] || 999;
+          bValue = statusOrder[b.status] || 999;
+          break;
+        default:
+          aValue = a[sortConfig.key];
+          bValue = b[sortConfig.key];
+      }
+      
+      // Handle string comparison
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        if (sortConfig.direction === 'asc') {
+          return aValue.localeCompare(bValue);
+        } else {
+          return bValue.localeCompare(aValue);
+        }
+      }
+      
+      // Handle numeric comparison
+      if (sortConfig.direction === 'asc') {
+        return (aValue > bValue) ? 1 : -1;
+      } else {
+        return (aValue < bValue) ? 1 : -1;
+      }
+    });
+  }, [filteredInvoices, sortConfig, clients, jobs]);
 
   const handleExportOpen = () => {
     setIsExportDialogOpen(true);
@@ -303,16 +405,46 @@ const Invoices = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Invoice #</TableHead>
-                      <TableHead>Client</TableHead>
-                      <TableHead className="hidden md:table-cell">Job</TableHead>
-                      <TableHead className="hidden md:table-cell">Date</TableHead>
-                      <TableHead className="hidden md:table-cell">Amount</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead 
+                        className="cursor-pointer" 
+                        onClick={() => handleSort('number')}
+                      >
+                        Invoice # {getSortIndicator('number')}
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer" 
+                        onClick={() => handleSort('client')}
+                      >
+                        Client {getSortIndicator('client')}
+                      </TableHead>
+                      <TableHead 
+                        className="hidden md:table-cell cursor-pointer" 
+                        onClick={() => handleSort('job')}
+                      >
+                        Job {getSortIndicator('job')}
+                      </TableHead>
+                      <TableHead 
+                        className="hidden md:table-cell cursor-pointer" 
+                        onClick={() => handleSort('date')}
+                      >
+                        Date {getSortIndicator('date')}
+                      </TableHead>
+                      <TableHead 
+                        className="hidden md:table-cell cursor-pointer" 
+                        onClick={() => handleSort('amount')}
+                      >
+                        Amount {getSortIndicator('amount')}
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer" 
+                        onClick={() => handleSort('status')}
+                      >
+                        Status {getSortIndicator('status')}
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredInvoices.map((invoice) => (
+                    {sortedInvoices.map((invoice) => (
                       <TableRow 
                         key={invoice.id} 
                         className="cursor-pointer"

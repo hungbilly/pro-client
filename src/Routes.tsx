@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Route, Routes as ReactRoutes } from 'react-router-dom';
 import Index from './pages/Index';
@@ -27,10 +28,16 @@ import SubscriptionGuard from './components/SubscriptionGuard';
 import Admin from './pages/Admin';
 import AdminLayout from './components/AdminLayout';
 import Debug from './pages/Debug';
+import Privacy from './pages/Privacy';
+import Terms from './pages/Terms';
 
 const Routes = () => {
   return (
     <ReactRoutes>
+      {/* Public legal pages */}
+      <Route path="/privacy" element={<Privacy />} />
+      <Route path="/terms" element={<Terms />} />
+      
       {/* Auth routes outside of the layout */}
       <Route path="/auth" element={<Auth />} />
       <Route path="/auth/callback" element={<AuthCallback />} />

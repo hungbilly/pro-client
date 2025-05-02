@@ -360,7 +360,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
   });
   
   try {
-    // Updated to use the new jsPDF constructor syntax for v3.x
+    // Create a new PDF document with jsPDF v3.x syntax
     const doc = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',

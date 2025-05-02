@@ -22,94 +22,99 @@ const Terms = () => {
 
         <div className="prose max-w-none">
           <p>
-            Please read these Terms of Service ("Terms", "Terms of Service") carefully before using the Pro Client service ("Service") operated by Pro Client ("us", "we", or "our").
-          </p>
-          <p>
-            Your access to and use of the Service is conditioned on your acceptance of and compliance with these Terms. These Terms apply to all visitors, users, and others who access or use the Service.
-          </p>
-          <p>
-            By accessing or using the Service, you agree to be bound by these Terms. If you disagree with any part of the terms, then you may not access the Service.
+            Welcome to Pro Client. These Terms of Service ("Terms") govern your access to and use of the Pro Client platform
+            and any related services (collectively, the "Service"). By accessing or using the Service, you agree to be bound
+            by these Terms. If you do not agree to these Terms, do not access or use the Service.
           </p>
 
-          <h2 className="text-xl font-semibold mt-6 mb-3">Accounts</h2>
+          <h2 className="text-xl font-semibold mt-6 mb-3">1. Account Registration and Security</h2>
           <p>
-            When you create an account with us, you must provide accurate, complete, and up-to-date information. Failure to do so constitutes a breach of the Terms, which may result in immediate termination of your account on our Service.
-          </p>
-          <p>
-            You are responsible for safeguarding the password that you use to access the Service and for any activities or actions under your password.
-          </p>
-          <p>
-            You agree not to disclose your password to any third party. You must notify us immediately upon becoming aware of any breach of security or unauthorized use of your account.
+            To use certain features of the Service, you must register for an account. When you register, you agree to provide accurate,
+            current, and complete information. You are responsible for maintaining the security of your account and password.
+            Pro Client cannot and will not be liable for any loss or damage from your failure to comply with this security obligation.
           </p>
 
-          <h2 className="text-xl font-semibold mt-6 mb-3">Intellectual Property</h2>
+          <h2 className="text-xl font-semibold mt-6 mb-3">2. User Responsibilities</h2>
           <p>
-            The Service and its original content, features, and functionality are and will remain the exclusive property of Pro Client and its licensors. The Service is protected by copyright, trademark, and other laws of both the United States and foreign countries.
-          </p>
-          <p>
-            Our trademarks and trade dress may not be used in connection with any product or service without the prior written consent of Pro Client.
-          </p>
-
-          <h2 className="text-xl font-semibold mt-6 mb-3">User Content</h2>
-          <p>
-            Our Service allows you to post, link, store, share and otherwise make available certain information, text, graphics, videos, or other material ("Content"). You are responsible for the Content that you post to the Service, including its legality, reliability, and appropriateness.
-          </p>
-          <p>
-            By posting Content to the Service, you grant us the right and license to use, modify, perform, display, reproduce, and distribute such Content on and through the Service.
-          </p>
-          <p>
-            You represent and warrant that: (i) the Content is yours or you have the right to use it and grant us the rights and license as provided in these Terms, and (ii) the posting of your Content on or through the Service does not violate the privacy rights, publicity rights, copyrights, contract rights or any other rights of any person.
-          </p>
-
-          <h2 className="text-xl font-semibold mt-6 mb-3">Google API Services User Data Policy</h2>
-          <p>
-            Our Service integrates with Google API Services. By using our Google integration features, you agree to be bound by the Google API Services User Data Policy (https://developers.google.com/terms/api-services-user-data-policy).
-          </p>
-          <p>
-            We access and use information obtained through Google API Services in accordance with Google's Limited Use Requirements:
+            You are responsible for all activities that occur under your account. You agree not to:
           </p>
           <ul className="list-disc ml-6 my-3">
-            <li>We only request access to the data required to implement our Service's features.</li>
-            <li>We do not sell user data obtained through Google API Services.</li>
-            <li>We do not use user data obtained through Google API Services for advertising purposes.</li>
-            <li>We do not allow humans to read user data obtained through Google API Services unless:</li>
-              <ul className="list-circle ml-8 my-1">
-                <li>We have your affirmative consent for specific messages</li>
-                <li>It is necessary for security or compliance purposes</li>
-                <li>It is needed to maintain our Service or address technical issues</li>
-              </ul>
+            <li>Use the Service for any illegal purpose or in violation of any laws</li>
+            <li>Upload or transmit viruses or any other type of malicious code</li>
+            <li>Interfere with or disrupt the integrity or performance of the Service</li>
+            <li>Attempt to gain unauthorized access to the Service or its related systems</li>
+            <li>Use the Service to infringe upon the rights of others</li>
           </ul>
 
-          <h2 className="text-xl font-semibold mt-6 mb-3">Termination</h2>
+          <h2 className="text-xl font-semibold mt-6 mb-3">3. Intellectual Property</h2>
           <p>
-            We may terminate or suspend your account immediately, without prior notice or liability, for any reason whatsoever, including without limitation if you breach the Terms.
-          </p>
-          <p>
-            Upon termination, your right to use the Service will immediately cease. If you wish to terminate your account, you may simply discontinue using the Service.
-          </p>
-          <p>
-            All provisions of the Terms which by their nature should survive termination shall survive termination, including, without limitation, ownership provisions, warranty disclaimers, indemnity, and limitations of liability.
+            The Service and its original content, features, and functionality are owned by Pro Client and are protected by
+            international copyright, trademark, patent, trade secret, and other intellectual property laws. You may not copy,
+            modify, create derivative works, publicly display, publicly perform, republish, or transmit any of the material
+            from our Service without prior written consent.
           </p>
 
-          <h2 className="text-xl font-semibold mt-6 mb-3">Disclaimer and Limitation of Liability</h2>
+          <h2 className="text-xl font-semibold mt-6 mb-3">4. User Content</h2>
           <p>
-            Your use of the Service is at your sole risk. The Service is provided on an "AS IS" and "AS AVAILABLE" basis. The Service is provided without warranties of any kind, whether express or implied.
-          </p>
-          <p>
-            In no event shall Pro Client, nor its directors, employees, partners, agents, suppliers, or affiliates, be liable for any indirect, incidental, special, consequential or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses, resulting from your access to or use of or inability to access or use the Service.
-          </p>
-
-          <h2 className="text-xl font-semibold mt-6 mb-3">Governing Law</h2>
-          <p>
-            These Terms shall be governed and construed in accordance with the laws of the jurisdiction in which Pro Client is established, without regard to its conflict of law provisions.
-          </p>
-          <p>
-            Our failure to enforce any right or provision of these Terms will not be considered a waiver of those rights.
+            The Service allows you to post, link, store, share, and otherwise make available certain information, text, graphics,
+            or other material ("User Content"). You are responsible for the User Content that you post, including its legality,
+            reliability, and appropriateness. By posting User Content, you grant Pro Client the right to use, modify, publicly
+            perform, publicly display, reproduce, and distribute such content on and through the Service.
           </p>
 
-          <h2 className="text-xl font-semibold mt-6 mb-3">Changes to These Terms</h2>
+          <h2 className="text-xl font-semibold mt-6 mb-3">5. Subscription and Payment Terms</h2>
           <p>
-            We reserve the right, at our sole discretion, to modify or replace these Terms at any time. By continuing to access or use our Service after those revisions become effective, you agree to be bound by the revised terms. If you do not agree to the new terms, please stop using the Service.
+            Some aspects of the Service may be provided for a fee. You agree to pay all fees associated with the Service
+            in accordance with the billing terms in effect at the time the fee or charge becomes payable. If you dispute
+            any charges, you must notify Pro Client within 30 days after the date of billing. Refunds (if any) are at the
+            discretion of Pro Client and will only be issued in accordance with our refund policy.
+          </p>
+
+          <h2 className="text-xl font-semibold mt-6 mb-3">6. Third-Party Services</h2>
+          <p>
+            The Service may contain links to third-party websites or services that are not owned or controlled by Pro Client.
+            Pro Client has no control over, and assumes no responsibility for, the content, privacy policies, or practices
+            of any third-party websites or services. You acknowledge and agree that Pro Client shall not be responsible or
+            liable for any damage or loss caused or alleged to be caused by or in connection with the use of or reliance on
+            any such content, goods, or services available on or through any such websites or services.
+          </p>
+
+          <h2 className="text-xl font-semibold mt-6 mb-3">7. Google API Services and User Data</h2>
+          <p>
+            Our application may use Google API Services. By using our application with Google services, you agree to the 
+            <a href="https://developers.google.com/terms/" className="text-blue-600 hover:underline"> Google API Services User Data Policy</a>, 
+            including the Limited Use requirements. We access, use, store, and share Google user data only for the purposes 
+            that you consent to and that are permitted by the Google API Services User Data Policy.
+          </p>
+          
+          <p>
+            We limit our use of Google user data to providing or improving user-facing features that are prominent in the 
+            requesting application's user interface. We do not use Google user data for serving advertisements, and we do not 
+            sell Google user data. Additionally, we do not use Google user data for other purposes unrelated to improving 
+            user-facing features of the application.
+          </p>
+
+          <h2 className="text-xl font-semibold mt-6 mb-3">8. Limitation of Liability</h2>
+          <p>
+            In no event shall Pro Client, nor its directors, employees, partners, agents, suppliers, or affiliates, be liable
+            for any indirect, incidental, special, consequential, or punitive damages, including without limitation, loss of
+            profits, data, use, goodwill, or other intangible losses, resulting from your access to or use of or inability
+            to access or use the Service.
+          </p>
+
+          <h2 className="text-xl font-semibold mt-6 mb-3">9. Termination</h2>
+          <p>
+            We may terminate or suspend your account and access to the Service immediately, without prior notice or liability,
+            for any reason whatsoever, including without limitation if you breach these Terms. Upon termination, your right
+            to use the Service will immediately cease.
+          </p>
+
+          <h2 className="text-xl font-semibold mt-6 mb-3">10. Changes to These Terms</h2>
+          <p>
+            We reserve the right to modify or replace these Terms at any time. If a revision is material we will provide at
+            least 30 days' notice prior to any new terms taking effect. What constitutes a material change will be determined
+            at our sole discretion. By continuing to access or use our Service after any revisions become effective, you agree
+            to be bound by the revised terms.
           </p>
 
           <h2 className="text-xl font-semibold mt-6 mb-3">Contact Us</h2>

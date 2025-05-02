@@ -148,11 +148,9 @@ const InvoicePdfView = () => {
                 <div>
                   <span className="font-medium">Invoice Number:</span> {invoice.number}
                 </div>
-                {invoice.client && (
-                  <div>
-                    <span className="font-medium">Client:</span> {invoice.client.name}
-                  </div>
-                )}
+                <div>
+                  <span className="font-medium">Client ID:</span> {invoice.clientId}
+                </div>
                 <div>
                   <span className="font-medium">Amount:</span> ${invoice.amount?.toFixed(2)}
                 </div>

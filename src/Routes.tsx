@@ -35,7 +35,6 @@ const AppRoutes = () => {
 
   return (
     <ReactRoutes>
-      <Route path="/" element={<Index />} />
       <Route path="/auth" element={<Auth />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
       
@@ -59,6 +58,7 @@ const AppRoutes = () => {
         </ProtectedRoute>
       } />
       
+      {/* All authenticated app pages with AppLayout */}
       <Route path="/" element={
         <ProtectedRoute>
           <SubscriptionGuard>
@@ -66,6 +66,7 @@ const AppRoutes = () => {
           </SubscriptionGuard>
         </ProtectedRoute>
       }>
+        <Route index element={<Index />} /> {/* Root path now uses Index component */}
         <Route path="/clients" element={<Clients />} />
         <Route path="/invoices" element={<Invoices />} />
         <Route path="/jobs" element={<Jobs />} />

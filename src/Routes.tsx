@@ -26,6 +26,8 @@ import Privacy from '@/pages/Privacy';
 import InvoicePdfView from '@/pages/InvoicePdfView';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import SubscriptionGuard from '@/components/SubscriptionGuard';
+import Settings from '@/pages/Settings';
+import Payments from '@/pages/Payments';
 
 const AppRoutes = () => {
   const { user } = useAuth();
@@ -67,6 +69,8 @@ const AppRoutes = () => {
         <Route path="/clients" element={<Clients />} />
         <Route path="/invoices" element={<Invoices />} />
         <Route path="/jobs" element={<Jobs />} />
+        <Route path="/account" element={<Payments />} />
+        <Route path="/settings" element={<Settings />} />
       </Route>
       
       {/* Public invoice view */}

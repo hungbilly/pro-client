@@ -1,7 +1,6 @@
 
 import React from 'react';
 import {
-  BrowserRouter as Router,
   Routes as ReactRoutes,
   Route,
   useNavigate,
@@ -33,51 +32,49 @@ const AppRoutes = () => {
   const { subscription } = useSubscription();
 
   return (
-    <Router>
-      <ReactRoutes>
-        <Route path="/" element={<Index />} />
-        <Route path="/auth" element={<Auth />} />
-        <Route path="/auth/callback" element={<AuthCallback />} />
-        
-        {/* Static pages */}
-        <Route path="/privacy" element={<Privacy />} />
-        <Route path="/terms" element={<Terms />} />
-        
-        <Route path="/subscription" element={
-          <ProtectedRoute>
-            <Subscription />
-          </ProtectedRoute>
-        } />
-        <Route path="/subscription/success" element={
-          <ProtectedRoute>
-            <SubscriptionSuccess />
-          </ProtectedRoute>
-        } />
-        <Route path="/subscription/cancel" element={
-          <ProtectedRoute>
-            <SubscriptionCancel />
-          </ProtectedRoute>
-        } />
-        
-        <Route path="/" element={
-          <ProtectedRoute>
-            <SubscriptionGuard>
-              <AppLayout />
-            </SubscriptionGuard>
-          </ProtectedRoute>
-        }>
-          <Route path="/clients" element={<Clients />} />
-          <Route path="/invoices" element={<Invoices />} />
-          <Route path="/jobs" element={<Jobs />} />
-        </Route>
-        
-        {/* Public invoice view */}
-        <Route path="/invoice/:viewLink" element={<InvoiceView />} />
-        <Route path="/invoice-pdf/:viewLink" element={<InvoicePdfView />} />
-        
-        <Route path="*" element={<NotFound />} />
-      </ReactRoutes>
-    </Router>
+    <ReactRoutes>
+      <Route path="/" element={<Index />} />
+      <Route path="/auth" element={<Auth />} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
+      
+      {/* Static pages */}
+      <Route path="/privacy" element={<Privacy />} />
+      <Route path="/terms" element={<Terms />} />
+      
+      <Route path="/subscription" element={
+        <ProtectedRoute>
+          <Subscription />
+        </ProtectedRoute>
+      } />
+      <Route path="/subscription/success" element={
+        <ProtectedRoute>
+          <SubscriptionSuccess />
+        </ProtectedRoute>
+      } />
+      <Route path="/subscription/cancel" element={
+        <ProtectedRoute>
+          <SubscriptionCancel />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/" element={
+        <ProtectedRoute>
+          <SubscriptionGuard>
+            <AppLayout />
+          </SubscriptionGuard>
+        </ProtectedRoute>
+      }>
+        <Route path="/clients" element={<Clients />} />
+        <Route path="/invoices" element={<Invoices />} />
+        <Route path="/jobs" element={<Jobs />} />
+      </Route>
+      
+      {/* Public invoice view */}
+      <Route path="/invoice/:viewLink" element={<InvoiceView />} />
+      <Route path="/invoice-pdf/:viewLink" element={<InvoicePdfView />} />
+      
+      <Route path="*" element={<NotFound />} />
+    </ReactRoutes>
   );
 };
 

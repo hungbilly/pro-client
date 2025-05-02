@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -15,12 +15,30 @@ const InvoicePdfView = () => {
   const [isDownloading, setIsDownloading] = useState(false);
   const { viewLink } = useParams<{ viewLink: string }>();
 
+  useEffect(() => {
+    const fetchInvoice = async () => {
+      if (!viewLink) return;
+      
+      try {
+        const invoiceData = await getInvoiceByViewLink(viewLink);
+        setInvoice(invoiceData);
+      } catch (err) {
+        console.error("Error fetching invoice:", err);
+        setError("Could not load invoice data. Please check the link and try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchInvoice();
+  }, [viewLink]);
+
   const handleCopyInvoiceLink = () => {
     if (!invoice) return;
     
     const baseUrl = window.location.origin;
     
-    let cleanViewLink = invoice.viewLink;
+    let cleanViewLink = invoice.viewLink || '';
     if (cleanViewLink.includes('http') || cleanViewLink.includes('/invoice/')) {
       const parts = cleanViewLink.split('/');
       cleanViewLink = parts[parts.length - 1];
@@ -47,26 +65,102 @@ const InvoicePdfView = () => {
     toast.info('Preparing PDF for download...');
     
     try {
-      // Download logic would go here
-      // For now, let's simulate a download after a delay
-      setTimeout(() => {
+      // If we already have a PDF URL, use it directly
+      if (invoice.pdfUrl) {
+        window.open(invoice.pdfUrl, '_blank');
         setIsDownloading(false);
+        return;
+      }
+      
+      // Otherwise, generate a new PDF
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-invoice-pdf`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+        },
+        body: JSON.stringify({ invoiceId: invoice.id })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to generate PDF');
+      }
+      
+      const data = await response.json();
+      if (data.pdfUrl) {
+        window.open(data.pdfUrl, '_blank');
         toast.success('Invoice downloaded successfully');
-      }, 2000);
+      } else {
+        throw new Error('No PDF URL returned');
+      }
     } catch (err) {
       console.error('Error downloading invoice:', err);
+      toast.error('Failed to download invoice', {
+        description: 'Please try again later or contact support.'
+      });
+    } finally {
       setIsDownloading(false);
-      toast.error('Failed to download invoice');
     }
   };
+
+  if (loading) {
+    return (
+      <PageTransition>
+        <div className="container mx-auto px-4 py-8">
+          <Card>
+            <CardContent className="p-6 flex justify-center items-center min-h-[300px]">
+              <div className="animate-pulse flex flex-col items-center">
+                <div className="h-8 w-48 bg-gray-200 rounded mb-4"></div>
+                <div className="h-4 w-64 bg-gray-200 rounded"></div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </PageTransition>
+    );
+  }
+
+  if (error) {
+    return (
+      <PageTransition>
+        <div className="container mx-auto px-4 py-8">
+          <Card>
+            <CardContent className="p-6">
+              <div className="text-center">
+                <h1 className="text-2xl font-bold text-red-600 mb-4">Error Loading Invoice</h1>
+                <p className="text-gray-600">{error}</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </PageTransition>
+    );
+  }
 
   return (
     <PageTransition>
       <div className="container mx-auto px-4 py-8">
         <Card>
           <CardContent className="p-6">
-            <h1 className="text-2xl font-bold mb-4">Invoice PDF View</h1>
-            <p>View Link: {viewLink}</p>
+            <h1 className="text-2xl font-bold mb-4">Invoice Details</h1>
+            {invoice && (
+              <div className="space-y-4">
+                <div>
+                  <span className="font-medium">Invoice Number:</span> {invoice.number}
+                </div>
+                {invoice.client && (
+                  <div>
+                    <span className="font-medium">Client:</span> {invoice.client.name}
+                  </div>
+                )}
+                <div>
+                  <span className="font-medium">Amount:</span> ${invoice.amount?.toFixed(2)}
+                </div>
+                <div>
+                  <span className="font-medium">Status:</span> {invoice.status}
+                </div>
+              </div>
+            )}
           </CardContent>
           <CardFooter className="border-t p-6 flex justify-end gap-2">
             <Button

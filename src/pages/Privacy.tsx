@@ -22,74 +22,122 @@ const Privacy = () => {
 
         <div className="prose max-w-none">
           <p>
-            This Privacy Policy describes how Pro Client ("we", "us", or "our") collects, uses, and discloses your personal information when you use our service (the "Service"), and informs you about your privacy rights and how the law protects you.
+            Pro Client is committed to protecting your privacy. This Privacy Policy explains how we collect, use,
+            disclose, and safeguard your information when you use our service.
           </p>
 
-          <h2 className="text-xl font-semibold mt-6 mb-3">Information We Collect</h2>
+          <h2 className="text-xl font-semibold mt-6 mb-3">1. Information We Collect</h2>
+          <p>
+            We may collect several types of information from and about users of our Service, including:
+          </p>
+          <ul className="list-disc ml-6 my-3">
+            <li>Personal identifiable information (such as your name, email address, telephone number)</li>
+            <li>Billing and payment information</li>
+            <li>Client information you choose to store in our Service</li>
+            <li>Information about your business operations as they relate to our Service</li>
+            <li>Technical data such as IP address, browser type, and device information</li>
+            <li>Usage data about how you interact with our Service</li>
+          </ul>
+
+          <h2 className="text-xl font-semibold mt-6 mb-3">2. How We Collect Information</h2>
+          <p>
+            We collect information:
+          </p>
+          <ul className="list-disc ml-6 my-3">
+            <li>Directly from you when you register, subscribe to our service, or use our features</li>
+            <li>Automatically as you navigate through our Service (using cookies and similar technologies)</li>
+            <li>From third-party sources, such as business partners, payment processors, and authentication services</li>
+          </ul>
+
+          <h2 className="text-xl font-semibold mt-6 mb-3">3. How We Use Your Information</h2>
+          <p>
+            We use the information we collect to:
+          </p>
+          <ul className="list-disc ml-6 my-3">
+            <li>Provide, maintain, and improve our Service</li>
+            <li>Process transactions and send related information</li>
+            <li>Send administrative information, such as updates, security alerts, and support messages</li>
+            <li>Respond to your comments, questions, and requests</li>
+            <li>Personalize your experience and deliver content relevant to your interests</li>
+            <li>Monitor and analyze trends, usage, and activities in connection with our Service</li>
+            <li>Detect, investigate, and prevent fraudulent transactions and other illegal activities</li>
+            <li>Protect the rights and property of Pro Client and others</li>
+          </ul>
+
+          <h2 className="text-xl font-semibold mt-6 mb-3">4. Third-Party Data Processing and Sharing</h2>
+          <p>
+            We may share your information with:
+          </p>
+          <ul className="list-disc ml-6 my-3">
+            <li>Service providers who perform services on our behalf</li>
+            <li>Business partners with whom we jointly offer products or services</li>
+            <li>Third-party authentication providers (when you choose to link accounts)</li>
+            <li>Law enforcement or other governmental authorities as required by law</li>
+          </ul>
+
+          <h2 className="text-xl font-semibold mt-6 mb-3">5. Data Security</h2>
+          <p>
+            We implement appropriate security measures to protect your personal information. However, no method of
+            transmission over the Internet or electronic storage is 100% secure, and we cannot guarantee absolute security.
+          </p>
+
+          <h2 className="text-xl font-semibold mt-6 mb-3">6. Google API Services User Data Policy</h2>
+          <p>
+            Our application uses Google API Services to enhance functionality. By using our application with Google services,
+            you agree to the <a href="https://developers.google.com/terms/" className="text-blue-600 hover:underline">Google API Services User Data Policy</a>,
+            including the Limited Use requirements.
+          </p>
           
-          <h3 className="font-semibold mt-4 mb-2">Personal Data</h3>
           <p>
-            While using our Service, we may ask you to provide us with certain personally identifiable information that can be used to contact or identify you ("Personal Data"). Personal Data may include, but is not limited to:
-          </p>
-          <ul className="list-disc ml-6 my-3">
-            <li>Email address</li>
-            <li>First name and last name</li>
-            <li>Phone number</li>
-            <li>Business address</li>
-            <li>Usage data</li>
-          </ul>
-
-          <h3 className="font-semibold mt-4 mb-2">Usage Data</h3>
-          <p>
-            We may also collect information on how the Service is accessed and used ("Usage Data"). This Usage Data may include information such as your computer's Internet Protocol address (e.g. IP address), browser type, browser version, the pages of our Service that you visit, the time and date of your visit, the time spent on those pages, unique device identifiers and other diagnostic data.
-          </p>
-
-          <h2 className="text-xl font-semibold mt-6 mb-3">Use of Data</h2>
-          <p>Pro Client uses the collected data for various purposes:</p>
-          <ul className="list-disc ml-6 my-3">
-            <li>To provide and maintain our Service</li>
-            <li>To notify you about changes to our Service</li>
-            <li>To allow you to participate in interactive features of our Service when you choose to do so</li>
-            <li>To provide customer support</li>
-            <li>To gather analysis or valuable information so that we can improve our Service</li>
-            <li>To monitor the usage of our Service</li>
-            <li>To detect, prevent and address technical issues</li>
-          </ul>
-
-          <h2 className="text-xl font-semibold mt-6 mb-3">Data Security</h2>
-          <p>
-            The security of your data is important to us but remember that no method of transmission over the Internet or method of electronic storage is 100% secure. While we strive to use commercially acceptable means to protect your Personal Data, we cannot guarantee its absolute security.
-          </p>
-
-          <h2 className="text-xl font-semibold mt-6 mb-3">Third-Party Services</h2>
-          <p>
-            Our Service may contain links to other sites that are not operated by us. If you click on a third-party link, you will be directed to that third party's site. We strongly advise you to review the Privacy Policy of every site you visit.
-          </p>
-          <p>
-            We have no control over and assume no responsibility for the content, privacy policies or practices of any third-party sites or services.
+            Our application's use and transfer of information received from Google APIs to any other app will adhere to
+            <a href="https://developers.google.com/terms/api-services-user-data-policy" className="text-blue-600 hover:underline"> Google API Services User Data Policy</a>,
+            including the Limited Use requirements.
           </p>
           
-          <h2 className="text-xl font-semibold mt-6 mb-3">Google OAuth and Data Processing</h2>
           <p>
-            Our Service uses Google OAuth for authentication and may access certain Google services on your behalf with your consent. We only request the minimum necessary permissions to provide the functionality you request.
+            We only access, use, store, and share Google user data for the purposes that you consent to and that are permitted
+            by the Google API Services User Data Policy. We limit our use of Google user data to providing or improving
+            user-facing features that are prominent in the requesting application's user interface.
           </p>
+          
           <p>
-            When you connect your Google account to our Service, we may collect:
-          </p>
-          <ul className="list-disc ml-6 my-3">
-            <li>Your Google account email address (for account identification)</li>
-            <li>Calendar data (if you choose to enable the calendar integration feature)</li>
-          </ul>
-          <p>
-            We do not sell your Google account data or use it for advertising purposes. We only use this data to provide the specific functionality you request, such as scheduling events in your calendar.
+            We do not use Google user data for serving advertisements and we do not sell Google user data. Additionally,
+            we do not use Google user data for purposes unrelated to improving user-facing features of the application.
           </p>
 
-          <h2 className="text-xl font-semibold mt-6 mb-3">Changes to This Privacy Policy</h2>
+          <h2 className="text-xl font-semibold mt-6 mb-3">7. Data Retention</h2>
           <p>
-            We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the "Last updated" date.
+            We retain your personal information only for as long as is necessary for the purposes set out in this Privacy
+            Policy, unless a longer retention period is required or permitted by law.
           </p>
+
+          <h2 className="text-xl font-semibold mt-6 mb-3">8. Your Rights and Choices</h2>
           <p>
-            You are advised to review this Privacy Policy periodically for any changes. Changes to this Privacy Policy are effective when they are posted on this page.
+            Depending on your location, you may have certain rights regarding your personal information, including:
+          </p>
+          <ul className="list-disc ml-6 my-3">
+            <li>Accessing, correcting, or deleting your personal information</li>
+            <li>Withdrawing consent to processing your information</li>
+            <li>Restricting or objecting to certain uses of your information</li>
+            <li>Requesting a portable copy of your data</li>
+            <li>Opting out of certain communications from us</li>
+          </ul>
+          <p>
+            To exercise these rights, please contact us using the information provided at the end of this policy.
+          </p>
+
+          <h2 className="text-xl font-semibold mt-6 mb-3">9. Children's Privacy</h2>
+          <p>
+            Our Service is not intended for children under the age of 16. We do not knowingly collect personal information
+            from children under 16. If you are a parent or guardian and believe your child has provided us with personal
+            information, please contact us.
+          </p>
+
+          <h2 className="text-xl font-semibold mt-6 mb-3">10. Changes to This Privacy Policy</h2>
+          <p>
+            We may update this Privacy Policy from time to time. The updated version will be effective as soon as it is
+            accessible. We will notify you of material changes by posting a notice on our website or by sending you an
+            email.
           </p>
 
           <h2 className="text-xl font-semibold mt-6 mb-3">Contact Us</h2>
@@ -98,6 +146,12 @@ const Privacy = () => {
           </p>
           <p className="mt-2">
             <strong>Email:</strong> privacy@proclient.com
+          </p>
+          <p>
+            <strong>Phone:</strong> (123) 456-7890
+          </p>
+          <p>
+            <strong>Postal Address:</strong> Pro Client Privacy Office, 123 Business Ave, Suite 456, San Francisco, CA 94107
           </p>
         </div>
       </div>

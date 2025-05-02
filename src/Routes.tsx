@@ -1,105 +1,100 @@
+import React, { useEffect } from 'react';
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  useNavigate,
+} from 'react-router-dom';
+import { useUser } from '@supabase/auth-helpers-react';
+import { useSubscription } from '@/hooks/useSubscription';
 
-import React from 'react';
-import { Route, Routes as ReactRoutes } from 'react-router-dom';
-import Index from './pages/Index';
-import Auth from './pages/Auth';
-import NotFound from './pages/NotFound';
-import Clients from './pages/Clients';
-import ClientDetail from './pages/ClientDetail';
-import ClientNew from './pages/ClientNew';
-import ClientEdit from './pages/ClientEdit';
-import InvoiceView from './pages/InvoiceView';
-import InvoiceCreate from './pages/InvoiceCreate';
-import ProtectedRoute from './components/ProtectedRoute';
-import Settings from './pages/Settings';
-import Jobs from './pages/Jobs';
-import JobDetail from './pages/JobDetail';
-import JobCreate from './pages/JobCreate';
-import JobEdit from './pages/JobEdit';
-import AppLayout from './components/AppLayout';
-import Accounts from './pages/Accounts';
-import AuthCallback from './pages/AuthCallback';
-import Invoices from './pages/Invoices';
-import InvoicePdfView from './pages/InvoicePdfView';
-import Subscription from './pages/Subscription';
-import SubscriptionSuccess from './pages/SubscriptionSuccess';
-import SubscriptionCancel from './pages/SubscriptionCancel';
-import SubscriptionGuard from './components/SubscriptionGuard';
-import Admin from './pages/Admin';
-import AdminLayout from './components/AdminLayout';
-import Debug from './pages/Debug';
-import Privacy from './pages/Privacy';
-import Terms from './pages/Terms';
+import Index from '@/pages/Index';
+import Auth from '@/pages/Auth';
+import AuthCallback from '@/pages/AuthCallback';
+import Subscription from '@/pages/Subscription';
+import SubscriptionSuccess from '@/pages/SubscriptionSuccess';
+import SubscriptionCancel from '@/pages/SubscriptionCancel';
+import Account from '@/pages/Account';
+import Clients from '@/pages/Clients';
+import Client from '@/pages/Client';
+import Invoices from '@/pages/Invoices';
+import Invoice from '@/pages/Invoice';
+import InvoiceView from '@/pages/InvoiceView';
+import Jobs from '@/pages/Jobs';
+import Job from '@/pages/Job';
+import NotFound from '@/pages/NotFound';
+import AppLayout from '@/components/AppLayout';
+import Terms from '@/pages/Terms';
+import Privacy from '@/pages/Privacy';
+import InvoicePdfView from '@/pages/InvoicePdfView';
+
+const ProtectedRoute = ({ children }: { children?: React.ReactNode }) => {
+  const user = useUser();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!user) {
+      navigate('/auth');
+    }
+  }, [user, navigate]);
+
+  return user ? <>{children}</> : null;
+};
+
+const SubscriptionGuard = ({ children }: { children?: React.ReactNode }) => {
+  const user = useUser();
+  const { subscription } = useSubscription();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user && !subscription) {
+      navigate('/subscription');
+    }
+  }, [user, subscription, navigate]);
+
+  return subscription ? <>{children}</> : null;
+};
 
 const Routes = () => {
+  const user = useUser();
+  const { subscription } = useSubscription();
+
   return (
-    <ReactRoutes>
-      {/* Public legal pages */}
-      <Route path="/privacy" element={<Privacy />} />
-      <Route path="/terms" element={<Terms />} />
-      
-      {/* Auth routes outside of the layout */}
-      <Route path="/auth" element={<Auth />} />
-      <Route path="/auth/callback" element={<AuthCallback />} />
-      
-      {/* Admin routes with admin layout */}
-      <Route element={<ProtectedRoute adminOnly={true}><AdminLayout /></ProtectedRoute>}>
-        <Route path="/admin" element={<Admin />} />
-        <Route path="/debug" element={<Debug />} />
-      </Route>
-      
-      {/* Subscription routes */}
-      <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-        <Route path="/subscription" element={<Subscription />} />
-        <Route path="/subscription/success" element={<SubscriptionSuccess />} />
-        <Route path="/subscription/cancel" element={<SubscriptionCancel />} />
-      </Route>
-      
-      {/* Public invoice views without AppLayout for client view */}
-      <Route path="/invoice/:idOrViewLink" element={<InvoiceView />} />
-      <Route path="/invoice/pdf/:viewLink" element={<InvoicePdfView />} />
-      
-      {/* Protected routes with layout that require subscription */}
-      <Route element={<ProtectedRoute><SubscriptionGuard><AppLayout /></SubscriptionGuard></ProtectedRoute>}>
+    <Router>
+      <Routes>
         <Route path="/" element={<Index />} />
-        <Route path="/clients" element={<Clients />} />
-        <Route path="/client/new" element={<ClientNew />} />
-        <Route path="/client/:id" element={<ClientDetail />} />
-        <Route path="/client/:id/edit" element={<ClientEdit />} />
+        <Route path="/auth" element={<Auth />} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
         
-        {/* Job routes */}
-        <Route path="/jobs" element={<Jobs />} />
-        <Route path="/job/new" element={<JobCreate />} />
-        <Route path="/job/:id" element={<JobDetail />} />
-        <Route path="/job/:id/edit" element={<JobEdit />} />
+        {/* Static pages */}
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/terms" element={<Terms />} />
         
-        {/* Client-specific job routes */}
-        <Route path="/client/:clientId/job/new" element={<JobCreate />} />
-        <Route path="/client/:clientId/job/create" element={<JobCreate />} />
+        <Route element={<ProtectedRoute />}>
+          <Route element={<SubscriptionGuard />}>
+            <Route element={<AppLayout />}>
+              <Route path="/account" element={<Account />} />
+              <Route path="/clients" element={<Clients />} />
+              <Route path="/clients/:clientId" element={<Client />} />
+              <Route path="/invoices" element={<Invoices />} />
+              <Route path="/invoices/:invoiceId" element={<Invoice />} />
+              <Route path="/jobs" element={<Jobs />} />
+              <Route path="/jobs/:jobId" element={<Job />} />
+            </Route>
+          </Route>
+          
+          <Route path="/subscription" element={<Subscription />} />
+          <Route path="/subscription/success" element={<SubscriptionSuccess />} />
+          <Route path="/subscription/cancel" element={<SubscriptionCancel />} />
+        </Route>
         
-        {/* Invoice routes */}
-        <Route path="/invoices" element={<Invoices />} />
-        <Route path="/invoice/:id/edit" element={<InvoiceCreate />} />
-        <Route path="/client/:clientId/invoice/new" element={<InvoiceCreate />} />
-        <Route path="/client/:clientId/invoice/create" element={<InvoiceCreate />} />
-        <Route path="/client/:clientId/invoice/:invoiceId/edit" element={<InvoiceCreate />} />
+        {/* Public invoice view */}
+        <Route path="/invoice/:viewLink" element={<InvoiceView />} />
+        <Route path="/invoice-pdf/:viewLink" element={<InvoicePdfView />} />
         
-        {/* Job-related invoice routes - make sure both "new" and "create" paths work */}
-        <Route path="/job/:jobId/invoice/new" element={<InvoiceCreate />} />
-        <Route path="/job/:jobId/invoice/create" element={<InvoiceCreate />} />
-        <Route path="/job/:jobId/invoice/:invoiceId/edit" element={<InvoiceCreate />} />
-        
-        {/* Admin invoice view (wrapped in AppLayout) */}
-        <Route path="/invoice/:id/admin" element={<InvoiceView />} />
-        
-        {/* Account routes */}
-        <Route path="/account" element={<Accounts />} />
-        
-        <Route path="/settings" element={<Settings />} />
-      </Route>
-      
-      <Route path="*" element={<NotFound />} />
-    </ReactRoutes>
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </Router>
   );
 };
 

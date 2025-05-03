@@ -28,6 +28,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import SubscriptionGuard from '@/components/SubscriptionGuard';
 import Settings from '@/pages/Settings';
 import Payments from '@/pages/Payments';
+import EmailVerification from '@/pages/EmailVerification';
 
 const AppRoutes = () => {
   const { user } = useAuth();
@@ -37,6 +38,7 @@ const AppRoutes = () => {
     <ReactRoutes>
       <Route path="/auth" element={<Auth />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
+      <Route path="/auth/verify-email" element={<EmailVerification />} />
       
       {/* Static pages */}
       <Route path="/privacy" element={<Privacy />} />

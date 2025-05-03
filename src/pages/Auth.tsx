@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -138,7 +139,8 @@ const Auth = () => {
           toast.error('This email is already registered. Please sign in instead.');
           setIsLogin(true);
         } else {
-          toast.success('Registration successful! Please check your email for confirmation.');
+          // Instead of showing a toast, redirect to the email verification page
+          navigate('/auth/verify-email', { state: { email } });
         }
       }
     } catch (error: any) {

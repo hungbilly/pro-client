@@ -1,5 +1,6 @@
 
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,7 @@ interface SignUpDialogProps {
 const appCallbackUrl = `${window.location.origin}/auth/callback`;
 
 const SignUpDialog: React.FC<SignUpDialogProps> = ({ open, onOpenChange }) => {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -45,12 +47,9 @@ const SignUpDialog: React.FC<SignUpDialogProps> = ({ open, onOpenChange }) => {
       if (data?.user?.identities?.length === 0) {
         setErrorMsg("This email is already registered. Please sign in instead.");
       } else {
-        toast.success("Registration successful! Please check your email for confirmation.");
+        // Close the dialog and redirect to verification page
         onOpenChange(false);
-        setEmail("");
-        setPassword("");
-        setConfirmPassword("");
-        setErrorMsg(null);
+        navigate('/auth/verify-email', { state: { email }});
       }
     } catch (error: any) {
       setErrorMsg(error?.message || "Authentication failed");

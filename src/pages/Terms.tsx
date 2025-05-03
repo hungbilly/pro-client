@@ -1,13 +1,10 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import PageTransition from '@/components/ui-custom/PageTransition';
-
 const Terms = () => {
-  return (
-    <PageTransition>
+  return <PageTransition>
       <div className="container max-w-4xl mx-auto py-8 px-4">
         <div className="mb-6">
           <Button variant="ghost" size="sm" asChild className="mb-4">
@@ -118,16 +115,10 @@ const Terms = () => {
           </p>
 
           <h2 className="text-xl font-semibold mt-6 mb-3">Contact Us</h2>
-          <p>
-            If you have any questions about these Terms, please contact us at:
-          </p>
-          <p className="mt-2">
-            <strong>Email:</strong> terms@proclient.com
-          </p>
+          <p>If you have any questions about these Terms, please contact us at support@proclientapp.com </p>
+          
         </div>
       </div>
-    </PageTransition>
-  );
+    </PageTransition>;
 };
-
 export default Terms;

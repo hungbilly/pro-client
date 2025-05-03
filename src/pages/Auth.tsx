@@ -15,6 +15,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import AuthFeaturesGrid from "@/components/ui-custom/AuthFeaturesGrid";
 import AuthPricingGrid from "@/components/ui-custom/AuthPricingGrid";
 import SignUpDialog from "@/components/ui-custom/SignUpDialog";
+import Footer from "@/components/Footer";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -331,6 +332,7 @@ const Auth = () => {
       </AnimatedBackground>
       <AuthFeaturesGrid />
       <AuthPricingGrid />
+      <Footer />
       
       {/* Add the SignUpDialog component */}
       <SignUpDialog open={signUpDialogOpen} onOpenChange={setSignUpDialogOpen} />

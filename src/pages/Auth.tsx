@@ -14,6 +14,7 @@ import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import AuthFeaturesGrid from "@/components/ui-custom/AuthFeaturesGrid";
 import AuthPricingGrid from "@/components/ui-custom/AuthPricingGrid";
+import SignUpDialog from "@/components/ui-custom/SignUpDialog";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -28,6 +29,7 @@ const Auth = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [signUpDialogOpen, setSignUpDialogOpen] = useState(false);
   const appCallbackUrl = `${window.location.origin}/auth/callback`;
 
   useEffect(() => {
@@ -291,14 +293,26 @@ const Auth = () => {
                     {loading ? isForgotPassword ? 'Sending reset instructions...' : isLogin ? 'Signing in...' : 'Creating account...' : isForgotPassword ? 'Send reset instructions' : isLogin ? 'Sign in' : 'Start Free Trial'}
                   </Button>
                   
-                  {!isForgotPassword && <Button type="button" variant="link" className="w-full" onClick={() => setIsLogin(!isLogin)}>
-                      {isLogin ? "Not a member yet? Start your free trial" : "Already have an account? Sign in"}
-                    </Button>}
+                  {!isForgotPassword && <Button 
+                    type="button" 
+                    variant="link" 
+                    className="w-full" 
+                    onClick={() => {
+                      if (isLogin) {
+                        // Open the SignUpDialog instead of toggling isLogin
+                        setSignUpDialogOpen(true);
+                      } else {
+                        setIsLogin(true);
+                      }
+                    }}
+                  >
+                    {isLogin ? "Not a member yet? Start your free trial" : "Already have an account? Sign in"}
+                  </Button>}
                   
                   <Button type="button" variant="link" className="w-full text-sm" onClick={() => {
-                  setIsForgotPassword(!isForgotPassword);
-                  setErrorMessage(null);
-                }}>
+                    setIsForgotPassword(!isForgotPassword);
+                    setErrorMessage(null);
+                  }}>
                     {isForgotPassword ? 'Back to login' : 'Forgot password?'}
                   </Button>
                 </CardFooter>
@@ -317,6 +331,9 @@ const Auth = () => {
       </AnimatedBackground>
       <AuthFeaturesGrid />
       <AuthPricingGrid />
+      
+      {/* Add the SignUpDialog component */}
+      <SignUpDialog open={signUpDialogOpen} onOpenChange={setSignUpDialogOpen} />
     </PageTransition>;
 };
 

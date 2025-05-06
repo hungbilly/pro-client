@@ -145,7 +145,6 @@ const log = {
   error: (message: string, error: any) => {
     const timestamp = new Date().toISOString();
     console.error(`[${timestamp}] [ERROR] ${message}`, error);
-    
     if (error?.stack) {
       console.error(`[${timestamp}] [ERROR] Stack trace:`, error.stack);
     }
@@ -435,7 +434,7 @@ serve(async (req) => {
     // Generate the PDF
     executionStages.generate_pdf = { start: Date.now() };
     
-    let pdfData;
+    let pdfData: Uint8Array;
     try {
       pdfData = await generatePDF(formattedInvoice);
       executionStages.generate_pdf.end = Date.now();
@@ -473,13 +472,29 @@ serve(async (req) => {
       );
     }
 
-    // Handle very small PDF sizes which likely indicate an error
+    // Validate PDF data type and signature
+    if (!(pdfData instanceof Uint8Array)) {
+      executionStages.validate_pdf.end = Date.now();
+      executionStages.validate_pdf.success = false;
+      executionStages.validate_pdf.error = 'Invalid PDF data type';
+      
+      log.error('PDF data is not a Uint8Array:', pdfData);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid PDF data type',
+          debugInfo: debugMode ? debugInfo : undefined
+        }),
+        { headers, status: 500 }
+      );
+    }
+
+    // Handle very small or large PDF sizes
     if (pdfData.byteLength < 1000) {
       executionStages.validate_pdf.end = Date.now();
       executionStages.validate_pdf.success = false;
       executionStages.validate_pdf.error = `PDF too small: ${pdfData.byteLength} bytes`;
       
-      log.error('Generated PDF is suspiciously small:', pdfData.byteLength, 'bytes. This may indicate a failed generation.');
+      log.error('Generated PDF is suspiciously small:', pdfData.byteLength, 'bytes');
       return new Response(
         JSON.stringify({ 
           error: `Generated PDF appears invalid. PDF size too small: ${pdfData.byteLength} bytes`,
@@ -489,7 +504,22 @@ serve(async (req) => {
       );
     }
     
-    // Check if PDF starts with %PDF- magic bytes (PDF signature)
+    if (pdfData.byteLength > 5000000) {
+      executionStages.validate_pdf.end = Date.now();
+      executionStages.validate_pdf.success = false;
+      executionStages.validate_pdf.error = `PDF too large: ${pdfData.byteLength} bytes`;
+      
+      log.error('Generated PDF is suspiciously large:', pdfData.byteLength, 'bytes');
+      return new Response(
+        JSON.stringify({ 
+          error: `Generated PDF appears invalid. PDF size too large: ${(pdfData.byteLength / 1024 / 1024).toFixed(2)} MB`,
+          debugInfo: debugMode ? debugInfo : undefined
+        }),
+        { headers, status: 500 }
+      );
+    }
+    
+    // Check PDF signature
     const pdfSignature = new TextDecoder().decode(pdfData.slice(0, 5));
     if (pdfSignature !== '%PDF-') {
       executionStages.validate_pdf.end = Date.now();
@@ -500,22 +530,6 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           error: `Generated data is not a valid PDF file`,
-          debugInfo: debugMode ? debugInfo : undefined
-        }),
-        { headers, status: 500 }
-      );
-    }
-    
-    // Check if PDF size is too large (over 5MB)
-    if (pdfData.byteLength > 5000000) {
-      executionStages.validate_pdf.end = Date.now();
-      executionStages.validate_pdf.success = false;
-      executionStages.validate_pdf.error = `PDF too large: ${pdfData.byteLength} bytes`;
-      
-      log.error('Generated PDF is suspiciously large:', pdfData.byteLength, 'bytes. This may indicate data corruption.');
-      return new Response(
-        JSON.stringify({ 
-          error: `Generated PDF appears invalid. PDF size too large: ${(pdfData.byteLength / 1024 / 1024).toFixed(2)} MB`,
           debugInfo: debugMode ? debugInfo : undefined
         }),
         { headers, status: 500 }
@@ -535,15 +549,36 @@ serve(async (req) => {
     
     executionStages.upload_pdf = { start: Date.now() };
 
-    // FIXED: This is the critical part to fix - ensuring we only upload PDF data with correct content type
-    // We explicitly force the contentType to application/pdf only and ensure we're passing binary data
+    // Validate PDF data before upload
+    log.debug('PDF data before upload:', {
+      type: pdfData.constructor.name,
+      size: pdfData.byteLength,
+      signature: pdfSignature
+    });
+
+    // Wrap PDF data in a Blob to ensure correct binary handling
+    const pdfBlob = new Blob([pdfData], { type: 'application/pdf' });
+    log.debug('PDF Blob details:', {
+      size: pdfBlob.size,
+      type: pdfBlob.type
+    });
+
+    // Remove existing file to prevent upsert issues
+    try {
+      await supabase.storage.from('invoice-pdfs').remove([filePath]);
+      log.info('Removed existing PDF file if it existed:', filePath);
+    } catch (removeError) {
+      log.warn('Failed to remove existing PDF file:', removeError);
+    }
+
+    // Upload the PDF
     try {
       const { data: uploadData, error: uploadError } = await supabase
         .storage
         .from('invoice-pdfs')
-        .upload(filePath, pdfData, {
-          contentType: 'application/pdf', // STRICTLY application/pdf only
-          upsert: true,
+        .upload(filePath, pdfBlob, {
+          contentType: 'application/pdf',
+          upsert: false, // Disable upsert for clean upload
         });
 
       if (uploadError) {
@@ -580,6 +615,75 @@ serve(async (req) => {
       );
     }
 
+    // Verify stored file metadata
+    executionStages.verify_storage = { start: Date.now() };
+    try {
+      const { data: fileInfo, error: listError } = await supabase
+        .storage
+        .from('invoice-pdfs')
+        .list('invoices', {
+          limit: 100,
+          offset: 0,
+          sortBy: { column: 'name', order: 'asc' },
+          search: invoiceId
+        });
+
+      if (listError) {
+        executionStages.verify_storage.end = Date.now();
+        executionStages.verify_storage.success = false;
+        executionStages.verify_storage.error = listError.message;
+        log.error('Error listing storage files:', listError);
+        debugInfo.storageWarnings = [...(debugInfo.storageWarnings || []), `Storage list error: ${listError.message}`];
+      } else if (fileInfo && fileInfo.length > 0) {
+        executionStages.verify_storage.end = Date.now();
+        executionStages.verify_storage.success = true;
+        
+        const fileDetails = fileInfo[0];
+        log.debug('PDF file storage details:', {
+          name: fileDetails.name,
+          size: fileDetails.metadata?.size,
+          contentType: fileDetails.metadata?.mimetype,
+          created: fileDetails.created_at
+        });
+        
+        // Validate content type
+        if (fileDetails.metadata?.mimetype !== 'application/pdf') {
+          log.error('Stored file has incorrect MIME type:', fileDetails.metadata?.mimetype);
+          debugInfo.storageWarnings = [...(debugInfo.storageWarnings || []), 
+            `File has incorrect MIME type: ${fileDetails.metadata?.mimetype}`];
+        }
+        
+        // Validate file size
+        const storedSize = fileDetails.metadata?.size;
+        if (storedSize && (storedSize > pdfData.byteLength * 1.1 || storedSize < pdfData.byteLength * 0.9)) {
+          log.error('Stored file size differs significantly from generated PDF:', {
+            generatedSize: pdfData.byteLength,
+            storedSize: storedSize
+          });
+          debugInfo.storageWarnings = [...(debugInfo.storageWarnings || []), 
+            `File size mismatch: generated=${pdfData.byteLength}, stored=${storedSize}`];
+        }
+        
+        debugInfo.storageInfo = {
+          fileName: fileDetails.name,
+          fileSize: fileDetails.metadata?.size,
+          contentType: fileDetails.metadata?.mimetype,
+          created: fileDetails.created_at
+        };
+      } else {
+        executionStages.verify_storage.end = Date.now();
+        executionStages.verify_storage.success = false;
+        executionStages.verify_storage.error = 'File not found after upload';
+        log.error('No files found in storage after upload');
+        debugInfo.storageWarnings = [...(debugInfo.storageWarnings || []), 'File not found after upload'];
+      }
+    } catch (e) {
+      executionStages.verify_storage.end = Date.now();
+      executionStages.verify_storage.success = false;
+      executionStages.verify_storage.error = e instanceof Error ? e.message : 'Unknown error';
+      log.error('Error checking storage file:', e);
+    }
+
     // Get public URL
     executionStages.get_url = { start: Date.now() };
     
@@ -611,11 +715,10 @@ serve(async (req) => {
     log.info('Generated public URL for PDF:', pdfUrl);
     debugInfo.pdfUrl = pdfUrl;
 
-    // Before updating the invoice with PDF URL, verify the uploaded file
+    // Verify the uploaded file
     executionStages.verify_upload = { start: Date.now() };
 
     try {
-      // Verify the uploaded PDF is actually a PDF by checking headers
       const verifyResponse = await fetch(pdfUrl, { 
         method: 'HEAD',
         headers: {
@@ -633,7 +736,6 @@ serve(async (req) => {
         contentLength
       });
 
-      // If verification failed, log warning but continue (will be reported in debugInfo)
       if (!verifyResponse.ok || !contentType?.includes('pdf')) {
         log.warn('Uploaded PDF verification failed:', {
           status: verifyResponse.status,
@@ -648,12 +750,11 @@ serve(async (req) => {
       } else {
         log.info('Uploaded PDF verified successfully');
         
-        // Additional check: compare file size with what we generated
         const uploadedSize = parseInt(contentLength || '0');
         const sizeDifference = Math.abs(uploadedSize - pdfData.byteLength);
         const percentDifference = (sizeDifference / pdfData.byteLength) * 100;
         
-        if (percentDifference > 5) { // Allow 5% difference
+        if (percentDifference > 5) {
           log.warn('Uploaded PDF size differs significantly from generated PDF:', {
             generated: pdfData.byteLength,
             uploaded: uploadedSize,
@@ -691,87 +792,13 @@ serve(async (req) => {
       
       log.error('Error updating invoice with PDF URL:', updateError);
       debugInfo.warnings = [...(debugInfo.warnings || []), 'Failed to update invoice record with PDF URL'];
-      // Continue anyway since we have the PDF URL
     } else {
       executionStages.update_invoice.end = Date.now();
       executionStages.update_invoice.success = true;
       log.info('Invoice updated with PDF URL');
     }
 
-    // Check if the file exists and has proper size in storage
-    executionStages.verify_storage = { start: Date.now() };
-    
-    try {
-      const { data: fileInfo, error: listError } = await supabase
-        .storage
-        .from('invoice-pdfs')
-        .list('invoices', {
-          limit: 100,
-          offset: 0,
-          sortBy: { column: 'name', order: 'asc' },
-          search: invoiceId
-        });
-
-      if (listError) {
-        executionStages.verify_storage.end = Date.now();
-        executionStages.verify_storage.success = false;
-        executionStages.verify_storage.error = listError.message;
-        log.error('Error listing storage files:', listError);
-      } else {
-        executionStages.verify_storage.end = Date.now();
-        executionStages.verify_storage.success = true;
-        
-        // Add new detailed logging about file storage information
-        if (fileInfo && fileInfo.length > 0) {
-          const fileDetails = fileInfo[0];
-          log.debug('PDF file storage details:', {
-            name: fileDetails.name,
-            size: fileDetails.metadata?.size,
-            contentType: fileDetails.metadata?.mimetype,
-            created: fileDetails.created_at
-          });
-          
-          // Additional validation of the stored file
-          if (fileDetails.metadata?.mimetype !== 'application/pdf') {
-            log.error('Stored file has incorrect MIME type:', fileDetails.metadata?.mimetype);
-            debugInfo.storageWarnings = [...(debugInfo.storageWarnings || []), 
-              `File has incorrect MIME type: ${fileDetails.metadata?.mimetype}`];
-          }
-          
-          // Check file size
-          const storedSize = fileDetails.metadata?.size;
-          if (storedSize && (storedSize > pdfData.byteLength * 1.1 || storedSize < pdfData.byteLength * 0.9)) {
-            log.error('Stored file size differs significantly from generated PDF:', {
-              generatedSize: pdfData.byteLength,
-              storedSize: storedSize
-            });
-            debugInfo.storageWarnings = [...(debugInfo.storageWarnings || []), 
-              `File size mismatch: generated=${pdfData.byteLength}, stored=${storedSize}`];
-          }
-          
-          debugInfo.storageInfo = {
-            fileName: fileDetails.name,
-            fileSize: fileDetails.metadata?.size,
-            contentType: fileDetails.metadata?.mimetype,
-            created: fileDetails.created_at
-          };
-        } else {
-          log.warn('No files found in storage after upload');
-          debugInfo.storageWarnings = [...(debugInfo.storageWarnings || []), 'File not found after upload'];
-        }
-      }
-    } catch (e) {
-      executionStages.verify_storage.end = Date.now();
-      executionStages.verify_storage.success = false;
-      executionStages.verify_storage.error = e instanceof Error ? e.message : 'Unknown error';
-      log.error('Error checking storage file:', e);
-    }
-    
-    // Add request completion info
-    executionStages.request_complete = { start: Date.now(), end: Date.now(), success: true };
-    debugInfo.executionTime = executionStages.request_complete.start - executionStages.request_start.start;
-    
-    // Perform a final verification step to ensure the PDF is accessible
+    // Final verification
     executionStages.final_verification = { start: Date.now() };
     
     try {
@@ -803,7 +830,10 @@ serve(async (req) => {
       log.error('Error in final verification:', e);
     }
 
-    // Return the PDF URL to the client
+    // Add request completion info
+    executionStages.request_complete = { start: Date.now(), end: Date.now(), success: true };
+    debugInfo.executionTime = executionStages.request_complete.start - executionStages.request_start.start;
+
     return new Response(
       JSON.stringify({ 
         pdfUrl,
@@ -857,7 +887,7 @@ function addWrappedText(doc: any, text: string, x: number, y: number, maxWidth: 
     if (y + lineHeight > pageHeight - margin) {
       doc.addPage();
       y = margin;
-      console.log('Added new page in addWrappedText, new y position:', y);
+      log.debug('Added new page in addWrappedText, new y position:', y);
     }
     doc.text(lines[i], x, y);
     y += lineHeight;
@@ -875,9 +905,24 @@ async function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
+async function fetchLogoWithRetry(url: string, retries = 2): Promise<Blob> {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      return await response.blob();
+    } catch (e) {
+      if (i === retries - 1) throw e;
+      log.warn(`Retrying logo fetch (${i + 1}/${retries})`, e);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+  }
+  throw new Error('Failed to fetch logo');
+}
+
 async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
-  console.log('Generating PDF for invoice:', invoiceData.number);
-  console.log('Invoice data overview:', {
+  log.info('Generating PDF for invoice:', invoiceData.number);
+  log.debug('Invoice data overview:', {
     hasClient: !!invoiceData.client,
     hasCompany: !!invoiceData.company,
     hasJob: !!invoiceData.job,
@@ -912,63 +957,54 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
     // Add page footer helper function
     const addPageFooter = () => {
       const totalPages = doc.getNumberOfPages();
-      console.log('Adding footer to', totalPages, 'pages');
+      log.debug('Adding footer to', totalPages, 'pages');
       for (let i = 1; i <= totalPages; i++) {
         doc.setPage(i);
         doc.setFontSize(8);
         doc.setTextColor(100, 100, 100);
         const generatedText = `Generated on ${new Date().toLocaleDateString()}`;
         const statusText = `${invoiceData.status === 'accepted' ? 'Invoice accepted' : 'Invoice not accepted'} | ${invoiceData.contractStatus === 'accepted' ? 'Contract terms accepted' : 'Contract terms not accepted'}`;
-        console.log(`Footer for page ${i}:`, { generatedText, statusText });
+        log.debug(`Footer for page ${i}:`, { generatedText, statusText });
         doc.text(generatedText, margin, pageHeight - 10);
         doc.text(statusText, pageWidth - margin, pageHeight - 10, { align: 'right' });
       }
     };
 
-    // ===== Updated Header Layout =====
-    // Left side - Logo
-    const rightColumnX = pageWidth * 0.55; // Move the right column start point
+    // Header Layout
+    const rightColumnX = pageWidth * 0.55;
     let rightColumnY = y;
     let leftColumnY = y;
 
     // Logo positioning
     if (invoiceData.company.logoUrl) {
-      console.log('Attempting to add logo from URL:', invoiceData.company.logoUrl);
+      log.debug('Attempting to add logo from URL:', invoiceData.company.logoUrl);
       try {
-        const response = await fetch(invoiceData.company.logoUrl);
-        if (!response.ok) {
-          console.error(`Failed to fetch logo: Status ${response.status} ${response.statusText}`);
-          throw new Error(`Failed to fetch logo: ${response.statusText}`);
-        }
-      
-        const blob = await response.blob();
-        console.log('Logo blob fetched successfully, size:', blob.size, 'bytes, type:', blob.type);
+        const blob = await fetchLogoWithRetry(invoiceData.company.logoUrl);
+        log.debug('Logo blob fetched successfully, size:', blob.size, 'bytes, type:', blob.type);
         
         const logo = await blobToBase64(blob);
-        console.log('Logo converted to base64 successfully, length:', logo.length);
+        log.debug('Logo converted to base64 successfully, length:', logo.length);
       
         const maxLogoHeight = 40;
-        // Updated to match jsPDF v3.x API
         try {
           const imgProps = doc.getImageProperties(logo);
-          console.log('Logo image properties:', imgProps);
+          log.debug('Logo image properties:', imgProps);
         
           const aspectRatio = imgProps.width / imgProps.height;
           const logoHeight = Math.min(maxLogoHeight, imgProps.height);
           const logoWidth = logoHeight * aspectRatio;
         
-          // Adjust logo X position to move more to the left
           const logoX = margin + (rightColumnX - margin - logoWidth) / 4;
       
           doc.addImage(logo, 'PNG', logoX, y, logoWidth, logoHeight);
-          console.log('Logo added to PDF successfully');
-          leftColumnY += logoHeight + 10; // Update left column position after logo
+          log.debug('Logo added to PDF successfully');
+          leftColumnY += logoHeight + 10;
         } catch (logoImgError) {
-          console.error('Error adding logo image to PDF:', logoImgError);
+          log.error('Error adding logo image to PDF:', logoImgError);
           throw logoImgError;
         }
       } catch (logoError) {
-        console.error('Error adding logo:', logoError);
+        log.error('Error fetching logo:', logoError);
         doc.setFontSize(24);
         doc.setFont('helvetica', 'bold');
         doc.text(invoiceData.company.name.toUpperCase(), margin, leftColumnY + 15);
@@ -981,14 +1017,13 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       leftColumnY += 20;
     }
 
-    // Company details now below the logo on the left
+    // Company details below logo
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(100, 100, 100);
     doc.text('FROM', margin, leftColumnY);
     leftColumnY += 7;
 
-    // Company details
     doc.setFontSize(14);
     doc.setTextColor(0, 0, 0);
     doc.text(invoiceData.company.name, margin, leftColumnY);
@@ -1014,15 +1049,13 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       leftColumnY += 10;
     }
 
-    // Right side - Client Information
-    // "INVOICE FOR" section
+    // Client Information
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(100, 100, 100);
     doc.text('INVOICE FOR', rightColumnX, rightColumnY);
     rightColumnY += 7;
 
-    // Job title if available
     if (invoiceData.job && invoiceData.job.title) {
       doc.setFontSize(14);
       doc.setTextColor(0, 0, 0);
@@ -1030,7 +1063,6 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       rightColumnY += 7;
     }
 
-    // Client information
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.text(`Client: ${invoiceData.client.name}`, rightColumnX, rightColumnY);
@@ -1046,7 +1078,6 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       rightColumnY += 6;
     }
 
-    // Job date if available
     if (invoiceData.job && invoiceData.job.date) {
       rightColumnY += 4;
       doc.setFontSize(12);
@@ -1061,16 +1092,12 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       doc.text(invoiceData.job.date, rightColumnX, rightColumnY);
     }
 
-    // Move y position to the max of the header sections
     y = Math.max(leftColumnY + 10, rightColumnY + 10);
   
-    // Add separator line
+    // Separator line
     doc.setDrawColor(220, 220, 220);
     doc.line(margin, y, pageWidth - margin, y);
     y += 10;
-    
-    // Continue with rest of the PDF (invoice details, items, payment schedule, etc.)
-    // ===== End of Updated Header Layout =====
 
     // Invoice Number and Details
     doc.setFontSize(14);
@@ -1105,8 +1132,9 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
     
     y = (doc as any).lastAutoTable.finalY + 10;
     
+    // Invoice Items
     if (invoiceData.items && invoiceData.items.length > 0) {
-      console.log('Rendering INVOICE ITEMS section');
+      log.debug('Rendering INVOICE ITEMS section');
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
       doc.text('INVOICE ITEMS', margin, y);
@@ -1129,7 +1157,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
           rate: `$${item.rate.toFixed(2)}`,
           amount: `$${item.amount.toFixed(2)}`
         };
-        console.log('Invoice item row:', row);
+        log.debug('Invoice item row:', row);
         return row;
       });
       
@@ -1167,29 +1195,30 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
         },
         didDrawPage: (data: any) => {
           y = data.cursor.y + 5;
-          console.log('Invoice items table drawn, new y position:', y);
+          log.debug('Invoice items table drawn, new y position:', y);
         }
       });
       
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
-      console.log('Total amount:', invoiceData.amount);
+      log.debug('Total amount:', invoiceData.amount);
       doc.text('TOTAL:', pageWidth - margin - 35, y);
       doc.text(`$${invoiceData.amount.toFixed(2)}`, pageWidth - margin, y, { align: 'right' });
       
       y += 15;
     } else {
-      console.log('No invoice items to render');
+      log.debug('No invoice items to render');
     }
     
+    // Payment Schedule
     if (invoiceData.paymentSchedules && invoiceData.paymentSchedules.length > 0) {
       if (y > pageHeight - 80) {
         doc.addPage();
         y = margin;
-        console.log('Added new page for payment schedule, new y position:', y);
+        log.debug('Added new page for payment schedule, new y position:', y);
       }
       
-      console.log('Rendering PAYMENT SCHEDULE section');
+      log.debug('Rendering PAYMENT SCHEDULE section');
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
       doc.text('PAYMENT SCHEDULE', margin, y);
@@ -1214,7 +1243,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
           amount: `$${schedule.amount.toFixed(2)}`,
           status: schedule.status.toUpperCase()
         };
-        console.log('Payment schedule row:', row);
+        log.debug('Payment schedule row:', row);
         return row;
       });
       
@@ -1252,21 +1281,22 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
         },
         didDrawPage: (data: any) => {
           y = data.cursor.y + 10;
-          console.log('Payment schedule table drawn, new y position:', y);
+          log.debug('Payment schedule table drawn, new y position:', y);
         }
       });
     } else {
-      console.log('No payment schedules to render');
+      log.debug('No payment schedules to render');
     }
     
+    // Notes
     if (invoiceData.notes) {
       if (y > pageHeight - 70) {
         doc.addPage();
         y = margin;
-        console.log('Added new page for notes, new y position:', y);
+        log.debug('Added new page for notes, new y position:', y);
       }
       
-      console.log('Rendering NOTES section');
+      log.debug('Rendering NOTES section');
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
       doc.text('NOTES', margin, y);
@@ -1275,21 +1305,27 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
-      console.log('Notes content:', invoiceData.notes);
+      log.debug('Notes content:', invoiceData.notes);
       
       const notesY = addWrappedText(doc, invoiceData.notes, margin, y, contentWidth, 5, pageHeight, margin);
       y = notesY + 15;
-      console.log('Notes section drawn, new y position:', y);
+      log.debug('Notes section drawn, new y position:', y);
     } else {
-      console.log('No notes to render');
+      log.debug('No notes to render');
     }
     
+    // Contract Terms
     if (invoiceData.contractTerms) {
-      console.log('Rendering CONTRACT TERMS section');
-      
+      // Truncate long contract terms to prevent PDF bloat
+      if (invoiceData.contractTerms.length > 10000) {
+        log.warn('Contract terms are very long:', invoiceData.contractTerms.length);
+        invoiceData.contractTerms = invoiceData.contractTerms.substring(0, 10000) + '... [Truncated]';
+      }
+
+      log.debug('Rendering CONTRACT TERMS section');
       doc.addPage();
       y = margin;
-      console.log('Added new page for contract terms, new y position:', y);
+      log.debug('Added new page for contract terms, new y position:', y);
       
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
@@ -1299,18 +1335,18 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       
       const paragraphs = invoiceData.contractTerms.split('\n\n');
       doc.setFontSize(9);
-      console.log('Contract terms paragraphs:', paragraphs);
+      log.debug('Contract terms paragraphs:', paragraphs);
       
       paragraphs.forEach((paragraph, index) => {
         if (y > pageHeight - 30) {
           doc.addPage();
           y = margin;
-          console.log(`Added new page for contract terms paragraph ${index + 1}, new y position:`, y);
+          log.debug(`Added new page for contract terms paragraph ${index + 1}, new y position:`, y);
         }
         
         const trimmedParagraph = paragraph.trim();
         const isHeading = trimmedParagraph.length < 50 && trimmedParagraph.toUpperCase() === trimmedParagraph;
-        console.log(`Paragraph ${index + 1}:`, {
+        log.debug(`Paragraph ${index + 1}:`, {
           text: trimmedParagraph.substring(0, 50),
           isHeading,
           yPosition: y,
@@ -1328,26 +1364,26 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       });
     }
     
-    // Add footers to all pages
+    // Add footers
     addPageFooter();
     
-    console.log('PDF generation completed');
+    log.info('PDF generation completed');
     
-    // FIXED: Use the correct jsPDF 3.x API for output
+    // Generate PDF array buffer
     const pdfArrayBuffer = doc.output('arraybuffer');
-    console.log('PDF array buffer generated, size:', pdfArrayBuffer.byteLength, 'bytes');
+    log.debug('PDF array buffer generated, size:', pdfArrayBuffer.byteLength, 'bytes');
     
-    // Check PDF signature
+    // Validate PDF signature
     const pdfView = new Uint8Array(pdfArrayBuffer);
     const pdfSignature = new TextDecoder().decode(pdfView.slice(0, 5));
     if (pdfSignature !== '%PDF-') {
-      console.error('Generated PDF has invalid signature:', pdfSignature);
+      log.error('Generated PDF has invalid signature:', pdfSignature);
       throw new Error('Invalid PDF generated - missing PDF signature');
     }
     
     return pdfView;
   } catch (err) {
-    console.error('Error generating PDF:', err);
+    log.error('Error generating PDF:', err);
     throw new Error('Failed to generate PDF: ' + (err as Error).message);
   }
 }

@@ -76,17 +76,25 @@ const InvoiceView = () => {
         
         console.log('[InvoiceView] Fetching invoice with identifier:', identifier);
         
+        // First check if it's a UUID
         const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
         
-        if (isUUID) {
-          console.log('[InvoiceView] Identifier looks like a UUID, using getInvoice');
-          fetchedInvoice = await getInvoice(identifier);
-        } else {
-          console.log('[InvoiceView] Identifier does not look like a UUID, using getInvoiceByViewLink');
-          fetchedInvoice = await getInvoiceByViewLink(identifier);
+        try {
+          if (isUUID) {
+            console.log('[InvoiceView] Identifier looks like a UUID, using getInvoice');
+            fetchedInvoice = await getInvoice(identifier);
+          } else {
+            console.log('[InvoiceView] Identifier does not look like a UUID, using getInvoiceByViewLink');
+            fetchedInvoice = await getInvoiceByViewLink(identifier);
+          }
+        } catch (err) {
+          console.error('[InvoiceView] Error in primary fetch attempt:', err);
         }
         
+        // If first attempt failed, try alternative methods
         if (!fetchedInvoice) {
+          console.log('[InvoiceView] Primary fetch failed, trying alternative methods');
+          
           const urlPath = location.pathname;
           const lastPartOfUrl = urlPath.split('/').pop() || '';
           
@@ -95,10 +103,85 @@ const InvoiceView = () => {
             
             const isLastPartUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(lastPartOfUrl);
             
-            if (isLastPartUUID) {
-              fetchedInvoice = await getInvoice(lastPartOfUrl);
-            } else {
-              fetchedInvoice = await getInvoiceByViewLink(lastPartOfUrl);
+            try {
+              if (isLastPartUUID) {
+                fetchedInvoice = await getInvoice(lastPartOfUrl);
+              } else {
+                fetchedInvoice = await getInvoiceByViewLink(lastPartOfUrl);
+              }
+            } catch (innerErr) {
+              console.error('[InvoiceView] Error in alternative fetch attempt:', innerErr);
+            }
+          }
+
+          // If still no success, try direct database query as last resort
+          if (!fetchedInvoice && isUUID) {
+            console.log('[InvoiceView] Trying direct database query as last resort');
+            try {
+              const { data, error: dbError } = await supabase
+                .from('invoices')
+                .select('*')
+                .eq('id', identifier)
+                .single();
+                
+              if (data && !dbError) {
+                console.log('[InvoiceView] Direct DB query successful, transforming to Invoice object');
+                // Transform the raw data into an Invoice object
+                fetchedInvoice = {
+                  id: data.id,
+                  number: data.number,
+                  clientId: data.client_id,
+                  companyId: data.company_id,
+                  date: data.date,
+                  dueDate: data.due_date,
+                  amount: data.amount,
+                  status: data.status,
+                  notes: data.notes,
+                  contractTerms: data.contract_terms,
+                  contractStatus: data.contract_status,
+                  viewLink: data.view_link,
+                  jobId: data.job_id,
+                  invoice_accepted_by: data.invoice_accepted_by,
+                  contract_accepted_at: data.contract_accepted_at
+                } as Invoice;
+                
+                // Fetch invoice items
+                const { data: items } = await supabase
+                  .from('invoice_items')
+                  .select('*')
+                  .eq('invoice_id', data.id);
+                  
+                if (items) {
+                  fetchedInvoice.items = items.map(item => ({
+                    id: item.id,
+                    name: item.name,
+                    description: item.description,
+                    quantity: item.quantity,
+                    rate: item.rate,
+                    amount: item.amount
+                  }));
+                }
+                
+                // Fetch payment schedules
+                const { data: schedules } = await supabase
+                  .from('payment_schedules')
+                  .select('*')
+                  .eq('invoice_id', data.id);
+                  
+                if (schedules) {
+                  fetchedInvoice.paymentSchedules = schedules.map(schedule => ({
+                    id: schedule.id,
+                    invoiceId: schedule.invoice_id,
+                    percentage: schedule.percentage,
+                    dueDate: schedule.due_date,
+                    status: schedule.status,
+                    paymentDate: schedule.payment_date,
+                    description: schedule.description
+                  }));
+                }
+              }
+            } catch (dbErr) {
+              console.error('[InvoiceView] Error in direct DB query:', dbErr);
             }
           }
         }
@@ -176,20 +259,30 @@ const InvoiceView = () => {
         setInvoice(fetchedInvoice);
         
         if (fetchedInvoice.clientId) {
-          const fetchedClient = await getClient(fetchedInvoice.clientId);
-          if (!fetchedClient) {
-            console.log('[InvoiceView] No client found for clientId:', fetchedInvoice.clientId);
-            setError('Client information not found.');
-            return;
+          try {
+            const fetchedClient = await getClient(fetchedInvoice.clientId);
+            if (!fetchedClient) {
+              console.log('[InvoiceView] No client found for clientId:', fetchedInvoice.clientId);
+              setError('Client information not found.');
+              return;
+            }
+            
+            setClient(fetchedClient);
+          } catch (clientErr) {
+            console.error('[InvoiceView] Error fetching client:', clientErr);
+            // Continue even if client fetch fails
           }
-          
-          setClient(fetchedClient);
         }
 
         if (fetchedInvoice.jobId) {
-          const fetchedJob = await getJob(fetchedInvoice.jobId);
-          if (fetchedJob) {
-            setJob(fetchedJob);
+          try {
+            const fetchedJob = await getJob(fetchedInvoice.jobId);
+            if (fetchedJob) {
+              setJob(fetchedJob);
+            }
+          } catch (jobErr) {
+            console.error('[InvoiceView] Error fetching job:', jobErr);
+            // Continue even if job fetch fails
           }
         }
         
@@ -506,8 +599,11 @@ const InvoiceView = () => {
   if (error) {
     return (
       <PageTransition>
-        <div className="flex justify-center items-center h-screen">
-          Error: {error}
+        <div className="flex flex-col justify-center items-center h-screen">
+          <div className="text-red-500 text-xl mb-4">{error}</div>
+          <Button onClick={() => window.location.href = "/invoices"}>
+            Go to Invoices
+          </Button>
         </div>
       </PageTransition>
     );
@@ -586,9 +682,9 @@ const InvoiceView = () => {
                     size="sm" 
                     onClick={() => {
                       if (invoice.jobId) {
-                        window.location.href = `/job/${invoice.jobId}/invoice/${invoice.id}/edit`;
+                        window.location.href = `/job/${invoice.jobId}/invoice/edit/${invoice.id}`;
                       } else {
-                        window.location.href = `/client/${client.id}/invoice/${invoice.id}/edit`;
+                        window.location.href = `/invoice/${invoice.id}/edit`;
                       }
                     }}
                     className="flex items-center gap-1"
@@ -741,168 +837,4 @@ const InvoiceView = () => {
                       
                       {invoice.items && invoice.items.length > 0 ? (
                         invoice.items.map((item) => (
-                          <div key={item.id} className="mb-4 pb-4 border-b last:mb-0 last:pb-0 last:border-b-0">
-                            <div className="md:flex md-justify-between md:items-start">
-                              <div className="md:flex-1">
-                                <h5 className="font-medium">{item.name || 'Unnamed Package'}</h5>
-                              </div>
-                              <div className="md:flex-1 md:pr-4">
-                                {item.description && (
-                                  <div className="mt-2 text-sm" dangerouslySetInnerHTML={{ __html: item.description }} />
-                                )}
-                              </div>
-                              <div className="mt-2 md:mt-0 flex flex-col md:flex-row md:items-center md:space-x-6 md:min-w-[260px] md:justify-end">
-                                <div className="text-sm text-muted-foreground md:text-right w-16">
-                                  <span className="md:hidden">Quantity: </span>
-                                  <span>{item.quantity}</span>
-                                </div>
-                                <div className="text-sm text-muted-foreground md:text-right w-24">
-                                  <span className="md:hidden">Unit Price: </span>
-                                  <span>{formatCurrency(item.rate)}</span>
-                                </div>
-                                <div className="font-medium md:text-right w-24">
-                                  <span className="md:hidden">Total: </span>
-                                  <span>{formatCurrency(item.amount)}</span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-muted-foreground">No items in this invoice.</p>
-                      )}
-                      
-                      <div className="mt-4 pt-4 border-t">
-                        <div className="flex justify-between font-medium">
-                          <span>Total</span>
-                          <span>{formatCurrency(invoice.amount)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h4 className="text-lg font-semibold mb-2">Notes</h4>
-                    <div className="border rounded-md">
-                      <RichTextEditor
-                        value={invoice.notes || 'No notes provided.'}
-                        onChange={() => {}}
-                        readOnly={true}
-                      />
-                    </div>
-                  </div>
-                  
-                  <Separator className="my-6" />
-                  
-                  <div className="mt-6">
-                    <div className="flex items-center mb-3">
-                      <CalendarDays className="h-5 w-5 mr-2" />
-                      <h4 className="text-lg font-semibold">Payment Schedule</h4>
-                    </div>
-                    
-                    {Array.isArray(invoice.paymentSchedules) && invoice.paymentSchedules.length > 0 ? (
-                      <PaymentScheduleTable
-                        paymentSchedules={invoice.paymentSchedules}
-                        amount={invoice.amount}
-                        isClientView={isClientView}
-                        isEditView={isEditView}
-                        updatingPaymentId={updatingPaymentId}
-                        onUpdateStatus={handlePaymentStatusUpdate}
-                        formatCurrency={formatCurrency}
-                        onUpdatePaymentDate={handlePaymentDateUpdate}
-                      />
-                    ) : (
-                      <div className="text-muted-foreground border rounded-md p-4 bg-gray-50 dark:bg-gray-900/50">
-                        Full payment of {formatCurrency(invoice.amount)} due on {new Date(invoice.dueDate).toLocaleDateString()}
-                      </div>
-                    )}
-                  </div>
-                </TabsContent>
-                
-                <TabsContent value="contract" className="mt-6">
-                  {isClientView && invoice.contractStatus !== 'accepted' && (
-                    <ContractAcceptance
-                      companyName={displayCompany?.name || 'Company'}
-                      onAccept={handleAcceptContract}
-                    />
-                  )}
-                    
-                  {invoice.contractStatus === 'accepted' && (
-                    <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-md flex items-center gap-2">
-                      <FileCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
-                      <div className="text-green-800 dark:text-green-400">
-                        <p>This contract has been accepted</p>
-                        {invoice.invoice_accepted_by ? (
-                          <div>
-                            <p className="text-sm mt-1">Accepted by: {invoice.invoice_accepted_by}</p>
-                            {invoice.contract_accepted_at && (
-                              <p className="text-sm mt-1">
-                                Accepted at: {new Date(invoice.contract_accepted_at).toLocaleString()}
-                              </p>
-                            )}
-                          </div>
-                        ) : null}
-                      </div>
-                    </div>
-                  )}
-                  
-                  <div className="flex items-center mb-3">
-                    <FileText className="h-5 w-5 mr-2" />
-                    <h4 className="text-lg font-semibold">Contract Terms</h4>
-                  </div>
-                  <div className="border rounded-md">
-                    {invoice.contractTerms ? (
-                      <RichTextEditor
-                        value={invoice.contractTerms}
-                        onChange={() => {}}
-                        readOnly={true}
-                      />
-                    ) : (
-                      <div className="p-4 text-muted-foreground">
-                        No contract terms provided.
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="hidden">
-                    DEBUG: invoice_accepted_by = {invoice?.invoice_accepted_by || 'null'}, 
-                    type: {invoice?.invoice_accepted_by ? typeof invoice.invoice_accepted_by : 'null'}, 
-                    contract_accepted_at: {invoice?.contract_accepted_at || 'null'}
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-            
-            <CardFooter className="justify-end gap-2 flex-wrap pt-4 border-t">
-              <Button
-                variant="outline"
-                onClick={handleCopyInvoiceLink}
-              >
-                <LinkIcon className="h-4 w-4 mr-2" />
-                Copy Invoice Link
-              </Button>
-              <Button
-                variant="default"
-                onClick={handleDownloadInvoice}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Download Invoice
-              </Button>
-              {!isClientView && isAdmin && (
-                <Button
-                  variant="outline"
-                  onClick={handleDebugPdf}
-                >
-                  <Bug className="h-4 w-4 mr-2" />
-                  Debug PDF
-                </Button>
-              )}
-            </CardFooter>
-          </Card>
-        </div>
-      </PageTransition>
-    </>
-  );
-};
-
-export default InvoiceView;
+                          <div key={item.id} className="mb-

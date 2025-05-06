@@ -32,6 +32,10 @@ import EmailVerification from '@/pages/EmailVerification';
 import JobCreate from '@/pages/JobCreate';
 import JobDetail from '@/pages/JobDetail';
 import JobEdit from '@/pages/JobEdit';
+import Admin from '@/pages/Admin';
+import Debug from '@/pages/Debug';
+import AdminLayout from '@/components/AdminLayout';
+import CalendarTest from '@/pages/CalendarTest';
 
 const AppRoutes = () => {
   const { user } = useAuth();
@@ -62,6 +66,17 @@ const AppRoutes = () => {
           <SubscriptionCancel />
         </ProtectedRoute>
       } />
+      
+      {/* Admin routes */}
+      <Route path="/admin" element={
+        <ProtectedRoute adminOnly={true}>
+          <AdminLayout />
+        </ProtectedRoute>
+      }>
+        <Route index element={<Admin />} />
+        <Route path="/admin/debug" element={<Debug />} />
+        <Route path="/admin/calendar-test" element={<CalendarTest />} />
+      </Route>
       
       {/* All authenticated app pages with AppLayout */}
       <Route path="/" element={

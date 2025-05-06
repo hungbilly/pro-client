@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Users, Briefcase, Settings, CreditCard, LogOut, Building, Menu, User, UserCog, FileText } from 'lucide-react';
+import { Home, Users, Briefcase, Settings, CreditCard, LogOut, Building, Menu, User, UserCog, FileText, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
 import { useCompany } from './CompanySelector';
@@ -17,6 +18,7 @@ interface MenuItem {
   label: string;
   icon: React.ReactNode;
   disabled?: boolean;
+  adminOnly?: boolean;
 }
 
 const TopNavbar = () => {
@@ -27,7 +29,8 @@ const TopNavbar = () => {
   } = useCompany();
   const {
     signOut,
-    user
+    user,
+    isAdmin
   } = useAuth();
   const isMobile = useIsMobile();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -90,11 +93,21 @@ const TopNavbar = () => {
       path: '/settings',
       label: 'Settings',
       icon: <Settings className="w-5 h-5" />
+    },
+    {
+      path: '/admin',
+      label: 'Admin',
+      icon: <Shield className="w-5 h-5" />,
+      adminOnly: true
     }
   ];
 
+  const filterMenuItems = (items: MenuItem[]) => {
+    return items.filter(item => !item.adminOnly || (item.adminOnly && isAdmin));
+  };
+
   const renderMenuItems = () => {
-    return menuItems.map(item => <Button key={item.path} variant="ghost" size="sm" asChild={!item.disabled} disabled={item.disabled} className={cn("flex items-center gap-2 px-4 py-2 text-sm rounded-md transition-colors w-full justify-start", isActive(item.path) ? "bg-slate-800 text-white" : "text-slate-300 hover:text-white hover:bg-slate-800", item.disabled && "opacity-50 cursor-not-allowed")}>
+    return filterMenuItems(menuItems).map(item => <Button key={item.path} variant="ghost" size="sm" asChild={!item.disabled} disabled={item.disabled} className={cn("flex items-center gap-2 px-4 py-2 text-sm rounded-md transition-colors w-full justify-start", isActive(item.path) ? "bg-slate-800 text-white" : "text-slate-300 hover:text-white hover:bg-slate-800", item.disabled && "opacity-50 cursor-not-allowed")}>
         {!item.disabled ? <Link to={item.path} className="flex items-center gap-2 w-full" onClick={() => isMobile && setIsDrawerOpen(false)}>
             {item.icon}
             <span>{item.label}</span>
@@ -157,7 +170,7 @@ const TopNavbar = () => {
             </div>
             
             <nav className="hidden md:flex items-center justify-center absolute left-1/2 transform -translate-x-1/2 space-x-1">
-              {menuItems.map(item => <Button key={item.path} variant="ghost" size="sm" asChild={!item.disabled} disabled={item.disabled} className={cn("flex items-center gap-2 px-4 py-2 text-sm rounded-md transition-colors", isActive(item.path) ? "bg-slate-800 text-white" : "text-slate-300 hover:text-white hover:bg-slate-800", item.disabled && "opacity-50 cursor-not-allowed")}>
+              {filterMenuItems(menuItems).map(item => <Button key={item.path} variant="ghost" size="sm" asChild={!item.disabled} disabled={item.disabled} className={cn("flex items-center gap-2 px-4 py-2 text-sm rounded-md transition-colors", isActive(item.path) ? "bg-slate-800 text-white" : "text-slate-300 hover:text-white hover:bg-slate-800", item.disabled && "opacity-50 cursor-not-allowed")}>
                   {!item.disabled ? <Link to={item.path} className="flex items-center gap-2">
                       {item.icon}
                       <span>{item.label}</span>

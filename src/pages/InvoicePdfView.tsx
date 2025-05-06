@@ -1,20 +1,22 @@
-
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { Download } from 'lucide-react';
+import { Download, AlertTriangle, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useParams } from 'react-router-dom';
 import { getInvoiceByViewLink } from '@/lib/storage';
 import { Invoice } from '@/types';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { supabase } from "@/integrations/supabase/client";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const InvoicePdfView = () => {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadAttempts, setDownloadAttempts] = useState(0);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
   const { viewLink } = useParams<{ viewLink: string }>();
 
   useEffect(() => {
@@ -64,18 +66,54 @@ const InvoicePdfView = () => {
     if (!invoice) return;
     
     setIsDownloading(true);
+    setDownloadError(null);
     toast.info('Preparing PDF for download...');
     
     try {
-      // If we already have a PDF URL, use it directly
+      // If we already have a PDF URL, verify it works before using it
       if (invoice.pdfUrl) {
-        // Use a direct window.open to avoid CORS issues
-        window.open(invoice.pdfUrl, '_blank');
-        setIsDownloading(false);
-        return;
+        try {
+          console.log('Attempting to fetch existing PDF from URL:', invoice.pdfUrl);
+          
+          // Check if PDF actually exists and is valid
+          const pdfResponse = await fetch(invoice.pdfUrl, { method: 'HEAD' });
+          
+          console.log('PDF HEAD response status:', pdfResponse.status);
+          console.log('PDF HEAD response headers:', 
+            Array.from(pdfResponse.headers.entries())
+              .map(([key, val]) => `${key}: ${val}`)
+              .join(', ')
+          );
+          
+          if (pdfResponse.ok) {
+            const contentType = pdfResponse.headers.get('content-type');
+            const contentLength = pdfResponse.headers.get('content-length');
+            
+            console.log('PDF content-type:', contentType);
+            console.log('PDF content-length:', contentLength);
+            
+            // If content type is PDF and size is reasonable, use the existing URL
+            if (contentType?.includes('pdf') && parseInt(contentLength || '0') > 1000) {
+              console.log('Using existing valid PDF URL');
+              window.open(invoice.pdfUrl, '_blank');
+              setIsDownloading(false);
+              return;
+            } else {
+              console.warn('Existing PDF appears invalid, regenerating...');
+            }
+          } else {
+            console.warn('Existing PDF URL returned non-OK status, regenerating...');
+          }
+        } catch (e) {
+          console.error('Error verifying existing PDF:', e);
+          // Continue with regeneration
+        }
       }
       
       // Otherwise, generate a new PDF
+      console.log('Generating new PDF via edge function');
+      setDownloadAttempts(prev => prev + 1);
+      
       const response = await supabase.functions.invoke('generate-invoice-pdf', {
         body: { 
           invoiceId: invoice.id,
@@ -90,7 +128,29 @@ const InvoicePdfView = () => {
       }
       
       if (response.data?.pdfUrl) {
+        console.log('Received PDF URL from function:', response.data.pdfUrl);
+        
+        // Verify the generated PDF is accessible
+        try {
+          const pdfVerifyResponse = await fetch(response.data.pdfUrl, { method: 'HEAD' });
+          console.log('Generated PDF verification response:', pdfVerifyResponse.status);
+          
+          if (!pdfVerifyResponse.ok) {
+            throw new Error(`PDF URL returned status ${pdfVerifyResponse.status}`);
+          }
+          
+          const contentType = pdfVerifyResponse.headers.get('content-type');
+          if (!contentType?.includes('pdf')) {
+            throw new Error(`Generated file is not a PDF (${contentType})`);
+          }
+        } catch (verifyErr) {
+          console.error('Error verifying generated PDF:', verifyErr);
+          // Continue anyway to try opening the PDF
+        }
+        
+        // Attempt to open the PDF
         window.open(response.data.pdfUrl, '_blank');
+        
         // Update the invoice object with the new PDF URL
         setInvoice(prev => prev ? { ...prev, pdfUrl: response.data.pdfUrl } : null);
         toast.success('Invoice downloaded successfully');
@@ -99,6 +159,7 @@ const InvoicePdfView = () => {
       }
     } catch (err) {
       console.error('Error downloading invoice:', err);
+      setDownloadError(err instanceof Error ? err.message : 'Unknown error');
       toast.error('Failed to download invoice', {
         description: 'Please try again later or contact support.'
       });
@@ -145,8 +206,11 @@ const InvoicePdfView = () => {
     <PageTransition>
       <div className="container mx-auto px-4 py-8">
         <Card>
-          <CardContent className="p-6">
-            <h1 className="text-2xl font-bold mb-4">Invoice Details</h1>
+          <CardHeader>
+            <CardTitle>Invoice Details</CardTitle>
+          </CardHeader>
+          
+          <CardContent>
             {invoice && (
               <div className="space-y-4">
                 <div>
@@ -161,9 +225,33 @@ const InvoicePdfView = () => {
                 <div>
                   <span className="font-medium">Status:</span> {invoice.status}
                 </div>
+                <div>
+                  <span className="font-medium">PDF URL:</span>{" "}
+                  {invoice.pdfUrl ? (
+                    <span className="text-green-600">Available</span>
+                  ) : (
+                    <span className="text-amber-600">Not yet generated</span>
+                  )}
+                </div>
               </div>
             )}
+            
+            {downloadError && (
+              <Alert variant="destructive" className="mt-4">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Error downloading PDF</AlertTitle>
+                <AlertDescription>
+                  {downloadError}
+                  {downloadAttempts > 0 && (
+                    <div className="mt-2 text-sm">
+                      Attempts: {downloadAttempts}
+                    </div>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
           </CardContent>
+          
           <CardFooter className="border-t p-6 flex justify-end gap-2">
             <Button
               variant="outline"
@@ -193,6 +281,28 @@ const InvoicePdfView = () => {
             </Button>
           </CardFooter>
         </Card>
+        
+        {invoice?.pdfUrl && (
+          <Card className="mt-4">
+            <CardHeader>
+              <CardTitle>Direct Access</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="break-all">
+                <p className="text-sm text-muted-foreground mb-2">PDF URL:</p>
+                <code className="text-xs bg-muted p-2 rounded block">{invoice.pdfUrl}</code>
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Button variant="outline" asChild className="w-full">
+                <a href={invoice.pdfUrl} target="_blank" rel="noopener noreferrer">
+                  <FileText className="mr-2 h-4 w-4" />
+                  Open PDF Directly
+                </a>
+              </Button>
+            </CardFooter>
+          </Card>
+        )}
       </div>
     </PageTransition>
   );

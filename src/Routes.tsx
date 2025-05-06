@@ -105,7 +105,7 @@ const AppRoutes = () => {
         <Route path="/job/:id/edit" element={<JobEdit />} />
         <Route path="/client/:clientId/job/create" element={<JobCreate />} />
         
-        {/* Invoice routes - Add the missing route */}
+        {/* Invoice routes */}
         <Route path="/job/:jobId/invoice/create" element={<InvoiceCreate />} />
         <Route path="/job/:jobId/invoice/new" element={<InvoiceCreate />} />
       </Route>

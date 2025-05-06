@@ -188,17 +188,17 @@ serve(async (req) => {
       );
     }
 
-    console.log('Fetched invoice contract terms:', {
-      hasContractTerms: !!invoice.contract_terms,
-      contractTermsLength: invoice.contract_terms?.length || 0,
-      preview: invoice.contract_terms?.substring(0, 100)
-    });
+    console.log('Fetched invoice data successfully. Invoice number:', invoice.number);
 
     const { data: client } = await supabase
       .from('clients')
       .select('*')
       .eq('id', invoice.client_id)
       .single();
+
+    if (!client) {
+      console.log('Warning: Client not found for ID:', invoice.client_id);
+    }
 
     const { data: company, error: companyError } = await supabase
       .from('company_clientview')
@@ -210,16 +210,22 @@ serve(async (req) => {
     console.log('Fetched company data from company_clientview:', company);
     if (companyError) {
       console.error('Error fetching company data from company_clientview:', companyError);
+      // We'll continue even with errors as partial data can still work
     }
 
     let job = null;
     if (invoice.job_id) {
-      const { data: jobData } = await supabase
+      const { data: jobData, error: jobError } = await supabase
         .from('jobs')
         .select('*')
         .eq('id', invoice.job_id)
         .single();
-      job = jobData;
+      
+      if (jobError) {
+        console.log('Warning: Job not found for ID:', invoice.job_id, jobError);
+      } else {
+        job = jobData;
+      }
     }
 
     const formattedInvoice: FormattedInvoice = {
@@ -283,6 +289,15 @@ serve(async (req) => {
       );
     }
 
+    // Enhanced validation of generated PDF
+    if (!pdfData) {
+      console.error('PDF generation returned null or undefined data');
+      return new Response(
+        JSON.stringify({ error: 'PDF generation failed - no data returned' }),
+        { headers: { ...headers, 'Content-Type': 'application/json' }, status: 500 }
+      );
+    }
+
     // Handle very small PDF sizes which likely indicate an error
     if (pdfData.byteLength < 1000) {
       console.error('Generated PDF is suspiciously small:', pdfData.byteLength, 'bytes. This may indicate a failed generation.');
@@ -292,7 +307,12 @@ serve(async (req) => {
       );
     }
 
+    console.log(`PDF generated successfully, size: ${pdfData.byteLength} bytes`);
+
+    // Upload PDF to storage
     const filePath = `invoices/${invoiceId}.pdf`;
+    console.log('Uploading PDF to storage path:', filePath);
+    
     const { data: uploadData, error: uploadError } = await supabase
       .storage
       .from('invoice-pdfs')
@@ -302,26 +322,64 @@ serve(async (req) => {
       });
 
     if (uploadError) {
-      console.error('Error uploading PDF:', uploadError);
+      console.error('Error uploading PDF to storage:', uploadError);
       return new Response(
         JSON.stringify({ error: `Failed to upload PDF: ${uploadError.message}` }),
         { headers: { ...headers, 'Content-Type': 'application/json' }, status: 500 }
       );
     }
 
+    console.log('PDF uploaded successfully to storage');
+
+    // Get public URL
     const { data: publicUrlData } = supabase
       .storage
       .from('invoice-pdfs')
       .getPublicUrl(filePath);
 
+    if (!publicUrlData || !publicUrlData.publicUrl) {
+      console.error('Failed to get public URL for PDF');
+      return new Response(
+        JSON.stringify({ error: 'Failed to get public URL for PDF' }),
+        { headers: { ...headers, 'Content-Type': 'application/json' }, status: 500 }
+      );
+    }
+
     // Add a timestamp to the URL to prevent caching issues
     const pdfUrl = `${publicUrlData.publicUrl}?t=${Date.now()}`;
+    console.log('Generated public URL for PDF:', pdfUrl);
 
-    await supabase
+    // Update the invoice with the PDF URL
+    const { error: updateError } = await supabase
       .from('invoices')
       .update({ pdf_url: pdfUrl })
       .eq('id', invoiceId);
 
+    if (updateError) {
+      console.error('Error updating invoice with PDF URL:', updateError);
+      // Continue anyway since we have the PDF URL
+    } else {
+      console.log('Invoice updated with PDF URL');
+    }
+
+    // Check if the file exists and has proper size in storage
+    try {
+      const { data: fileInfo } = await supabase
+        .storage
+        .from('invoice-pdfs')
+        .list('invoices', {
+          limit: 100,
+          offset: 0,
+          sortBy: { column: 'name', order: 'asc' },
+          search: invoiceId
+        });
+
+      console.log('Storage file check:', fileInfo);
+    } catch (e) {
+      console.error('Error checking storage file:', e);
+    }
+
+    // Return the PDF URL to the client
     return new Response(
       JSON.stringify({ pdfUrl }),
       { headers: { ...headers, 'Content-Type': 'application/json' }, status: 200 }
@@ -448,24 +506,37 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       console.log('Attempting to add logo from URL:', invoiceData.company.logoUrl);
       try {
         const response = await fetch(invoiceData.company.logoUrl);
-        if (!response.ok) throw new Error(`Failed to fetch logo: ${response.statusText}`);
+        if (!response.ok) {
+          console.error(`Failed to fetch logo: Status ${response.status} ${response.statusText}`);
+          throw new Error(`Failed to fetch logo: ${response.statusText}`);
+        }
       
         const blob = await response.blob();
+        console.log('Logo blob fetched successfully, size:', blob.size, 'bytes, type:', blob.type);
+        
         const logo = await blobToBase64(blob);
+        console.log('Logo converted to base64 successfully, length:', logo.length);
       
         const maxLogoHeight = 40;
         // Updated to match jsPDF v3.x API
-        const imgProps = doc.getImageProperties(logo);
+        try {
+          const imgProps = doc.getImageProperties(logo);
+          console.log('Logo image properties:', imgProps);
+        
+          const aspectRatio = imgProps.width / imgProps.height;
+          const logoHeight = Math.min(maxLogoHeight, imgProps.height);
+          const logoWidth = logoHeight * aspectRatio;
+        
+          // Adjust logo X position to move more to the left
+          const logoX = margin + (rightColumnX - margin - logoWidth) / 4;
       
-        const aspectRatio = imgProps.width / imgProps.height;
-        const logoHeight = Math.min(maxLogoHeight, imgProps.height);
-        const logoWidth = logoHeight * aspectRatio;
-      
-        // Adjust logo X position to move more to the left
-        const logoX = margin + (rightColumnX - margin - logoWidth) / 4;
-    
-        doc.addImage(logo, 'PNG', logoX, y, logoWidth, logoHeight);
-        leftColumnY += logoHeight + 10; // Update left column position after logo
+          doc.addImage(logo, 'PNG', logoX, y, logoWidth, logoHeight);
+          console.log('Logo added to PDF successfully');
+          leftColumnY += logoHeight + 10; // Update left column position after logo
+        } catch (logoImgError) {
+          console.error('Error adding logo image to PDF:', logoImgError);
+          throw logoImgError;
+        }
       } catch (logoError) {
         console.error('Error adding logo:', logoError);
         doc.setFontSize(24);
@@ -832,7 +903,9 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
     
     console.log('PDF generation completed');
     // Updated to match jsPDF v3.x API
-    return doc.output('arraybuffer');
+    const pdfArrayBuffer = doc.output('arraybuffer');
+    console.log('PDF array buffer generated, size:', pdfArrayBuffer.byteLength, 'bytes');
+    return new Uint8Array(pdfArrayBuffer);
   } catch (err) {
     console.error('Error generating PDF:', err);
     throw new Error('Failed to generate PDF: ' + err.message);

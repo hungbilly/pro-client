@@ -36,6 +36,9 @@ const NotFound = () => {
   // Check if this is a client edit route with wrong format
   const isClientEditRouteWithIssue = location.pathname.includes('/client/edit/');
   
+  // Check if this is an invoice edit route with wrong format
+  const isInvoiceEditRouteWithIssue = location.pathname.includes('/invoice/edit/');
+  
   // Extract the client ID if present
   const clientIdMatch = location.pathname.match(/\/client\/([^\/]+)/);
   const clientId = clientIdMatch ? clientIdMatch[1] : null;
@@ -47,6 +50,10 @@ const NotFound = () => {
   // Extract the job ID if present
   const jobIdMatch = location.pathname.match(/\/job\/([^\/]+)/);
   const jobId = jobIdMatch ? jobIdMatch[1] : null;
+  
+  // Extract the invoice ID if present
+  const invoiceIdMatch = location.pathname.match(/\/invoice\/edit\/([^\/]+)/);
+  const invoiceId = invoiceIdMatch ? invoiceIdMatch[1] : null;
 
   // Enhanced check for malformed URL with duplicate domain or protocol
   const hasDuplicateUrl = (
@@ -116,6 +123,11 @@ const NotFound = () => {
       return fixedDuplicateUrl;
     }
     
+    // Fix invoice edit route with wrong format (should be /invoice/:id/edit)
+    if (isInvoiceEditRouteWithIssue && invoiceId) {
+      return `/invoice/${invoiceId}/edit`;
+    }
+    
     if (isClientEditRouteWithIssue && editClientId) {
       return `/client/${editClientId}/edit`;
     }
@@ -157,7 +169,9 @@ const NotFound = () => {
                   ? "The job you're looking for could not be found. It may have been deleted or the link is incorrect."
                   : isClientEditRouteWithIssue
                     ? "It looks like you're trying to edit a client, but the URL format is incorrect."
-                    : `The page you're looking for at ${location.pathname} could not be found.`
+                    : isInvoiceEditRouteWithIssue
+                      ? "It looks like you're trying to edit an invoice, but the URL format is incorrect."
+                      : `The page you're looking for at ${location.pathname} could not be found.`
           }
           {correctRoute && (
             <span className="block mt-2 text-blue-500">

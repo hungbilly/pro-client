@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { jsPDF } from 'https://esm.sh/jspdf@3.0.1';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
@@ -132,72 +131,210 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// Enhanced logging with timestamps
+const log = {
+  info: (message: string, data?: any) => {
+    const timestamp = new Date().toISOString();
+    console.log(`[${timestamp}] [INFO] ${message}`, data ? data : '');
+  },
+  warn: (message: string, data?: any) => {
+    const timestamp = new Date().toISOString();
+    console.warn(`[${timestamp}] [WARN] ${message}`, data ? data : '');
+  },
+  error: (message: string, error: any) => {
+    const timestamp = new Date().toISOString();
+    console.error(`[${timestamp}] [ERROR] ${message}`, error);
+    
+    if (error?.stack) {
+      console.error(`[${timestamp}] [ERROR] Stack trace:`, error.stack);
+    }
+  },
+  debug: (message: string, data?: any) => {
+    const timestamp = new Date().toISOString();
+    console.log(`[${timestamp}] [DEBUG] ${message}`, data ? data : '');
+  }
+};
+
+// Enhanced headers with CORS
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Content-Type': 'application/json',
+};
+
 serve(async (req) => {
   const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    ...corsHeaders
   };
 
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers, status: 204 });
   }
 
+  // Track execution stages and timing for debugging
+  const executionStages: Record<string, { start: number; end?: number; success?: boolean; error?: string }> = {
+    'request_start': { start: Date.now() },
+  };
+
+  // Collect debug info
+  const debugInfo: Record<string, any> = {
+    timestamp: new Date().toISOString(),
+    stages: executionStages,
+  };
+
   try {
-    const { invoiceId, forceRegenerate = false, debugMode = false } = await req.json();
-    console.log('Received request to generate PDF for invoice:', invoiceId, {
+    executionStages.parse_request = { start: Date.now() };
+    const { invoiceId, forceRegenerate = false, debugMode = false, clientInfo = {} } = await req.json();
+    executionStages.parse_request.end = Date.now();
+    
+    log.info('Received request to generate PDF for invoice:', {
+      invoiceId,
       forceRegenerate,
-      debugMode
+      debugMode,
+      clientInfo
     });
+    
+    debugInfo.requestParams = {
+      invoiceId,
+      forceRegenerate,
+      debugMode,
+      clientInfo
+    };
 
     if (!invoiceId) {
+      executionStages.validation = { start: Date.now(), end: Date.now(), success: false, error: 'Missing invoiceId' };
+      log.error('Missing required parameter: invoiceId', {});
       return new Response(
-        JSON.stringify({ error: 'Missing required parameter: invoiceId' }),
-        { headers: { ...headers, 'Content-Type': 'application/json' }, status: 400 }
+        JSON.stringify({ 
+          error: 'Missing required parameter: invoiceId',
+          debugInfo: debugMode ? debugInfo : undefined
+        }),
+        { headers, status: 400 }
       );
     }
 
+    // Validation step
+    executionStages.validation = { start: Date.now() };
+    
     // Fetch existing invoice PDF URL and check if we need to regenerate
     if (!forceRegenerate && !debugMode) {
+      executionStages.check_existing = { start: Date.now() };
       const { data: existingInvoice, error: existingError } = await supabase
         .from('invoices')
-        .select('pdf_url')
+        .select('pdf_url, number')
         .eq('id', invoiceId)
         .single();
 
+      executionStages.check_existing.end = Date.now();
+      executionStages.check_existing.success = !existingError;
+      
       if (!existingError && existingInvoice?.pdf_url) {
-        console.log('Using existing PDF URL:', existingInvoice.pdf_url);
-        return new Response(
-          JSON.stringify({ pdfUrl: existingInvoice.pdf_url }),
-          { headers: { ...headers, 'Content-Type': 'application/json' }, status: 200 }
-        );
+        log.info('Using existing PDF URL:', existingInvoice.pdf_url);
+        
+        try {
+          // Try to validate the existing PDF URL
+          executionStages.validate_existing = { start: Date.now() };
+          
+          // Fetch headers only to check if file exists and is a PDF
+          const pdfResponse = await fetch(existingInvoice.pdf_url, { method: 'HEAD' });
+          
+          executionStages.validate_existing.end = Date.now();
+          
+          if (pdfResponse.ok) {
+            const contentType = pdfResponse.headers.get('content-type');
+            const contentLength = pdfResponse.headers.get('content-length');
+            
+            log.debug('Existing PDF validation results:', {
+              status: pdfResponse.status,
+              contentType,
+              contentLength
+            });
+            
+            // If content type is PDF and size is reasonable, use the existing URL
+            if (contentType?.includes('pdf') && parseInt(contentLength || '0') > 1000) {
+              log.info('Existing PDF is valid, returning URL');
+              executionStages.validate_existing.success = true;
+              
+              debugInfo.pdfInfo = {
+                source: 'existing',
+                url: existingInvoice.pdf_url,
+                contentType,
+                contentLength
+              };
+              
+              return new Response(
+                JSON.stringify({ 
+                  pdfUrl: existingInvoice.pdf_url,
+                  debugInfo: debugMode ? debugInfo : undefined
+                }),
+                { headers, status: 200 }
+              );
+            } else {
+              executionStages.validate_existing.success = false;
+              executionStages.validate_existing.error = 'Invalid content type or size';
+              log.warn('Existing PDF appears invalid, regenerating...', {
+                contentType,
+                contentLength
+              });
+            }
+          } else {
+            executionStages.validate_existing.success = false;
+            executionStages.validate_existing.error = `HTTP ${pdfResponse.status}`;
+            log.warn('Existing PDF URL returned non-OK status, regenerating...', {
+              status: pdfResponse.status,
+              statusText: pdfResponse.statusText
+            });
+          }
+        } catch (e) {
+          executionStages.validate_existing.success = false;
+          executionStages.validate_existing.error = e instanceof Error ? e.message : 'Unknown error';
+          log.error('Error verifying existing PDF:', e);
+          // Continue with regeneration
+        }
       }
     }
 
+    executionStages.validation.end = Date.now();
+    executionStages.validation.success = true;
+
     // Fetch all invoice data
+    executionStages.fetch_data = { start: Date.now() };
+    
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
       .select('*, invoice_items(*), payment_schedules(*)')
       .eq('id', invoiceId)
       .single();
-
+      
     if (invoiceError || !invoice) {
-      console.error('Error fetching invoice:', invoiceError);
+      executionStages.fetch_data.end = Date.now();
+      executionStages.fetch_data.success = false;
+      executionStages.fetch_data.error = invoiceError ? invoiceError.message : 'Invoice not found';
+      
+      log.error('Error fetching invoice:', invoiceError);
       return new Response(
-        JSON.stringify({ error: 'Failed to fetch invoice data' }),
-        { headers: { ...headers, 'Content-Type': 'application/json' }, status: 500 }
+        JSON.stringify({ 
+          error: 'Failed to fetch invoice data', 
+          details: invoiceError?.message,
+          debugInfo: debugMode ? debugInfo : undefined
+        }),
+        { headers, status: 500 }
       );
     }
 
-    console.log('Fetched invoice data successfully. Invoice number:', invoice.number);
+    log.info('Fetched invoice data successfully. Invoice number:', invoice.number);
+    debugInfo.invoiceNumber = invoice.number;
 
-    const { data: client } = await supabase
+    // Fetch related data (client, company, job)
+    const { data: client, error: clientError } = await supabase
       .from('clients')
       .select('*')
       .eq('id', invoice.client_id)
       .single();
 
-    if (!client) {
-      console.log('Warning: Client not found for ID:', invoice.client_id);
+    if (clientError) {
+      log.warn('Warning: Client not found for ID:', invoice.client_id);
+      debugInfo.warnings = [...(debugInfo.warnings || []), 'Client not found'];
     }
 
     const { data: company, error: companyError } = await supabase
@@ -206,11 +343,12 @@ serve(async (req) => {
       .eq('company_id', invoice.company_id)
       .single();
     
-    console.log('Invoice company_id:', invoice.company_id);
-    console.log('Fetched company data from company_clientview:', company);
+    log.debug('Invoice company_id:', invoice.company_id);
+    log.debug('Fetched company data from company_clientview:', company);
+    
     if (companyError) {
-      console.error('Error fetching company data from company_clientview:', companyError);
-      // We'll continue even with errors as partial data can still work
+      log.error('Error fetching company data from company_clientview:', companyError);
+      debugInfo.warnings = [...(debugInfo.warnings || []), 'Company not found'];
     }
 
     let job = null;
@@ -222,12 +360,19 @@ serve(async (req) => {
         .single();
       
       if (jobError) {
-        console.log('Warning: Job not found for ID:', invoice.job_id, jobError);
+        log.warn('Warning: Job not found for ID:', invoice.job_id, jobError);
+        debugInfo.warnings = [...(debugInfo.warnings || []), 'Job not found'];
       } else {
         job = jobData;
       }
     }
+    
+    executionStages.fetch_data.end = Date.now();
+    executionStages.fetch_data.success = true;
 
+    // Format the data for PDF generation
+    executionStages.format_data = { start: Date.now() };
+    
     const formattedInvoice: FormattedInvoice = {
       id: invoice.id,
       number: invoice.number,
@@ -275,43 +420,86 @@ serve(async (req) => {
         amount: (invoice.amount * schedule.percentage) / 100,
       })),
     };
+    
+    executionStages.format_data.end = Date.now();
+    executionStages.format_data.success = true;
+    
+    debugInfo.companyInfo = {
+      hasLogo: !!company?.logo_url,
+      logoUrl: company?.logo_url,
+    };
 
-    console.log('Generating PDF for invoice:', invoiceId);
+    log.info('Generating PDF for invoice:', invoiceId);
+    
+    // Generate the PDF
+    executionStages.generate_pdf = { start: Date.now() };
     
     let pdfData;
     try {
       pdfData = await generatePDF(formattedInvoice);
+      executionStages.generate_pdf.end = Date.now();
+      executionStages.generate_pdf.success = true;
     } catch (pdfError) {
-      console.error('Error generating PDF:', pdfError);
+      executionStages.generate_pdf.end = Date.now();
+      executionStages.generate_pdf.success = false;
+      executionStages.generate_pdf.error = pdfError instanceof Error ? pdfError.message : 'Unknown error';
+      
+      log.error('Error generating PDF:', pdfError);
       return new Response(
-        JSON.stringify({ error: `Failed to generate PDF: ${pdfError.message}` }),
-        { headers: { ...headers, 'Content-Type': 'application/json' }, status: 500 }
+        JSON.stringify({ 
+          error: `Failed to generate PDF: ${pdfError instanceof Error ? pdfError.message : 'Unknown error'}`,
+          debugInfo: debugMode ? debugInfo : undefined
+        }),
+        { headers, status: 500 }
       );
     }
 
     // Enhanced validation of generated PDF
+    executionStages.validate_pdf = { start: Date.now() };
+    
     if (!pdfData) {
-      console.error('PDF generation returned null or undefined data');
+      executionStages.validate_pdf.end = Date.now();
+      executionStages.validate_pdf.success = false;
+      executionStages.validate_pdf.error = 'No PDF data generated';
+      
+      log.error('PDF generation returned null or undefined data');
       return new Response(
-        JSON.stringify({ error: 'PDF generation failed - no data returned' }),
-        { headers: { ...headers, 'Content-Type': 'application/json' }, status: 500 }
+        JSON.stringify({ 
+          error: 'PDF generation failed - no data returned',
+          debugInfo: debugMode ? debugInfo : undefined
+        }),
+        { headers, status: 500 }
       );
     }
 
     // Handle very small PDF sizes which likely indicate an error
     if (pdfData.byteLength < 1000) {
-      console.error('Generated PDF is suspiciously small:', pdfData.byteLength, 'bytes. This may indicate a failed generation.');
+      executionStages.validate_pdf.end = Date.now();
+      executionStages.validate_pdf.success = false;
+      executionStages.validate_pdf.error = `PDF too small: ${pdfData.byteLength} bytes`;
+      
+      log.error('Generated PDF is suspiciously small:', pdfData.byteLength, 'bytes. This may indicate a failed generation.');
       return new Response(
-        JSON.stringify({ error: 'Generated PDF appears invalid. PDF size too small.' }),
-        { headers: { ...headers, 'Content-Type': 'application/json' }, status: 500 }
+        JSON.stringify({ 
+          error: `Generated PDF appears invalid. PDF size too small: ${pdfData.byteLength} bytes`,
+          debugInfo: debugMode ? debugInfo : undefined
+        }),
+        { headers, status: 500 }
       );
     }
+    
+    executionStages.validate_pdf.end = Date.now();
+    executionStages.validate_pdf.success = true;
 
-    console.log(`PDF generated successfully, size: ${pdfData.byteLength} bytes`);
+    log.info(`PDF generated successfully, size: ${pdfData.byteLength} bytes`);
+    debugInfo.pdfSize = pdfData.byteLength;
 
     // Upload PDF to storage
+    const timestamp = Date.now();
     const filePath = `invoices/${invoiceId}.pdf`;
-    console.log('Uploading PDF to storage path:', filePath);
+    log.info('Uploading PDF to storage path:', filePath);
+    
+    executionStages.upload_pdf = { start: Date.now() };
     
     const { data: uploadData, error: uploadError } = await supabase
       .storage
@@ -322,49 +510,83 @@ serve(async (req) => {
       });
 
     if (uploadError) {
-      console.error('Error uploading PDF to storage:', uploadError);
+      executionStages.upload_pdf.end = Date.now();
+      executionStages.upload_pdf.success = false;
+      executionStages.upload_pdf.error = uploadError.message;
+      
+      log.error('Error uploading PDF to storage:', uploadError);
       return new Response(
-        JSON.stringify({ error: `Failed to upload PDF: ${uploadError.message}` }),
-        { headers: { ...headers, 'Content-Type': 'application/json' }, status: 500 }
+        JSON.stringify({ 
+          error: `Failed to upload PDF: ${uploadError.message}`,
+          debugInfo: debugMode ? debugInfo : undefined
+        }),
+        { headers, status: 500 }
       );
     }
+    
+    executionStages.upload_pdf.end = Date.now();
+    executionStages.upload_pdf.success = true;
 
-    console.log('PDF uploaded successfully to storage');
+    log.info('PDF uploaded successfully to storage');
 
     // Get public URL
+    executionStages.get_url = { start: Date.now() };
+    
     const { data: publicUrlData } = supabase
       .storage
       .from('invoice-pdfs')
       .getPublicUrl(filePath);
 
     if (!publicUrlData || !publicUrlData.publicUrl) {
-      console.error('Failed to get public URL for PDF');
+      executionStages.get_url.end = Date.now();
+      executionStages.get_url.success = false;
+      executionStages.get_url.error = 'No public URL generated';
+      
+      log.error('Failed to get public URL for PDF');
       return new Response(
-        JSON.stringify({ error: 'Failed to get public URL for PDF' }),
-        { headers: { ...headers, 'Content-Type': 'application/json' }, status: 500 }
+        JSON.stringify({ 
+          error: 'Failed to get public URL for PDF',
+          debugInfo: debugMode ? debugInfo : undefined
+        }),
+        { headers, status: 500 }
       );
     }
+    
+    executionStages.get_url.end = Date.now();
+    executionStages.get_url.success = true;
 
     // Add a timestamp to the URL to prevent caching issues
-    const pdfUrl = `${publicUrlData.publicUrl}?t=${Date.now()}`;
-    console.log('Generated public URL for PDF:', pdfUrl);
+    const pdfUrl = `${publicUrlData.publicUrl}?t=${timestamp}`;
+    log.info('Generated public URL for PDF:', pdfUrl);
+    debugInfo.pdfUrl = pdfUrl;
 
     // Update the invoice with the PDF URL
+    executionStages.update_invoice = { start: Date.now() };
+    
     const { error: updateError } = await supabase
       .from('invoices')
       .update({ pdf_url: pdfUrl })
       .eq('id', invoiceId);
 
     if (updateError) {
-      console.error('Error updating invoice with PDF URL:', updateError);
+      executionStages.update_invoice.end = Date.now();
+      executionStages.update_invoice.success = false;
+      executionStages.update_invoice.error = updateError.message;
+      
+      log.error('Error updating invoice with PDF URL:', updateError);
+      debugInfo.warnings = [...(debugInfo.warnings || []), 'Failed to update invoice record with PDF URL'];
       // Continue anyway since we have the PDF URL
     } else {
-      console.log('Invoice updated with PDF URL');
+      executionStages.update_invoice.end = Date.now();
+      executionStages.update_invoice.success = true;
+      log.info('Invoice updated with PDF URL');
     }
 
     // Check if the file exists and has proper size in storage
+    executionStages.verify_storage = { start: Date.now() };
+    
     try {
-      const { data: fileInfo } = await supabase
+      const { data: fileInfo, error: listError } = await supabase
         .storage
         .from('invoice-pdfs')
         .list('invoices', {
@@ -374,21 +596,76 @@ serve(async (req) => {
           search: invoiceId
         });
 
-      console.log('Storage file check:', fileInfo);
+      if (listError) {
+        executionStages.verify_storage.end = Date.now();
+        executionStages.verify_storage.success = false;
+        executionStages.verify_storage.error = listError.message;
+        log.error('Error listing storage files:', listError);
+      } else {
+        executionStages.verify_storage.end = Date.now();
+        executionStages.verify_storage.success = true;
+        log.info('Storage file check:', fileInfo);
+        debugInfo.storageInfo = fileInfo;
+      }
     } catch (e) {
-      console.error('Error checking storage file:', e);
+      executionStages.verify_storage.end = Date.now();
+      executionStages.verify_storage.success = false;
+      executionStages.verify_storage.error = e instanceof Error ? e.message : 'Unknown error';
+      log.error('Error checking storage file:', e);
+    }
+    
+    // Add request completion info
+    executionStages.request_complete = { start: Date.now(), end: Date.now(), success: true };
+    debugInfo.executionTime = executionStages.request_complete.start - executionStages.request_start.start;
+    
+    // Perform a final verification step to ensure the PDF is accessible
+    executionStages.final_verification = { start: Date.now() };
+    
+    try {
+      const verifyResponse = await fetch(pdfUrl, { method: 'HEAD' });
+      const contentType = verifyResponse.headers.get('content-type');
+      const contentLength = verifyResponse.headers.get('content-length');
+      
+      debugInfo.finalVerification = {
+        status: verifyResponse.status,
+        contentType,
+        contentLength,
+        ok: verifyResponse.ok
+      };
+      
+      executionStages.final_verification.end = Date.now();
+      executionStages.final_verification.success = verifyResponse.ok && contentType?.includes('pdf');
+      
+      if (!verifyResponse.ok || !contentType?.includes('pdf')) {
+        log.warn('Final PDF verification failed:', {
+          status: verifyResponse.status,
+          contentType,
+          contentLength
+        });
+      }
+    } catch (e) {
+      executionStages.final_verification.end = Date.now();
+      executionStages.final_verification.success = false;
+      executionStages.final_verification.error = e instanceof Error ? e.message : 'Unknown error';
+      log.error('Error in final verification:', e);
     }
 
     // Return the PDF URL to the client
     return new Response(
-      JSON.stringify({ pdfUrl }),
-      { headers: { ...headers, 'Content-Type': 'application/json' }, status: 200 }
+      JSON.stringify({ 
+        pdfUrl,
+        debugInfo: debugMode ? debugInfo : undefined
+      }),
+      { headers, status: 200 }
     );
   } catch (error) {
-    console.error('Error processing request:', error);
+    log.error('Error processing request:', error);
     return new Response(
-      JSON.stringify({ error: `Internal server error: ${error.message}` }),
-      { headers: { ...headers, 'Content-Type': 'application/json' }, status: 500 }
+      JSON.stringify({ 
+        error: `Internal server error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        debugInfo: debugInfo
+      }),
+      { headers, status: 500 }
     );
   }
 });

@@ -22,12 +22,12 @@ import ClientNew from '@/pages/ClientNew';
 import Invoices from '@/pages/Invoices';
 import InvoiceView from '@/pages/InvoiceView';
 import InvoiceCreate from '@/pages/InvoiceCreate';
+import InvoicePdfView from '@/pages/InvoicePdfView';
 import Jobs from '@/pages/Jobs';
 import NotFound from '@/pages/NotFound';
 import AppLayout from '@/components/AppLayout';
 import Terms from '@/pages/Terms';
 import Privacy from '@/pages/Privacy';
-import InvoicePdfView from '@/pages/InvoicePdfView';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import SubscriptionGuard from '@/components/SubscriptionGuard';
 import Settings from '@/pages/Settings';
@@ -105,12 +105,13 @@ const AppRoutes = () => {
         <Route path="/job/:id/edit" element={<JobEdit />} />
         <Route path="/client/:clientId/job/create" element={<JobCreate />} />
         
-        {/* Invoice routes */}
+        {/* Invoice routes - ensure all needed routes exist */}
         <Route path="/job/:jobId/invoice/create" element={<InvoiceCreate />} />
         <Route path="/job/:jobId/invoice/new" element={<InvoiceCreate />} />
+        <Route path="/invoice/:invoiceId/edit" element={<InvoiceCreate />} />
       </Route>
       
-      {/* Public invoice view */}
+      {/* Public invoice view routes */}
       <Route path="/invoice/:idOrViewLink" element={<InvoiceView />} />
       <Route path="/invoice-pdf/:viewLink" element={<InvoicePdfView />} />
       

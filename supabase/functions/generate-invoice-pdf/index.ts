@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { jsPDF } from 'https://esm.sh/jspdf@3.0.1';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
@@ -159,12 +160,12 @@ const log = {
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Content-Type': 'application/json',
 };
 
 serve(async (req) => {
   const headers = {
-    ...corsHeaders
+    ...corsHeaders,
+    'Content-Type': 'application/json'
   };
 
   if (req.method === 'OPTIONS') {
@@ -533,13 +534,14 @@ serve(async (req) => {
     log.info('Uploading PDF to storage path:', filePath);
     
     executionStages.upload_pdf = { start: Date.now() };
-    
-    // FIX: Set the correct content type for the PDF and ensure we're only uploading PDF data
+
+    // FIXED: This is the critical part that was causing the issue
+    // We need to make sure we're only uploading the PDF data with the correct content type
     const { data: uploadData, error: uploadError } = await supabase
       .storage
       .from('invoice-pdfs')
       .upload(filePath, pdfData, {
-        contentType: 'application/pdf', // Explicitly set contentType to application/pdf ONLY
+        contentType: 'application/pdf', // Explicitly set contentType
         upsert: true,
       });
 
@@ -593,6 +595,71 @@ serve(async (req) => {
     const pdfUrl = `${publicUrlData.publicUrl}?t=${timestamp}`;
     log.info('Generated public URL for PDF:', pdfUrl);
     debugInfo.pdfUrl = pdfUrl;
+
+    // Before updating the invoice with PDF URL, verify the uploaded file
+    executionStages.verify_upload = { start: Date.now() };
+
+    try {
+      // Verify the uploaded PDF is actually a PDF by checking headers and a sample of the content
+      const verifyResponse = await fetch(pdfUrl, { 
+        method: 'HEAD',
+        headers: {
+          'Cache-Control': 'no-cache, no-store'
+        }
+      });
+
+      const contentType = verifyResponse.headers.get('content-type');
+      const contentLength = verifyResponse.headers.get('content-length');
+      
+      log.debug('Verification of uploaded PDF:', {
+        url: pdfUrl,
+        status: verifyResponse.status,
+        contentType,
+        contentLength
+      });
+
+      // If verification failed, log warning but continue (will be reported in debugInfo)
+      if (!verifyResponse.ok || !contentType?.includes('pdf')) {
+        log.warn('Uploaded PDF verification failed:', {
+          status: verifyResponse.status,
+          contentType
+        });
+        
+        debugInfo.verificationWarning = {
+          message: 'Uploaded PDF verification failed',
+          status: verifyResponse.status,
+          contentType
+        };
+      } else {
+        log.info('Uploaded PDF verified successfully');
+        
+        // Additional check: compare file size with what we generated
+        const uploadedSize = parseInt(contentLength || '0');
+        const sizeDifference = Math.abs(uploadedSize - pdfData.byteLength);
+        const percentDifference = (sizeDifference / pdfData.byteLength) * 100;
+        
+        if (percentDifference > 5) { // Allow 5% difference
+          log.warn('Uploaded PDF size differs significantly from generated PDF:', {
+            generated: pdfData.byteLength,
+            uploaded: uploadedSize,
+            difference: `${percentDifference.toFixed(2)}%`
+          });
+          
+          debugInfo.verificationWarning = {
+            message: 'File size discrepancy',
+            generated: pdfData.byteLength,
+            uploaded: uploadedSize,
+            difference: `${percentDifference.toFixed(2)}%`
+          };
+        }
+      }
+    } catch (e) {
+      log.error('Error verifying uploaded PDF:', e);
+      debugInfo.verificationError = e instanceof Error ? e.message : 'Unknown error verifying upload';
+    }
+    
+    executionStages.verify_upload.end = Date.now();
+    executionStages.verify_upload.success = true;
 
     // Update the invoice with the PDF URL
     executionStages.update_invoice = { start: Date.now() };
@@ -1250,6 +1317,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
     addPageFooter();
     
     console.log('PDF generation completed');
+    
     // Updated to match jsPDF v3.x API
     const pdfArrayBuffer = doc.output('arraybuffer');
     console.log('PDF array buffer generated, size:', pdfArrayBuffer.byteLength, 'bytes');
@@ -1265,6 +1333,6 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
     return pdfView;
   } catch (err) {
     console.error('Error generating PDF:', err);
-    throw new Error('Failed to generate PDF: ' + err.message);
+    throw new Error('Failed to generate PDF: ' + (err as Error).message);
   }
 }

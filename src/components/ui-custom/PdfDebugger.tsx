@@ -3,9 +3,10 @@ import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronsUpDown, FileWarning, FileCheck, AlertCircle, FileBadge } from "lucide-react";
+import { ChevronsUpDown, FileWarning, FileCheck, AlertCircle, FileBadge, FileCode } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface PdfDebuggerProps {
   debugInfo?: any;
@@ -64,6 +65,13 @@ const PdfDebugger = ({ debugInfo, pdfUrl, downloadError, downloadAttempts = 0 }:
      
   // Check for storage warnings
   const hasStorageWarnings = debugInfo?.storageWarnings && debugInfo.storageWarnings.length > 0;
+  
+  // Check for verification warnings
+  const hasVerificationWarnings = debugInfo?.verificationWarning !== undefined;
+  
+  // Check for significant size discrepancy between what was generated and what was stored
+  const sizeMismatch = debugInfo?.storageInfo?.fileSize && debugInfo?.pdfSize && 
+    Math.abs(debugInfo.storageInfo.fileSize - debugInfo.pdfSize) > (debugInfo.pdfSize * 0.1);
 
   return (
     <Card className="mt-4">
@@ -79,6 +87,9 @@ const PdfDebugger = ({ debugInfo, pdfUrl, downloadError, downloadAttempts = 0 }:
             )}
             {hasStorageWarnings && (
               <Badge variant="destructive" className="text-xs">Storage Issue</Badge>
+            )}
+            {hasVerificationWarnings && (
+              <Badge variant="destructive" className="text-xs">Verification Issue</Badge>
             )}
           </div>
           <CollapsibleTrigger asChild>
@@ -146,6 +157,18 @@ const PdfDebugger = ({ debugInfo, pdfUrl, downloadError, downloadAttempts = 0 }:
                     </ul>
                   </div>
                 )}
+                
+                {sizeMismatch && (
+                  <Alert variant="destructive" className="mt-3">
+                    <FileCode className="h-4 w-4" />
+                    <AlertTitle>File Size Mismatch</AlertTitle>
+                    <AlertDescription>
+                      Generated PDF size ({(debugInfo.pdfSize / 1024).toFixed(2)} KB) differs significantly 
+                      from stored size ({(debugInfo.storageInfo.fileSize / 1024).toFixed(2)} KB).
+                      This typically indicates a content-type issue during upload.
+                    </AlertDescription>
+                  </Alert>
+                )}
               </div>
             )}
             
@@ -182,6 +205,12 @@ const PdfDebugger = ({ debugInfo, pdfUrl, downloadError, downloadAttempts = 0 }:
                     <span className={debugInfo.storageInfo.contentType !== 'application/pdf' ? "text-red-600 font-semibold" : ""}>
                       {debugInfo.storageInfo.contentType}
                     </span>
+                    {debugInfo.storageInfo.contentType !== 'application/pdf' && (
+                      <p className="text-red-600 mt-1">
+                        <AlertCircle className="h-3 w-3 inline mr-1" />
+                        Should be application/pdf only
+                      </p>
+                    )}
                   </div>
                   <div>
                     <span className="font-medium">File Size:</span>{" "}
@@ -197,6 +226,19 @@ const PdfDebugger = ({ debugInfo, pdfUrl, downloadError, downloadAttempts = 0 }:
               </div>
             )}
             
+            {debugInfo?.verificationWarning && (
+              <Alert variant="warning" className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Verification Warning</AlertTitle>
+                <AlertDescription>
+                  <p>{debugInfo.verificationWarning.message}</p>
+                  {debugInfo.verificationWarning.difference && (
+                    <p className="mt-1">Size difference: {debugInfo.verificationWarning.difference}</p>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
+            
             {debugInfo && (
               <>
                 <Separator className="my-3" />
@@ -210,7 +252,7 @@ const PdfDebugger = ({ debugInfo, pdfUrl, downloadError, downloadAttempts = 0 }:
                   )}
                   {debugInfo.pdfSize && (
                     <div>
-                      <span className="font-medium">PDF Size:</span>{" "}
+                      <span className="font-medium">Generated PDF Size:</span>{" "}
                       {(debugInfo.pdfSize / 1024).toFixed(2)} KB
                     </div>
                   )}
@@ -243,9 +285,19 @@ const PdfDebugger = ({ debugInfo, pdfUrl, downloadError, downloadAttempts = 0 }:
                 <li>Invalid content type (should be <code className="bg-blue-100 px-1">application/pdf</code> only)</li>
                 <li>Excessively large file size (PDFs should typically be 100KB-3MB)</li>
                 <li>JSON data accidentally included in PDF content</li>
-                <li>File access permissions issues in storage</li>
+                <li>Mixed content types during upload</li>
                 <li>Corrupt PDF generation</li>
               </ul>
+            </div>
+            
+            <div className="mt-4 text-xs text-green-600 bg-green-50 p-2 rounded">
+              <p className="font-medium">Troubleshooting Tips:</p>
+              <ol className="list-decimal list-inside space-y-1">
+                <li>Check if the storage content type is exactly "application/pdf"</li>
+                <li>If storage file size is much larger than generated PDF size, there may be JSON mixed with PDF data</li>
+                <li>Try downloading the PDF directly to see if it opens correctly</li>
+                <li>Clear browser cache or try in incognito mode if PDF isn't updating</li>
+              </ol>
             </div>
           </CardContent>
         </CollapsibleContent>

@@ -29,6 +29,9 @@ import SubscriptionGuard from '@/components/SubscriptionGuard';
 import Settings from '@/pages/Settings';
 import Payments from '@/pages/Payments';
 import EmailVerification from '@/pages/EmailVerification';
+import JobCreate from '@/pages/JobCreate';
+import JobDetail from '@/pages/JobDetail';
+import JobEdit from '@/pages/JobEdit';
 
 const AppRoutes = () => {
   const { user } = useAuth();
@@ -68,12 +71,17 @@ const AppRoutes = () => {
           </SubscriptionGuard>
         </ProtectedRoute>
       }>
-        <Route index element={<Index />} /> {/* Root path now uses Index component */}
+        <Route index element={<Index />} />
         <Route path="/clients" element={<Clients />} />
         <Route path="/invoices" element={<Invoices />} />
         <Route path="/jobs" element={<Jobs />} />
         <Route path="/account" element={<Payments />} />
         <Route path="/settings" element={<Settings />} />
+        
+        {/* Job routes */}
+        <Route path="/job/:jobId" element={<JobDetail />} />
+        <Route path="/job/:jobId/edit" element={<JobEdit />} />
+        <Route path="/client/:clientId/job/create" element={<JobCreate />} />
       </Route>
       
       {/* Public invoice view */}

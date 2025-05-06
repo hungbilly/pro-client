@@ -325,26 +325,17 @@ const InvoiceView = () => {
   const handleDownloadInvoice = async () => {
     if (!invoice) return;
     
-    if (invoice.pdfUrl) {
-      try {
-        const link = document.createElement('a');
-        link.href = invoice.pdfUrl;
-        link.setAttribute('download', `Invoice-${invoice.number}.pdf`);
-        document.body.appendChild(link);
-        link.click();
-        
-        document.body.removeChild(link);
-        toast.success('Invoice downloaded successfully');
-      } catch (err) {
-        console.error('Error during download:', err);
-        toast.error('Failed to download invoice');
-      }
-      return;
-    }
-    
     try {
       toast.info('Preparing PDF for download...');
       
+      // If we already have a PDF URL, use it directly
+      if (invoice.pdfUrl) {
+        window.open(invoice.pdfUrl, '_blank');
+        toast.success('Invoice downloaded successfully');
+        return;
+      }
+      
+      // Generate a new PDF
       const { data, error } = await supabase.functions.invoke('generate-invoice-pdf', {
         body: { invoiceId: invoice.id }
       });
@@ -356,20 +347,20 @@ const InvoiceView = () => {
       }
       
       if (data?.pdfUrl) {
+        // Update the invoice object with the new PDF URL
         setInvoice(prev => prev ? { ...prev, pdfUrl: data.pdfUrl } : null);
         
-        const link = document.createElement('a');
-        link.href = data.pdfUrl;
-        link.setAttribute('download', `Invoice-${invoice.number}.pdf`);
-        document.body.appendChild(link);
-        link.click();
-        
-        document.body.removeChild(link);
+        // Open the PDF in a new tab
+        window.open(data.pdfUrl, '_blank');
         toast.success('Invoice downloaded successfully');
+      } else {
+        throw new Error('No PDF URL returned');
       }
     } catch (err) {
       console.error('Error downloading invoice:', err);
-      toast.error('Failed to download invoice');
+      toast.error('Failed to download invoice', {
+        description: 'Please try again later or contact support.'
+      });
     }
   };
 

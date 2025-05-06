@@ -7,6 +7,7 @@ import { getInvoiceByViewLink } from '@/lib/storage';
 import { Invoice } from '@/types';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import PageTransition from '@/components/ui-custom/PageTransition';
+import { supabase } from "@/integrations/supabase/client";
 
 const InvoicePdfView = () => {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
@@ -73,25 +74,21 @@ const InvoicePdfView = () => {
       }
       
       // Otherwise, generate a new PDF
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-invoice-pdf`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-        },
-        body: JSON.stringify({ invoiceId: invoice.id })
+      const response = await supabase.functions.invoke('generate-invoice-pdf', {
+        body: { invoiceId: invoice.id }
       });
       
-      if (!response.ok) {
-        throw new Error('Failed to generate PDF');
+      if (response.error) {
+        throw new Error(`Failed to generate PDF: ${response.error.message}`);
       }
       
-      const data = await response.json();
-      if (data.pdfUrl) {
-        window.open(data.pdfUrl, '_blank');
+      if (response.data?.pdfUrl) {
+        window.open(response.data.pdfUrl, '_blank');
+        // Update the invoice object with the new PDF URL
+        setInvoice(prev => prev ? { ...prev, pdfUrl: response.data.pdfUrl } : null);
         toast.success('Invoice downloaded successfully');
       } else {
-        throw new Error('No PDF URL returned');
+        throw new Error('No PDF URL returned from the function');
       }
     } catch (err) {
       console.error('Error downloading invoice:', err);

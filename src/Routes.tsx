@@ -16,6 +16,9 @@ import Subscription from '@/pages/Subscription';
 import SubscriptionSuccess from '@/pages/SubscriptionSuccess';
 import SubscriptionCancel from '@/pages/SubscriptionCancel';
 import Clients from '@/pages/Clients';
+import ClientDetail from '@/pages/ClientDetail';
+import ClientEdit from '@/pages/ClientEdit';
+import ClientNew from '@/pages/ClientNew';
 import Invoices from '@/pages/Invoices';
 import InvoiceView from '@/pages/InvoiceView';
 import Jobs from '@/pages/Jobs';
@@ -88,6 +91,9 @@ const AppRoutes = () => {
       }>
         <Route index element={<Index />} />
         <Route path="/clients" element={<Clients />} />
+        <Route path="/client/new" element={<ClientNew />} />
+        <Route path="/client/:id" element={<ClientDetail />} />
+        <Route path="/client/:id/edit" element={<ClientEdit />} />
         <Route path="/invoices" element={<Invoices />} />
         <Route path="/jobs" element={<Jobs />} />
         <Route path="/account" element={<Payments />} />

@@ -16,19 +16,30 @@ import Subscription from '@/pages/Subscription';
 import SubscriptionSuccess from '@/pages/SubscriptionSuccess';
 import SubscriptionCancel from '@/pages/SubscriptionCancel';
 import Clients from '@/pages/Clients';
+import ClientDetail from '@/pages/ClientDetail';
+import ClientEdit from '@/pages/ClientEdit';
+import ClientNew from '@/pages/ClientNew';
 import Invoices from '@/pages/Invoices';
 import InvoiceView from '@/pages/InvoiceView';
+import InvoiceCreate from '@/pages/InvoiceCreate';
+import InvoicePdfView from '@/pages/InvoicePdfView';
 import Jobs from '@/pages/Jobs';
 import NotFound from '@/pages/NotFound';
 import AppLayout from '@/components/AppLayout';
 import Terms from '@/pages/Terms';
 import Privacy from '@/pages/Privacy';
-import InvoicePdfView from '@/pages/InvoicePdfView';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import SubscriptionGuard from '@/components/SubscriptionGuard';
 import Settings from '@/pages/Settings';
 import Payments from '@/pages/Payments';
 import EmailVerification from '@/pages/EmailVerification';
+import JobCreate from '@/pages/JobCreate';
+import JobDetail from '@/pages/JobDetail';
+import JobEdit from '@/pages/JobEdit';
+import Admin from '@/pages/Admin';
+import Debug from '@/pages/Debug';
+import AdminLayout from '@/components/AdminLayout';
+import CalendarTest from '@/pages/CalendarTest';
 
 const AppRoutes = () => {
   const { user } = useAuth();
@@ -60,6 +71,17 @@ const AppRoutes = () => {
         </ProtectedRoute>
       } />
       
+      {/* Admin routes */}
+      <Route path="/admin" element={
+        <ProtectedRoute adminOnly={true}>
+          <AdminLayout />
+        </ProtectedRoute>
+      }>
+        <Route index element={<Admin />} />
+        <Route path="/admin/debug" element={<Debug />} />
+        <Route path="/admin/calendar-test" element={<CalendarTest />} />
+      </Route>
+      
       {/* All authenticated app pages with AppLayout */}
       <Route path="/" element={
         <ProtectedRoute>
@@ -68,16 +90,29 @@ const AppRoutes = () => {
           </SubscriptionGuard>
         </ProtectedRoute>
       }>
-        <Route index element={<Index />} /> {/* Root path now uses Index component */}
+        <Route index element={<Index />} />
         <Route path="/clients" element={<Clients />} />
+        <Route path="/client/new" element={<ClientNew />} />
+        <Route path="/client/:id" element={<ClientDetail />} />
+        <Route path="/client/:id/edit" element={<ClientEdit />} />
         <Route path="/invoices" element={<Invoices />} />
         <Route path="/jobs" element={<Jobs />} />
         <Route path="/account" element={<Payments />} />
         <Route path="/settings" element={<Settings />} />
+        
+        {/* Job routes */}
+        <Route path="/job/:id" element={<JobDetail />} />
+        <Route path="/job/:id/edit" element={<JobEdit />} />
+        <Route path="/client/:clientId/job/create" element={<JobCreate />} />
+        
+        {/* Invoice routes - ensure all needed routes exist */}
+        <Route path="/job/:jobId/invoice/create" element={<InvoiceCreate />} />
+        <Route path="/job/:jobId/invoice/new" element={<InvoiceCreate />} />
+        <Route path="/invoice/:invoiceId/edit" element={<InvoiceCreate />} />
       </Route>
       
-      {/* Public invoice view */}
-      <Route path="/invoice/:viewLink" element={<InvoiceView />} />
+      {/* Public invoice view routes - moved outside of the protected routes */}
+      <Route path="/invoice/:idOrViewLink" element={<InvoiceView />} />
       <Route path="/invoice-pdf/:viewLink" element={<InvoicePdfView />} />
       
       <Route path="*" element={<NotFound />} />

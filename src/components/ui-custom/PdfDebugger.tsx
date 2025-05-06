@@ -3,7 +3,7 @@ import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronsUpDown, FileWarning, FileCheck, AlertCircle } from "lucide-react";
+import { ChevronsUpDown, FileWarning, FileCheck, AlertCircle, FileBadge } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
@@ -35,6 +35,10 @@ const PdfDebugger = ({ debugInfo, pdfUrl, downloadError, downloadAttempts = 0 }:
       return debugInfo.pdfInfo.contentType;
     }
     
+    if (debugInfo?.storageInfo?.contentType) {
+      return debugInfo.storageInfo.contentType;
+    }
+    
     if (pdfUrl?.includes('invoice-pdfs')) {
       return 'application/pdf (assumed from storage bucket)';
     }
@@ -45,6 +49,7 @@ const PdfDebugger = ({ debugInfo, pdfUrl, downloadError, downloadAttempts = 0 }:
   // Extract file size
   const fileSize = debugInfo?.pdfSize || 
                   debugInfo?.finalVerification?.contentLength || 
+                  debugInfo?.storageInfo?.fileSize ||
                   debugInfo?.pdfInfo?.contentLength || 
                   'unknown';
   
@@ -56,6 +61,9 @@ const PdfDebugger = ({ debugInfo, pdfUrl, downloadError, downloadAttempts = 0 }:
   const isContentTypeSuspicious = contentType && 
     (contentType.includes(',') || 
      !contentType.includes('pdf'));
+     
+  // Check for storage warnings
+  const hasStorageWarnings = debugInfo?.storageWarnings && debugInfo.storageWarnings.length > 0;
 
   return (
     <Card className="mt-4">
@@ -68,6 +76,9 @@ const PdfDebugger = ({ debugInfo, pdfUrl, downloadError, downloadAttempts = 0 }:
             )}
             {isFileSizeSuspicious && (
               <Badge variant="destructive" className="text-xs">Size Issue</Badge>
+            )}
+            {hasStorageWarnings && (
+              <Badge variant="destructive" className="text-xs">Storage Issue</Badge>
             )}
           </div>
           <CollapsibleTrigger asChild>
@@ -124,6 +135,17 @@ const PdfDebugger = ({ debugInfo, pdfUrl, downloadError, downloadAttempts = 0 }:
                     )}
                   </div>
                 </div>
+                
+                {hasStorageWarnings && (
+                  <div className="mt-3 bg-red-50 p-2 rounded border border-red-200">
+                    <h5 className="text-xs font-medium text-red-800">Storage Warnings:</h5>
+                    <ul className="text-xs text-red-700 mt-1 list-disc pl-4">
+                      {debugInfo.storageWarnings.map((warning: string, i: number) => (
+                        <li key={i}>{warning}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             )}
             
@@ -141,6 +163,37 @@ const PdfDebugger = ({ debugInfo, pdfUrl, downloadError, downloadAttempts = 0 }:
                     Attempts: {downloadAttempts}
                   </div>
                 )}
+              </div>
+            )}
+            
+            {debugInfo?.storageInfo && (
+              <div className="mb-4 bg-blue-50 p-2 rounded border border-blue-100">
+                <h4 className="text-sm font-medium text-blue-800 mb-1 flex items-center gap-2">
+                  <FileBadge className="h-4 w-4" />
+                  Storage Information
+                </h4>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <span className="font-medium">Filename:</span>{" "}
+                    {debugInfo.storageInfo.fileName}
+                  </div>
+                  <div>
+                    <span className="font-medium">Content Type:</span>{" "}
+                    <span className={debugInfo.storageInfo.contentType !== 'application/pdf' ? "text-red-600 font-semibold" : ""}>
+                      {debugInfo.storageInfo.contentType}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-medium">File Size:</span>{" "}
+                    {debugInfo.storageInfo.fileSize 
+                      ? `${(parseInt(debugInfo.storageInfo.fileSize) / 1024).toFixed(2)} KB` 
+                      : 'unknown'}
+                  </div>
+                  <div>
+                    <span className="font-medium">Created:</span>{" "}
+                    {new Date(debugInfo.storageInfo.created).toLocaleString()}
+                  </div>
+                </div>
               </div>
             )}
             

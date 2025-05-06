@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { jsPDF } from 'https://esm.sh/jspdf@3.0.1';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
@@ -489,6 +488,39 @@ serve(async (req) => {
       );
     }
     
+    // Check if PDF starts with %PDF- magic bytes (PDF signature)
+    const pdfSignature = new TextDecoder().decode(pdfData.slice(0, 5));
+    if (pdfSignature !== '%PDF-') {
+      executionStages.validate_pdf.end = Date.now();
+      executionStages.validate_pdf.success = false;
+      executionStages.validate_pdf.error = `Invalid PDF signature: ${pdfSignature}`;
+      
+      log.error('Generated data is not a valid PDF - invalid signature:', pdfSignature);
+      return new Response(
+        JSON.stringify({ 
+          error: `Generated data is not a valid PDF file`,
+          debugInfo: debugMode ? debugInfo : undefined
+        }),
+        { headers, status: 500 }
+      );
+    }
+    
+    // Check if PDF size is too large (over 5MB)
+    if (pdfData.byteLength > 5000000) {
+      executionStages.validate_pdf.end = Date.now();
+      executionStages.validate_pdf.success = false;
+      executionStages.validate_pdf.error = `PDF too large: ${pdfData.byteLength} bytes`;
+      
+      log.error('Generated PDF is suspiciously large:', pdfData.byteLength, 'bytes. This may indicate data corruption.');
+      return new Response(
+        JSON.stringify({ 
+          error: `Generated PDF appears invalid. PDF size too large: ${(pdfData.byteLength / 1024 / 1024).toFixed(2)} MB`,
+          debugInfo: debugMode ? debugInfo : undefined
+        }),
+        { headers, status: 500 }
+      );
+    }
+    
     executionStages.validate_pdf.end = Date.now();
     executionStages.validate_pdf.success = true;
 
@@ -502,12 +534,12 @@ serve(async (req) => {
     
     executionStages.upload_pdf = { start: Date.now() };
     
-    // FIX: Set the correct content type for the PDF
+    // FIX: Set the correct content type for the PDF and ensure we're only uploading PDF data
     const { data: uploadData, error: uploadError } = await supabase
       .storage
       .from('invoice-pdfs')
       .upload(filePath, pdfData, {
-        contentType: 'application/pdf', // Explicitly set contentType to application/pdf
+        contentType: 'application/pdf', // Explicitly set contentType to application/pdf ONLY
         upsert: true,
       });
 
@@ -606,8 +638,6 @@ serve(async (req) => {
       } else {
         executionStages.verify_storage.end = Date.now();
         executionStages.verify_storage.success = true;
-        log.info('Storage file check:', fileInfo);
-        debugInfo.storageInfo = fileInfo;
         
         // Add new detailed logging about file storage information
         if (fileInfo && fileInfo.length > 0) {
@@ -618,6 +648,34 @@ serve(async (req) => {
             contentType: fileDetails.metadata?.mimetype,
             created: fileDetails.created_at
           });
+          
+          // Additional validation of the stored file
+          if (fileDetails.metadata?.mimetype !== 'application/pdf') {
+            log.error('Stored file has incorrect MIME type:', fileDetails.metadata?.mimetype);
+            debugInfo.storageWarnings = [...(debugInfo.storageWarnings || []), 
+              `File has incorrect MIME type: ${fileDetails.metadata?.mimetype}`];
+          }
+          
+          // Check file size
+          const storedSize = fileDetails.metadata?.size;
+          if (storedSize && (storedSize > pdfData.byteLength * 1.1 || storedSize < pdfData.byteLength * 0.9)) {
+            log.error('Stored file size differs significantly from generated PDF:', {
+              generatedSize: pdfData.byteLength,
+              storedSize: storedSize
+            });
+            debugInfo.storageWarnings = [...(debugInfo.storageWarnings || []), 
+              `File size mismatch: generated=${pdfData.byteLength}, stored=${storedSize}`];
+          }
+          
+          debugInfo.storageInfo = {
+            fileName: fileDetails.name,
+            fileSize: fileDetails.metadata?.size,
+            contentType: fileDetails.metadata?.mimetype,
+            created: fileDetails.created_at
+          };
+        } else {
+          log.warn('No files found in storage after upload');
+          debugInfo.storageWarnings = [...(debugInfo.storageWarnings || []), 'File not found after upload'];
         }
       }
     } catch (e) {
@@ -1195,7 +1253,16 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
     // Updated to match jsPDF v3.x API
     const pdfArrayBuffer = doc.output('arraybuffer');
     console.log('PDF array buffer generated, size:', pdfArrayBuffer.byteLength, 'bytes');
-    return new Uint8Array(pdfArrayBuffer);
+    
+    // Check PDF signature
+    const pdfView = new Uint8Array(pdfArrayBuffer);
+    const pdfSignature = new TextDecoder().decode(pdfView.slice(0, 5));
+    if (pdfSignature !== '%PDF-') {
+      console.error('Generated PDF has invalid signature:', pdfSignature);
+      throw new Error('Invalid PDF generated - missing PDF signature');
+    }
+    
+    return pdfView;
   } catch (err) {
     console.error('Error generating PDF:', err);
     throw new Error('Failed to generate PDF: ' + err.message);

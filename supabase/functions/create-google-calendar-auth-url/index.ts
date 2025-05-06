@@ -57,7 +57,7 @@ serve(async (req) => {
     authUrl.searchParams.append('client_id', GOOGLE_CLIENT_ID);
     authUrl.searchParams.append('redirect_uri', callbackUrl);
     authUrl.searchParams.append('response_type', 'code');
-    authUrl.searchParams.append('scope', 'https://www.googleapis.com/auth/calendar');
+    authUrl.searchParams.append('scope', 'https://www.googleapis.com/auth/calendar.events');
     authUrl.searchParams.append('access_type', 'offline');
     authUrl.searchParams.append('prompt', 'consent'); // Force to always get a refresh token
     authUrl.searchParams.append('state', state);

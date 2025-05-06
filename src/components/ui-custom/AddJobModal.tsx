@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { getClient } from '@/lib/storage';
 import { Client } from '@/types';
 import { User, Mail, Phone } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface AddJobModalProps {
   isOpen: boolean;
@@ -47,6 +48,13 @@ const AddJobModal: React.FC<AddJobModalProps> = ({ isOpen, onClose, clientId: in
   const handleJobSuccess = (jobId: string) => {
     setIsSubmitting(false);
     onClose();
+    
+    if (!jobId) {
+      console.error('No job ID was returned after job creation');
+      toast.error('An error occurred while creating the job');
+      return;
+    }
+    
     // Navigate to the job details page
     navigate(`/job/${jobId}`);
   };

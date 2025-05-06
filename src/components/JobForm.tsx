@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Client, Job } from '@/types';
@@ -311,6 +312,11 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
 
         console.log('Creating new job with data:', newJobData);
         const savedJob = await saveJob(newJobData);
+        
+        if (!savedJob || !savedJob.id) {
+          throw new Error('Failed to create job - no job ID returned');
+        }
+        
         setNewJob(savedJob);
         toast.success('Job created successfully!');
         

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, memo, useRef } from 'react';
-import { useParams, Link, useLocation } from 'react-router-dom';
+import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   getInvoiceByViewLink, 
   getClient, 
@@ -43,6 +43,7 @@ const InvoiceView = () => {
   const { selectedCompanyId, selectedCompany } = useCompanyContext();
   const { idOrViewLink } = useParams<{ idOrViewLink: string }>();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const isClientView = useMemo(() => 
     !location.pathname.includes('/admin') && !user, 
@@ -585,11 +586,12 @@ const InvoiceView = () => {
                     variant="outline" 
                     size="sm" 
                     onClick={() => {
-                      if (invoice.jobId) {
-                        window.location.href = `/job/${invoice.jobId}/invoice/${invoice.id}/edit`;
-                      } else {
-                        window.location.href = `/client/${client.id}/invoice/${invoice.id}/edit`;
+                      if (!invoice.id) {
+                        toast.error("Cannot edit invoice: Invoice ID is missing");
+                        return;
                       }
+                      // Use the correct route that matches the one defined in Routes.tsx
+                      navigate(`/invoice/${invoice.id}/edit`);
                     }}
                     className="flex items-center gap-1"
                   >

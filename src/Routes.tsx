@@ -21,6 +21,7 @@ import ClientEdit from '@/pages/ClientEdit';
 import ClientNew from '@/pages/ClientNew';
 import Invoices from '@/pages/Invoices';
 import InvoiceView from '@/pages/InvoiceView';
+import InvoiceCreate from '@/pages/InvoiceCreate';
 import Jobs from '@/pages/Jobs';
 import NotFound from '@/pages/NotFound';
 import AppLayout from '@/components/AppLayout';
@@ -103,6 +104,10 @@ const AppRoutes = () => {
         <Route path="/job/:id" element={<JobDetail />} />
         <Route path="/job/:id/edit" element={<JobEdit />} />
         <Route path="/client/:clientId/job/create" element={<JobCreate />} />
+        
+        {/* Invoice routes - Add the missing route */}
+        <Route path="/job/:jobId/invoice/create" element={<InvoiceCreate />} />
+        <Route path="/job/:jobId/invoice/new" element={<InvoiceCreate />} />
       </Route>
       
       {/* Public invoice view */}

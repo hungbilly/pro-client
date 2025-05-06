@@ -1,4 +1,3 @@
-
 import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -39,6 +38,9 @@ const NotFound = () => {
   // Check if this is an invoice edit route with wrong format
   const isInvoiceEditRouteWithIssue = location.pathname.includes('/invoice/edit/');
   
+  // Check if this is trying to access an invoice directly (might be edit attempt)
+  const isInvoiceDirectAccess = /^\/invoice\/([^\/]+)$/.test(location.pathname);
+  
   // Extract the client ID if present
   const clientIdMatch = location.pathname.match(/\/client\/([^\/]+)/);
   const clientId = clientIdMatch ? clientIdMatch[1] : null;
@@ -51,8 +53,9 @@ const NotFound = () => {
   const jobIdMatch = location.pathname.match(/\/job\/([^\/]+)/);
   const jobId = jobIdMatch ? jobIdMatch[1] : null;
   
-  // Extract the invoice ID if present
-  const invoiceIdMatch = location.pathname.match(/\/invoice\/edit\/([^\/]+)/);
+  // Extract the invoice ID if present, handling both edit/ID and direct ID formats
+  const invoiceIdMatch = location.pathname.match(/\/invoice\/edit\/([^\/]+)/) || 
+                         location.pathname.match(/^\/invoice\/([^\/]+)$/);
   const invoiceId = invoiceIdMatch ? invoiceIdMatch[1] : null;
 
   // Enhanced check for malformed URL with duplicate domain or protocol
@@ -125,6 +128,13 @@ const NotFound = () => {
     
     // Fix invoice edit route with wrong format (should be /invoice/:id/edit)
     if (isInvoiceEditRouteWithIssue && invoiceId) {
+      console.log("Fixing invoice edit route:", invoiceId);
+      return `/invoice/${invoiceId}/edit`;
+    }
+    
+    // Check if this is a direct invoice access that might need to be edited
+    if (isInvoiceDirectAccess && invoiceId) {
+      console.log("Redirecting to invoice editing:", invoiceId);
       return `/invoice/${invoiceId}/edit`;
     }
     
@@ -171,7 +181,9 @@ const NotFound = () => {
                     ? "It looks like you're trying to edit a client, but the URL format is incorrect."
                     : isInvoiceEditRouteWithIssue
                       ? "It looks like you're trying to edit an invoice, but the URL format is incorrect."
-                      : `The page you're looking for at ${location.pathname} could not be found.`
+                      : isInvoiceDirectAccess
+                        ? "It looks like you're trying to access an invoice. Did you want to edit it?"
+                        : `The page you're looking for at ${location.pathname} could not be found.`
           }
           {correctRoute && (
             <span className="block mt-2 text-blue-500">

@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { jsPDF } from 'https://esm.sh/jspdf@3.0.1';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
@@ -142,8 +143,11 @@ serve(async (req) => {
   }
 
   try {
-    const { invoiceId } = await req.json();
-    console.log('Received request to generate PDF for invoice:', invoiceId);
+    const { invoiceId, forceRegenerate = false, debugMode = false } = await req.json();
+    console.log('Received request to generate PDF for invoice:', invoiceId, {
+      forceRegenerate,
+      debugMode
+    });
 
     if (!invoiceId) {
       return new Response(
@@ -152,6 +156,24 @@ serve(async (req) => {
       );
     }
 
+    // Fetch existing invoice PDF URL and check if we need to regenerate
+    if (!forceRegenerate && !debugMode) {
+      const { data: existingInvoice, error: existingError } = await supabase
+        .from('invoices')
+        .select('pdf_url')
+        .eq('id', invoiceId)
+        .single();
+
+      if (!existingError && existingInvoice?.pdf_url) {
+        console.log('Using existing PDF URL:', existingInvoice.pdf_url);
+        return new Response(
+          JSON.stringify({ pdfUrl: existingInvoice.pdf_url }),
+          { headers: { ...headers, 'Content-Type': 'application/json' }, status: 200 }
+        );
+      }
+    }
+
+    // Fetch all invoice data
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
       .select('*, invoice_items(*), payment_schedules(*)')
@@ -248,9 +270,27 @@ serve(async (req) => {
       })),
     };
 
-    console.log('Uploading PDF for invoice:', invoiceId);
+    console.log('Generating PDF for invoice:', invoiceId);
     
-    const pdfData = await generatePDF(formattedInvoice);
+    let pdfData;
+    try {
+      pdfData = await generatePDF(formattedInvoice);
+    } catch (pdfError) {
+      console.error('Error generating PDF:', pdfError);
+      return new Response(
+        JSON.stringify({ error: `Failed to generate PDF: ${pdfError.message}` }),
+        { headers: { ...headers, 'Content-Type': 'application/json' }, status: 500 }
+      );
+    }
+
+    // Handle very small PDF sizes which likely indicate an error
+    if (pdfData.byteLength < 1000) {
+      console.error('Generated PDF is suspiciously small:', pdfData.byteLength, 'bytes. This may indicate a failed generation.');
+      return new Response(
+        JSON.stringify({ error: 'Generated PDF appears invalid. PDF size too small.' }),
+        { headers: { ...headers, 'Content-Type': 'application/json' }, status: 500 }
+      );
+    }
 
     const filePath = `invoices/${invoiceId}.pdf`;
     const { data: uploadData, error: uploadError } = await supabase
@@ -264,7 +304,7 @@ serve(async (req) => {
     if (uploadError) {
       console.error('Error uploading PDF:', uploadError);
       return new Response(
-        JSON.stringify({ error: 'Failed to upload PDF' }),
+        JSON.stringify({ error: `Failed to upload PDF: ${uploadError.message}` }),
         { headers: { ...headers, 'Content-Type': 'application/json' }, status: 500 }
       );
     }
@@ -274,19 +314,22 @@ serve(async (req) => {
       .from('invoice-pdfs')
       .getPublicUrl(filePath);
 
+    // Add a timestamp to the URL to prevent caching issues
+    const pdfUrl = `${publicUrlData.publicUrl}?t=${Date.now()}`;
+
     await supabase
       .from('invoices')
-      .update({ pdf_url: publicUrlData.publicUrl })
+      .update({ pdf_url: pdfUrl })
       .eq('id', invoiceId);
 
     return new Response(
-      JSON.stringify({ pdfUrl: publicUrlData.publicUrl }),
+      JSON.stringify({ pdfUrl }),
       { headers: { ...headers, 'Content-Type': 'application/json' }, status: 200 }
     );
   } catch (error) {
     console.error('Error processing request:', error);
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({ error: `Internal server error: ${error.message}` }),
       { headers: { ...headers, 'Content-Type': 'application/json' }, status: 500 }
     );
   }
@@ -792,6 +835,6 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
     return doc.output('arraybuffer');
   } catch (err) {
     console.error('Error generating PDF:', err);
-    throw new Error('Failed to generate PDF');
+    throw new Error('Failed to generate PDF: ' + err.message);
   }
 }

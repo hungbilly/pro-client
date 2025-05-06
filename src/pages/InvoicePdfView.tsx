@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Download } from 'lucide-react';
@@ -68,6 +69,7 @@ const InvoicePdfView = () => {
     try {
       // If we already have a PDF URL, use it directly
       if (invoice.pdfUrl) {
+        // Use a direct window.open to avoid CORS issues
         window.open(invoice.pdfUrl, '_blank');
         setIsDownloading(false);
         return;
@@ -75,8 +77,13 @@ const InvoicePdfView = () => {
       
       // Otherwise, generate a new PDF
       const response = await supabase.functions.invoke('generate-invoice-pdf', {
-        body: { invoiceId: invoice.id }
+        body: { 
+          invoiceId: invoice.id,
+          forceRegenerate: true  // Force regeneration even if PDF exists
+        }
       });
+      
+      console.log("PDF generation response:", response);
       
       if (response.error) {
         throw new Error(`Failed to generate PDF: ${response.error.message}`);

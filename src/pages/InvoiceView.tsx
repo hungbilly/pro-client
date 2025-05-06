@@ -337,7 +337,10 @@ const InvoiceView = () => {
       
       // Generate a new PDF
       const { data, error } = await supabase.functions.invoke('generate-invoice-pdf', {
-        body: { invoiceId: invoice.id }
+        body: { 
+          invoiceId: invoice.id,
+          forceRegenerate: true // Force regeneration to ensure we get a fresh PDF
+        }
       });
       
       if (error) {

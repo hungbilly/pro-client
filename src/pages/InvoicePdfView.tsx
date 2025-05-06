@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Download, AlertTriangle, FileText, RefreshCw } from 'lucide-react';
@@ -155,33 +156,7 @@ const InvoicePdfView = () => {
     toast.info('Preparing PDF for download...');
     
     try {
-      // If we already have a PDF URL, verify it works before using it
-      if (invoice.pdfUrl) {
-        try {
-          console.log('Attempting to verify existing PDF from URL:', invoice.pdfUrl);
-          
-          const validation = await validatePdfUrl(invoice.pdfUrl);
-          
-          if (validation.isValid) {
-            console.log('Using existing valid PDF URL');
-            window.open(invoice.pdfUrl, '_blank');
-            setIsDownloading(false);
-            return;
-          } else {
-            console.warn('Existing PDF validation failed:', validation.error);
-            // Add validation info to debug info
-            setDebugInfo(prev => ({
-              ...(prev || {}),
-              existingPdfValidation: validation
-            }));
-          }
-        } catch (e) {
-          console.error('Error verifying existing PDF:', e);
-          // Continue with regeneration
-        }
-      }
-      
-      // Otherwise, generate a new PDF
+      // Always force regenerate to ensure we get the latest PDF
       console.log('Generating new PDF via edge function');
       setDownloadAttempts(prev => prev + 1);
       
@@ -191,7 +166,7 @@ const InvoicePdfView = () => {
       const { data, error } = await supabase.functions.invoke('generate-invoice-pdf', {
         body: { 
           invoiceId: invoice.id,
-          forceRegenerate: true,  // Force regeneration even if PDF exists
+          forceRegenerate: true,  // Always force regeneration
           debugMode: true, // Always enable debug mode for better troubleshooting
           clientInfo: {
             userAgent: navigator.userAgent,

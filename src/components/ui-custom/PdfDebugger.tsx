@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronDown, ChevronRight, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { ChevronDown, ChevronRight, Clock, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
 
 interface PdfDebuggerProps {
   debugInfo: any;
@@ -46,6 +46,9 @@ const PdfDebugger: React.FC<PdfDebuggerProps> = ({ debugInfo }) => {
     );
   };
 
+  // Determine if PDF was regenerated
+  const wasRegenerated = debugInfo.pdfInfo?.source !== 'existing';
+
   return (
     <Collapsible
       open={isOpen}
@@ -68,6 +71,19 @@ const PdfDebugger: React.FC<PdfDebuggerProps> = ({ debugInfo }) => {
           <div className="flex items-center text-muted-foreground gap-1">
             <Clock className="h-3 w-3" />
             <span>{formatTimestamp(debugInfo.timestamp)}</span>
+          </div>
+        )}
+        
+        {wasRegenerated !== undefined && (
+          <div>
+            <Badge variant={wasRegenerated ? "default" : "outline"} className={wasRegenerated ? "bg-blue-100 text-blue-700 border-blue-200" : ""}>
+              {wasRegenerated ? (
+                <>
+                  <RefreshCw className="h-3 w-3 mr-1" />
+                  Newly Generated
+                </>
+              ) : "Using Existing PDF"}
+            </Badge>
           </div>
         )}
         

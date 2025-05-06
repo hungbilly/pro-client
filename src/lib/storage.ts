@@ -1000,7 +1000,7 @@ export const saveInvoice = async (invoice: Omit<Invoice, 'id' | 'viewLink'>): Pr
 
 export const updateInvoice = async (invoice: Invoice): Promise<Invoice> => {
   try {
-    // Update invoice data
+    // Update invoice data - now clearing pdf_url to force regeneration on next view
     const { error: invoiceError } = await supabase
       .from('invoices')
       .update({
@@ -1015,7 +1015,8 @@ export const updateInvoice = async (invoice: Invoice): Promise<Invoice> => {
         contract_status: invoice.contractStatus,
         notes: invoice.notes,
         contract_terms: invoice.contractTerms,
-        shooting_date: invoice.shootingDate
+        shooting_date: invoice.shootingDate,
+        pdf_url: null // Clear PDF URL to force regeneration on next view
       })
       .eq('id', invoice.id);
 
@@ -1088,7 +1089,11 @@ export const updateInvoice = async (invoice: Invoice): Promise<Invoice> => {
       }
     }
 
-    return invoice;
+    // Return updated invoice with pdf_url cleared
+    return {
+      ...invoice,
+      pdfUrl: null
+    };
   } catch (error) {
     console.error('Error in updateInvoice:', error);
     throw error;

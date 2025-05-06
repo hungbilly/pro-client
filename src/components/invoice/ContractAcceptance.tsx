@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Check } from 'lucide-react';
 import { toast } from 'sonner';
 
-interface ContractAcceptanceProps {
+export interface ContractAcceptanceProps {
   companyName: string;
   onAccept: (name: string) => Promise<void>;
 }

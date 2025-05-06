@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback, memo, useRef } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { 
@@ -9,7 +10,7 @@ import {
   updatePaymentScheduleStatus,
   getJob
 } from '@/lib/storage';
-import { Invoice, Client, Job, CompanyClientView, PaymentSchedule, ContractStatus } from '@/types';
+import { Invoice, Client, Job, CompanyClientView, PaymentSchedule, ContractStatus, PaymentStatus } from '@/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -169,12 +170,13 @@ const InvoiceView = () => {
                   .eq('invoice_id', data.id);
                   
                 if (schedules) {
+                  // Make sure to cast the status to PaymentStatus type
                   fetchedInvoice.paymentSchedules = schedules.map(schedule => ({
                     id: schedule.id,
                     invoiceId: schedule.invoice_id,
                     percentage: schedule.percentage,
                     dueDate: schedule.due_date,
-                    status: schedule.status,
+                    status: schedule.status as PaymentStatus,
                     paymentDate: schedule.payment_date,
                     description: schedule.description
                   }));
@@ -316,7 +318,7 @@ const InvoiceView = () => {
     fetchInvoice();
   }, [idOrViewLink, location.pathname, selectedCompanyId, isClientView]);
 
-  const handlePaymentStatusUpdate = useCallback(async (paymentId: string, newStatus: 'paid' | 'unpaid' | 'write-off') => {
+  const handlePaymentStatusUpdate = useCallback(async (paymentId: string, newStatus: PaymentStatus) => {
     if (!invoice || !paymentId) return;
     
     setUpdatingPaymentId(paymentId);
@@ -893,12 +895,12 @@ const InvoiceView = () => {
                       
                       <PaymentScheduleTable 
                         paymentSchedules={invoice.paymentSchedules}
-                        totalAmount={invoice.amount}
-                        onStatusUpdate={handlePaymentStatusUpdate}
-                        onPaymentDateUpdate={handlePaymentDateUpdate}
+                        amount={invoice.amount}
+                        onUpdateStatus={handlePaymentStatusUpdate}
+                        onUpdatePaymentDate={handlePaymentDateUpdate}
                         updatingPaymentId={updatingPaymentId}
                         formatCurrency={formatCurrency}
-                        readOnly={isClientView}
+                        isClientView={isClientView}
                       />
                     </div>
                   )}
@@ -971,7 +973,10 @@ const InvoiceView = () => {
                         </div>
                       ) : (
                         isClientView && (
-                          <ContractAcceptance onAccept={handleAcceptContract} />
+                          <ContractAcceptance 
+                            companyName={displayCompany?.name || "the company"} 
+                            onAccept={handleAcceptContract} 
+                          />
                         )
                       )}
                       

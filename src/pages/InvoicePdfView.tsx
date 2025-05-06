@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Download, AlertTriangle, FileText, RefreshCw } from 'lucide-react';
@@ -189,7 +188,7 @@ const InvoicePdfView = () => {
       // Add a timestamp to prevent caching issues
       const timestamp = new Date().getTime();
       
-      const response = await supabase.functions.invoke('generate-invoice-pdf', {
+      const { data, error } = await supabase.functions.invoke('generate-invoice-pdf', {
         body: { 
           invoiceId: invoice.id,
           forceRegenerate: true,  // Force regeneration even if PDF exists
@@ -201,111 +200,83 @@ const InvoicePdfView = () => {
         }
       });
       
-      console.log("PDF generation response:", response);
+      console.log("PDF generation response:", data);
       
-      if (response.error) {
-        throw new Error(`Failed to generate PDF: ${response.error.message}`);
+      if (error) {
+        throw new Error(`Failed to generate PDF: ${error.message}`);
       }
       
       // Save debug info if available
-      if (response.data?.debugInfo) {
-        setDebugInfo(response.data.debugInfo);
+      if (data?.debugInfo) {
+        setDebugInfo(data.debugInfo);
       }
       
-      if (response.data?.pdfUrl) {
-        console.log('Received PDF URL from function:', response.data.pdfUrl);
-        
-        // Verify the generated PDF is accessible
-        const pdfUrl = `${response.data.pdfUrl}?t=${timestamp}`;
-        const validation = await validatePdfUrl(pdfUrl);
-        
-        if (!validation.isValid) {
-          throw new Error(`Generated PDF validation failed: ${validation.error}`);
-        }
-        
-        // Attempt to open the PDF
-        window.open(pdfUrl, '_blank');
-        
-        // Update the invoice object with the new PDF URL
-        setInvoice(prev => prev ? { ...prev, pdfUrl } : null);
-        toast.success('Invoice downloaded successfully');
-        
-        // Save validation info to debug info
-        setDebugInfo(prev => ({
-          ...(prev || {}),
-          newPdfValidation: validation
-        }));
-      } else {
-        throw new Error('No PDF URL returned from the function');
+      if (!data?.pdfUrl) {
+        throw new Error('No PDF URL returned from generation service');
       }
+      
+      // Validate the generated PDF URL
+      const validation = await validatePdfUrl(data.pdfUrl);
+      console.log('New PDF validation result:', validation);
+      
+      if (!validation.isValid) {
+        throw new Error(`Generated PDF validation failed: ${validation.error}`);
+      }
+      
+      // Update the invoice with the new PDF URL
+      setInvoice(prev => prev ? { ...prev, pdfUrl: data.pdfUrl } : null);
+      
+      // Open the PDF in a new tab
+      window.open(data.pdfUrl, '_blank');
+      
+      // Show success message
+      toast.success('Invoice downloaded successfully');
     } catch (err) {
       console.error('Error downloading invoice:', err);
-      setDownloadError(err instanceof Error ? err.message : 'Unknown error');
+      
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      setDownloadError(errorMessage);
+      
       toast.error('Failed to download invoice', {
-        description: 'Please try again later or contact support.'
+        description: errorMessage
       });
     } finally {
       setIsDownloading(false);
     }
   };
 
-  // Function to refresh the invoice data
-  const handleRefresh = async () => {
-    setLoading(true);
-    setError(null);
-    setDownloadError(null);
-    setDebugInfo(null);
-    
-    try {
-      if (!viewLink) {
-        setError("Missing view link parameter");
-        return;
-      }
-      
-      const invoiceData = await getInvoiceByViewLink(viewLink);
-      setInvoice(invoiceData);
-      console.log('Refreshed invoice data:', invoiceData);
-      toast.success('Invoice data refreshed');
-    } catch (err) {
-      console.error("Error refreshing invoice data:", err);
-      setError("Could not refresh invoice data. Please try again.");
-      toast.error('Failed to refresh data');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   if (loading) {
     return (
       <PageTransition>
-        <div className="container mx-auto px-4 py-8">
-          <Card>
-            <CardContent className="p-6 flex justify-center items-center min-h-[300px]">
-              <div className="animate-pulse flex flex-col items-center">
-                <div className="h-8 w-48 bg-gray-200 rounded mb-4"></div>
-                <div className="h-4 w-64 bg-gray-200 rounded"></div>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="flex justify-center items-center h-screen">
+          <div className="text-center">
+            <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading invoice...</p>
+          </div>
         </div>
       </PageTransition>
     );
   }
 
-  if (error) {
+  if (error || !invoice) {
     return (
       <PageTransition>
-        <div className="container mx-auto px-4 py-8">
-          <Card>
-            <CardContent className="p-6">
-              <div className="text-center">
-                <h1 className="text-2xl font-bold text-red-600 mb-4">Error Loading Invoice</h1>
-                <p className="text-gray-600">{error}</p>
-                <Button onClick={() => navigate('/')} className="mt-4">
-                  Return to Dashboard
-                </Button>
-              </div>
+        <div className="container mx-auto py-8 px-4">
+          <Card className="max-w-md mx-auto">
+            <CardHeader>
+              <CardTitle className="text-red-500 flex items-center gap-2">
+                <AlertTriangle size={20} />
+                Error Loading Invoice
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">{error || "Invoice not found"}</p>
             </CardContent>
+            <CardFooter>
+              <Button variant="outline" onClick={() => navigate('/')}>
+                Return to Home
+              </Button>
+            </CardFooter>
           </Card>
         </div>
       </PageTransition>
@@ -314,156 +285,82 @@ const InvoicePdfView = () => {
 
   return (
     <PageTransition>
-      <div className="container mx-auto px-4 py-8">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Invoice Details</CardTitle>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={handleRefresh}
-              disabled={loading}
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
-            </Button>
+      <div className="container mx-auto py-8 px-4">
+        <Card className="max-w-lg mx-auto">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Invoice PDF View
+            </CardTitle>
           </CardHeader>
           
-          <CardContent>
-            {invoice && (
-              <div className="space-y-4">
-                <div className="flex justify-between items-start">
-                  <div className="space-y-2">
-                    <div>
-                      <span className="font-medium">Invoice Number:</span> {invoice.number}
-                    </div>
-                    <div>
-                      <span className="font-medium">Client ID:</span> {invoice.clientId}
-                    </div>
-                    <div>
-                      <span className="font-medium">Amount:</span> ${invoice.amount?.toFixed(2)}
-                    </div>
-                  </div>
-                  <Badge variant={invoice.status === "draft" ? "outline" : invoice.status === "paid" ? "success" : "secondary"}>
-                    {invoice.status}
-                  </Badge>
-                </div>
-                
-                <div>
-                  <span className="font-medium">PDF Status:</span>{" "}
-                  {invoice.pdfUrl ? (
-                    <span className="text-green-600">Available</span>
-                  ) : (
-                    <span className="text-amber-600">Not yet generated</span>
-                  )}
-                </div>
-              </div>
-            )}
+          <CardContent className="space-y-4">
+            <div>
+              <h2 className="text-xl font-medium flex items-center gap-2">
+                Invoice #{invoice.number}
+              </h2>
+              <p className="text-muted-foreground text-sm mt-1">
+                Download or view this invoice as a PDF
+              </p>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <Badge variant={invoice.status === 'paid' ? 'success' : invoice.status === 'accepted' ? 'default' : 'outline'}>
+                {invoice.status.toUpperCase()}
+              </Badge>
+              
+              <Badge variant="outline">
+                {new Date(invoice.date).toLocaleDateString()}
+              </Badge>
+            </div>
             
             {downloadError && (
-              <Alert variant="destructive" className="mt-4">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>Error downloading PDF</AlertTitle>
-                <AlertDescription>
+              <Alert variant="destructive">
+                <AlertTitle className="flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  Error generating PDF
+                </AlertTitle>
+                <AlertDescription className="text-sm">
                   {downloadError}
                   {downloadAttempts > 0 && (
-                    <div className="mt-2 text-sm">
+                    <p className="mt-2">
                       Attempts: {downloadAttempts}
-                    </div>
+                    </p>
                   )}
                 </AlertDescription>
               </Alert>
             )}
-          </CardContent>
-          
-          <CardFooter className="border-t p-6 flex flex-wrap justify-end gap-2">
-            <Button
-              variant="outline"
-              onClick={handleCopyInvoiceLink}
-            >
-              Copy Invoice Link
-            </Button>
-            <Button
-              variant="default"
-              onClick={handleDownloadInvoice}
-              disabled={isDownloading}
-            >
-              {isDownloading ? (
-                <>
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                  </svg>
-                  Downloading...
-                </>
-              ) : (
-                <>
-                  <Download className="h-4 w-4 mr-2" />
-                  Download Invoice
-                </>
-              )}
-            </Button>
-          </CardFooter>
-        </Card>
-        
-        {/* Enhanced PDF Debugger */}
-        <PdfDebugger 
-          pdfUrl={invoice?.pdfUrl} 
-          debugInfo={debugInfo} 
-          downloadError={downloadError}
-          downloadAttempts={downloadAttempts}
-        />
-        
-        {invoice?.pdfUrl && (
-          <Card className="mt-4">
-            <CardHeader>
-              <CardTitle>Direct Access</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="break-all">
-                <p className="text-sm text-muted-foreground mb-2">PDF URL:</p>
-                <code className="text-xs bg-muted p-2 rounded block">{invoice.pdfUrl}</code>
-              </div>
-            </CardContent>
-            <CardFooter className="flex flex-col space-y-2">
-              <Button variant="outline" asChild className="w-full">
-                <a href={invoice.pdfUrl} target="_blank" rel="noopener noreferrer">
-                  <FileText className="mr-2 h-4 w-4" />
-                  Open PDF Directly
-                </a>
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="w-full"
-                onClick={async () => {
-                  if (invoice.pdfUrl) {
-                    const validation = await validatePdfUrl(invoice.pdfUrl);
-                    if (validation.isValid) {
-                      toast.success('PDF URL is valid');
-                    } else {
-                      toast.error(`PDF URL is invalid: ${validation.error}`);
-                    }
-                    
-                    // Update debug info with validation results
-                    setDebugInfo(prev => ({
-                      ...(prev || {}),
-                      pdfValidation: validation
-                    }));
-                  }
-                }}
-              >
-                Verify PDF URL
-              </Button>
-            </CardFooter>
-          </Card>
-        )}
 
-        <div className="mt-6 flex justify-end">
-          <Button variant="ghost" onClick={() => navigate(-1)}>
-            Back
-          </Button>
-        </div>
+            <div className="pt-2">
+              <Button 
+                onClick={handleDownloadInvoice} 
+                className="w-full mb-2"
+                disabled={isDownloading}
+              >
+                {isDownloading 
+                  ? <><RefreshCw className="h-4 w-4 mr-2 animate-spin" /> Generating PDF...</>
+                  : <><Download className="h-4 w-4 mr-2" /> Download Invoice</>
+                }
+              </Button>
+              
+              <Button 
+                onClick={handleCopyInvoiceLink}
+                variant="outline" 
+                className="w-full"
+              >
+                Copy Invoice Link
+              </Button>
+            </div>
+            
+            {debugInfo && (
+              <div className="mt-6">
+                <Separator className="my-4" />
+                <h3 className="text-sm font-medium mb-2">Debug Information</h3>
+                <PdfDebugger debugInfo={debugInfo} />
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </PageTransition>
   );

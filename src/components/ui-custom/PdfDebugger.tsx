@@ -1,308 +1,169 @@
 
-import React from 'react';
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronsUpDown, FileWarning, FileCheck, AlertCircle, FileBadge, FileCode } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import React, { useState } from 'react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { ChevronDown, ChevronRight, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 
 interface PdfDebuggerProps {
-  debugInfo?: any;
-  pdfUrl?: string;
-  downloadError?: string;
-  downloadAttempts?: number;
+  debugInfo: any;
 }
 
-const PdfDebugger = ({ debugInfo, pdfUrl, downloadError, downloadAttempts = 0 }: PdfDebuggerProps) => {
-  const [isOpen, setIsOpen] = React.useState(false);
-  
-  if (!debugInfo && !pdfUrl && !downloadError) return null;
-  
-  // Check if the PDF URL appears valid
-  const isPdfUrlValid = pdfUrl && 
-    (pdfUrl.toLowerCase().endsWith('.pdf') || 
-     pdfUrl.includes('?t=') || 
-     pdfUrl.includes('/pdf'));
+const PdfDebugger: React.FC<PdfDebuggerProps> = ({ debugInfo }) => {
+  const [isOpen, setIsOpen] = useState(false);
 
-  // Extract file type from URL or debug info
-  const extractFileType = () => {
-    if (debugInfo?.finalVerification?.contentType) {
-      return debugInfo.finalVerification.contentType;
-    }
-    
-    if (debugInfo?.pdfInfo?.contentType) {
-      return debugInfo.pdfInfo.contentType;
-    }
-    
-    if (debugInfo?.storageInfo?.contentType) {
-      return debugInfo.storageInfo.contentType;
-    }
-    
-    if (pdfUrl?.includes('invoice-pdfs')) {
-      return 'application/pdf (assumed from storage bucket)';
-    }
-    
-    return 'unknown';
+  if (!debugInfo) return null;
+
+  // Format execution time
+  const formatExecutionTime = (startTime: number, endTime: number) => {
+    if (!startTime || !endTime) return 'Unknown';
+    return `${(endTime - startTime).toFixed(2)}ms`;
   };
 
-  // Extract file size
-  const fileSize = debugInfo?.pdfSize || 
-                  debugInfo?.finalVerification?.contentLength || 
-                  debugInfo?.storageInfo?.fileSize ||
-                  debugInfo?.pdfInfo?.contentLength || 
-                  'unknown';
-  
-  // Check if file size is suspiciously large (> 5MB)
-  const isFileSizeSuspicious = fileSize && !isNaN(parseInt(fileSize)) && parseInt(fileSize) > 5000000;
-  
-  // Check if content type is suspicious (contains multiple types or wrong type)
-  const contentType = extractFileType();
-  const isContentTypeSuspicious = contentType && 
-    (contentType.includes(',') || 
-     !contentType.includes('pdf'));
-     
-  // Check for storage warnings
-  const hasStorageWarnings = debugInfo?.storageWarnings && debugInfo.storageWarnings.length > 0;
-  
-  // Check for verification warnings
-  const hasVerificationWarnings = debugInfo?.verificationWarning !== undefined;
-  
-  // Check for significant size discrepancy between what was generated and what was stored
-  const sizeMismatch = debugInfo?.storageInfo?.fileSize && debugInfo?.pdfSize && 
-    Math.abs(debugInfo.storageInfo.fileSize - debugInfo.pdfSize) > (debugInfo.pdfSize * 0.1);
+  // Format timestamp
+  const formatTimestamp = (timestamp: string) => {
+    try {
+      return new Date(timestamp).toLocaleString();
+    } catch (e) {
+      return timestamp;
+    }
+  };
+
+  // Render status badge
+  const renderStatusBadge = (success?: boolean) => {
+    if (success === undefined) return null;
+    
+    return success ? (
+      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+        <CheckCircle className="h-3 w-3 mr-1" />
+        Success
+      </Badge>
+    ) : (
+      <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+        <AlertCircle className="h-3 w-3 mr-1" />
+        Failed
+      </Badge>
+    );
+  };
 
   return (
-    <Card className="mt-4">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            PDF Debugging Information
-            {isContentTypeSuspicious && (
-              <Badge variant="destructive" className="text-xs">Content Type Issue</Badge>
-            )}
-            {isFileSizeSuspicious && (
-              <Badge variant="destructive" className="text-xs">Size Issue</Badge>
-            )}
-            {hasStorageWarnings && (
-              <Badge variant="destructive" className="text-xs">Storage Issue</Badge>
-            )}
-            {hasVerificationWarnings && (
-              <Badge variant="destructive" className="text-xs">Verification Issue</Badge>
-            )}
+    <Collapsible
+      open={isOpen}
+      onOpenChange={setIsOpen}
+      className="border rounded-md p-3 text-xs"
+    >
+      <CollapsibleTrigger asChild>
+        <Button variant="ghost" size="sm" className="flex w-full justify-between p-0 h-auto">
+          <span className="font-semibold">PDF Generation Debug Info</span>
+          {isOpen ? (
+            <ChevronDown className="h-4 w-4" />
+          ) : (
+            <ChevronRight className="h-4 w-4" />
+          )}
+        </Button>
+      </CollapsibleTrigger>
+      
+      <CollapsibleContent className="mt-2 space-y-2">
+        {debugInfo.timestamp && (
+          <div className="flex items-center text-muted-foreground gap-1">
+            <Clock className="h-3 w-3" />
+            <span>{formatTimestamp(debugInfo.timestamp)}</span>
           </div>
-          <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="sm" onClick={() => setIsOpen(!isOpen)}>
-              <ChevronsUpDown className="h-4 w-4" />
-              <span className="sr-only">Toggle</span>
-            </Button>
-          </CollapsibleTrigger>
-        </CardTitle>
-      </CardHeader>
-      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-        <CollapsibleContent>
-          <CardContent className="pt-0">
-            {pdfUrl && (
-              <div className="mb-4">
-                <h4 className="text-sm font-medium mb-1 flex items-center gap-2">
-                  Current PDF URL
-                  {isPdfUrlValid ? (
-                    <FileCheck className="h-4 w-4 text-green-500" />
-                  ) : (
-                    <FileWarning className="h-4 w-4 text-amber-500" />
-                  )}
-                </h4>
-                <code className="text-xs bg-slate-100 p-2 rounded block break-all">
-                  {pdfUrl}
-                </code>
-                
-                <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
-                  <div>
-                    <span className="font-medium">Content Type:</span>{" "}
-                    <span className={isContentTypeSuspicious ? "text-red-600 font-semibold" : ""}>
-                      {contentType}
-                    </span>
-                    {isContentTypeSuspicious && (
-                      <p className="text-red-600 mt-1">
-                        <AlertCircle className="h-3 w-3 inline mr-1" />
-                        Content type should be "application/pdf" only
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <span className="font-medium">File Size:</span>{" "}
-                    <span className={isFileSizeSuspicious ? "text-red-600 font-semibold" : ""}>
-                      {fileSize !== 'unknown' 
-                        ? `${(parseInt(fileSize) / 1024).toFixed(2)} KB`
-                        : 'unknown'
-                      }
-                    </span>
-                    {isFileSizeSuspicious && (
-                      <p className="text-red-600 mt-1">
-                        <AlertCircle className="h-3 w-3 inline mr-1" />
-                        File size is suspiciously large
-                      </p>
-                    )}
-                  </div>
-                </div>
-                
-                {hasStorageWarnings && (
-                  <div className="mt-3 bg-red-50 p-2 rounded border border-red-200">
-                    <h5 className="text-xs font-medium text-red-800">Storage Warnings:</h5>
-                    <ul className="text-xs text-red-700 mt-1 list-disc pl-4">
-                      {debugInfo.storageWarnings.map((warning: string, i: number) => (
-                        <li key={i}>{warning}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                
-                {sizeMismatch && (
-                  <Alert variant="destructive" className="mt-3">
-                    <FileCode className="h-4 w-4" />
-                    <AlertTitle>File Size Mismatch</AlertTitle>
-                    <AlertDescription>
-                      Generated PDF size ({(debugInfo.pdfSize / 1024).toFixed(2)} KB) differs significantly 
-                      from stored size ({(debugInfo.storageInfo.fileSize / 1024).toFixed(2)} KB).
-                      This typically indicates a content-type issue during upload.
-                    </AlertDescription>
-                  </Alert>
-                )}
-              </div>
-            )}
-            
-            {downloadError && (
-              <div className="mb-4 bg-red-50 p-3 rounded border border-red-200">
-                <h4 className="text-sm font-medium text-red-800 mb-1 flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4" />
-                  Download Error
-                </h4>
-                <pre className="text-xs text-red-700 whitespace-pre-wrap">
-                  {downloadError}
-                </pre>
-                {downloadAttempts > 0 && (
-                  <div className="mt-2 text-xs text-red-700">
-                    Attempts: {downloadAttempts}
-                  </div>
-                )}
-              </div>
-            )}
-            
-            {debugInfo?.storageInfo && (
-              <div className="mb-4 bg-blue-50 p-2 rounded border border-blue-100">
-                <h4 className="text-sm font-medium text-blue-800 mb-1 flex items-center gap-2">
-                  <FileBadge className="h-4 w-4" />
-                  Storage Information
-                </h4>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div>
-                    <span className="font-medium">Filename:</span>{" "}
-                    {debugInfo.storageInfo.fileName}
-                  </div>
-                  <div>
-                    <span className="font-medium">Content Type:</span>{" "}
-                    <span className={debugInfo.storageInfo.contentType !== 'application/pdf' ? "text-red-600 font-semibold" : ""}>
-                      {debugInfo.storageInfo.contentType}
-                    </span>
-                    {debugInfo.storageInfo.contentType !== 'application/pdf' && (
-                      <p className="text-red-600 mt-1">
-                        <AlertCircle className="h-3 w-3 inline mr-1" />
-                        Should be application/pdf only
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <span className="font-medium">File Size:</span>{" "}
-                    {debugInfo.storageInfo.fileSize 
-                      ? `${(parseInt(debugInfo.storageInfo.fileSize) / 1024).toFixed(2)} KB` 
-                      : 'unknown'}
-                  </div>
-                  <div>
-                    <span className="font-medium">Created:</span>{" "}
-                    {new Date(debugInfo.storageInfo.created).toLocaleString()}
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            {debugInfo?.verificationWarning && (
-              <Alert variant="warning" className="mb-4">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Verification Warning</AlertTitle>
-                <AlertDescription>
-                  <p>{debugInfo.verificationWarning.message}</p>
-                  {debugInfo.verificationWarning.difference && (
-                    <p className="mt-1">Size difference: {debugInfo.verificationWarning.difference}</p>
-                  )}
-                </AlertDescription>
-              </Alert>
-            )}
-            
-            {debugInfo && (
-              <>
-                <Separator className="my-3" />
-                <h4 className="text-sm font-medium mb-1">PDF Generation Info</h4>
-                <div className="grid grid-cols-2 gap-2 text-xs mb-3">
-                  {debugInfo.executionTime && (
-                    <div>
-                      <span className="font-medium">Generation Time:</span>{" "}
-                      {(debugInfo.executionTime / 1000).toFixed(2)}s
-                    </div>
-                  )}
-                  {debugInfo.pdfSize && (
-                    <div>
-                      <span className="font-medium">Generated PDF Size:</span>{" "}
-                      {(debugInfo.pdfSize / 1024).toFixed(2)} KB
-                    </div>
-                  )}
-                  {debugInfo.invoiceNumber && (
-                    <div>
-                      <span className="font-medium">Invoice Number:</span>{" "}
-                      {debugInfo.invoiceNumber}
-                    </div>
-                  )}
-                  {debugInfo.finalVerification && (
-                    <div>
-                      <span className="font-medium">Verification Status:</span>{" "}
-                      <Badge variant={debugInfo.finalVerification.ok ? "success" : "destructive"}>
-                        {debugInfo.finalVerification.ok ? 'Success' : 'Failed'}
-                      </Badge>
-                    </div>
-                  )}
-                </div>
-                
-                <h4 className="text-sm font-medium mb-1">Full Debug Info</h4>
-                <pre className="text-xs bg-slate-100 p-2 rounded overflow-auto max-h-[200px]">
-                  {JSON.stringify(debugInfo, null, 2)}
-                </pre>
-              </>
-            )}
-            
-            <div className="text-xs text-gray-500 mt-4 bg-blue-50 p-2 rounded">
-              <p className="font-medium mb-1">Common PDF Issues:</p>
-              <ul className="list-disc list-inside space-y-1">
-                <li>Invalid content type (should be <code className="bg-blue-100 px-1">application/pdf</code> only)</li>
-                <li>Excessively large file size (PDFs should typically be 100KB-3MB)</li>
-                <li>JSON data accidentally included in PDF content</li>
-                <li>Mixed content types during upload</li>
-                <li>Corrupt PDF generation</li>
-              </ul>
+        )}
+        
+        {debugInfo.pdfUrl && (
+          <div>
+            <span className="font-semibold">PDF URL:</span> 
+            <a 
+              href={debugInfo.pdfUrl} 
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:underline ml-1 break-all"
+            >
+              {debugInfo.pdfUrl}
+            </a>
+          </div>
+        )}
+        
+        {debugInfo.pdfSize && (
+          <div>
+            <span className="font-semibold">PDF Size:</span> 
+            <span className="ml-1">
+              {(debugInfo.pdfSize / 1024).toFixed(2)} KB
+            </span>
+          </div>
+        )}
+        
+        {debugInfo.invoiceNumber && (
+          <div>
+            <span className="font-semibold">Invoice Number:</span>
+            <span className="ml-1">{debugInfo.invoiceNumber}</span>
+          </div>
+        )}
+        
+        {debugInfo.companyInfo && (
+          <div>
+            <span className="font-semibold">Company Logo:</span>
+            <span className="ml-1">
+              {debugInfo.companyInfo.hasLogo ? 'Available' : 'Not available'}
+            </span>
+          </div>
+        )}
+        
+        {debugInfo.warnings && debugInfo.warnings.length > 0 && (
+          <div>
+            <span className="font-semibold text-amber-600">Warnings:</span>
+            <ul className="ml-5 list-disc text-amber-600">
+              {debugInfo.warnings.map((warning: string, index: number) => (
+                <li key={index}>{warning}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        
+        {debugInfo.verificationWarning && (
+          <div className="text-amber-600">
+            <span className="font-semibold">Verification Warning:</span>
+            <div className="ml-5">
+              {debugInfo.verificationWarning.message}
+              {debugInfo.verificationWarning.contentType && (
+                <div>Content-Type: {debugInfo.verificationWarning.contentType}</div>
+              )}
             </div>
-            
-            <div className="mt-4 text-xs text-green-600 bg-green-50 p-2 rounded">
-              <p className="font-medium">Troubleshooting Tips:</p>
-              <ol className="list-decimal list-inside space-y-1">
-                <li>Check if the storage content type is exactly "application/pdf"</li>
-                <li>If storage file size is much larger than generated PDF size, there may be JSON mixed with PDF data</li>
-                <li>Try downloading the PDF directly to see if it opens correctly</li>
-                <li>Clear browser cache or try in incognito mode if PDF isn't updating</li>
-              </ol>
+          </div>
+        )}
+        
+        {debugInfo.stages && (
+          <div>
+            <div className="font-semibold mt-2 mb-1">Execution Stages:</div>
+            <div className="space-y-1 ml-2">
+              {Object.entries(debugInfo.stages).map(([stage, details]: [string, any]) => (
+                <div key={stage} className="flex items-center justify-between">
+                  <div className="capitalize">{stage.replace(/_/g, ' ')}</div>
+                  <div className="flex items-center gap-2">
+                    {details.end && (
+                      <span className="text-gray-500">
+                        {formatExecutionTime(details.start, details.end)}
+                      </span>
+                    )}
+                    {renderStatusBadge(details.success)}
+                  </div>
+                </div>
+              ))}
             </div>
-          </CardContent>
-        </CollapsibleContent>
-      </Collapsible>
-    </Card>
+          </div>
+        )}
+        
+        {debugInfo.executionTime && (
+          <div className="mt-1">
+            <span className="font-semibold">Total Execution Time:</span>
+            <span className="ml-1">
+              {(debugInfo.executionTime / 1000).toFixed(2)}s
+            </span>
+          </div>
+        )}
+      </CollapsibleContent>
+    </Collapsible>
   );
 };
 

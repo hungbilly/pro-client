@@ -535,35 +535,50 @@ serve(async (req) => {
     
     executionStages.upload_pdf = { start: Date.now() };
 
-    // FIXED: This is the critical part that was causing the issue
-    // We need to make sure we're only uploading the PDF data with the correct content type
-    const { data: uploadData, error: uploadError } = await supabase
-      .storage
-      .from('invoice-pdfs')
-      .upload(filePath, pdfData, {
-        contentType: 'application/pdf', // Explicitly set contentType
-        upsert: true,
-      });
+    // FIXED: This is the critical part to fix - ensuring we only upload PDF data with correct content type
+    // We explicitly force the contentType to application/pdf only and ensure we're passing binary data
+    try {
+      const { data: uploadData, error: uploadError } = await supabase
+        .storage
+        .from('invoice-pdfs')
+        .upload(filePath, pdfData, {
+          contentType: 'application/pdf', // STRICTLY application/pdf only
+          upsert: true,
+        });
 
-    if (uploadError) {
+      if (uploadError) {
+        executionStages.upload_pdf.end = Date.now();
+        executionStages.upload_pdf.success = false;
+        executionStages.upload_pdf.error = uploadError.message;
+        
+        log.error('Error uploading PDF to storage:', uploadError);
+        return new Response(
+          JSON.stringify({ 
+            error: `Failed to upload PDF: ${uploadError.message}`,
+            debugInfo: debugMode ? debugInfo : undefined
+          }),
+          { headers, status: 500 }
+        );
+      }
+      
+      executionStages.upload_pdf.end = Date.now();
+      executionStages.upload_pdf.success = true;
+
+      log.info('PDF uploaded successfully to storage');
+    } catch (uploadErr) {
       executionStages.upload_pdf.end = Date.now();
       executionStages.upload_pdf.success = false;
-      executionStages.upload_pdf.error = uploadError.message;
+      executionStages.upload_pdf.error = uploadErr instanceof Error ? uploadErr.message : 'Unknown upload error';
       
-      log.error('Error uploading PDF to storage:', uploadError);
+      log.error('Exception during PDF upload:', uploadErr);
       return new Response(
         JSON.stringify({ 
-          error: `Failed to upload PDF: ${uploadError.message}`,
+          error: `Exception during PDF upload: ${uploadErr instanceof Error ? uploadErr.message : 'Unknown error'}`,
           debugInfo: debugMode ? debugInfo : undefined
         }),
         { headers, status: 500 }
       );
     }
-    
-    executionStages.upload_pdf.end = Date.now();
-    executionStages.upload_pdf.success = true;
-
-    log.info('PDF uploaded successfully to storage');
 
     // Get public URL
     executionStages.get_url = { start: Date.now() };
@@ -600,7 +615,7 @@ serve(async (req) => {
     executionStages.verify_upload = { start: Date.now() };
 
     try {
-      // Verify the uploaded PDF is actually a PDF by checking headers and a sample of the content
+      // Verify the uploaded PDF is actually a PDF by checking headers
       const verifyResponse = await fetch(pdfUrl, { 
         method: 'HEAD',
         headers: {
@@ -1318,7 +1333,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
     
     console.log('PDF generation completed');
     
-    // Updated to match jsPDF v3.x API
+    // FIXED: Use the correct jsPDF 3.x API for output
     const pdfArrayBuffer = doc.output('arraybuffer');
     console.log('PDF array buffer generated, size:', pdfArrayBuffer.byteLength, 'bytes');
     

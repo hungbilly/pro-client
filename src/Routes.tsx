@@ -106,7 +106,7 @@ const AppRoutes = () => {
       </Route>
       
       {/* Public invoice view */}
-      <Route path="/invoice/:viewLink" element={<InvoiceView />} />
+      <Route path="/invoice/:idOrViewLink" element={<InvoiceView />} />
       <Route path="/invoice-pdf/:viewLink" element={<InvoicePdfView />} />
       
       <Route path="*" element={<NotFound />} />

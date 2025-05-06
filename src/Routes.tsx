@@ -111,7 +111,7 @@ const AppRoutes = () => {
         <Route path="/invoice/:invoiceId/edit" element={<InvoiceCreate />} />
       </Route>
       
-      {/* Public invoice view routes */}
+      {/* Public invoice view routes - moved outside of the protected routes */}
       <Route path="/invoice/:idOrViewLink" element={<InvoiceView />} />
       <Route path="/invoice-pdf/:viewLink" element={<InvoicePdfView />} />
       

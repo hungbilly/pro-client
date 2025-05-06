@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import PdfDebugger from '@/components/ui-custom/PdfDebugger';
 
 const InvoicePdfView = () => {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
@@ -68,7 +69,7 @@ const InvoicePdfView = () => {
       });
   };
 
-  const validatePdfUrl = async (url: string): Promise<boolean> => {
+  const validatePdfUrl = async (url: string): Promise<{isValid: boolean, contentType?: string, contentLength?: string, error?: string}> => {
     try {
       console.log('Validating PDF URL:', url);
       // Try to fetch the PDF with a HEAD request
@@ -82,8 +83,10 @@ const InvoicePdfView = () => {
       });
       
       if (!response.ok) {
-        console.error(`PDF URL validation failed: ${response.status} ${response.statusText}`);
-        return false;
+        return {
+          isValid: false, 
+          error: `HTTP error ${response.status}: ${response.statusText}`
+        };
       }
       
       const contentType = response.headers.get('content-type');
@@ -91,21 +94,56 @@ const InvoicePdfView = () => {
       
       // Check if it's actually a PDF
       if (!contentType?.includes('pdf')) {
-        console.error(`URL does not point to a PDF: ${contentType}`);
-        return false;
+        return {
+          isValid: false,
+          contentType,
+          contentLength,
+          error: `URL does not point to a PDF: ${contentType}`
+        };
+      }
+      
+      // Check if content type contains multiple types (suspicious)
+      if (contentType.includes(',')) {
+        return {
+          isValid: false,
+          contentType,
+          contentLength,
+          error: `Suspicious content type: ${contentType}`
+        };
       }
       
       // Check if it has content
       const size = parseInt(contentLength || '0', 10);
       if (size < 1000) { // PDFs should be larger than 1KB
-        console.error(`PDF appears to be too small: ${size} bytes`);
-        return false;
+        return {
+          isValid: false,
+          contentType,
+          contentLength,
+          error: `PDF appears to be too small: ${size} bytes`
+        };
       }
       
-      return true;
+      // Check if it's suspiciously large (> 5MB)
+      if (size > 5000000) {
+        return {
+          isValid: false,
+          contentType,
+          contentLength,
+          error: `PDF is suspiciously large: ${(size / 1024 / 1024).toFixed(2)} MB`
+        };
+      }
+      
+      return {
+        isValid: true,
+        contentType,
+        contentLength
+      };
     } catch (err) {
       console.error('Error validating PDF URL:', err);
-      return false;
+      return {
+        isValid: false,
+        error: err instanceof Error ? err.message : 'Unknown error validating PDF'
+      };
     }
   };
 
@@ -123,15 +161,20 @@ const InvoicePdfView = () => {
         try {
           console.log('Attempting to verify existing PDF from URL:', invoice.pdfUrl);
           
-          const isValid = await validatePdfUrl(invoice.pdfUrl);
+          const validation = await validatePdfUrl(invoice.pdfUrl);
           
-          if (isValid) {
+          if (validation.isValid) {
             console.log('Using existing valid PDF URL');
             window.open(invoice.pdfUrl, '_blank');
             setIsDownloading(false);
             return;
           } else {
-            console.warn('Existing PDF appears invalid, regenerating...');
+            console.warn('Existing PDF validation failed:', validation.error);
+            // Add validation info to debug info
+            setDebugInfo(prev => ({
+              ...(prev || {}),
+              existingPdfValidation: validation
+            }));
           }
         } catch (e) {
           console.error('Error verifying existing PDF:', e);
@@ -150,7 +193,7 @@ const InvoicePdfView = () => {
         body: { 
           invoiceId: invoice.id,
           forceRegenerate: true,  // Force regeneration even if PDF exists
-          debugMode: downloadAttempts > 1, // Enable debug mode after first attempt
+          debugMode: true, // Always enable debug mode for better troubleshooting
           clientInfo: {
             userAgent: navigator.userAgent,
             timestamp: timestamp
@@ -174,10 +217,10 @@ const InvoicePdfView = () => {
         
         // Verify the generated PDF is accessible
         const pdfUrl = `${response.data.pdfUrl}?t=${timestamp}`;
-        const isValid = await validatePdfUrl(pdfUrl);
+        const validation = await validatePdfUrl(pdfUrl);
         
-        if (!isValid) {
-          throw new Error('Generated PDF appears invalid or inaccessible');
+        if (!validation.isValid) {
+          throw new Error(`Generated PDF validation failed: ${validation.error}`);
         }
         
         // Attempt to open the PDF
@@ -186,6 +229,12 @@ const InvoicePdfView = () => {
         // Update the invoice object with the new PDF URL
         setInvoice(prev => prev ? { ...prev, pdfUrl } : null);
         toast.success('Invoice downloaded successfully');
+        
+        // Save validation info to debug info
+        setDebugInfo(prev => ({
+          ...(prev || {}),
+          newPdfValidation: validation
+        }));
       } else {
         throw new Error('No PDF URL returned from the function');
       }
@@ -325,15 +374,6 @@ const InvoicePdfView = () => {
                 </AlertDescription>
               </Alert>
             )}
-
-            {debugInfo && (
-              <div className="mt-4 border rounded p-4 bg-slate-50">
-                <h3 className="font-medium mb-2">Debug Information</h3>
-                <pre className="text-xs overflow-auto max-h-[200px] p-2 bg-slate-100 rounded">
-                  {JSON.stringify(debugInfo, null, 2)}
-                </pre>
-              </div>
-            )}
           </CardContent>
           
           <CardFooter className="border-t p-6 flex flex-wrap justify-end gap-2">
@@ -366,6 +406,14 @@ const InvoicePdfView = () => {
           </CardFooter>
         </Card>
         
+        {/* Enhanced PDF Debugger */}
+        <PdfDebugger 
+          pdfUrl={invoice?.pdfUrl} 
+          debugInfo={debugInfo} 
+          downloadError={downloadError}
+          downloadAttempts={downloadAttempts}
+        />
+        
         {invoice?.pdfUrl && (
           <Card className="mt-4">
             <CardHeader>
@@ -388,13 +436,20 @@ const InvoicePdfView = () => {
                 variant="ghost" 
                 size="sm" 
                 className="w-full"
-                onClick={() => {
+                onClick={async () => {
                   if (invoice.pdfUrl) {
-                    validatePdfUrl(invoice.pdfUrl).then(isValid => {
-                      toast[isValid ? 'success' : 'error'](
-                        isValid ? 'PDF URL is valid' : 'PDF URL is invalid'
-                      );
-                    });
+                    const validation = await validatePdfUrl(invoice.pdfUrl);
+                    if (validation.isValid) {
+                      toast.success('PDF URL is valid');
+                    } else {
+                      toast.error(`PDF URL is invalid: ${validation.error}`);
+                    }
+                    
+                    // Update debug info with validation results
+                    setDebugInfo(prev => ({
+                      ...(prev || {}),
+                      pdfValidation: validation
+                    }));
                   }
                 }}
               >

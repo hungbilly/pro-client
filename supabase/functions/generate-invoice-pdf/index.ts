@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { jsPDF } from 'https://esm.sh/jspdf@3.0.1';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
@@ -501,11 +502,12 @@ serve(async (req) => {
     
     executionStages.upload_pdf = { start: Date.now() };
     
+    // FIX: Set the correct content type for the PDF
     const { data: uploadData, error: uploadError } = await supabase
       .storage
       .from('invoice-pdfs')
       .upload(filePath, pdfData, {
-        contentType: 'application/pdf',
+        contentType: 'application/pdf', // Explicitly set contentType to application/pdf
         upsert: true,
       });
 
@@ -606,6 +608,17 @@ serve(async (req) => {
         executionStages.verify_storage.success = true;
         log.info('Storage file check:', fileInfo);
         debugInfo.storageInfo = fileInfo;
+        
+        // Add new detailed logging about file storage information
+        if (fileInfo && fileInfo.length > 0) {
+          const fileDetails = fileInfo[0];
+          log.debug('PDF file storage details:', {
+            name: fileDetails.name,
+            size: fileDetails.metadata?.size,
+            contentType: fileDetails.metadata?.mimetype,
+            created: fileDetails.created_at
+          });
+        }
       }
     } catch (e) {
       executionStages.verify_storage.end = Date.now();

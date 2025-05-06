@@ -100,8 +100,8 @@ const AppRoutes = () => {
         <Route path="/settings" element={<Settings />} />
         
         {/* Job routes */}
-        <Route path="/job/:jobId" element={<JobDetail />} />
-        <Route path="/job/:jobId/edit" element={<JobEdit />} />
+        <Route path="/job/:id" element={<JobDetail />} />
+        <Route path="/job/:id/edit" element={<JobEdit />} />
         <Route path="/client/:clientId/job/create" element={<JobCreate />} />
       </Route>
       

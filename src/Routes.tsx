@@ -108,6 +108,8 @@ const AppRoutes = () => {
         {/* Invoice routes - ensure all needed routes exist */}
         <Route path="/job/:jobId/invoice/create" element={<InvoiceCreate />} />
         <Route path="/job/:jobId/invoice/new" element={<InvoiceCreate />} />
+        <Route path="/job/:jobId/invoice/create" element={<InvoiceCreate />} />
+        <Route path="/job/:jobId/invoice/edit/:invoiceId" element={<InvoiceCreate />} />
         <Route path="/invoice/:invoiceId/edit" element={<InvoiceCreate />} />
         <Route path="/invoice/:invoiceId" element={<InvoiceView />} />
       </Route>

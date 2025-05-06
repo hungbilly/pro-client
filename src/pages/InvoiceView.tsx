@@ -682,7 +682,7 @@ const InvoiceView = () => {
                     size="sm" 
                     onClick={() => {
                       if (invoice.jobId) {
-                        window.location.href = `/job/${invoice.jobId}/invoice/edit/${invoice.id}`;
+                        window.location.href = `/job/${invoice.jobId}/invoice/create?edit=${invoice.id}`;
                       } else {
                         window.location.href = `/invoice/${invoice.id}/edit`;
                       }
@@ -837,4 +837,165 @@ const InvoiceView = () => {
                       
                       {invoice.items && invoice.items.length > 0 ? (
                         invoice.items.map((item) => (
-                          <div key={item.id} className="mb-
+                          <div key={item.id} className="mb-2 md:flex md:items-center justify-between py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
+                            <div className="md:flex-1 font-medium">
+                              <div className="md:hidden text-xs text-gray-500 dark:text-gray-400 mb-1">Package Name</div>
+                              {item.name}
+                            </div>
+                            <div className="md:flex-1 text-sm text-gray-600 dark:text-gray-300 mt-1 md:mt-0">
+                              <div className="md:hidden text-xs text-gray-500 dark:text-gray-400 mb-1">Description</div>
+                              {item.description}
+                            </div>
+                            <div className="flex items-center justify-between md:min-w-[260px] mt-2 md:mt-0">
+                              <div className="md:w-16 text-right">
+                                <div className="md:hidden text-xs text-gray-500 dark:text-gray-400 mb-1">Quantity</div>
+                                {item.quantity}
+                              </div>
+                              <div className="md:w-24 text-right">
+                                <div className="md:hidden text-xs text-gray-500 dark:text-gray-400 mb-1">Unit Price</div>
+                                {formatCurrency(item.rate)}
+                              </div>
+                              <div className="md:w-24 text-right font-medium">
+                                <div className="md:hidden text-xs text-gray-500 dark:text-gray-400 mb-1">Amount</div>
+                                {formatCurrency(item.amount)}
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="py-4 text-center text-muted-foreground">
+                          No items added to this invoice
+                        </div>
+                      )}
+                      
+                      <div className="mt-4 flex justify-end">
+                        <div className="w-full md:w-64 space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span>Subtotal:</span>
+                            <span>{formatCurrency(invoice.amount)}</span>
+                          </div>
+                          
+                          <div className="flex justify-between font-bold text-lg">
+                            <span>Total:</span>
+                            <span>{formatCurrency(invoice.amount)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {invoice.paymentSchedules && invoice.paymentSchedules.length > 0 && (
+                    <div className="mb-6">
+                      <div className="flex items-center mb-3">
+                        <CalendarDays className="h-5 w-5 mr-2" />
+                        <h4 className="text-lg font-semibold">Payment Schedule</h4>
+                      </div>
+                      
+                      <PaymentScheduleTable 
+                        paymentSchedules={invoice.paymentSchedules}
+                        totalAmount={invoice.amount}
+                        onStatusUpdate={handlePaymentStatusUpdate}
+                        onPaymentDateUpdate={handlePaymentDateUpdate}
+                        updatingPaymentId={updatingPaymentId}
+                        formatCurrency={formatCurrency}
+                        readOnly={isClientView}
+                      />
+                    </div>
+                  )}
+                  
+                  {invoice.notes && (
+                    <div className="mb-6">
+                      <div className="flex items-center mb-3">
+                        <FileText className="h-5 w-5 mr-2" />
+                        <h4 className="text-lg font-semibold">Notes</h4>
+                      </div>
+                      
+                      <div className="border rounded-lg p-4 prose dark:prose-invert max-w-none">
+                        <RichTextEditor 
+                          value={invoice.notes} 
+                          onChange={() => {}} 
+                          readOnly={true}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="flex flex-wrap gap-2 mt-8">
+                    {!isClientView && (
+                      <>
+                        <Button
+                          variant="outline"
+                          onClick={handleCopyInvoiceLink}
+                          className="flex items-center gap-1"
+                        >
+                          <Copy className="h-4 w-4 mr-1" />
+                          Copy Invoice Link
+                        </Button>
+                        
+                        <Button 
+                          variant="outline"
+                          onClick={handleDownloadInvoice}
+                          className="flex items-center gap-1"
+                        >
+                          <Download className="h-4 w-4 mr-1" />
+                          Download PDF
+                        </Button>
+                        
+                        {isAdmin && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleDebugPdf}
+                            className="flex items-center gap-1"
+                          >
+                            <Bug className="h-4 w-4 mr-1" />
+                            Debug PDF
+                          </Button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="contract" className="mt-6">
+                  {invoice.contractTerms ? (
+                    <div className="space-y-6">
+                      {invoice.contractStatus === 'accepted' ? (
+                        <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-md flex items-center gap-2">
+                          <FileCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
+                          <span className="text-green-800 dark:text-green-400">
+                            Contract terms have been accepted
+                            {invoice.invoice_accepted_by && ` by ${invoice.invoice_accepted_by}`}
+                            {invoice.contract_accepted_at && ` on ${new Date(invoice.contract_accepted_at).toLocaleDateString()}`}
+                          </span>
+                        </div>
+                      ) : (
+                        isClientView && (
+                          <ContractAcceptance onAccept={handleAcceptContract} />
+                        )
+                      )}
+                      
+                      <div className="border rounded-lg p-6 prose dark:prose-invert max-w-none">
+                        <RichTextEditor 
+                          value={invoice.contractTerms} 
+                          onChange={() => {}} 
+                          readOnly={true}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      No contract terms have been set for this invoice.
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+        </div>
+      </PageTransition>
+    </>
+  );
+};
+
+export default InvoiceView;

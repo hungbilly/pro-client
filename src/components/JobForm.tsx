@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Client, Job } from '@/types';
@@ -212,6 +211,11 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
     try {
       if (existingJob) {
         const isAddingDate = !existingJob.date && formattedDate;
+        // Modified condition to include title and description changes
+        const contentFieldsChanged = 
+          existingJob.title !== title || 
+          existingJob.description !== description;
+          
         const dateFieldsChanged =
           existingJob.date !== formattedDate ||
           existingJob.startTime !== (isFullDay ? undefined : startTime) ||
@@ -240,7 +244,8 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
         await updateJob(updatedJob);
         
         if (hasCalendarIntegration) {
-          if (existingJob.calendarEventId && dateFieldsChanged && formattedDate) {
+          // Modified condition to include title and description changes
+          if (existingJob.calendarEventId && (dateFieldsChanged || contentFieldsChanged) && formattedDate) {
             try {
               const { data: { session } } = await supabase.auth.getSession();
               

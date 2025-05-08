@@ -142,7 +142,7 @@ serve(async (req) => {
 
       // Get price ID
       // Live mode price ID
-      const priceId = "price_1R7pXrDHpTYL9aMbsXZNAntx"; // Keep the existing price ID
+      const priceId = "price_1RMKipDxgtkbR05sO7kNXLq6"; // Updated price ID
       
       logStep("Creating checkout session", { customerId, priceId });
       

@@ -325,7 +325,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         },
         body: { 
           withTrial, 
-          productId: "prod_S1W7TUjrYkLT1I" // Pass the product ID to the function
+          productId: "prod_PVCGLG5GQx1Ugf" // Live mode product ID
         },
       });
 

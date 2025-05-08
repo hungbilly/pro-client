@@ -27,7 +27,7 @@ const Subscription = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
-  const [showTestInfo, setShowTestInfo] = useState(false);
+  
   const isPendingCancellation = subscription?.status === 'active' && subscription?.cancel_at;
   const canCancelSubscription = subscription && (subscription.status === 'active' || subscription.status === 'trialing');
   const handleSubscribe = async (withTrial: boolean = true) => {
@@ -64,6 +64,7 @@ const Subscription = () => {
       day: 'numeric'
     });
   };
+  
   if (!user) {
     return <PageTransition>
         <div className="container mx-auto py-12 px-4">
@@ -162,7 +163,7 @@ const Subscription = () => {
                   Return to Dashboard
                 </Button>
                 <div className="flex gap-2">
-                  {subscription && !isInTrialPeriod && <Button variant="outline" onClick={() => window.open('https://billing.stripe.com/p/login/test_5kA5kSdUY9Sn0qA6oo', '_blank')}>
+                  {subscription && !isInTrialPeriod && <Button variant="outline" onClick={() => window.open('https://billing.stripe.com/p/login/dR69BE6CAbGhcsEeUU', '_blank')}>
                       Manage Billing
                     </Button>}
                   {canCancelSubscription && <Button variant="destructive" onClick={() => setShowCancelDialog(true)} disabled={isCancelling}>
@@ -219,21 +220,6 @@ const Subscription = () => {
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold mb-2">Upgrade Your Business</h1>
             <p className="text-gray-600 max-w-xl mx-auto">Get access to all features and take your business to the next level</p>
-            <div className="mt-4 flex justify-center">
-              <Button variant="outline" size="sm" className="flex items-center gap-2" onClick={() => setShowTestInfo(!showTestInfo)}>
-                <Info className="h-4 w-4" />
-                Test Mode Information
-              </Button>
-            </div>
-            {showTestInfo && <div className="mt-4 p-4 bg-blue-50 rounded-lg max-w-2xl mx-auto">
-                <h3 className="font-medium text-blue-700">Test Mode Information</h3>
-                <p className="text-sm text-blue-600 mt-2">
-                  This is running in Stripe Test Mode. You can use test card number <code className="bg-blue-100 px-1 rounded">4242 4242 4242 4242</code> with any future expiration date and any 3-digit CVC to test the subscription process.
-                </p>
-                <p className="text-sm text-blue-600 mt-2">
-                  No real charges will be made in test mode. To test the subscription, simply complete the checkout process with the test card.
-                </p>
-              </div>}
           </div>
 
           <div className="grid md:grid-cols-2 gap-8 mb-12">

@@ -47,7 +47,7 @@ serve(async (req) => {
     // Get request body
     const requestData = await req.json();
     const withTrial = requestData.withTrial !== false; // Default to true if not specified
-    const productId = requestData.productId || "prod_PVCGLG5GQx1Ugf"; // Use the live mode product ID
+    const productId = requestData.productId || "prod_SGsTE3Gxgd0acM"; // Updated product ID
     
     logStep("Request data", { withTrial, productId });
 
@@ -142,7 +142,7 @@ serve(async (req) => {
 
       // Get price ID
       // Live mode price ID
-      const priceId = "price_1R7pXrDHpTYL9aMbsXZNAntx"; // Update with your live price ID
+      const priceId = "price_1R7pXrDHpTYL9aMbsXZNAntx"; // Keep the existing price ID
       
       logStep("Creating checkout session", { customerId, priceId });
       

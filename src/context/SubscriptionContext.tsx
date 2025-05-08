@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
@@ -325,7 +326,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         },
         body: { 
           withTrial, 
-          productId: "prod_PVCGLG5GQx1Ugf" // Live mode product ID
+          productId: "prod_SGsTE3Gxgd0acM" // Updated product ID
         },
       });
 

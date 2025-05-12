@@ -52,7 +52,22 @@ serve(async (req) => {
     logStep("Request data", { withTrial, productId });
 
     // Initialize Stripe
-    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
+    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY") || "";
+    
+    // Check if using live or test API key and log it (safely)
+    if (stripeKey) {
+      const isLiveKey = stripeKey.startsWith("sk_live_");
+      const keyPrefix = stripeKey.substring(0, 8); // Only log the first 8 chars for safety
+      logStep("Stripe API key info", { 
+        isLiveKey, 
+        keyPrefix: keyPrefix + "..." + (stripeKey.length - 8) + " chars",
+        apiVersion: "2022-11-15"
+      });
+    } else {
+      logStep("STRIPE_SECRET_KEY is missing or empty!");
+    }
+    
+    const stripe = new Stripe(stripeKey, {
       apiVersion: "2022-11-15",
     });
     
@@ -143,6 +158,7 @@ serve(async (req) => {
       // Get price ID
       // Live mode price ID
       const priceId = "price_1RMKipDxgtkbR05sO7kNXLq6"; // Updated price ID
+      logStep("Using price ID", { priceId });
       
       logStep("Creating checkout session", { customerId, priceId });
       

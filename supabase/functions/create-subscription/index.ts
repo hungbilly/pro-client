@@ -65,26 +65,42 @@ serve(async (req) => {
       });
     } else {
       logStep("STRIPE_SECRET_KEY is missing or empty!");
+      throw new Error("Stripe API key is missing");
     }
     
-    const stripe = new Stripe(stripeKey, {
-      apiVersion: "2022-11-15",
-    });
-    
-    logStep("Stripe initialized");
+    let stripe: Stripe;
+    try {
+      stripe = new Stripe(stripeKey, {
+        apiVersion: "2022-11-15",
+      });
+      logStep("Stripe initialized");
+    } catch (initError) {
+      logStep("Failed to initialize Stripe client", initError);
+      throw new Error(`Failed to initialize Stripe: ${initError.message}`);
+    }
 
     // Check if the user already has an active subscription
     try {
       // First, check if user has a Stripe customer ID
       logStep("Checking if user already exists as Stripe customer");
-      const { data: customers, error: customersError } = await stripe.customers.list({
-        email: user.email,
-        limit: 1,
-      });
-      
-      if (customersError) {
-        logStep("Error checking for existing customer", customersError);
-        throw customersError;
+      let customers;
+      try {
+        customers = await stripe.customers.list({
+          email: user.email,
+          limit: 1,
+        });
+        logStep("Customer lookup successful", { 
+          found: customers.data.length > 0,
+          responseType: typeof customers,
+          dataType: Array.isArray(customers.data) ? 'array' : typeof customers.data
+        });
+      } catch (customerError) {
+        logStep("Error in customer lookup", { 
+          error: customerError.message, 
+          type: customerError.type,
+          code: customerError.code || 'no_code'
+        });
+        throw customerError;
       }
       
       // If user exists as a customer, check their subscriptions
@@ -92,13 +108,19 @@ serve(async (req) => {
         const customerId = customers.data[0].id;
         logStep("Customer found in Stripe", { customerId });
         
-        const { data: subscriptions, error: subscriptionsError } = await stripe.subscriptions.list({
-          customer: customerId,
-          status: 'active',
-        });
-        
-        if (subscriptionsError) {
-          logStep("Error checking existing subscriptions", subscriptionsError);
+        let subscriptions;
+        try {
+          subscriptions = await stripe.subscriptions.list({
+            customer: customerId,
+            status: 'active',
+          });
+          logStep("Subscription lookup successful", { count: subscriptions.data.length });
+        } catch (subscriptionsError) {
+          logStep("Error checking existing subscriptions", { 
+            error: subscriptionsError.message,
+            type: subscriptionsError.type,
+            code: subscriptionsError.code || 'no_code'
+          });
           throw subscriptionsError;
         }
         
@@ -117,7 +139,12 @@ serve(async (req) => {
         }
       }
     } catch (error) {
-      logStep("Error during subscription check", error);
+      logStep("Error during subscription check", {
+        message: error.message,
+        type: error.type || 'unknown_type',
+        code: error.code || 'no_code',
+        stack: error.stack ? error.stack.substring(0, 200) : 'no_stack'
+      });
       // Continue with subscription creation even if check fails
     }
 
@@ -125,40 +152,60 @@ serve(async (req) => {
     try {
       // Create or retrieve customer
       let customerId: string;
-      const { data: existingCustomers, error: customersError } = await stripe.customers.list({
-        email: user.email,
-        limit: 1,
-      });
       
-      if (customersError) {
-        logStep("Error checking for existing customer", customersError);
-        throw customersError;
-      }
-      
-      if (existingCustomers.data.length > 0) {
-        customerId = existingCustomers.data[0].id;
-        logStep("Using existing Stripe customer", { customerId });
-      } else {
-        const { data: newCustomer, error: createCustomerError } = await stripe.customers.create({
+      try {
+        const existingCustomers = await stripe.customers.list({
           email: user.email,
-          metadata: {
-            user_id: user.id,
-          },
+          limit: 1,
         });
         
-        if (createCustomerError || !newCustomer) {
-          logStep("Error creating customer", createCustomerError);
-          throw createCustomerError || new Error("Failed to create customer");
+        if (existingCustomers.data.length > 0) {
+          customerId = existingCustomers.data[0].id;
+          logStep("Using existing Stripe customer", { customerId });
+        } else {
+          logStep("Creating new Stripe customer");
+          const newCustomer = await stripe.customers.create({
+            email: user.email,
+            metadata: {
+              user_id: user.id,
+            },
+          });
+          
+          customerId = newCustomer.id;
+          logStep("Created new Stripe customer", { customerId });
         }
-        
-        customerId = newCustomer.id;
-        logStep("Created new Stripe customer", { customerId });
+      } catch (customerError) {
+        logStep("Error with customer creation/retrieval", {
+          message: customerError.message,
+          type: customerError.type || 'unknown_type',
+          code: customerError.code || 'no_code'
+        });
+        throw customerError;
       }
 
       // Get price ID
       // Live mode price ID
       const priceId = "price_1RMKipDxgtkbR05sO7kNXLq6"; // Updated price ID
       logStep("Using price ID", { priceId });
+      
+      // Verify the price exists in Stripe
+      try {
+        const price = await stripe.prices.retrieve(priceId);
+        logStep("Price verified in Stripe", { 
+          priceId,
+          active: price.active,
+          currency: price.currency,
+          unitAmount: price.unit_amount
+        });
+      } catch (priceError) {
+        logStep("Error verifying price ID", {
+          priceId,
+          error: priceError.message,
+          type: priceError.type || 'unknown_type',
+          code: priceError.code || 'no_code'
+        });
+        throw new Error(`Invalid price ID (${priceId}): ${priceError.message}`);
+      }
       
       logStep("Creating checkout session", { customerId, priceId });
       
@@ -181,27 +228,50 @@ serve(async (req) => {
           : undefined,
       };
 
-      const { data: session, error: sessionError } = await stripe.checkout.sessions.create(params);
-      
-      if (sessionError || !session) {
-        logStep("Error creating checkout session", sessionError);
-        throw sessionError || new Error("Failed to create checkout session");
+      // Log the checkout session parameters
+      logStep("Checkout session parameters", {
+        customer: customerId,
+        line_items: `[${priceId} x 1]`,
+        mode: "subscription",
+        success_url: `${req.headers.get("origin") || origin}/subscription/success`,
+        cancel_url: `${req.headers.get("origin") || origin}/subscription/cancel`,
+        withTrial,
+        trialDays: withTrial ? 30 : 'none'
+      });
+
+      try {
+        const session = await stripe.checkout.sessions.create(params);
+        logStep("Checkout session created", { sessionId: session.id, url: session.url });
+        
+        return new Response(
+          JSON.stringify({
+            url: session.url,
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } catch (sessionError) {
+        logStep("Error creating checkout session", {
+          error: sessionError.message,
+          type: sessionError.type || 'unknown_type',
+          code: sessionError.code || 'no_code',
+          requestId: sessionError.requestId || 'no_request_id'
+        });
+        throw sessionError;
       }
-      
-      logStep("Checkout session created", { sessionId: session.id, url: session.url });
-      
-      return new Response(
-        JSON.stringify({
-          url: session.url,
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
     } catch (error) {
-      logStep("Error creating subscription", error);
+      logStep("Error creating subscription", {
+        message: error.message,
+        type: error.type || 'unknown_type',
+        code: error.code || 'no_code',
+        requestId: error.requestId || 'no_request_id'
+      });
       throw error;
     }
   } catch (error) {
-    logStep("Error in create-subscription function", error);
+    logStep("Error in create-subscription function", {
+      message: error.message,
+      stack: error.stack ? error.stack.substring(0, 200) : 'no_stack'
+    });
     return new Response(
       JSON.stringify({
         error: error.message || "An unknown error occurred",

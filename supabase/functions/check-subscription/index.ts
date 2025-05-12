@@ -21,10 +21,10 @@ serve(async (req) => {
       throw new Error('Missing Authorization header');
     }
 
-    // Initialize Supabase client
+    // Initialize Supabase client with SERVICE ROLE KEY (not anon key) to bypass RLS
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
     // Get user from token
     const token = authHeader.replace('Bearer ', '');

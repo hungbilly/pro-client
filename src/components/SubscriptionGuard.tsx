@@ -7,6 +7,7 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/context/AuthContext';
 
 interface SubscriptionGuardProps {
   children?: React.ReactNode;
@@ -21,6 +22,7 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }) => {
     subscription,
     checkSubscription
   } = useSubscription();
+  const { isAdmin } = useAuth();
   const [hasChecked, setHasChecked] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const navigate = useNavigate();
@@ -49,18 +51,19 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }) => {
           currentPeriodEnd: subscription.currentPeriodEnd
         } : null,
         isInTrialPeriod,
-        trialDaysLeft
+        trialDaysLeft,
+        isAdmin
       });
     }
-  }, [hasAccess, isLoading, subscription, isInTrialPeriod, trialDaysLeft, hasChecked]);
+  }, [hasAccess, isLoading, subscription, isInTrialPeriod, trialDaysLeft, hasChecked, isAdmin]);
 
   useEffect(() => {
-    if (hasChecked && !isLoading && !hasAccess) {
+    if (hasChecked && !isLoading && !hasAccess && !isAdmin) {
       toast.warning("You need an active subscription to access this feature");
     } else if (isInTrialPeriod && (!subscription || subscription.status !== 'active') && trialDaysLeft <= 7) {
       toast.info(`Your trial ends in ${trialDaysLeft} days. Subscribe to continue using all features.`);
     }
-  }, [hasAccess, isLoading, isInTrialPeriod, trialDaysLeft, hasChecked, subscription]);
+  }, [hasAccess, isLoading, isInTrialPeriod, trialDaysLeft, hasChecked, subscription, isAdmin]);
 
   const handleRefreshStatus = async () => {
     setIsRefreshing(true);
@@ -85,6 +88,12 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }) => {
         </div>
       </div>
     );
+  }
+
+  // Admin bypass - let admins through regardless of subscription status
+  if (isAdmin) {
+    console.log('SubscriptionGuard: Admin user detected, granting access');
+    return children ? <>{children}</> : <Outlet />;
   }
 
   if (!hasAccess) {

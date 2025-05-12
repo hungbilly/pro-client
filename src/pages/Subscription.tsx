@@ -1,10 +1,11 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Check, Clock, AlertCircle, Info, AlertTriangle, CalendarX } from 'lucide-react';
+import { Check, Clock, AlertCircle, Info, AlertTriangle, CalendarX, Shield } from 'lucide-react';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -12,7 +13,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 const Subscription = () => {
   const navigate = useNavigate();
   const {
-    user
+    user,
+    isAdmin
   } = useAuth();
   const {
     hasAccess,
@@ -89,6 +91,76 @@ const Subscription = () => {
         </div>
       </PageTransition>;
   }
+
+  // Special case for admin users
+  if (isAdmin) {
+    return <PageTransition>
+      <div className="container mx-auto py-12 px-4">
+        <div className="max-w-3xl mx-auto">
+          <Card className="border-purple-200 shadow-lg">
+            <CardHeader className="bg-purple-50 rounded-t-lg">
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle className="text-2xl text-purple-700">Admin Access</CardTitle>
+                  <CardDescription className="text-purple-600 mt-1">
+                    You have full access to all features as an administrator
+                  </CardDescription>
+                </div>
+                <div className="bg-purple-100 p-3 rounded-full">
+                  <Shield className="h-6 w-6 text-purple-600" />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <Alert variant="default" className="mb-4 bg-purple-50 text-purple-700 border-purple-200">
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  As an admin user, you have automatic access to all features without requiring a subscription.
+                  You can view and manage all user subscriptions from the Admin Dashboard.
+                </AlertDescription>
+              </Alert>
+              
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <Check className="h-5 w-5 text-green-500" />
+                  <div>
+                    <h3 className="font-medium">Unlimited clients</h3>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Check className="h-5 w-5 text-green-500" />
+                  <div>
+                    <h3 className="font-medium">Unlimited invoices</h3>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Check className="h-5 w-5 text-green-500" />
+                  <div>
+                    <h3 className="font-medium">Job management</h3>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Check className="h-5 w-5 text-green-500" />
+                  <div>
+                    <h3 className="font-medium">Export data</h3>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+            <CardFooter className="flex justify-between bg-gray-50 rounded-b-lg">
+              <Button variant="outline" onClick={() => navigate('/')}>
+                Return to Dashboard
+              </Button>
+              <Button onClick={() => navigate('/admin')}>
+                Go to Admin Dashboard
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      </div>
+    </PageTransition>;
+  }
+  
   if (hasAccess) {
     return <PageTransition>
         <div className="container mx-auto py-12 px-4">

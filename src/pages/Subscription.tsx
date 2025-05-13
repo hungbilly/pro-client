@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -29,7 +28,6 @@ const Subscription = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
-  
   const isPendingCancellation = subscription?.status === 'active' && subscription?.cancel_at;
   const canCancelSubscription = subscription && (subscription.status === 'active' || subscription.status === 'trialing');
   const handleSubscribe = async (withTrial: boolean = true) => {
@@ -66,7 +64,6 @@ const Subscription = () => {
       day: 'numeric'
     });
   };
-  
   if (!user) {
     return <PageTransition>
         <div className="container mx-auto py-12 px-4">
@@ -160,7 +157,6 @@ const Subscription = () => {
       </div>
     </PageTransition>;
   }
-  
   if (hasAccess) {
     return <PageTransition>
         <div className="container mx-auto py-12 px-4">
@@ -205,9 +201,7 @@ const Subscription = () => {
                       </div>
                     </div>
                     <div className="bg-blue-50 p-4 rounded-lg">
-                      <p className="text-sm text-blue-700">
-                        Enjoy your free 3-month trial. No payment information required until your trial ends.
-                      </p>
+                      <p className="text-sm text-blue-700">Enjoy your free 1-month trial. No payment information required until your trial ends.</p>
                     </div>
                   </div> : <div className="space-y-4">
                     <div>

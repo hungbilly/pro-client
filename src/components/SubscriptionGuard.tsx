@@ -57,11 +57,31 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }) => {
     }
   }, [hasAccess, isLoading, subscription, isInTrialPeriod, trialDaysLeft, hasChecked, isAdmin]);
 
+  // Modified notification effect with localStorage tracking
   useEffect(() => {
-    if (hasChecked && !isLoading && !hasAccess && !isAdmin) {
-      toast.warning("You need an active subscription to access this feature");
-    } else if (isInTrialPeriod && (!subscription || subscription.status !== 'active') && trialDaysLeft <= 7) {
-      toast.info(`Your trial ends in ${trialDaysLeft} days. Subscribe to continue using all features.`);
+    if (hasChecked && !isLoading) {
+      const currentDate = new Date().toDateString();
+      
+      // Show access warning notification
+      if (!hasAccess && !isAdmin) {
+        const accessWarningKey = `subscription_access_warning_shown_${currentDate}`;
+        if (!localStorage.getItem(accessWarningKey)) {
+          toast.warning("You need an active subscription to access this feature");
+          localStorage.setItem(accessWarningKey, 'true');
+          // Clear this notification after 1 hour to avoid completely silencing it if needed again
+          setTimeout(() => localStorage.removeItem(accessWarningKey), 3600000); 
+        }
+      } 
+      // Show trial ending notification
+      else if (isInTrialPeriod && (!subscription || subscription.status !== 'active') && trialDaysLeft <= 7) {
+        const trialWarningKey = `subscription_trial_warning_shown_${currentDate}_${trialDaysLeft}`;
+        if (!localStorage.getItem(trialWarningKey)) {
+          toast.info(`Your trial ends in ${trialDaysLeft} days. Subscribe to continue using all features.`);
+          localStorage.setItem(trialWarningKey, 'true');
+          // Clear this notification after 8 hours - once per day is enough
+          setTimeout(() => localStorage.removeItem(trialWarningKey), 28800000);
+        }
+      }
     }
   }, [hasAccess, isLoading, isInTrialPeriod, trialDaysLeft, hasChecked, subscription, isAdmin]);
 

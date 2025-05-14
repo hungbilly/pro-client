@@ -6,3 +6,6 @@ verify_jwt = false
 
 [functions.admin-get-user-data]
 verify_jwt = false
+
+[functions.admin-update-user-status]
+verify_jwt = true

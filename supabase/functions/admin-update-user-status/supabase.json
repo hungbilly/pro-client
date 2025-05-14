@@ -1,0 +1,9 @@
+
+{
+  "functions": [
+    {
+      "name": "admin-update-user-status",
+      "verify_jwt": true
+    }
+  ]
+}

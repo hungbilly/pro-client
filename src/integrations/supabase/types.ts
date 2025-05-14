@@ -852,12 +852,52 @@ export type Database = {
         }
         Relationships: []
       }
+      user_subscription_history: {
+        Row: {
+          admin_id: string
+          created_at: string
+          id: string
+          new_status: string
+          new_trial_end_date: string | null
+          notes: string | null
+          previous_status: string | null
+          previous_trial_end_date: string | null
+          user_id: string
+        }
+        Insert: {
+          admin_id: string
+          created_at?: string
+          id?: string
+          new_status: string
+          new_trial_end_date?: string | null
+          notes?: string | null
+          previous_status?: string | null
+          previous_trial_end_date?: string | null
+          user_id: string
+        }
+        Update: {
+          admin_id?: string
+          created_at?: string
+          id?: string
+          new_status?: string
+          new_trial_end_date?: string | null
+          notes?: string | null
+          previous_status?: string | null
+          previous_trial_end_date?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_subscriptions: {
         Row: {
+          admin_override: boolean | null
           cancel_at: string | null
           created_at: string
           current_period_end: string
           id: string
+          override_at: string | null
+          override_by: string | null
+          override_notes: string | null
           status: string
           stripe_customer_id: string
           stripe_subscription_id: string
@@ -866,10 +906,14 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          admin_override?: boolean | null
           cancel_at?: string | null
           created_at?: string
           current_period_end: string
           id?: string
+          override_at?: string | null
+          override_by?: string | null
+          override_notes?: string | null
           status: string
           stripe_customer_id: string
           stripe_subscription_id: string
@@ -878,10 +922,14 @@ export type Database = {
           user_id: string
         }
         Update: {
+          admin_override?: boolean | null
           cancel_at?: string | null
           created_at?: string
           current_period_end?: string
           id?: string
+          override_at?: string | null
+          override_by?: string | null
+          override_notes?: string | null
           status?: string
           stripe_customer_id?: string
           stripe_subscription_id?: string

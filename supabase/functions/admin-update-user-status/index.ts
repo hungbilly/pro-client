@@ -54,14 +54,15 @@ serve(async (req) => {
       userId,
       status,
       trialEndDate,
-      notes
+      notes,
+      adminOverride = true // Default to true if not provided
     } = requestData;
     
     if (!userId || !status) {
       throw new Error('Missing required fields: userId and status');
     }
     
-    console.log(`Admin ${adminUser.email} updating status for user ${userId} to ${status}`);
+    console.log(`Admin ${adminUser.email} updating status for user ${userId} to ${status}, admin_override=${adminOverride}`);
 
     // Get current subscription data to store in history
     const { data: currentSubscription, error: subError } = await supabase
@@ -79,13 +80,13 @@ serve(async (req) => {
       previousStatus = currentSubscription.status;
       previousTrialEndDate = currentSubscription.trial_end_date;
       
-      console.log(`Previous subscription state: status=${previousStatus}, trial_end=${previousTrialEndDate}`);
+      console.log(`Previous subscription state: status=${previousStatus}, trial_end=${previousTrialEndDate}, admin_override=${currentSubscription.admin_override}`);
     }
     
     // Update or create subscription record
     let subscriptionData = {
       status: status,
-      admin_override: true,
+      admin_override: adminOverride,
       override_notes: notes,
       override_by: adminUser.id,
       override_at: new Date().toISOString()
@@ -100,7 +101,7 @@ serve(async (req) => {
     
     if (!currentSubscription) {
       // If no subscription exists, create one
-      console.log('Creating new subscription record with admin override');
+      console.log('Creating new subscription record with admin override:', adminOverride);
       
       const { data: newSub, error: createError } = await supabase
         .from('user_subscriptions')
@@ -122,7 +123,7 @@ serve(async (req) => {
       result = newSub;
     } else {
       // Update existing subscription
-      console.log('Updating existing subscription with admin override');
+      console.log('Updating existing subscription with admin override:', adminOverride);
       
       const { data: updatedSub, error: updateError } = await supabase
         .from('user_subscriptions')

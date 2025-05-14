@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -9,6 +9,7 @@ import { CalendarIcon, AlertCircle, CheckCircle } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Switch } from "@/components/ui/switch";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -43,6 +44,18 @@ const UserStatusManager: React.FC<UserStatusManagerProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [adminOverride, setAdminOverride] = useState<boolean>(true);
+  const [hasTrialDateWarning, setHasTrialDateWarning] = useState(false);
+
+  // Check if the trial end date is in the past
+  useEffect(() => {
+    if (trialEndDate) {
+      const now = new Date();
+      setHasTrialDateWarning(trialEndDate < now && status === "trialing");
+    } else {
+      setHasTrialDateWarning(false);
+    }
+  }, [trialEndDate, status]);
 
   const handleUpdateStatus = async () => {
     if (!userId || !status) {
@@ -63,7 +76,8 @@ const UserStatusManager: React.FC<UserStatusManagerProps> = ({
           userId,
           status,
           trialEndDate: formattedTrialEndDate,
-          notes
+          notes,
+          adminOverride // Pass the admin override flag to the function
         }
       });
 
@@ -97,6 +111,7 @@ const UserStatusManager: React.FC<UserStatusManagerProps> = ({
     setNotes("");
     setError(null);
     setSuccess(false);
+    setAdminOverride(true); // Reset to default value
   };
 
   return (
@@ -131,6 +146,16 @@ const UserStatusManager: React.FC<UserStatusManagerProps> = ({
             <CheckCircle className="h-4 w-4 text-green-600" />
             <AlertTitle>Success</AlertTitle>
             <AlertDescription>User subscription status has been updated.</AlertDescription>
+          </Alert>
+        )}
+
+        {hasTrialDateWarning && (
+          <Alert variant="warning" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Warning: Past Trial Date</AlertTitle>
+            <AlertDescription>
+              The selected trial end date is in the past. This will immediately set the user's access to inactive, even though the status shows "trialing".
+            </AlertDescription>
           </Alert>
         )}
 
@@ -182,6 +207,21 @@ const UserStatusManager: React.FC<UserStatusManagerProps> = ({
             </Popover>
             <p className="text-xs text-muted-foreground">
               Only needed for trial status. Leave empty for active or inactive status.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="admin-override">Admin Override</Label>
+              <Switch 
+                id="admin-override"
+                checked={adminOverride}
+                onCheckedChange={setAdminOverride}
+                disabled={!userId || loading}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              When enabled, this status will persist even when Stripe webhooks are received. When disabled, Stripe can update the subscription status automatically.
             </p>
           </div>
 

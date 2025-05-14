@@ -1,20 +1,35 @@
 
 import * as React from "react";
-import { 
-  Toast, 
-  ToastActionElement, 
-  ToastProps 
-} from "@/components/ui/toast";
 
-const TOAST_LIMIT = 5;
-const TOAST_REMOVE_DELAY = 1000000;
+// Define base interface first
+interface ToastProps {
+  variant?: "default" | "destructive" | "warning";
+  className?: string;
+}
 
-type ToasterToast = Toast & {
-  id: string;
+// Define ToastActionElement
+type ToastActionElement = React.ReactElement;
+
+// Define base Toast interface without circular reference
+interface ToastInfo {
+  id?: string;
   title?: React.ReactNode;
   description?: React.ReactNode;
   action?: ToastActionElement;
-};
+  className?: string;
+  duration?: number;
+}
+
+// Extend ToastInfo to create the ToasterToast interface
+interface ToasterToast extends ToastInfo {
+  id: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  variant?: ToastProps["variant"];
+}
+
+const TOAST_LIMIT = 5;
+const TOAST_REMOVE_DELAY = 1000000;
 
 const actionTypes = {
   ADD_TOAST: "ADD_TOAST",
@@ -137,12 +152,11 @@ function dispatch(action: Action) {
   });
 }
 
-type Toast = Omit<ToasterToast, "id">;
+// Define the toast function type and implementation
+function toast(props: ToastInfo) {
+  const id = props.id || genId();
 
-function toast({ ...props }: Toast) {
-  const id = genId();
-
-  const update = (props: ToasterToast) =>
+  const update = (props: Partial<ToasterToast>) =>
     dispatch({
       type: actionTypes.UPDATE_TOAST,
       toast: { ...props, id },
@@ -170,16 +184,16 @@ function toast({ ...props }: Toast) {
 }
 
 // Helper functions for different toast types
-toast.error = (message: string, options: Omit<Toast, "description"> = {}) => {
+toast.error = (message: string, options: Omit<ToastInfo, "description"> = {}) => {
   return toast({
     ...options,
-    variant: "destructive" as ToastProps["variant"],
+    variant: "destructive",
     title: options.title || "Error",
     description: message,
   });
 };
 
-toast.success = (message: string, options: Omit<Toast, "description"> = {}) => {
+toast.success = (message: string, options: Omit<ToastInfo, "description"> = {}) => {
   return toast({
     ...options,
     title: options.title || "Success",
@@ -187,16 +201,16 @@ toast.success = (message: string, options: Omit<Toast, "description"> = {}) => {
   });
 };
 
-toast.warning = (message: string, options: Omit<Toast, "description"> = {}) => {
+toast.warning = (message: string, options: Omit<ToastInfo, "description"> = {}) => {
   return toast({
     ...options,
-    variant: "warning" as ToastProps["variant"],
+    variant: "warning",
     title: options.title || "Warning",
     description: message,
   });
 };
 
-toast.info = (message: string, options: Omit<Toast, "description"> = {}) => {
+toast.info = (message: string, options: Omit<ToastInfo, "description"> = {}) => {
   return toast({
     ...options,
     title: options.title || "Info",
@@ -224,4 +238,6 @@ function useToast() {
   };
 }
 
+// Export all necessary types and functions
+export type { ToastProps, ToastActionElement, ToastInfo };
 export { toast, useToast };

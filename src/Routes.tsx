@@ -1,4 +1,3 @@
-
 import React from 'react';
 import {
   Routes as ReactRoutes,
@@ -55,42 +54,16 @@ const AppRoutes = () => {
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/terms" element={<Terms />} />
       
-      <Route path="/subscription" element={
-        <ProtectedRoute>
-          <Subscription />
-        </ProtectedRoute>
-      } />
-      <Route path="/subscription/success" element={
-        <ProtectedRoute>
-          <SubscriptionSuccess />
-        </ProtectedRoute>
-      } />
-      <Route path="/subscription/cancel" element={
-        <ProtectedRoute>
-          <SubscriptionCancel />
-        </ProtectedRoute>
-      } />
-      
-      {/* Admin routes */}
-      <Route path="/admin" element={
-        <ProtectedRoute adminOnly={true}>
-          <AdminLayout />
-        </ProtectedRoute>
-      }>
-        <Route index element={<Admin />} />
-        <Route path="/admin/debug" element={<Debug />} />
-        <Route path="/admin/calendar-test" element={<CalendarTest />} />
-      </Route>
-      
-      {/* All authenticated app pages with AppLayout */}
+      {/* Move subscription routes inside AppLayout to have navigation */}
       <Route path="/" element={
         <ProtectedRoute>
-          <SubscriptionGuard>
-            <AppLayout />
-          </SubscriptionGuard>
+          <AppLayout />
         </ProtectedRoute>
       }>
         <Route index element={<Index />} />
+        <Route path="/subscription" element={<Subscription />} />
+        <Route path="/subscription/success" element={<SubscriptionSuccess />} />
+        <Route path="/subscription/cancel" element={<SubscriptionCancel />} />
         <Route path="/clients" element={<Clients />} />
         <Route path="/client/new" element={<ClientNew />} />
         <Route path="/client/:id" element={<ClientDetail />} />
@@ -109,6 +82,28 @@ const AppRoutes = () => {
         <Route path="/job/:jobId/invoice/create" element={<InvoiceCreate />} />
         <Route path="/job/:jobId/invoice/new" element={<InvoiceCreate />} />
         <Route path="/invoice/:invoiceId/edit" element={<InvoiceCreate />} />
+      </Route>
+      
+      {/* Subscription Guard for paid features */}
+      <Route path="/" element={
+        <ProtectedRoute>
+          <SubscriptionGuard>
+            <AppLayout />
+          </SubscriptionGuard>
+        </ProtectedRoute>
+      }>
+        {/* These routes remain subscription guarded */}
+      </Route>
+      
+      {/* Admin routes */}
+      <Route path="/admin" element={
+        <ProtectedRoute adminOnly={true}>
+          <AdminLayout />
+        </ProtectedRoute>
+      }>
+        <Route index element={<Admin />} />
+        <Route path="/admin/debug" element={<Debug />} />
+        <Route path="/admin/calendar-test" element={<CalendarTest />} />
       </Route>
       
       {/* Public invoice view routes - moved outside of the protected routes */}

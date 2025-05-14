@@ -9,6 +9,7 @@ import PageTransition from '@/components/ui-custom/PageTransition';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+
 const Subscription = () => {
   const navigate = useNavigate();
   const {
@@ -66,7 +67,7 @@ const Subscription = () => {
   };
   if (!user) {
     return <PageTransition>
-        <div className="container mx-auto py-12 px-4">
+        <div className="container mx-auto py-8 px-4">
           <div className="max-w-md mx-auto">
             <Card className="border-orange-200 shadow-lg">
               <CardHeader>
@@ -281,7 +282,7 @@ const Subscription = () => {
       </PageTransition>;
   }
   return <PageTransition>
-      <div className="container mx-auto py-12 px-4">
+      <div className="container mx-auto py-8 px-4">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold mb-2">Upgrade Your Business</h1>
@@ -348,4 +349,5 @@ const Subscription = () => {
       </div>
     </PageTransition>;
 };
+
 export default Subscription;

@@ -165,6 +165,49 @@ serve(async (req) => {
         );
       } else if (userSubscription.status === 'trialing') {
         console.log(`User ${userId} has trial subscription in database`);
+        
+        // Add validation for expired trial
+        if (userSubscription.trial_end_date) {
+          const now = new Date();
+          const trialEnd = new Date(userSubscription.trial_end_date);
+          const isTrialExpired = now > trialEnd;
+
+          // If trial has expired, update to inactive and return no access
+          if (isTrialExpired) {
+            console.log(`User ${userId} trial has expired on ${trialEnd.toISOString()}, setting status to inactive`);
+            
+            // Update the status in the database to 'inactive'
+            const { error: updateError } = await supabase
+              .from('user_subscriptions')
+              .update({ status: 'inactive' })
+              .eq('id', userSubscription.id);
+              
+            if (updateError) {
+              console.error('Error updating expired subscription to inactive:', updateError);
+            }
+            
+            return new Response(
+              JSON.stringify({
+                hasAccess: false,
+                subscription: {
+                  id: userSubscription.stripe_subscription_id,
+                  status: 'inactive', // Change status to inactive
+                  currentPeriodEnd: userSubscription.current_period_end,
+                },
+                trialDaysLeft: 0,
+                isInTrialPeriod: false,
+                trialEndDate: userSubscription.trial_end_date,
+                local: true,
+              }),
+              { 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 200,
+              }
+            );
+          }
+        }
+        
+        // If trial is still valid, continue with normal flow
         return new Response(
           JSON.stringify({
             hasAccess: true,

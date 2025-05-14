@@ -68,6 +68,15 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     loadConfig();
   }, []);
 
+  // Helper function to check if a trial has expired
+  const checkTrialExpiration = (trialEndDateString: string | null) => {
+    if (!trialEndDateString) return false;
+    
+    const now = new Date();
+    const trialEnd = new Date(trialEndDateString);
+    return now > trialEnd;
+  };
+
   const checkSubscription = useCallback(async () => {
     if (!user || !session) {
       console.log('No user or session, setting hasAccess to false');
@@ -104,52 +113,109 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         console.log('Found subscription in database:', subscriptionData);
       }
       
-      if (subscriptionData && ['active', 'trialing'].includes(subscriptionData.status)) {
-        console.log('Setting hasAccess to true for subscription:', subscriptionData);
-        setHasAccess(true);
-        setSubscription({
-          id: subscriptionData.stripe_subscription_id,
-          status: subscriptionData.status as SubscriptionStatus,
-          currentPeriodEnd: subscriptionData.current_period_end,
-          cancel_at: subscriptionData.cancel_at,
-        });
-        
-        if (subscriptionData.status === 'active') {
-          setIsInTrialPeriod(false);
-          setTrialDaysLeft(0);
-          setTrialEndDate(null);
-          console.log('Active subscription found, disabling trial period');
-          setIsLoading(false);
-          setHasCheckedSubscription(true);
-          return;
-        } else {
-          setIsInTrialPeriod(subscriptionData.status === 'trialing');
+      if (subscriptionData) {
+        // Secondary check for trial expiration - client-side validation
+        if (subscriptionData.status === 'trialing' && subscriptionData.trial_end_date) {
+          const isTrialExpired = checkTrialExpiration(subscriptionData.trial_end_date);
           
-          if (subscriptionData.status === 'trialing' && subscriptionData.trial_end_date) {
-            const trialEnd = new Date(subscriptionData.trial_end_date);
-            const now = new Date();
-            const daysLeft = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-            setTrialDaysLeft(daysLeft > 0 ? daysLeft : 0);
-            setTrialEndDate(subscriptionData.trial_end_date);
+          if (isTrialExpired) {
+            console.log('Trial has expired based on client-side check, updating status...');
+            
+            // Update local subscription data
+            try {
+              const { error: updateError } = await supabase
+                .from('user_subscriptions')
+                .update({ status: 'inactive' })
+                .eq('id', subscriptionData.id);
+              
+              if (updateError) {
+                console.error('Error updating expired subscription locally:', updateError);
+              } else {
+                console.log('Successfully updated expired subscription to inactive');
+                
+                // Update local state to reflect expired trial
+                setHasAccess(false);
+                setIsInTrialPeriod(false);
+                setTrialDaysLeft(0);
+                setSubscription({
+                  id: subscriptionData.stripe_subscription_id,
+                  status: 'inactive',
+                  currentPeriodEnd: subscriptionData.current_period_end,
+                  cancel_at: subscriptionData.cancel_at,
+                });
+                
+                setIsLoading(false);
+                setHasCheckedSubscription(true);
+                return;
+              }
+            } catch (error) {
+              console.error('Error in local trial expiration update:', error);
+            }
           }
         }
         
-        setIsLoading(false);
-        setHasCheckedSubscription(true);
-        
-        console.log('State after setting subscription from database:', {
-          hasAccess: true,
-          isLoading: false,
-          subscription: {
+        if (['active', 'trialing'].includes(subscriptionData.status)) {
+          console.log('Setting hasAccess to true for subscription:', subscriptionData);
+          setHasAccess(true);
+          setSubscription({
             id: subscriptionData.stripe_subscription_id,
-            status: subscriptionData.status,
+            status: subscriptionData.status as SubscriptionStatus,
             currentPeriodEnd: subscriptionData.current_period_end,
             cancel_at: subscriptionData.cancel_at,
-          },
-          isInTrialPeriod: subscriptionData.status === 'trialing',
-          hasCheckedSubscription: true,
-        });
-        return;
+          });
+          
+          if (subscriptionData.status === 'active') {
+            setIsInTrialPeriod(false);
+            setTrialDaysLeft(0);
+            setTrialEndDate(null);
+            console.log('Active subscription found, disabling trial period');
+            setIsLoading(false);
+            setHasCheckedSubscription(true);
+            return;
+          } else {
+            setIsInTrialPeriod(subscriptionData.status === 'trialing');
+            
+            if (subscriptionData.status === 'trialing' && subscriptionData.trial_end_date) {
+              const trialEnd = new Date(subscriptionData.trial_end_date);
+              const now = new Date();
+              const daysLeft = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+              setTrialDaysLeft(daysLeft > 0 ? daysLeft : 0);
+              setTrialEndDate(subscriptionData.trial_end_date);
+            }
+          }
+          
+          setIsLoading(false);
+          setHasCheckedSubscription(true);
+          
+          console.log('State after setting subscription from database:', {
+            hasAccess: true,
+            isLoading: false,
+            subscription: {
+              id: subscriptionData.stripe_subscription_id,
+              status: subscriptionData.status,
+              currentPeriodEnd: subscriptionData.current_period_end,
+              cancel_at: subscriptionData.cancel_at,
+            },
+            isInTrialPeriod: subscriptionData.status === 'trialing',
+            hasCheckedSubscription: true,
+          });
+          return;
+        } else {
+          console.log(`Subscription found but status is ${subscriptionData.status}, setting hasAccess to false`);
+          setHasAccess(false);
+          setSubscription({
+            id: subscriptionData.stripe_subscription_id,
+            status: subscriptionData.status as SubscriptionStatus,
+            currentPeriodEnd: subscriptionData.current_period_end,
+            cancel_at: subscriptionData.cancel_at,
+          });
+          setIsInTrialPeriod(false);
+          setTrialDaysLeft(0);
+          setTrialEndDate(null);
+          setIsLoading(false);
+          setHasCheckedSubscription(true);
+          return;
+        }
       }
 
       console.log('No active subscription found in database, calling check-subscription function...');

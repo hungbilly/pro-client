@@ -67,3 +67,17 @@ export const SubscriptionStatusBadge = () => {
     </TooltipProvider>
   );
 };
+
+// Create a default export component that uses SubscriptionStatusBadge
+const SubscriptionStatus = () => {
+  return (
+    <div className="flex flex-col space-y-4">
+      <div className="flex items-center">
+        <span className="font-medium">Current Status:</span>
+        <SubscriptionStatusBadge />
+      </div>
+    </div>
+  );
+};
+
+export default SubscriptionStatus;

@@ -1,7 +1,7 @@
 
-import { serve } from "https://deno.land/std@0.193.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.26.0";
-import Stripe from "https://esm.sh/stripe@12.13.0?target=deno";
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import Stripe from "https://esm.sh/stripe@15.12.0?dts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -47,7 +47,7 @@ serve(async (req) => {
     // Get request body
     const requestData = await req.json();
     const withTrial = requestData.withTrial !== false; // Default to true if not specified
-    const productId = requestData.productId || "prod_SGsTE3Gxgd0acM"; // Updated product ID
+    const productId = requestData.productId || "prod_SGsTE3Gxgd0acM"; 
     
     logStep("Request data", { withTrial, productId });
 
@@ -61,7 +61,7 @@ serve(async (req) => {
       logStep("Stripe API key info", { 
         isLiveKey, 
         keyPrefix: keyPrefix + "..." + (stripeKey.length - 8) + " chars",
-        apiVersion: "2022-11-15"
+        apiVersion: "2023-10-16"
       });
     } else {
       logStep("STRIPE_SECRET_KEY is missing or empty!");
@@ -70,8 +70,9 @@ serve(async (req) => {
     
     let stripe: Stripe;
     try {
+      // Update to use the same Stripe API version as the webhook function
       stripe = new Stripe(stripeKey, {
-        apiVersion: "2022-11-15",
+        apiVersion: "2023-10-16",
       });
       logStep("Stripe initialized");
     } catch (initError) {
@@ -183,9 +184,8 @@ serve(async (req) => {
         throw customerError;
       }
 
-      // Get price ID
-      // Live mode price ID
-      const priceId = "price_1RMKipDxgtkbR05sO7kNXLq6"; // Updated price ID
+      // Get price ID - use the same live mode price ID
+      const priceId = "price_1RMKipDxgtkbR05sO7kNXLq6";
       logStep("Using price ID", { priceId });
       
       // Verify the price exists in Stripe
@@ -221,6 +221,7 @@ serve(async (req) => {
         mode: "subscription",
         success_url: `${req.headers.get("origin") || origin}/subscription/success`,
         cancel_url: `${req.headers.get("origin") || origin}/subscription/cancel`,
+        client_reference_id: user.id, // Add the user ID as a reference
         subscription_data: withTrial
           ? {
               trial_period_days: 30, // 30-day free trial
@@ -236,12 +237,34 @@ serve(async (req) => {
         success_url: `${req.headers.get("origin") || origin}/subscription/success`,
         cancel_url: `${req.headers.get("origin") || origin}/subscription/cancel`,
         withTrial,
-        trialDays: withTrial ? 30 : 'none'
+        trialDays: withTrial ? 30 : 'none',
+        client_reference_id: user.id
       });
 
       try {
         const session = await stripe.checkout.sessions.create(params);
         logStep("Checkout session created", { sessionId: session.id, url: session.url });
+        
+        // Store the session information in the database
+        try {
+          const { error: sessionInsertError } = await supabaseClient
+            .from('subscription_sessions')
+            .insert({
+              user_id: user.id,
+              session_id: session.id,
+              status: 'created'
+            });
+            
+          if (sessionInsertError) {
+            logStep("Error saving session to database", sessionInsertError);
+            // Continue even if database insert fails
+          } else {
+            logStep("Session saved to database");
+          }
+        } catch (dbError) {
+          logStep("Database error when saving session", dbError);
+          // Continue even if there's a database error
+        }
         
         return new Response(
           JSON.stringify({

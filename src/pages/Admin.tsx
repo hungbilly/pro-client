@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,6 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import UserSubscriptionsDebugging from '@/components/debug/UserSubscriptionsDebugging';
 import { Input } from "@/components/ui/input";
+import UserSelector from '@/components/admin/UserSelector';
+import UserDataTabs from '@/components/admin/UserDataTabs';
 
 interface UserSubscription {
   id: string;
@@ -30,6 +33,7 @@ const Admin = () => {
   const [trialDays, setTrialDays] = useState<number>(90);
   const [trialSettingsLoading, setTrialSettingsLoading] = useState(true);
   const [savingTrialDays, setSavingTrialDays] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string>('');
 
   useEffect(() => {
     if (!isAdmin) {
@@ -143,6 +147,10 @@ const Admin = () => {
       console.error(`Error formatting date "${dateString}":`, err);
       return 'Error';
     }
+  };
+
+  const handleUserSelect = (userId: string) => {
+    setSelectedUserId(userId);
   };
 
   return (
@@ -291,6 +299,26 @@ const Admin = () => {
               </Table>
             </div>
           )}
+        </CardContent>
+      </Card>
+      
+      {/* New User Data Section */}
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <Users className="mr-2 h-5 w-5" />
+            User Data Explorer
+          </CardTitle>
+          <CardDescription>
+            View detailed data for a specific user
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="mb-6">
+            <UserSelector onUserSelect={handleUserSelect} />
+          </div>
+          
+          <UserDataTabs userId={selectedUserId} />
         </CardContent>
       </Card>
 

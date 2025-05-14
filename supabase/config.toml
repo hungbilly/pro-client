@@ -1,44 +1,8 @@
 
 project_id = "htjvyzmuqsrjpesdurni"
 
-[api]
-enabled = true
-port = 54321
-schemas = ["public", "storage", "graphql_public"]
-
-[db]
-port = 54322
-
-[db.pooler]
-enabled = false
-port = 54329
-pool_mode = "transaction"
-default_pool_size = 15
-max_client_conn = 100
-
-[inbucket]
-enabled = true
-port = 54324
-
-[studio]
-enabled = true
-port = 54323
-
-[functions]
-[functions.stripe-webhook]
+[functions.admin-get-users]
 verify_jwt = false
 
-[functions.handle-google-calendar-callback]
+[functions.admin-get-user-data]
 verify_jwt = false
-
-[functions.cancel-subscription]
-verify_jwt = true
-
-[functions.add-to-calendar]
-verify_jwt = true
-
-[functions.update-calendar-event]
-verify_jwt = true
-
-[functions.delete-calendar-event]
-verify_jwt = true

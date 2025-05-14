@@ -1,0 +1,9 @@
+
+{
+  "functions": [
+    {
+      "name": "admin-get-user-data",
+      "verify_jwt": false
+    }
+  ]
+}

@@ -95,7 +95,7 @@ serve(async (req) => {
     }
 
     // Get users based on recipient group
-    let usersQuery = supabase.from('profiles').select('id, email, first_name, last_name, full_name');
+    let usersQuery = supabase.from('profiles').select('id, email');
     
     switch (requestData.recipientGroup) {
       case 'trial':
@@ -224,11 +224,16 @@ serve(async (req) => {
     
     // Prepare batch of scheduled emails
     const scheduledEmails = users.map(user => {
-      // Get user's name - prefer full_name if available, otherwise combine first and last names
-      const name = user.full_name || 
-        ((user.first_name || user.last_name) ? 
-          `${user.first_name || ''} ${user.last_name || ''}`.trim() : 
-          user.email.split('@')[0]);
+      // Extract username from email to use as fallback name
+      const emailUsername = user.email.split('@')[0];
+      
+      // Format the username by capitalizing and removing special chars
+      const formattedUsername = emailUsername
+        .replace(/[._-]/g, ' ')
+        .replace(/\b\w/g, char => char.toUpperCase());
+      
+      // Use email username as the name (we don't have first/last name in profiles)
+      const name = formattedUsername;
       
       // Get user's trial end date if available
       const userSubData = userSubscriptionData.get(user.id) || {};
@@ -246,11 +251,16 @@ serve(async (req) => {
           user_id: user.id,
           name: name,
           trialEndDate: userSubData.trialEndDate || null,
-          firstName: user.first_name || name.split(' ')[0] || '',
-          lastName: user.last_name || (name.includes(' ') ? name.split(' ').slice(1).join(' ') : '')
+          // Since we don't have first_name/last_name in the DB,
+          // create firstName from the first part of the formatted username
+          firstName: name.split(' ')[0] || '',
+          // And lastName from the rest (if any)
+          lastName: name.includes(' ') ? name.split(' ').slice(1).join(' ') : ''
         }
       };
     });
+    
+    console.log(`Prepared ${scheduledEmails.length} emails for sending/scheduling`);
     
     // Insert scheduled emails
     const { data: insertedEmails, error: insertError } = await supabase
@@ -265,11 +275,13 @@ serve(async (req) => {
     // If emails are for immediate sending, trigger the processor
     if (!isScheduled) {
       // This would process the emails right away
-      // In a production system, you might want to use a background task
-      // or a separate worker process for this to avoid timeouts
+      console.log('Triggering email processor for immediate sending');
       try {
         const processResult = await supabase.functions.invoke('process-email-queue', {
-          body: { processAll: true }
+          body: { processAll: true },
+          headers: {
+            Authorization: `Bearer ${supabaseKey}` // Use service role key for authorization
+          }
         });
         
         if (processResult.error) {

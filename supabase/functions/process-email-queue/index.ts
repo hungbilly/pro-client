@@ -8,16 +8,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-function replaceVariables(text: string, variables: Record<string, any>): string {
-  if (!variables) return text;
-  
-  return text.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
-    const trimmedKey = key.trim();
-    return variables[trimmedKey] !== undefined 
-      ? String(variables[trimmedKey]) 
-      : match;
-  });
-}
+// Maximum number of emails to process per batch
+const BATCH_SIZE = 50;
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -26,10 +18,19 @@ serve(async (req) => {
   }
 
   try {
+    // Get authorization header - either a user token or service role key
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'No authorization header' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey, {
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
         autoRefreshToken: false,
         persistSession: false,
@@ -37,190 +38,187 @@ serve(async (req) => {
       },
     });
 
-    const { processAll = false } = await req.json();
-    const now = new Date();
+    // Only allow service role key or verified admins
+    let isAdmin = false;
+
+    // Check if this is the service role key
+    if (authHeader !== `Bearer ${supabaseServiceKey}`) {
+      // It's not the service role key, so verify if it's an admin user
+      const { data: { user }, error: userError } = await supabase.auth.getUser(
+        authHeader.replace('Bearer ', '')
+      );
+
+      if (userError || !user) {
+        return new Response(JSON.stringify({ error: 'Invalid token' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Check if user is admin
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError || !profile || !profile.is_admin) {
+        return new Response(JSON.stringify({ error: 'Admin access required' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      isAdmin = true;
+    }
+
+    const requestData = req.headers.get('Content-Type') === 'application/json' 
+      ? await req.json() 
+      : { processAll: false };
+      
+    const processAll = requestData.processAll === true;
     
-    // Fetch emails that need processing
-    // Either scheduled for now or in the past, or all pending if processAll is true
+    // Define query to get emails that need to be sent
     let query = supabase
       .from('scheduled_emails')
       .select('*')
-      .eq('status', 'pending');
+      .eq('status', 'pending')
+      .lte('scheduled_for', new Date().toISOString());
       
     if (!processAll) {
-      query = query.lte('scheduled_for', now.toISOString());
+      // Limit the batch size
+      query = query.limit(BATCH_SIZE);
     }
-    
-    query = query.limit(50); // Process in batches to avoid timeouts
-    
-    const { data: pendingEmails, error: fetchError } = await query;
+      
+    // Get emails to process
+    const { data: emailsToProcess, error: fetchError } = await query.order('scheduled_for', { ascending: true });
     
     if (fetchError) {
       throw fetchError;
     }
     
-    if (!pendingEmails || pendingEmails.length === 0) {
-      return new Response(JSON.stringify({ success: true, message: 'No emails to process' }), {
+    if (!emailsToProcess || emailsToProcess.length === 0) {
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message: 'No emails to process' 
+      }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    console.log(`Processing ${emailsToProcess.length} emails`);
     
-    console.log(`Processing ${pendingEmails.length} emails`);
+    const results = [];
     
     // Process each email
-    const results = await Promise.all(pendingEmails.map(async (email) => {
+    for (const email of emailsToProcess) {
       try {
-        // Update status to processing
-        await supabase
-          .from('scheduled_emails')
-          .update({ status: 'processing' })
-          .eq('id', email.id);
+        let variables = email.variables || {};
+        const recipientEmail = email.recipient_email;
         
-        // Prepare email content
-        let subject = '';
-        let body = '';
+        // Prepare data for email sending
+        const emailData: any = {
+          recipientEmail,
+          recipientUserId: email.recipient_user_id
+        };
         
+        // Use template or custom content
         if (email.template_id) {
-          // Get template
-          const { data: template, error: templateError } = await supabase
-            .from('email_templates')
-            .select('*')
-            .eq('id', email.template_id)
-            .single();
-          
-          if (templateError || !template) {
-            throw new Error('Template not found');
-          }
-          
-          subject = template.subject;
-          body = template.body;
+          emailData.templateId = email.template_id;
         } else {
-          // Use custom content
-          subject = email.custom_subject || '';
-          body = email.custom_body || '';
+          emailData.customSubject = email.custom_subject;
+          emailData.customBody = email.custom_body;
         }
         
-        // Apply variable substitution
-        if (email.variables) {
-          subject = replaceVariables(subject, email.variables);
-          body = replaceVariables(body, email.variables);
-        }
-        
-        // Check if email has all required variables
-        const missingVariables = [];
-        const requiredVariables = ['name', 'email']; // Add other required variables here
-        
-        for (const variable of requiredVariables) {
-          if (body.includes(`{{${variable}}}`) && (!email.variables || email.variables[variable] === undefined)) {
-            missingVariables.push(variable);
+        // Add variables if available
+        if (variables) {
+          // Ensure all required variables are present
+          if (!variables.name) {
+            const emailUsername = recipientEmail.split('@')[0];
+            // Format the username by capitalizing and removing special chars
+            const formattedUsername = emailUsername
+              .replace(/[._-]/g, ' ')
+              .replace(/\b\w/g, char => char.toUpperCase());
+            
+            variables.name = formattedUsername;
           }
-        }
-        
-        if (missingVariables.length > 0) {
-          console.log(`Email ${email.id} is missing variables: ${missingVariables.join(', ')}`);
-          // Try to fetch missing user data
-          if (email.recipient_user_id) {
-            const { data: userData, error: userError } = await supabase
-              .from('profiles')
-              .select('first_name, last_name, full_name, email')
-              .eq('id', email.recipient_user_id)
-              .single();
-              
-            if (userData && !userError) {
-              email.variables = email.variables || {};
-              
-              if (missingVariables.includes('name') && !email.variables.name) {
-                email.variables.name = userData.full_name || 
-                  ((userData.first_name || userData.last_name) ? 
-                    `${userData.first_name || ''} ${userData.last_name || ''}`.trim() : 
-                    (email.recipient_email || '').split('@')[0]);
-              }
-              
-              if (missingVariables.includes('email') && !email.variables.email) {
-                email.variables.email = userData.email || email.recipient_email;
-              }
-              
-              // Apply variable substitution again with updated variables
-              subject = replaceVariables(subject, email.variables);
-              body = replaceVariables(body, email.variables);
-            }
+          
+          if (!variables.firstName && variables.name) {
+            variables.firstName = variables.name.split(' ')[0] || '';
           }
+          
+          if (!variables.lastName && variables.name && variables.name.includes(' ')) {
+            variables.lastName = variables.name.split(' ').slice(1).join(' ');
+          }
+          
+          emailData.variables = variables;
         }
         
-        // Send the email with service role key authorization
-        const sendResult = await supabase.functions.invoke('send-system-email', {
-          body: {
-            recipientEmail: email.recipient_email,
-            recipientUserId: email.recipient_user_id,
-            customSubject: subject,
-            customBody: body,
-            variables: email.variables
+        // Send the email using send-system-email function
+        const result = await supabase.functions.invoke('send-system-email', {
+          body: emailData,
+          headers: {
+            Authorization: `Bearer ${supabaseServiceKey}` // Use service role key for auth
           }
         });
         
-        if (sendResult.error) {
-          throw new Error(sendResult.error.message || 'Failed to send email');
+        if (result.error) {
+          throw new Error(`Send email error: ${result.error.message || JSON.stringify(result.error)}`);
         }
         
-        // Update status to sent
-        await supabase
+        // Update email status
+        const { error: updateError } = await supabase
           .from('scheduled_emails')
-          .update({ 
+          .update({
             status: 'sent',
             sent_at: new Date().toISOString()
           })
           .eq('id', email.id);
           
-        // Record in email history
-        await supabase
-          .from('email_history')
-          .insert({
-            template_id: email.template_id,
-            recipient_email: email.recipient_email,
-            recipient_user_id: email.recipient_user_id,
-            subject: subject,
-            body: body,
-            status: 'sent'
-          });
+        if (updateError) {
+          console.error(`Error updating email status for ${email.id}:`, updateError);
+        }
         
-        return { id: email.id, success: true };
+        results.push({
+          id: email.id,
+          recipient: recipientEmail,
+          success: true
+        });
+        
       } catch (error) {
         console.error(`Error processing email ${email.id}:`, error);
         
-        // Update status to failed
-        await supabase
-          .from('scheduled_emails')
-          .update({ 
-            status: 'failed',
-            error_message: error.message || String(error)
-          })
-          .eq('id', email.id);
-          
-        // Record in email history
-        await supabase
-          .from('email_history')
-          .insert({
-            template_id: email.template_id,
-            recipient_email: email.recipient_email,
-            recipient_user_id: email.recipient_user_id,
-            subject: email.custom_subject || '[Failed]',
-            body: email.custom_body || '',
-            status: 'failed',
-            error_message: error.message || String(error)
-          });
+        // Update email status to 'failed'
+        try {
+          await supabase
+            .from('scheduled_emails')
+            .update({
+              status: 'failed'
+            })
+            .eq('id', email.id);
+        } catch (updateError) {
+          console.error(`Error updating failed status for ${email.id}:`, updateError);
+        }
         
-        return { id: email.id, success: false, error: error.message || String(error) };
+        results.push({
+          id: email.id,
+          recipient: email.recipient_email,
+          success: false,
+          error: error.message || String(error)
+        });
       }
-    }));
+    }
     
-    const successful = results.filter(r => r.success).length;
-    const failed = results.filter(r => !r.success).length;
+    const successCount = results.filter(r => r.success).length;
+    const failureCount = results.filter(r => !r.success).length;
     
     return new Response(JSON.stringify({ 
       success: true, 
-      message: `Processed ${results.length} emails: ${successful} succeeded, ${failed} failed`,
-      results
+      processed: emailsToProcess.length,
+      successful: successCount,
+      failed: failureCount,
+      details: results
     }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

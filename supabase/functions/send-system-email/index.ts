@@ -24,7 +24,7 @@ interface EmailPayload {
 
 // Helper function to replace variables in templates
 function replaceVariables(text: string, variables: EmailVariables): string {
-  if (!variables) return text;
+  if (!variables || !text) return text || '';
   
   return text.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
     const trimmedKey = key.trim();
@@ -61,30 +61,44 @@ serve(async (req) => {
       },
     });
 
-    // Verify if request is from an admin
-    const { data: { user }, error: userError } = await supabase.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    );
+    // Verify if request is from an admin or the service role key
+    let isAdmin = false;
+    let isServiceRole = authHeader === `Bearer ${supabaseKey}`;
 
-    if (userError || !user) {
-      return new Response(JSON.stringify({ error: 'Invalid token' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    if (!isServiceRole) {
+      // Check if it's an admin user
+      const { data: { user }, error: userError } = await supabase.auth.getUser(
+        authHeader.replace('Bearer ', '')
+      );
+
+      if (userError || !user) {
+        return new Response(JSON.stringify({ error: 'Invalid token' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Check if user is admin
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError || !profile || !profile.is_admin) {
+        return new Response(JSON.stringify({ error: 'Admin access required' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      isAdmin = true;
     }
 
-    // Check if user is admin
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('is_admin')
-      .eq('id', user.id)
-      .single();
-
-    const isAdmin = profile?.is_admin === true;
     const requestData = await req.json() as EmailPayload;
 
     // Non-admins can only send predefined templates (not custom emails)
-    if (!isAdmin && (requestData.customSubject || requestData.customBody)) {
+    if (!isAdmin && !isServiceRole && (requestData.customSubject || requestData.customBody)) {
       return new Response(JSON.stringify({ error: 'Permission denied. Only admins can send custom emails.' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

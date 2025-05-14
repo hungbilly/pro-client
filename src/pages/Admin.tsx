@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Shield, Users, Calendar, AlertCircle } from 'lucide-react';
+import { Shield, Users, Calendar, AlertCircle, Mail } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -160,7 +160,7 @@ const Admin = () => {
         <h1 className="text-3xl font-bold">Admin Dashboard</h1>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <Card className="bg-gradient-to-br from-purple-50 to-blue-50">
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -181,6 +181,37 @@ const Admin = () => {
                 Open Calendar Test Page
               </Link>
             </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Mail className="mr-2 h-5 w-5 text-purple-600" />
+              Email Management
+            </CardTitle>
+            <CardDescription>
+              Manage email templates and send communications
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <Button asChild variant="outline" className="w-full">
+                <Link to="/admin/email-templates" className="inline-flex items-center">
+                  Manage Email Templates
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="w-full">
+                <Link to="/admin/send-email" className="inline-flex items-center">
+                  Send Bulk Email
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="w-full">
+                <Link to="/admin/email-history" className="inline-flex items-center">
+                  View Email History
+                </Link>
+              </Button>
+            </div>
           </CardContent>
         </Card>
 

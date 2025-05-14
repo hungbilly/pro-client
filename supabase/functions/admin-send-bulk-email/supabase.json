@@ -1,0 +1,9 @@
+
+{
+  "functions": [
+    {
+      "name": "admin-send-bulk-email",
+      "verify_jwt": true
+    }
+  ]
+}

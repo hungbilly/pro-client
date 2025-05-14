@@ -292,6 +292,86 @@ export type Database = {
           },
         ]
       }
+      email_history: {
+        Row: {
+          body: string
+          error_message: string | null
+          id: string
+          recipient_email: string
+          recipient_user_id: string | null
+          sent_at: string
+          status: string
+          subject: string
+          template_id: string | null
+        }
+        Insert: {
+          body: string
+          error_message?: string | null
+          id?: string
+          recipient_email: string
+          recipient_user_id?: string | null
+          sent_at?: string
+          status?: string
+          subject: string
+          template_id?: string | null
+        }
+        Update: {
+          body?: string
+          error_message?: string | null
+          id?: string
+          recipient_email?: string
+          recipient_user_id?: string | null
+          sent_at?: string
+          status?: string
+          subject?: string
+          template_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_history_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "email_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_templates: {
+        Row: {
+          body: string
+          category: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          category: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       expense_categories: {
         Row: {
           company_id: string | null
@@ -734,6 +814,59 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      scheduled_emails: {
+        Row: {
+          created_at: string
+          custom_body: string | null
+          custom_subject: string | null
+          id: string
+          recipient_email: string
+          recipient_user_id: string | null
+          scheduled_for: string
+          sent_at: string | null
+          status: string
+          template_id: string | null
+          updated_at: string
+          variables: Json | null
+        }
+        Insert: {
+          created_at?: string
+          custom_body?: string | null
+          custom_subject?: string | null
+          id?: string
+          recipient_email: string
+          recipient_user_id?: string | null
+          scheduled_for: string
+          sent_at?: string | null
+          status?: string
+          template_id?: string | null
+          updated_at?: string
+          variables?: Json | null
+        }
+        Update: {
+          created_at?: string
+          custom_body?: string | null
+          custom_subject?: string | null
+          id?: string
+          recipient_email?: string
+          recipient_user_id?: string | null
+          scheduled_for?: string
+          sent_at?: string | null
+          status?: string
+          template_id?: string | null
+          updated_at?: string
+          variables?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_emails_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "email_templates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       stripe_events: {
         Row: {

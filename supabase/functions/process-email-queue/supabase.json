@@ -1,0 +1,9 @@
+
+{
+  "functions": [
+    {
+      "name": "process-email-queue",
+      "verify_jwt": false
+    }
+  ]
+}

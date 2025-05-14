@@ -1,0 +1,9 @@
+
+{
+  "functions": [
+    {
+      "name": "send-system-email",
+      "verify_jwt": true
+    }
+  ]
+}

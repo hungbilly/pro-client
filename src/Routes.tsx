@@ -39,6 +39,9 @@ import Admin from '@/pages/Admin';
 import Debug from '@/pages/Debug';
 import AdminLayout from '@/components/AdminLayout';
 import CalendarTest from '@/pages/CalendarTest';
+import EmailTemplates from '@/pages/EmailTemplates';
+import EmailHistory from '@/pages/EmailHistory';
+import SendEmail from '@/pages/SendEmail';
 
 const AppRoutes = () => {
   const { user } = useAuth();
@@ -102,8 +105,11 @@ const AppRoutes = () => {
         </ProtectedRoute>
       }>
         <Route index element={<Admin />} />
-        <Route path="/admin/debug" element={<Debug />} />
-        <Route path="/admin/calendar-test" element={<CalendarTest />} />
+        <Route path="debug" element={<Debug />} />
+        <Route path="calendar-test" element={<CalendarTest />} />
+        <Route path="email-templates/*" element={<EmailTemplates />} />
+        <Route path="email-history" element={<EmailHistory />} />
+        <Route path="send-email" element={<SendEmail />} />
       </Route>
       
       {/* Public invoice view routes - moved outside of the protected routes */}

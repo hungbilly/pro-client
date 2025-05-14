@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import Stripe from 'https://esm.sh/stripe@15.12.0?dts';
@@ -151,6 +152,7 @@ async function handleCheckoutSessionCompleted(session, supabase) {
       console.log(`Subscription ${subscriptionId} already exists in the database. Updating status.`);
       
       // Update the existing subscription instead of creating a new one
+      // IMPORTANT CHANGE: Always set admin_override to false when we have an active subscription from Stripe
       const { error: updateError } = await supabase
         .from('user_subscriptions')
         .update({
@@ -159,7 +161,8 @@ async function handleCheckoutSessionCompleted(session, supabase) {
           updated_at: new Date().toISOString(),
           trial_end_date: subscription.trial_end 
             ? new Date(subscription.trial_end * 1000).toISOString() 
-            : null
+            : null,
+          admin_override: false // Reset admin override to ensure payment takes priority
         })
         .eq('stripe_subscription_id', subscriptionId);
         
@@ -170,6 +173,7 @@ async function handleCheckoutSessionCompleted(session, supabase) {
     }
 
     // Create a new subscription record
+    // NEW: Always create with admin_override set to false
     const { error: insertError } = await supabase
       .from('user_subscriptions')
       .insert({
@@ -180,7 +184,8 @@ async function handleCheckoutSessionCompleted(session, supabase) {
         current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
         trial_end_date: subscription.trial_end 
           ? new Date(subscription.trial_end * 1000).toISOString() 
-          : null
+          : null,
+        admin_override: false // Ensure payment takes priority over admin settings
       });
 
     if (insertError) {
@@ -235,17 +240,31 @@ async function handleSubscriptionUpdate(data, eventType, supabase) {
     if (existingSubscriptions && existingSubscriptions.length > 0) {
       console.log(`Updating existing subscription ${subscriptionId}`);
       
+      // IMPORTANT CHANGE: If we're getting a paid/active subscription update from Stripe, 
+      // we should prioritize it over any admin override
+      const isPaymentConfirmation = 
+        eventType === 'invoice.paid' || 
+        (data.status === 'active' && eventType === 'customer.subscription.updated');
+        
       // Update the existing subscription
+      const updateData = {
+        status: data.status,
+        current_period_end: new Date(data.current_period_end * 1000).toISOString(),
+        updated_at: new Date().toISOString(),
+        trial_end_date: data.trial_end 
+          ? new Date(data.trial_end * 1000).toISOString() 
+          : null
+      };
+      
+      // Only reset admin_override when we have a payment confirmation
+      if (isPaymentConfirmation) {
+        updateData.admin_override = false;
+        console.log('Payment confirmation received, resetting admin_override flag');
+      }
+      
       const { error: updateError } = await supabase
         .from('user_subscriptions')
-        .update({
-          status: data.status,
-          current_period_end: new Date(data.current_period_end * 1000).toISOString(),
-          updated_at: new Date().toISOString(),
-          trial_end_date: data.trial_end 
-            ? new Date(data.trial_end * 1000).toISOString() 
-            : null
-        })
+        .update(updateData)
         .eq('stripe_subscription_id', subscriptionId);
         
       if (updateError) {
@@ -255,7 +274,7 @@ async function handleSubscriptionUpdate(data, eventType, supabase) {
     } else {
       console.log(`Creating new subscription record for ${subscriptionId}`);
       
-      // Create a new subscription record
+      // Create a new subscription record - always with admin_override as false for new Stripe subscriptions
       const { error: insertError } = await supabase
         .from('user_subscriptions')
         .insert({
@@ -266,7 +285,8 @@ async function handleSubscriptionUpdate(data, eventType, supabase) {
           current_period_end: new Date(data.current_period_end * 1000).toISOString(),
           trial_end_date: data.trial_end 
             ? new Date(data.trial_end * 1000).toISOString() 
-            : null
+            : null,
+          admin_override: false // Ensure Stripe has precedence for new subscriptions
         });
 
       if (insertError) {

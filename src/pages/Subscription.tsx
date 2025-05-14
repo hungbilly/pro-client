@@ -157,7 +157,6 @@ const Subscription = () => {
       </div>
     </PageTransition>;
   }
-
   if (hasAccess) {
     return <PageTransition>
         <div className="container mx-auto py-12 px-4">
@@ -281,7 +280,6 @@ const Subscription = () => {
         </Dialog>
       </PageTransition>;
   }
-
   return <PageTransition>
       <div className="container mx-auto py-12 px-4">
         <div className="max-w-4xl mx-auto">
@@ -344,13 +342,10 @@ const Subscription = () => {
 
           <div className="bg-gray-50 p-6 rounded-lg mt-12">
             <h3 className="text-lg font-medium mb-2">Need help?</h3>
-            <p className="text-gray-600">
-              Contact our support team at support@photobizmanager.com
-            </p>
+            <p className="text-gray-600">Contact our support team at support@proclientapp.com</p>
           </div>
         </div>
       </div>
     </PageTransition>;
 };
-
 export default Subscription;

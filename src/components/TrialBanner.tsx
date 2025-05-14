@@ -62,7 +62,7 @@ const TrialBanner: React.FC = () => {
               size="sm" 
               variant="outline" 
               onClick={() => navigate('/subscription')} 
-              className="text-white border-white hover:bg-white/20 h-7"
+              className="bg-gray-800 text-white border-white hover:bg-gray-700 h-7"
             >
               View Subscription
             </Button>

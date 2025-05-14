@@ -303,7 +303,7 @@ const Subscription = () => {
 
           {isInTrialPeriod && !isTrialEndingSoon && (
             <div className="mb-8">
-              <Alert variant="info" className="bg-blue-50 border-blue-200">
+              <Alert variant="default" className="bg-blue-50 border-blue-200">
                 <Info className="h-4 w-4 text-blue-500" />
                 <AlertDescription className="text-blue-700">
                   You are currently in your free trial period with {trialDaysLeft} {trialDaysLeft === 1 ? 'day' : 'days'} remaining. 

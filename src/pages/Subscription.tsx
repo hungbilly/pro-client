@@ -29,8 +29,11 @@ const Subscription = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
+  
   const isPendingCancellation = subscription?.status === 'active' && subscription?.cancel_at;
   const canCancelSubscription = subscription && (subscription.status === 'active' || subscription.status === 'trialing');
+  const isTrialEndingSoon = isInTrialPeriod && trialDaysLeft <= 1;
+  
   const handleSubscribe = async (withTrial: boolean = true) => {
     if (!user) {
       toast.error("You must be logged in to subscribe");
@@ -197,12 +200,16 @@ const Subscription = () => {
                       <div>
                         <h3 className="font-medium">Free Trial Period</h3>
                         <p className="text-sm text-gray-500">
-                          You have {trialDaysLeft} days left in your trial
+                          You have {trialDaysLeft} {trialDaysLeft === 1 ? 'day' : 'days'} left in your trial
                         </p>
                       </div>
                     </div>
                     <div className="bg-blue-50 p-4 rounded-lg">
-                      <p className="text-sm text-blue-700">Enjoy your free 1-month trial. No payment information required until your trial ends.</p>
+                      {isTrialEndingSoon ? (
+                        <p className="text-sm text-blue-700">Your trial is ending soon! Please upgrade to continue using all premium features after your trial ends.</p>
+                      ) : (
+                        <p className="text-sm text-blue-700">Enjoy your free trial. No payment information required until your trial ends.</p>
+                      )}
                     </div>
                   </div> : <div className="space-y-4">
                     <div>
@@ -233,9 +240,14 @@ const Subscription = () => {
                   {subscription && !isInTrialPeriod && <Button variant="outline" onClick={() => window.open('https://billing.stripe.com/p/login/dR69BE6CAbGhcsEeUU', '_blank')}>
                       Manage Billing
                     </Button>}
-                  {canCancelSubscription && <Button variant="destructive" onClick={() => setShowCancelDialog(true)} disabled={isCancelling}>
+                  {(canCancelSubscription || isTrialEndingSoon) && <Button variant="destructive" onClick={() => setShowCancelDialog(true)} disabled={isCancelling}>
                       {isCancelling ? 'Cancelling...' : 'Cancel Subscription'}
                     </Button>}
+                  {isTrialEndingSoon && !subscription && (
+                    <Button onClick={() => handleSubscribe(true)} disabled={isLoading}>
+                      {isLoading ? 'Processing...' : 'Upgrade Now'}
+                    </Button>
+                  )}
                 </div>
               </CardFooter>
             </Card>
@@ -289,57 +301,71 @@ const Subscription = () => {
             <p className="text-gray-600 max-w-xl mx-auto">Get access to all features and take your business to the next level</p>
           </div>
 
-          <div className="max-w-md mx-auto">
-            <Card className="border-primary">
-              <CardHeader>
-                <CardTitle>Premium</CardTitle>
-                <CardDescription>
-                  Full access to all features
-                </CardDescription>
-                <div className="mt-4">
-                  <span className="text-3xl font-bold">USD$7</span>
-                  <span className="text-gray-500 ml-1">/ month</span>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2">
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-green-500 mr-2" />
-                    <span>Unlimited clients</span>
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-green-500 mr-2" />
-                    <span>Unlimited invoices</span>
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-green-500 mr-2" />
-                    <span>Job management</span>
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-green-500 mr-2" />
-                    <span>Export data</span>
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-green-500 mr-2" />
-                    <span>Custom invoices</span>
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-green-500 mr-2" />
-                    <span>Priority support</span>
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-green-500 mr-2" />
-                    <span>Cancel anytime</span>
-                  </li>
-                </ul>
-              </CardContent>
-              <CardFooter>
-                <Button className="w-full" onClick={() => handleSubscribe(true)} disabled={isLoading}>
-                  {isLoading ? 'Processing...' : 'Subscribe Now'}
-                </Button>
-              </CardFooter>
-            </Card>
-          </div>
+          {isInTrialPeriod && !isTrialEndingSoon && (
+            <div className="mb-8">
+              <Alert variant="info" className="bg-blue-50 border-blue-200">
+                <Info className="h-4 w-4 text-blue-500" />
+                <AlertDescription className="text-blue-700">
+                  You are currently in your free trial period with {trialDaysLeft} {trialDaysLeft === 1 ? 'day' : 'days'} remaining. 
+                  You'll have the option to subscribe when your trial is close to ending.
+                </AlertDescription>
+              </Alert>
+            </div>
+          )}
+
+          {(!isInTrialPeriod || isTrialEndingSoon) && (
+            <div className="max-w-md mx-auto">
+              <Card className="border-primary">
+                <CardHeader>
+                  <CardTitle>Premium</CardTitle>
+                  <CardDescription>
+                    Full access to all features
+                  </CardDescription>
+                  <div className="mt-4">
+                    <span className="text-3xl font-bold">USD$7</span>
+                    <span className="text-gray-500 ml-1">/ month</span>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-2">
+                    <li className="flex items-center">
+                      <Check className="h-5 w-5 text-green-500 mr-2" />
+                      <span>Unlimited clients</span>
+                    </li>
+                    <li className="flex items-center">
+                      <Check className="h-5 w-5 text-green-500 mr-2" />
+                      <span>Unlimited invoices</span>
+                    </li>
+                    <li className="flex items-center">
+                      <Check className="h-5 w-5 text-green-500 mr-2" />
+                      <span>Job management</span>
+                    </li>
+                    <li className="flex items-center">
+                      <Check className="h-5 w-5 text-green-500 mr-2" />
+                      <span>Export data</span>
+                    </li>
+                    <li className="flex items-center">
+                      <Check className="h-5 w-5 text-green-500 mr-2" />
+                      <span>Custom invoices</span>
+                    </li>
+                    <li className="flex items-center">
+                      <Check className="h-5 w-5 text-green-500 mr-2" />
+                      <span>Priority support</span>
+                    </li>
+                    <li className="flex items-center">
+                      <Check className="h-5 w-5 text-green-500 mr-2" />
+                      <span>Cancel anytime</span>
+                    </li>
+                  </ul>
+                </CardContent>
+                <CardFooter>
+                  <Button className="w-full" onClick={() => handleSubscribe(true)} disabled={isLoading}>
+                    {isLoading ? 'Processing...' : 'Subscribe Now'}
+                  </Button>
+                </CardFooter>
+              </Card>
+            </div>
+          )}
 
           <div className="bg-gray-50 p-6 rounded-lg mt-12">
             <h3 className="text-lg font-medium mb-2">Need help?</h3>

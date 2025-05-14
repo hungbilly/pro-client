@@ -95,14 +95,14 @@ serve(async (req) => {
     }
 
     // Get users based on recipient group
-    let usersQuery = supabase.from('profiles').select('id, email');
+    let usersQuery = supabase.from('profiles').select('id, email, first_name, last_name, full_name');
     
     switch (requestData.recipientGroup) {
       case 'trial':
         // Users in trial period
         const { data: trialUsers } = await supabase
           .from('user_subscriptions')
-          .select('user_id')
+          .select('user_id, trial_end_date')
           .gt('trial_end_date', new Date().toISOString());
         
         if (trialUsers && trialUsers.length > 0) {
@@ -138,7 +138,7 @@ serve(async (req) => {
         // Users with expired trials
         const { data: expiredUsers } = await supabase
           .from('user_subscriptions')
-          .select('user_id')
+          .select('user_id, trial_end_date')
           .lt('trial_end_date', new Date().toISOString())
           .not('status', 'eq', 'active');
         
@@ -167,6 +167,28 @@ serve(async (req) => {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    // Get subscription data for users who need it
+    const userSubscriptionData = new Map();
+    
+    if (requestData.recipientGroup === 'trial' || requestData.recipientGroup === 'expired') {
+      const { data: subscriptions, error: subError } = await supabase
+        .from('user_subscriptions')
+        .select('user_id, trial_end_date')
+        .in('user_id', users.map(u => u.id));
+        
+      if (subError) {
+        throw subError;
+      }
+      
+      if (subscriptions && subscriptions.length > 0) {
+        subscriptions.forEach(sub => {
+          userSubscriptionData.set(sub.user_id, {
+            trialEndDate: sub.trial_end_date ? new Date(sub.trial_end_date).toLocaleDateString() : null
+          });
+        });
+      }
     }
 
     // Get template details if needed
@@ -201,19 +223,34 @@ serve(async (req) => {
     const scheduledFor = requestData.scheduledFor ? new Date(requestData.scheduledFor) : null;
     
     // Prepare batch of scheduled emails
-    const scheduledEmails = users.map(user => ({
-      recipient_email: user.email,
-      recipient_user_id: user.id,
-      template_id: templateId,
-      custom_subject: requestData.emailMode === 'custom' ? templateSubject : null,
-      custom_body: requestData.emailMode === 'custom' ? templateBody : null,
-      status: isScheduled ? 'scheduled' : 'pending',
-      scheduled_for: isScheduled ? scheduledFor?.toISOString() : new Date().toISOString(),
-      variables: {
-        email: user.email,
-        user_id: user.id
-      }
-    }));
+    const scheduledEmails = users.map(user => {
+      // Get user's name - prefer full_name if available, otherwise combine first and last names
+      const name = user.full_name || 
+        ((user.first_name || user.last_name) ? 
+          `${user.first_name || ''} ${user.last_name || ''}`.trim() : 
+          user.email.split('@')[0]);
+      
+      // Get user's trial end date if available
+      const userSubData = userSubscriptionData.get(user.id) || {};
+      
+      return {
+        recipient_email: user.email,
+        recipient_user_id: user.id,
+        template_id: templateId,
+        custom_subject: requestData.emailMode === 'custom' ? templateSubject : null,
+        custom_body: requestData.emailMode === 'custom' ? templateBody : null,
+        status: isScheduled ? 'scheduled' : 'pending',
+        scheduled_for: isScheduled ? scheduledFor?.toISOString() : new Date().toISOString(),
+        variables: {
+          email: user.email,
+          user_id: user.id,
+          name: name,
+          trialEndDate: userSubData.trialEndDate || null,
+          firstName: user.first_name || name.split(' ')[0] || '',
+          lastName: user.last_name || (name.includes(' ') ? name.split(' ').slice(1).join(' ') : '')
+        }
+      };
+    });
     
     // Insert scheduled emails
     const { data: insertedEmails, error: insertError } = await supabase
@@ -230,9 +267,18 @@ serve(async (req) => {
       // This would process the emails right away
       // In a production system, you might want to use a background task
       // or a separate worker process for this to avoid timeouts
-      await supabase.functions.invoke('process-email-queue', {
-        body: { processAll: true }
-      });
+      try {
+        const processResult = await supabase.functions.invoke('process-email-queue', {
+          body: { processAll: true }
+        });
+        
+        if (processResult.error) {
+          console.error('Error processing email queue:', processResult.error);
+        }
+      } catch (processError) {
+        console.error('Error invoking email processor:', processError);
+        // Don't throw error here, as emails are already queued
+      }
     }
     
     return new Response(JSON.stringify({ 

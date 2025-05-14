@@ -107,13 +107,55 @@ serve(async (req) => {
           body = replaceVariables(body, email.variables);
         }
         
-        // Send the email
+        // Check if email has all required variables
+        const missingVariables = [];
+        const requiredVariables = ['name', 'email']; // Add other required variables here
+        
+        for (const variable of requiredVariables) {
+          if (body.includes(`{{${variable}}}`) && (!email.variables || email.variables[variable] === undefined)) {
+            missingVariables.push(variable);
+          }
+        }
+        
+        if (missingVariables.length > 0) {
+          console.log(`Email ${email.id} is missing variables: ${missingVariables.join(', ')}`);
+          // Try to fetch missing user data
+          if (email.recipient_user_id) {
+            const { data: userData, error: userError } = await supabase
+              .from('profiles')
+              .select('first_name, last_name, full_name, email')
+              .eq('id', email.recipient_user_id)
+              .single();
+              
+            if (userData && !userError) {
+              email.variables = email.variables || {};
+              
+              if (missingVariables.includes('name') && !email.variables.name) {
+                email.variables.name = userData.full_name || 
+                  ((userData.first_name || userData.last_name) ? 
+                    `${userData.first_name || ''} ${userData.last_name || ''}`.trim() : 
+                    (email.recipient_email || '').split('@')[0]);
+              }
+              
+              if (missingVariables.includes('email') && !email.variables.email) {
+                email.variables.email = userData.email || email.recipient_email;
+              }
+              
+              // Apply variable substitution again with updated variables
+              subject = replaceVariables(subject, email.variables);
+              body = replaceVariables(body, email.variables);
+            }
+          }
+        }
+        
+        // Send the email with service role key authorization
         const sendResult = await supabase.functions.invoke('send-system-email', {
           body: {
             recipientEmail: email.recipient_email,
             recipientUserId: email.recipient_user_id,
             customSubject: subject,
-            customBody: body
+            customBody: body,
+            variables: email.variables
           }
         });
         

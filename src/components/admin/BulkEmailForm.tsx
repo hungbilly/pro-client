@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/use-toast';
 import { 
   Select, 
   SelectContent, 
@@ -91,7 +91,11 @@ const BulkEmailForm = () => {
       }
     } catch (error) {
       console.error('Error fetching email templates:', error);
-      toast.error('Failed to load email templates');
+      toast({
+        title: 'Error',
+        description: 'Failed to load email templates',
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }
@@ -146,22 +150,38 @@ const BulkEmailForm = () => {
 
   const handleSendEmail = async () => {
     if (emailMode === 'template' && !selectedTemplate) {
-      toast.error('Please select an email template');
+      toast({
+        title: 'Error',
+        description: 'Please select an email template',
+        variant: 'destructive',
+      });
       return;
     }
 
     if (emailMode === 'custom' && (!customSubject || !customBody)) {
-      toast.error('Please enter both subject and body for custom email');
+      toast({
+        title: 'Error',
+        description: 'Please enter both subject and body for custom email',
+        variant: 'destructive',
+      });
       return;
     }
 
     if (!selectedGroup) {
-      toast.error('Please select a recipient group');
+      toast({
+        title: 'Error',
+        description: 'Please select a recipient group',
+        variant: 'destructive',
+      });
       return;
     }
 
     if (isScheduled && (!scheduledDate || !scheduledTime)) {
-      toast.error('Please select both date and time for scheduled delivery');
+      toast({
+        title: 'Error',
+        description: 'Please select both date and time for scheduled delivery',
+        variant: 'destructive',
+      });
       return;
     }
 
@@ -202,11 +222,18 @@ const BulkEmailForm = () => {
         throw new Error(response.error.message || 'Failed to send emails');
       }
 
-      toast.success(isScheduled ? 'Emails scheduled successfully' : 'Emails are being sent');
+      toast({
+        title: 'Success',
+        description: isScheduled ? 'Emails scheduled successfully' : 'Emails are being sent',
+      });
       navigate('/admin/email-history');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error sending bulk email:', error);
-      toast.error(error.message || 'Failed to send emails');
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to send emails',
+        variant: 'destructive',
+      });
     } finally {
       setSending(false);
     }
@@ -308,7 +335,7 @@ const BulkEmailForm = () => {
                     rows={10}
                   />
                   <p className="text-xs text-muted-foreground">
-                    You can use {{name}}, {{email}} and other variable placeholders.
+                    You can use {'{{'} + "name" + '}}'}, {'{{'} + "email" + '}}'} and other variable placeholders.
                   </p>
                 </div>
               </div>

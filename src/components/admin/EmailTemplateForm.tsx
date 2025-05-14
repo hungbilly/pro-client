@@ -21,7 +21,7 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/use-toast';
 import { ArrowLeft, Save } from 'lucide-react';
 
 const EMAIL_CATEGORIES = [
@@ -78,7 +78,11 @@ const EmailTemplateForm = () => {
       }
     } catch (error) {
       console.error('Error fetching template details:', error);
-      toast.error('Failed to load template details');
+      toast({
+        title: 'Error',
+        description: 'Failed to load template details',
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }
@@ -103,7 +107,11 @@ const EmailTemplateForm = () => {
       setSaving(true);
 
       if (!template.name || !template.subject || !template.body || !template.category) {
-        toast.error('Please fill all required fields');
+        toast({
+          title: 'Error',
+          description: 'Please fill all required fields',
+          variant: 'destructive',
+        });
         return;
       }
 
@@ -117,12 +125,15 @@ const EmailTemplateForm = () => {
             category: template.category,
             description: template.description,
             is_active: template.is_active,
-            updated_at: new Date()
+            updated_at: new Date().toISOString()
           })
           .eq('id', id);
 
         if (error) throw error;
-        toast.success('Template updated successfully');
+        toast({
+          title: 'Success',
+          description: 'Template updated successfully',
+        });
       } else {
         const { error } = await supabase
           .from('email_templates')
@@ -136,13 +147,20 @@ const EmailTemplateForm = () => {
           });
 
         if (error) throw error;
-        toast.success('Template created successfully');
+        toast({
+          title: 'Success',
+          description: 'Template created successfully',
+        });
       }
 
       navigate('/admin/email-templates');
     } catch (error) {
       console.error('Error saving template:', error);
-      toast.error('Failed to save template');
+      toast({
+        title: 'Error',
+        description: 'Failed to save template',
+        variant: 'destructive',
+      });
     } finally {
       setSaving(false);
     }
@@ -244,7 +262,7 @@ const EmailTemplateForm = () => {
               className="font-mono"
             />
             <p className="text-xs text-muted-foreground">
-              Use {{variable}} syntax for dynamic content. Example: Hello {{name}}
+              Use {'{{variable}}'} syntax for dynamic content. Example: Hello {'{{name}}'}
             </p>
           </div>
           

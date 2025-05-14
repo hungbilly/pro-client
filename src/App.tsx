@@ -2,7 +2,7 @@
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import Routes from './Routes';
-import { Toaster } from '@/components/ui/toaster';  // Import shadcn/ui Toaster instead of Sonner
+import { Toaster } from '@/components/ui/toaster';
 import CompanyProvider from './context/CompanyContext';
 import { AuthProvider } from './context/AuthContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';

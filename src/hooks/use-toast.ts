@@ -18,6 +18,7 @@ interface ToastInfo {
   action?: ToastActionElement;
   className?: string;
   duration?: number;
+  variant?: "default" | "destructive" | "warning"; // Add variant property here
 }
 
 // Extend ToastInfo to create the ToasterToast interface
@@ -196,6 +197,7 @@ toast.error = (message: string, options: Omit<ToastInfo, "description"> = {}) =>
 toast.success = (message: string, options: Omit<ToastInfo, "description"> = {}) => {
   return toast({
     ...options,
+    variant: "default", // Default variant for success messages
     title: options.title || "Success",
     description: message,
   });
@@ -213,6 +215,7 @@ toast.warning = (message: string, options: Omit<ToastInfo, "description"> = {}) 
 toast.info = (message: string, options: Omit<ToastInfo, "description"> = {}) => {
   return toast({
     ...options,
+    variant: "default", // Default variant for info messages
     title: options.title || "Info",
     description: message,
   });

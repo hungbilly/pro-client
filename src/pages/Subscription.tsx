@@ -328,7 +328,7 @@ const Subscription = () => {
                   </li>
                   <li className="flex items-center">
                     <Check className="h-5 w-5 text-green-500 mr-2" />
-                    <span>30-day free trial</span>
+                    <span>Cancel anytime</span>
                   </li>
                 </ul>
               </CardContent>

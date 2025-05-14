@@ -298,7 +298,7 @@ const Subscription = () => {
                   Full access to all features
                 </CardDescription>
                 <div className="mt-4">
-                  <span className="text-3xl font-bold">HK$50</span>
+                  <span className="text-3xl font-bold">USD$7</span>
                   <span className="text-gray-500 ml-1">/ month</span>
                 </div>
               </CardHeader>
@@ -336,7 +336,7 @@ const Subscription = () => {
               </CardContent>
               <CardFooter>
                 <Button className="w-full" onClick={() => handleSubscribe(true)} disabled={isLoading}>
-                  {isLoading ? 'Processing...' : 'Start Free Trial'}
+                  {isLoading ? 'Processing...' : 'Subscribe Now'}
                 </Button>
               </CardFooter>
             </Card>

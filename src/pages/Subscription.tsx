@@ -157,6 +157,7 @@ const Subscription = () => {
       </div>
     </PageTransition>;
   }
+
   if (hasAccess) {
     return <PageTransition>
         <div className="container mx-auto py-12 px-4">
@@ -280,6 +281,7 @@ const Subscription = () => {
         </Dialog>
       </PageTransition>;
   }
+
   return <PageTransition>
       <div className="container mx-auto py-12 px-4">
         <div className="max-w-4xl mx-auto">
@@ -288,52 +290,12 @@ const Subscription = () => {
             <p className="text-gray-600 max-w-xl mx-auto">Get access to all features and take your business to the next level</p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8 mb-12">
-            <Card className="border-gray-200">
-              <CardHeader>
-                <CardTitle>Free Trial</CardTitle>
-                <CardDescription>Try all premium features for 30 days</CardDescription>
-                <div className="mt-4">
-                  <span className="text-3xl font-bold">HK$0</span>
-                  <span className="text-gray-500 ml-1">/30 days</span>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2">
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-green-500 mr-2" />
-                    <span>Unlimited clients</span>
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-green-500 mr-2" />
-                    <span>Unlimited invoices</span>
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-green-500 mr-2" />
-                    <span>Job management</span>
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-green-500 mr-2" />
-                    <span>Export data</span>
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-green-500 mr-2" />
-                    <span>Custom invoices</span>
-                  </li>
-                </ul>
-              </CardContent>
-              <CardFooter>
-                <Button className="w-full" onClick={() => handleSubscribe(true)} disabled={isLoading}>
-                  {isLoading ? 'Processing...' : 'Start Free Trial'}
-                </Button>
-              </CardFooter>
-            </Card>
-
+          <div className="max-w-md mx-auto">
             <Card className="border-primary">
               <CardHeader>
                 <CardTitle>Premium</CardTitle>
                 <CardDescription>
-                  After your trial ends
+                  Full access to all features
                 </CardDescription>
                 <div className="mt-4">
                   <span className="text-3xl font-bold">HK$50</span>
@@ -366,17 +328,21 @@ const Subscription = () => {
                     <Check className="h-5 w-5 text-green-500 mr-2" />
                     <span>Priority support</span>
                   </li>
+                  <li className="flex items-center">
+                    <Check className="h-5 w-5 text-green-500 mr-2" />
+                    <span>30-day free trial</span>
+                  </li>
                 </ul>
               </CardContent>
               <CardFooter>
-                <Button variant="outline" onClick={() => handleSubscribe(false)} disabled={isLoading} className="w-full bg-rose-400 hover:bg-rose-300 text-zinc-50">
-                  {isLoading ? 'Processing...' : 'Subscribe Now'}
+                <Button className="w-full" onClick={() => handleSubscribe(true)} disabled={isLoading}>
+                  {isLoading ? 'Processing...' : 'Start Free Trial'}
                 </Button>
               </CardFooter>
             </Card>
           </div>
 
-          <div className="bg-gray-50 p-6 rounded-lg">
+          <div className="bg-gray-50 p-6 rounded-lg mt-12">
             <h3 className="text-lg font-medium mb-2">Need help?</h3>
             <p className="text-gray-600">
               Contact our support team at support@photobizmanager.com
@@ -386,4 +352,5 @@ const Subscription = () => {
       </div>
     </PageTransition>;
 };
+
 export default Subscription;

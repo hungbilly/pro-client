@@ -1,11 +1,13 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useSubscription } from '@/context/SubscriptionContext';
+import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { CheckCircle, Database, RefreshCw, ShieldAlert, InfoIcon, CheckIcon } from 'lucide-react';
 import PageTransition from '@/components/ui-custom/PageTransition';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import WebhookSetupInstructions from '@/components/WebhookSetupInstructions';
@@ -14,6 +16,7 @@ const SubscriptionSuccess = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { checkSubscription } = useSubscription();
+  const { user, isAdmin } = useAuth();
   const [isVerifying, setIsVerifying] = useState(true);
   const [verificationSuccessful, setVerificationSuccessful] = useState(false);
   const [isManualSyncing, setIsManualSyncing] = useState(false);
@@ -27,30 +30,46 @@ const SubscriptionSuccess = () => {
     const verifySubscription = async () => {
       try {
         if (!sessionId) {
-          toast.error('No session ID found');
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "No session ID found"
+          });
           return;
         }
         
         await checkSubscription();
         await fetchSubscriptionData();
         setVerificationSuccessful(true);
-        toast.success('Subscription activated successfully!');
+        toast({
+          variant: "default",
+          title: "Success",
+          description: "Subscription activated successfully!"
+        });
       } catch (error) {
         console.error('Error verifying subscription:', error);
-        toast.error('There was a problem verifying your subscription');
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "There was a problem verifying your subscription"
+        });
       } finally {
         setIsVerifying(false);
       }
     };
 
     verifySubscription();
-  }, [checkSubscription, searchParams]);
+  }, [checkSubscription, searchParams, user]);
 
   const fetchSubscriptionData = async () => {
+    if (!user) return;
+    
     try {
+      // Filter by user ID to get only the current user's subscription
       const { data, error } = await supabase
         .from('user_subscriptions')
         .select('*')
+        .eq('user_id', user.id)
         .limit(1)
         .order('created_at', { ascending: false });
 
@@ -58,7 +77,12 @@ const SubscriptionSuccess = () => {
       
       if (data && data.length > 0) {
         setDbSubscriptionData(data[0]);
-        await checkWebhookStatus();
+        setVerificationSuccessful(true);
+        if (isAdmin) {
+          await checkWebhookStatus();
+        }
+      } else {
+        console.log('No subscription data found for user', user.id);
       }
     } catch (err) {
       console.error('Error fetching subscription data:', err);
@@ -88,10 +112,18 @@ const SubscriptionSuccess = () => {
       if (error) throw error;
       
       await fetchSubscriptionData();
-      toast.success('Subscription data synchronized successfully');
+      toast({
+        variant: "default",
+        title: "Success",
+        description: "Subscription data synchronized successfully"
+      });
     } catch (error) {
       console.error('Error syncing subscription data:', error);
-      toast.error('Failed to sync subscription data');
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to sync subscription data"
+      });
     } finally {
       setIsManualSyncing(false);
     }
@@ -102,12 +134,24 @@ const SubscriptionSuccess = () => {
     try {
       const isReachable = await checkWebhookStatus();
       if (isReachable) {
-        toast.success('Webhook endpoint is reachable');
+        toast({
+          variant: "default",
+          title: "Success",
+          description: "Webhook endpoint is reachable"
+        });
       } else {
-        toast.error('Webhook endpoint is not reachable');
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Webhook endpoint is not reachable"
+        });
       }
     } catch (error) {
-      toast.error('Failed to test webhook');
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to test webhook"
+      });
     } finally {
       setIsTestingWebhook(false);
     }
@@ -145,25 +189,23 @@ const SubscriptionSuccess = () => {
                         </p>
                       </div>
                       
-                      <div className="bg-blue-50 p-4 rounded-lg mt-4">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Database className="h-4 w-4 text-blue-600" />
-                          <h3 className="font-medium text-blue-700">Database Status</h3>
-                        </div>
-                        {dbSubscriptionData ? (
+                      {dbSubscriptionData && (
+                        <div className="bg-blue-50 p-4 rounded-lg mt-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Database className="h-4 w-4 text-blue-600" />
+                            <h3 className="font-medium text-blue-700">Subscription Status</h3>
+                          </div>
                           <div className="text-sm text-blue-700 text-left">
                             <p><strong>Status:</strong> {dbSubscriptionData.status}</p>
-                            <p><strong>ID:</strong> {dbSubscriptionData.stripe_subscription_id?.substring(0, 12)}...</p>
+                            {dbSubscriptionData.stripe_subscription_id && (
+                              <p><strong>ID:</strong> {dbSubscriptionData.stripe_subscription_id?.substring(0, 12)}...</p>
+                            )}
                             <p><strong>Created:</strong> {new Date(dbSubscriptionData.created_at).toLocaleString()}</p>
                           </div>
-                        ) : (
-                          <p className="text-sm text-blue-700">
-                            No subscription record found in database yet. Click "Sync Data" below.
-                          </p>
-                        )}
-                      </div>
+                        </div>
+                      )}
 
-                      {webhookMissing ? (
+                      {isAdmin && webhookMissing && (
                         <Alert variant="warning" className="mt-4 bg-amber-50 border-amber-200">
                           <ShieldAlert className="h-4 w-4 text-amber-600" />
                           <AlertTitle className="text-amber-800">Webhook not configured</AlertTitle>
@@ -171,7 +213,9 @@ const SubscriptionSuccess = () => {
                             Stripe webhook is not configured. Subscription status may not update automatically. Please set up a webhook in your Stripe dashboard pointing to your app's webhook endpoint.
                           </AlertDescription>
                         </Alert>
-                      ) : (
+                      )}
+                      
+                      {isAdmin && !webhookMissing && (
                         <Alert className="mt-4 bg-green-50 border-green-200">
                           <CheckIcon className="h-4 w-4 text-green-600" />
                           <AlertTitle className="text-green-800">Webhook configured</AlertTitle>
@@ -212,19 +256,22 @@ const SubscriptionSuccess = () => {
                 <RefreshCw className={`h-4 w-4 ${isManualSyncing ? 'animate-spin' : ''}`} />
                 {isManualSyncing ? 'Syncing...' : 'Sync Data'}
               </Button>
-              <Button
-                variant="outline"
-                className="flex items-center gap-2"
-                onClick={testWebhook}
-                disabled={isTestingWebhook}
-              >
-                <ShieldAlert className="h-4 w-4" />
-                {isTestingWebhook ? 'Testing...' : 'Test Webhook'}
-              </Button>
+              
+              {isAdmin && (
+                <Button
+                  variant="outline"
+                  className="flex items-center gap-2"
+                  onClick={testWebhook}
+                  disabled={isTestingWebhook}
+                >
+                  <ShieldAlert className="h-4 w-4" />
+                  {isTestingWebhook ? 'Testing...' : 'Test Webhook'}
+                </Button>
+              )}
             </CardFooter>
           </Card>
 
-          <WebhookSetupInstructions />
+          {isAdmin && <WebhookSetupInstructions />}
         </div>
       </div>
     </PageTransition>

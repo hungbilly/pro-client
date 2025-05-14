@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { toast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { 
   Select, 
   SelectContent, 
@@ -51,6 +51,7 @@ interface EmailTemplate {
 
 const BulkEmailForm = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   const [customSubject, setCustomSubject] = useState('');
@@ -335,7 +336,7 @@ const BulkEmailForm = () => {
                     rows={10}
                   />
                   <p className="text-xs text-muted-foreground">
-                    You can use {'{{'} + "name" + '}}'}, {'{{'} + "email" + '}}'} and other variable placeholders.
+                    You can use {"{{name}}"}, {"{{email}}"} and other variable placeholders.
                   </p>
                 </div>
               </div>

@@ -2,12 +2,13 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useSubscription } from '@/context/SubscriptionContext';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/use-toast';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { format } from 'date-fns';
 
 interface SubscriptionGuardProps {
   children?: React.ReactNode;
@@ -19,6 +20,7 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }) => {
     isLoading, 
     isInTrialPeriod, 
     trialDaysLeft, 
+    trialEndDate,
     subscription,
     checkSubscription
   } = useSubscription();
@@ -57,7 +59,7 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }) => {
     }
   }, [hasAccess, isLoading, subscription, isInTrialPeriod, trialDaysLeft, hasChecked, isAdmin]);
 
-  // Modified notification effect with localStorage tracking
+  // Modified notification effect with localStorage tracking and more precise trial information
   useEffect(() => {
     if (hasChecked && !isLoading) {
       const currentDate = new Date().toDateString();
@@ -66,32 +68,57 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }) => {
       if (!hasAccess && !isAdmin) {
         const accessWarningKey = `subscription_access_warning_shown_${currentDate}`;
         if (!localStorage.getItem(accessWarningKey)) {
-          toast.warning("You need an active subscription to access this feature");
+          toast({
+            variant: "destructive",
+            title: "Subscription Required",
+            description: "You need an active subscription to access this feature",
+          });
           localStorage.setItem(accessWarningKey, 'true');
           // Clear this notification after 1 hour to avoid completely silencing it if needed again
           setTimeout(() => localStorage.removeItem(accessWarningKey), 3600000); 
         }
       } 
-      // Show trial ending notification
+      // Show trial ending notification with specific end date
       else if (isInTrialPeriod && (!subscription || subscription.status !== 'active') && trialDaysLeft <= 7) {
         const trialWarningKey = `subscription_trial_warning_shown_${currentDate}_${trialDaysLeft}`;
         if (!localStorage.getItem(trialWarningKey)) {
-          toast.info(`Your trial ends in ${trialDaysLeft} days. Subscribe to continue using all features.`);
+          const formattedDate = trialEndDate ? format(new Date(trialEndDate), 'MMMM d, yyyy') : 'soon';
+          
+          if (trialDaysLeft <= 3) {
+            toast({
+              variant: "destructive",
+              title: "Trial Ending Soon!",
+              description: `Your trial ends in ${trialDaysLeft} days (${formattedDate}). Subscribe now to avoid losing access.`,
+            });
+          } else {
+            toast({
+              title: "Trial Period",
+              description: `Your trial ends on ${formattedDate} (${trialDaysLeft} days remaining)`,
+            });
+          }
+          
           localStorage.setItem(trialWarningKey, 'true');
           // Clear this notification after 8 hours - once per day is enough
           setTimeout(() => localStorage.removeItem(trialWarningKey), 28800000);
         }
       }
     }
-  }, [hasAccess, isLoading, isInTrialPeriod, trialDaysLeft, hasChecked, subscription, isAdmin]);
+  }, [hasAccess, isLoading, isInTrialPeriod, trialDaysLeft, hasChecked, subscription, isAdmin, trialEndDate]);
 
   const handleRefreshStatus = async () => {
     setIsRefreshing(true);
     try {
       await checkSubscription();
-      toast.success("Subscription status refreshed");
+      toast({
+        title: "Status Updated",
+        description: "Subscription status refreshed",
+      });
     } catch (error) {
-      toast.error("Failed to refresh subscription status");
+      toast({
+        variant: "destructive",
+        title: "Update Failed",
+        description: "Failed to refresh subscription status",
+      });
       console.error("Error refreshing subscription:", error);
     } finally {
       setIsRefreshing(false);
@@ -137,6 +164,7 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }) => {
           <AlertDescription>
             You need an active subscription to access this feature. 
             {subscription ? ` Current status: ${subscription.status}` : ' No subscription found.'}
+            {trialEndDate && ' Your trial has ended.'}
           </AlertDescription>
         </Alert>
         

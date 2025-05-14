@@ -13,9 +13,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/context/AuthContext';
+import { useSubscription } from '@/context/SubscriptionContext';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Calendar, CreditCard, User } from 'lucide-react';
+import { format } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 
 interface UserProfileModalProps {
   isOpen: boolean;
@@ -23,7 +27,18 @@ interface UserProfileModalProps {
 }
 
 const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) => {
+  const navigate = useNavigate();
   const { user } = useAuth();
+  const { 
+    subscription, 
+    isInTrialPeriod, 
+    trialDaysLeft, 
+    trialEndDate,
+    createSubscription,
+    cancelSubscription,
+    isCancelling
+  } = useSubscription();
+  
   const [activeTab, setActiveTab] = useState('profile');
   
   // Profile tab state
@@ -51,11 +66,18 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
       
       if (error) throw error;
       
-      toast.success('Profile updated successfully!');
+      toast({
+        title: "Profile updated",
+        description: "Your profile was updated successfully",
+      });
     } catch (error: any) {
       console.error('Failed to update profile:', error);
       setProfileError(error.message || 'Failed to update profile');
-      toast.error(error.message || 'Failed to update profile');
+      toast({
+        variant: "destructive",
+        title: "Update failed",
+        description: error.message || 'Failed to update profile',
+      });
     } finally {
       setIsUpdatingProfile(false);
     }
@@ -83,18 +105,68 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
       
       if (error) throw error;
       
-      toast.success('Password updated successfully!');
+      toast({
+        title: "Password updated",
+        description: "Your password was updated successfully",
+      });
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (error: any) {
       console.error('Failed to update password:', error);
       setPasswordError(error.message || 'Failed to update password');
-      toast.error(error.message || 'Failed to update password');
+      toast({
+        variant: "destructive",
+        title: "Update failed",
+        description: error.message || 'Failed to update password',
+      });
     } finally {
       setIsUpdatingPassword(false);
     }
   };
+
+  const handleSubscribe = async () => {
+    const url = await createSubscription(true);
+    if (url) {
+      window.location.href = url;
+    }
+  };
+
+  const handleCancelSubscription = async () => {
+    const success = await cancelSubscription();
+    if (success) {
+      setActiveTab('profile');
+    }
+  };
+
+  const getSubscriptionStatus = () => {
+    if (subscription?.status === 'active') {
+      return {
+        label: 'Active Subscription',
+        description: `Your subscription is active until ${format(new Date(subscription.currentPeriodEnd), 'MMMM d, yyyy')}`,
+        className: 'bg-green-50 border-green-200',
+        textClass: 'text-green-700'
+      };
+    } 
+    
+    if (isInTrialPeriod && trialDaysLeft > 0) {
+      return {
+        label: 'Trial Period',
+        description: `Your trial ends in ${trialDaysLeft} days (${trialEndDate ? format(new Date(trialEndDate), 'MMMM d, yyyy') : 'soon'})`,
+        className: 'bg-amber-50 border-amber-200',
+        textClass: 'text-amber-700'
+      };
+    }
+    
+    return {
+      label: 'No Active Subscription',
+      description: 'Subscribe to access all premium features',
+      className: 'bg-gray-50 border-gray-200',
+      textClass: 'text-gray-700'
+    };
+  };
+
+  const status = getSubscriptionStatus();
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -107,9 +179,19 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
         </DialogHeader>
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="profile">Profile</TabsTrigger>
-            <TabsTrigger value="password">Password</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="profile" className="flex items-center gap-1">
+              <User className="h-4 w-4" />
+              <span>Profile</span>
+            </TabsTrigger>
+            <TabsTrigger value="password" className="flex items-center gap-1">
+              <CreditCard className="h-4 w-4" />
+              <span>Password</span>
+            </TabsTrigger>
+            <TabsTrigger value="subscription" className="flex items-center gap-1">
+              <Calendar className="h-4 w-4" />
+              <span>Subscription</span>
+            </TabsTrigger>
           </TabsList>
           
           <TabsContent value="profile" className="py-4 space-y-4">
@@ -193,6 +275,43 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
                 {isUpdatingPassword ? 'Updating...' : 'Update Password'}
               </Button>
             </DialogFooter>
+          </TabsContent>
+          
+          <TabsContent value="subscription" className="py-4 space-y-4">
+            <div className={`border rounded-md p-4 ${status.className}`}>
+              <h3 className={`text-lg font-medium ${status.textClass}`}>{status.label}</h3>
+              <p className={`text-sm ${status.textClass}`}>{status.description}</p>
+            </div>
+            
+            <div className="space-y-4">
+              {subscription?.status === 'active' ? (
+                <Button
+                  variant="destructive"
+                  onClick={handleCancelSubscription}
+                  disabled={isCancelling}
+                >
+                  {isCancelling ? 'Processing...' : 'Cancel Subscription'}
+                </Button>
+              ) : (
+                <Button
+                  variant="default"
+                  onClick={() => {
+                    onClose();
+                    navigate('/subscription');
+                  }}
+                >
+                  View Subscription Plans
+                </Button>
+              )}
+              
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  {subscription?.status === 'active' 
+                    ? 'Your subscription will continue until the end of the current billing period.'
+                    : 'Upgrade to premium to access all features.'}
+                </p>
+              </div>
+            </div>
           </TabsContent>
         </Tabs>
       </DialogContent>

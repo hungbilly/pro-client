@@ -84,3 +84,29 @@ export function formatDateForGoogleCalendar(date: Date, removeTimezone: boolean 
   
   return `${year}${month}${day}T${hours}${minutes}00`;
 }
+
+/**
+ * Formats a date string in a user-friendly format
+ * @param dateString Date string to format
+ * @returns Formatted date string (e.g., "May 14, 2025")
+ */
+export function formatDate(dateString: string): string {
+  if (!dateString) return 'N/A';
+  
+  try {
+    const date = new Date(dateString);
+    
+    if (isNaN(date.getTime())) {
+      return 'Invalid Date';
+    }
+    
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return 'Error';
+  }
+}

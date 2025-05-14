@@ -127,7 +127,7 @@ const UserStatusManager: React.FC<UserStatusManagerProps> = ({
         )}
 
         {success && (
-          <Alert variant="success" className="mb-4 bg-green-50 border-green-200 text-green-800">
+          <Alert variant="default" className="mb-4 bg-green-50 border-green-200 text-green-800">
             <CheckCircle className="h-4 w-4 text-green-600" />
             <AlertTitle>Success</AlertTitle>
             <AlertDescription>User subscription status has been updated.</AlertDescription>

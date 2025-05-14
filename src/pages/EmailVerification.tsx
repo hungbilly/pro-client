@@ -1,9 +1,8 @@
-
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { AnimatedBackground } from '@/components/ui-custom/AnimatedBackground';
 import PageTransition from '@/components/ui-custom/PageTransition';
@@ -30,10 +29,17 @@ const EmailVerification = () => {
 
       if (error) throw error;
       
-      toast.success('Verification email resent successfully!');
+      toast({
+        title: "Success",
+        description: 'Verification email resent successfully!',
+      });
     } catch (error: any) {
       console.error('Error resending verification email:', error);
-      toast.error(error.message || 'Failed to resend verification email');
+      toast({
+        title: "Error",
+        description: error.message || 'Failed to resend verification email',
+        variant: "destructive",
+      });
     } finally {
       setResending(false);
     }

@@ -1,17 +1,9 @@
 
 import React from 'react';
-import { Toaster } from 'sonner';
+import { Toaster } from '@/components/ui/toaster';
 
 const ToastProvider = () => {
-  return (
-    <Toaster
-      position="top-right"
-      toastOptions={{
-        duration: 3000,
-        className: "my-toast-class",
-      }}
-    />
-  );
+  return <Toaster />;
 };
 
 export default ToastProvider;

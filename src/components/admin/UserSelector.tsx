@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { User } from 'lucide-react';
 import { 
@@ -11,7 +10,7 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/use-toast';
 
 interface UserSelectorProps {
   onUserSelect: (userId: string) => void;
@@ -59,7 +58,11 @@ const UserSelector = ({ onUserSelect }: UserSelectorProps) => {
         }
       } catch (error: any) {
         console.error('Error fetching users:', error);
-        toast.error('Failed to load users');
+        toast({
+          title: "Error",
+          description: 'Failed to load users',
+          variant: "destructive"
+        });
       } finally {
         setLoading(false);
       }

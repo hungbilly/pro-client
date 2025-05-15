@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
@@ -98,6 +97,25 @@ async function validateEmailConfig() {
     console.error("Error testing DNS resolution:", error);
     return { isValid: false, message: `Error testing DNS: ${error.message}` };
   }
+}
+
+// Helper function to check if content is HTML
+function isHtml(content: string): boolean {
+  // Simple check for HTML tags
+  return /<[a-z][\s\S]*>/i.test(content);
+}
+
+// Convert plain text to simple HTML if needed
+function convertToHtml(text: string): string {
+  // If text already contains HTML, return it as is
+  if (isHtml(text)) {
+    return text;
+  }
+  
+  // Otherwise, convert line breaks to paragraphs
+  return `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+    ${text.split('\n').map(line => line.trim() ? `<p>${line}</p>` : '<br>').join('')}
+  </div>`;
 }
 
 serve(async (req) => {
@@ -313,15 +331,14 @@ serve(async (req) => {
 
       console.log("SMTP client initialized successfully");
 
-      // Convert plain text to simple HTML
-      const htmlBody = `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        ${body.split('\n').map(line => `<p>${line}</p>`).join('')}
-      </div>`;
+      // Prepare HTML content (convert to HTML if needed)
+      const htmlBody = convertToHtml(body);
 
       console.log("Sending email...");
       console.log("Email content summary:", {
         subject: subject,
         bodyLength: body.length,
+        isHtml: isHtml(body),
         recipient: requestData.recipientEmail,
       });
 
@@ -332,8 +349,8 @@ serve(async (req) => {
           from: emailFrom,
           to: requestData.recipientEmail,
           subject: subject,
-          content: body,
-          html: htmlBody,
+          content: isHtml(body) ? undefined : body, // Only include plain text if not HTML
+          html: htmlBody, // Always include HTML version
         });
         const sendDuration = performance.now() - sendStart;
         console.log(`Email sent successfully (took ${sendDuration.toFixed(2)}ms):`, result);
@@ -354,8 +371,9 @@ serve(async (req) => {
 
       // Record the email in the history
       console.log("Recording email in history");
+      let emailRecord;
       try {
-        const { data: emailRecord, error: emailRecordError } = await supabase
+        const { data: emailHistoryRecord, error: emailRecordError } = await supabase
           .from('email_history')
           .insert({
             template_id: template?.id,
@@ -371,7 +389,8 @@ serve(async (req) => {
         if (emailRecordError) {
           console.error('Failed to record email history:', emailRecordError);
         } else {
-          console.log('Email history recorded:', emailRecord.id);
+          console.log('Email history recorded:', emailHistoryRecord.id);
+          emailRecord = emailHistoryRecord;
         }
       } catch (historyError) {
         console.error("Error recording email history:", historyError);

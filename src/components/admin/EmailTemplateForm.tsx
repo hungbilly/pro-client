@@ -11,7 +11,6 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { 
   Select, 
@@ -23,6 +22,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { toast } from '@/components/ui/use-toast';
 import { ArrowLeft, Save } from 'lucide-react';
+import QuillEditor from '@/components/QuillEditor';
 
 const EMAIL_CATEGORIES = [
   'welcome',
@@ -31,6 +31,7 @@ const EMAIL_CATEGORIES = [
   'subscription',
   'marketing',
   'system',
+  'trial',
   'other'
 ];
 
@@ -91,6 +92,10 @@ const EmailTemplateForm = () => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setTemplate(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleBodyChange = (value: string) => {
+    setTemplate(prev => ({ ...prev, body: value }));
   };
 
   const handleSelectChange = (name: string, value: string) => {
@@ -251,15 +256,12 @@ const EmailTemplateForm = () => {
           
           <div className="space-y-2">
             <Label htmlFor="body">Email Body <span className="text-red-500">*</span></Label>
-            <Textarea
+            <QuillEditor
               id="body"
-              name="body"
-              placeholder="Hello {{name}},\n\nWelcome to our platform! We're excited to have you on board."
               value={template.body}
-              onChange={handleChange}
-              rows={10}
-              required
-              className="font-mono"
+              onChange={handleBodyChange}
+              placeholder="Enter the email content here..."
+              className="min-h-[200px]"
             />
             <p className="text-xs text-muted-foreground">
               Use {'{{variable}}'} syntax for dynamic content. Example: Hello {'{{name}}'}

@@ -821,7 +821,7 @@ const Accounts = () => {
       
       <Tabs defaultValue="income" value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="mb-6">
-          <TabsTrigger value="income" className="flex items-center bg-emerald-300 hover:bg-emerald-200">
+          <TabsTrigger value="income" className="flex items-center bg-emerald-300 hover:bg-green-200">
             <TrendingUp className="mr-2 h-4 w-4" />
             Income
           </TabsTrigger>

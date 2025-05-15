@@ -131,8 +131,19 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   }, []);
 
   useEffect(() => {
-    if (propInvoice) {
-      setInvoice(propInvoice);
+    console.log("InvoiceForm mounted with props:", { 
+      propInvoice, 
+      propClientId, 
+      propJobId, 
+      propInvoiceId,
+      hasContractTemplates: contractTemplates?.length > 0
+    });
+    console.log("Current invoice state:", invoice);
+    console.log("User:", user);
+    console.log("Selected company:", selectedCompany);
+    
+    if (!propInvoice && !invoice.number) {
+      generateInvoiceNumber();
     }
   }, [propInvoice]);
 
@@ -417,6 +428,8 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
   const applyTemplate = () => {
     if (selectedTemplate) {
+      console.log("Before applying template - Current invoice number:", invoice.number);
+      
       setInvoice(prevInvoice => {
         // Preserve important fields when applying a template
         const currentDate = prevInvoice.date || format(new Date(), 'yyyy-MM-dd');
@@ -424,6 +437,12 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
         const currentNumber = prevInvoice.number || '';
         // Preserve invoice status
         const currentStatus = prevInvoice.status || 'draft';
+        
+        console.log("Template application - Preserving fields:", {
+          currentDate,
+          currentNumber,
+          currentStatus
+        });
         
         return {
           ...prevInvoice,
@@ -434,6 +453,8 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
           status: currentStatus
         };
       });
+      
+      console.log("After applying template - Invoice number should still be:", invoice.number);
     }
     setIsDialogOpen(false);
   };
@@ -769,7 +790,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
               type="text"
               id="number"
               name="number"
-              value={invoice.number}
+              value={invoice.number || ''}
               onChange={handleInputChange}
               placeholder="e.g., 20250416-1"
               className={validationErrors.number ? "border-red-500" : ""}
@@ -780,6 +801,9 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
             )}
             {!isNumberValid && (
               <p className="text-sm text-red-500 mt-1">Invoice number already exists.</p>
+            )}
+            {!invoice.number && (
+              <p className="text-sm text-amber-500 mt-1">No invoice number. Consider generating one.</p>
             )}
           </div>
           <div>

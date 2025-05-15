@@ -271,6 +271,7 @@ const InvoiceCreate = () => {
 
   const handleTemplateSelection = async (templateId: string) => {
     try {
+      console.log('Template selection started', { templateId, currentInvoiceNumber: invoice?.number });
       setSelectedTemplate(templateId);
       
       // Find the template in the already loaded templates
@@ -281,6 +282,17 @@ const InvoiceCreate = () => {
         return;
       }
       
+      // Preserve the current invoice date, number, and status
+      const currentDate = invoice?.date || format(new Date(), 'yyyy-MM-dd');
+      const currentNumber = invoice?.number || '';
+      const currentStatus = invoice?.status || 'draft';
+      
+      console.log('Preserving invoice fields before template application', { 
+        currentDate, 
+        currentNumber, 
+        currentStatus 
+      });
+      
       let parsedContent: any = {};
       try {
         parsedContent = selectedTemplate.content ? JSON.parse(selectedTemplate.content) : {};
@@ -288,11 +300,6 @@ const InvoiceCreate = () => {
         console.error('Error parsing template content:', e);
         return;
       }
-      
-      // Preserve the current invoice date, number, and status
-      const currentDate = invoice?.date || format(new Date(), 'yyyy-MM-dd');
-      const currentNumber = invoice?.number || '';
-      const currentStatus = invoice?.status || 'draft';
       
       // Create a new invoice object with the template data
       const newInvoice: Partial<Invoice> = {
@@ -306,6 +313,11 @@ const InvoiceCreate = () => {
         number: currentNumber,
         status: currentStatus
       };
+      
+      console.log('New invoice after template application', { 
+        newInvoiceNumber: newInvoice.number,
+        itemsCount: newInvoice.items?.length || 0
+      });
       
       // Update the invoice state
       setInvoice(newInvoice as Invoice);
@@ -465,7 +477,10 @@ const InvoiceCreate = () => {
                 </div>
                 <Button
                   variant="outline"
-                  onClick={() => setSelectedTemplate(null)}
+                  onClick={() => {
+                    console.log('Template selection cleared, current invoice number:', invoice?.number);
+                    setSelectedTemplate(null);
+                  }}
                   className="mt-6"
                 >
                   Clear

@@ -379,17 +379,35 @@ serve(async (req) => {
       console.log("Recording email in history");
       let emailRecord;
       try {
+        // First check if the is_html column exists
+        const { data: tableInfo, error: tableError } = await supabase
+          .rpc('check_column_exists', { 
+            table_name: 'email_history', 
+            column_name: 'is_html'
+          });
+
+        if (tableError) {
+          console.log('Error checking column existence:', tableError);
+        }
+
+        // Insert record with or without is_html field based on column existence
+        const insertPayload = {
+          template_id: template?.id,
+          recipient_email: requestData.recipientEmail,
+          recipient_user_id: requestData.recipientUserId,
+          subject: subject,
+          body: body,
+          status: 'sent'
+        };
+
+        if (tableInfo && tableInfo.exists) {
+          // Add is_html field if the column exists
+          Object.assign(insertPayload, { is_html: isHtmlContent });
+        }
+        
         const { data: emailHistoryRecord, error: emailRecordError } = await supabase
           .from('email_history')
-          .insert({
-            template_id: template?.id,
-            recipient_email: requestData.recipientEmail,
-            recipient_user_id: requestData.recipientUserId,
-            subject: subject,
-            body: body,
-            status: 'sent',
-            is_html: isHtmlContent,  // Store whether this was an HTML email
-          })
+          .insert(insertPayload)
           .select()
           .single();
 

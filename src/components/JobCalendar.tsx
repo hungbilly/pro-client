@@ -71,15 +71,12 @@ const JobCalendar: React.FC<JobCalendarProps> = ({ jobs }) => {
     
     try {
       const jobDate = parseISO(job.date);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
       
-      // An upcoming job is in the current month, after today, and not cancelled or completed
+      // Consider any active job in the current month as "upcoming"
+      // regardless of date, as long as it's not completed or cancelled
       return (
         isSameMonth(jobDate, currentMonth) && 
-        (isAfter(jobDate, today) || isSameDay(jobDate, today)) &&
-        job.status !== 'cancelled' &&
-        job.status !== 'completed'
+        job.status === 'active'
       );
     } catch (e) {
       console.error('Error filtering upcoming jobs:', e, job);

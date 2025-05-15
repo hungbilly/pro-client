@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -33,6 +32,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import QuillEditor from '@/components/QuillEditor';
 
 interface RecipientGroup {
   id: string;
@@ -147,6 +147,10 @@ const BulkEmailForm = () => {
 
   const handleTemplateChange = (id: string) => {
     setSelectedTemplate(id);
+  };
+
+  const handleCustomBodyChange = (value: string) => {
+    setCustomBody(value);
   };
 
   const handleSendEmail = async () => {
@@ -308,8 +312,13 @@ const BulkEmailForm = () => {
                     <div className="p-3 bg-gray-50 rounded mb-2">
                       <p className="text-sm font-semibold">Subject: {getSelectedTemplate()?.subject}</p>
                     </div>
-                    <div className="p-3 bg-gray-50 rounded whitespace-pre-wrap">
-                      <p className="text-sm">{getSelectedTemplate()?.body}</p>
+                    <div className="p-3 bg-gray-50 rounded">
+                      <QuillEditor 
+                        value={getSelectedTemplate()?.body || ''} 
+                        onChange={() => {}} 
+                        readOnly={true}
+                        className="border-none"
+                      />
                     </div>
                   </div>
                 )}
@@ -328,14 +337,14 @@ const BulkEmailForm = () => {
                 
                 <div className="space-y-2">
                   <Label htmlFor="customBody">Email Body</Label>
-                  <Textarea
+                  <QuillEditor
                     id="customBody"
-                    placeholder="Enter email body"
                     value={customBody}
-                    onChange={(e) => setCustomBody(e.target.value)}
-                    rows={10}
+                    onChange={handleCustomBodyChange}
+                    placeholder="Enter email body"
+                    className="min-h-[300px]"
                   />
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground mt-2">
                     You can use {"{{name}}"}, {"{{email}}"} and other variable placeholders.
                   </p>
                 </div>

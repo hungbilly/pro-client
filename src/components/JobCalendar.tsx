@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { format, startOfMonth, endOfMonth, isSameMonth, isAfter, isBefore, parseISO, addMonths, subMonths, isSameDay } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
@@ -8,6 +7,7 @@ import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, X } from 'lucide-r
 import { Badge } from '@/components/ui/badge';
 import { Job } from '@/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface JobCalendarProps {
   jobs: Job[];
@@ -237,16 +237,16 @@ const JobCalendar: React.FC<JobCalendarProps> = ({ jobs }) => {
               />
             </div>
             
-            <div className="md:w-1/2">
-              <div className="h-full overflow-y-auto max-h-[400px] pr-2">
-                <h3 className="font-medium text-sm mb-2">Jobs This Month</h3>
-                
-                {currentMonthJobs.length === 0 ? (
-                  <div className="text-center p-4 bg-gray-50 rounded-md">
-                    <p className="text-sm text-muted-foreground">No jobs scheduled this month</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
+            <div className="md:w-1/2 flex flex-col">
+              <h3 className="font-medium text-sm mb-2">Jobs This Month</h3>
+              
+              {currentMonthJobs.length === 0 ? (
+                <div className="text-center p-4 bg-gray-50 rounded-md">
+                  <p className="text-sm text-muted-foreground">No jobs scheduled this month</p>
+                </div>
+              ) : (
+                <ScrollArea className="h-[300px] md:h-[340px] rounded-md border">
+                  <div className="space-y-2 p-3">
                     {currentMonthJobs.map(job => {
                       const isJobInPast = isDateInPast(job.date);
                       const statusDisplay = job.status === 'completed' || isJobInPast
@@ -287,8 +287,8 @@ const JobCalendar: React.FC<JobCalendarProps> = ({ jobs }) => {
                       );
                     })}
                   </div>
-                )}
-              </div>
+                </ScrollArea>
+              )}
             </div>
           </div>
         </CardContent>

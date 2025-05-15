@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
@@ -274,7 +275,8 @@ const InvoiceCreate = () => {
       console.log('Template selection started', { 
         templateId, 
         currentInvoiceNumber: invoice?.number,
-        currentItems: invoice?.items?.length || 0
+        currentItems: invoice?.items?.length || 0,
+        currentShootingDate: invoice?.shootingDate
       });
       
       setSelectedTemplate(templateId);
@@ -288,15 +290,19 @@ const InvoiceCreate = () => {
         return;
       }
       
-      // Preserve the current invoice date, number, and status
+      // Preserve the current invoice date, number, status and shootingDate
       const currentDate = invoice?.date || format(new Date(), 'yyyy-MM-dd');
       const currentNumber = invoice?.number || '';
       const currentStatus = invoice?.status || 'draft';
+      const currentShootingDate = invoice?.shootingDate || (job?.date ? job.date : undefined);
       
       console.log('Preserving invoice fields before template application', { 
         currentDate, 
         currentNumber, 
-        currentStatus 
+        currentStatus,
+        currentShootingDate,
+        hasJob: !!job,
+        jobDate: job?.date
       });
       
       // Parse the template content with improved error handling
@@ -333,7 +339,10 @@ const InvoiceCreate = () => {
         // Explicitly preserve these important fields
         date: currentDate,
         number: currentNumber,
-        status: currentStatus
+        status: currentStatus,
+        shootingDate: currentShootingDate,
+        // Ensure job relationship is preserved
+        jobId: jobId || invoice?.jobId
       };
       
       // Validate the items array
@@ -355,7 +364,8 @@ const InvoiceCreate = () => {
       console.log('New invoice after template application', { 
         newInvoiceNumber: newInvoice.number,
         itemsCount: newInvoice.items?.length || 0,
-        items: newInvoice.items,
+        newShootingDate: newInvoice.shootingDate,
+        jobId: newInvoice.jobId
       });
       
       // Update the invoice state

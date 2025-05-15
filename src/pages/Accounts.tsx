@@ -825,7 +825,7 @@ const Accounts = () => {
             <TrendingUp className="mr-2 h-4 w-4" />
             Income
           </TabsTrigger>
-          <TabsTrigger value="expenses" className="flex items-center bg-orange-400 hover:bg-orange-300">
+          <TabsTrigger value="expenses" className="flex items-center bg-orange-400 hover:bg-yellow-300">
             <TrendingDown className="mr-2 h-4 w-4" />
             Expenses
           </TabsTrigger>

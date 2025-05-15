@@ -22,6 +22,7 @@ import { FormMessage } from '@/components/ui/form';
 import ExportDialog from '@/components/ExportDialog';
 import { exportDataToFile, formatPaymentsForExport, formatExpensesForExport } from '@/utils/exportUtils';
 import { formatCurrency } from '@/lib/utils';
+
 type PaymentScheduleWithDetails = {
   id: string;
   description: string;
@@ -821,11 +822,23 @@ const Accounts = () => {
       
       <Tabs defaultValue="income" value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="mb-6">
-          <TabsTrigger value="income" className="flex items-center bg-emerald-300 hover:bg-green-200">
+          <TabsTrigger 
+            value="income" 
+            className="flex items-center transition-colors duration-200 
+              data-[state=active]:bg-green-600 data-[state=active]:text-white
+              data-[state=inactive]:bg-green-100 data-[state=inactive]:text-green-800
+              hover:bg-green-500 hover:text-white px-6 py-2 font-medium"
+          >
             <TrendingUp className="mr-2 h-4 w-4" />
             Income
           </TabsTrigger>
-          <TabsTrigger value="expenses" className="flex items-center bg-orange-400 hover:bg-yellow-300">
+          <TabsTrigger 
+            value="expenses" 
+            className="flex items-center transition-colors duration-200
+              data-[state=active]:bg-red-600 data-[state=active]:text-white
+              data-[state=inactive]:bg-red-100 data-[state=inactive]:text-red-800
+              hover:bg-red-500 hover:text-white px-6 py-2 font-medium"
+          >
             <TrendingDown className="mr-2 h-4 w-4" />
             Expenses
           </TabsTrigger>

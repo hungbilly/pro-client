@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
@@ -95,6 +96,11 @@ const InvoiceCreate = () => {
               } else {
                 logError('Invalid invoice date', { date: fetchedInvoice.date });
               }
+            }
+            
+            // Ensure dueDate has a default value if it's null
+            if (!fetchedInvoice.dueDate) {
+              fetchedInvoice.dueDate = format(new Date(), 'yyyy-MM-dd');
             }
             
             setInvoice(fetchedInvoice);

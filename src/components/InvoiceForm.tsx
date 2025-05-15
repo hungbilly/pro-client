@@ -282,6 +282,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     const errors: {[key: string]: string} = {};
     
     // Check if invoice number is empty or consists only of whitespace
+    // Add null check before calling trim()
     if (!invoice.number || invoice.number.trim() === '') {
       errors.number = 'Invoice number is required';
     }
@@ -309,9 +310,10 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     console.log("Default form behavior prevented");
     
     // Ensure the invoice number is trimmed of whitespace
+    // Add null check before calling trim()
     setInvoice(prev => ({
       ...prev,
-      number: prev.number.trim()
+      number: prev.number ? prev.number.trim() : ''
     }));
     
     if (!validateForm()) {
@@ -331,11 +333,11 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     console.log("Setting saving state to true");
     
     try {
-      // Ensure we have a date set
+      // Ensure we have a date set and number is properly trimmed with null check
       const invoiceToSave = {
         ...invoice,
         date: invoice.date || format(new Date(), 'yyyy-MM-dd'),
-        number: invoice.number.trim() // Ensure number is trimmed
+        number: invoice.number ? invoice.number.trim() : '' // Ensure number is trimmed with null check
       };
       
       console.log("Preparing to save invoice with data:", {
@@ -418,7 +420,8 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
       setInvoice(prevInvoice => {
         // Save the current date and number
         const currentDate = prevInvoice.date || format(new Date(), 'yyyy-MM-dd');
-        const currentNumber = prevInvoice.number;
+        // Add null check for number
+        const currentNumber = prevInvoice.number || '';
         
         return {
           ...prevInvoice,

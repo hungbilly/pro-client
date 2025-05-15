@@ -9,37 +9,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import {
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow
-} from '@/components/ui/table';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogClose,
-  DialogDescription,
-} from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogDescription } from '@/components/ui/dialog';
 import { DatePicker } from '@/components/ui/date-picker';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format as formatDate } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -48,7 +22,6 @@ import { FormMessage } from '@/components/ui/form';
 import ExportDialog from '@/components/ExportDialog';
 import { exportDataToFile, formatPaymentsForExport, formatExpensesForExport } from '@/utils/exportUtils';
 import { formatCurrency } from '@/lib/utils';
-
 type PaymentScheduleWithDetails = {
   id: string;
   description: string;
@@ -63,7 +36,6 @@ type PaymentScheduleWithDetails = {
   paymentDate?: string;
   companyId?: string;
 };
-
 type Expense = {
   id: string;
   description: string;
@@ -75,7 +47,6 @@ type Expense = {
   };
   company_id?: string;
 };
-
 type ExpenseCategory = {
   id: string;
   name: string;
@@ -83,9 +54,7 @@ type ExpenseCategory = {
   created_at: string;
   updated_at: string;
 };
-
 type PeriodOption = 'all' | 'this-month' | 'last-month' | 'this-year' | 'custom';
-
 type AccountStats = {
   paid: number;
   unpaid: number;
@@ -93,16 +62,16 @@ type AccountStats = {
   expenses: number;
   profit: number;
 };
-
 const Accounts = () => {
   const navigate = useNavigate();
-  const { selectedCompany, selectedCompanyId } = useCompanyContext();
+  const {
+    selectedCompany,
+    selectedCompanyId
+  } = useCompanyContext();
   const companyCurrency = selectedCompany?.currency || 'USD';
   const [activeTab, setActiveTab] = useState("income");
-  
   const [payments, setPayments] = useState<PaymentScheduleWithDetails[]>([]);
   const [filteredPayments, setFilteredPayments] = useState<PaymentScheduleWithDetails[]>([]);
-  
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [filteredExpenses, setFilteredExpenses] = useState<Expense[]>([]);
   const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
@@ -119,10 +88,9 @@ const Accounts = () => {
     description: '',
     date: new Date(),
     amount: '',
-    categoryId: '',
+    categoryId: ''
   });
   const [isEditMode, setIsEditMode] = useState(false);
-  
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -131,7 +99,6 @@ const Accounts = () => {
   const [paymentDate, setPaymentDate] = useState<Date | undefined>(new Date());
   const [isUpdating, setIsUpdating] = useState(false);
   const isMountedRef = useRef(true);
-  
   const [periodFilter, setPeriodFilter] = useState<PeriodOption>('all');
   const [customStartDate, setCustomStartDate] = useState<Date | undefined>(undefined);
   const [customEndDate, setCustomEndDate] = useState<Date | undefined>(undefined);
@@ -143,22 +110,18 @@ const Accounts = () => {
     profit: 0
   });
   const [showCustomDateRange, setShowCustomDateRange] = useState(false);
-  
   const [expenseFormErrors, setExpenseFormErrors] = useState<{
     description?: string;
     date?: string;
     amount?: string;
   }>({});
-
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
-
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
     };
   }, []);
-
   useEffect(() => {
     if (selectedCompany) {
       fetchPayments();
@@ -166,16 +129,13 @@ const Accounts = () => {
       fetchExpenseCategories();
     }
   }, [selectedCompany]);
-
   useEffect(() => {
     if (payments.length > 0 || expenses.length > 0) {
       filterItems();
     }
   }, [payments, expenses, statusFilter, searchQuery, periodFilter, customStartDate, customEndDate, activeTab]);
-
   const getDateRange = () => {
     const today = new Date();
-    
     switch (periodFilter) {
       case 'this-month':
         return {
@@ -210,34 +170,29 @@ const Accounts = () => {
         };
     }
   };
-
   const fetchPayments = async () => {
     setIsLoading(true);
     try {
       console.log("Fetching payments for company ID:", selectedCompanyId);
-      
-      const { data: invoicesData, error: invoicesError } = await supabase
-        .from('invoices')
-        .select('id')
-        .eq('company_id', selectedCompanyId);
-        
+      const {
+        data: invoicesData,
+        error: invoicesError
+      } = await supabase.from('invoices').select('id').eq('company_id', selectedCompanyId);
       if (invoicesError) {
         throw invoicesError;
       }
-      
       if (!invoicesData || invoicesData.length === 0) {
         console.log("No invoices found for this company");
         setPayments([]);
         setIsLoading(false);
         return;
       }
-      
       const invoiceIds = invoicesData.map(invoice => invoice.id);
       console.log("Found invoice IDs:", invoiceIds);
-      
-      const { data: schedulesData, error: schedulesError } = await supabase
-        .from('payment_schedules')
-        .select(`
+      const {
+        data: schedulesData,
+        error: schedulesError
+      } = await supabase.from('payment_schedules').select(`
           *,
           invoices:invoice_id (
             id,
@@ -249,20 +204,16 @@ const Accounts = () => {
             clients:client_id (name),
             jobs:job_id (title)
           )
-        `)
-        .in('invoice_id', invoiceIds)
-        .order('due_date', { ascending: true });
-
+        `).in('invoice_id', invoiceIds).order('due_date', {
+        ascending: true
+      });
       if (schedulesError) {
         throw schedulesError;
       }
-
       console.log("Fetched payment schedules:", schedulesData?.length || 0);
-
-      const transformedData: PaymentScheduleWithDetails[] = schedulesData.map((schedule) => {
+      const transformedData: PaymentScheduleWithDetails[] = schedulesData.map(schedule => {
         const invoice = schedule.invoices;
         const amount = invoice.amount * (schedule.percentage / 100);
-        
         return {
           id: schedule.id,
           description: schedule.description || '',
@@ -275,10 +226,9 @@ const Accounts = () => {
           clientName: invoice.clients?.name || 'Unknown Client',
           jobTitle: invoice.jobs?.title,
           paymentDate: schedule.payment_date,
-          companyId: invoice.company_id,
+          companyId: invoice.company_id
         };
       });
-
       setPayments(transformedData);
     } catch (error) {
       console.error('Error fetching payments:', error);
@@ -291,57 +241,48 @@ const Accounts = () => {
       setIsLoading(false);
     }
   };
-  
   const fetchExpenseCategories = async () => {
     try {
-      const { data, error } = await supabase
-        .from('expense_categories')
-        .select('*')
-        .eq('company_id', selectedCompanyId)
-        .order('name');
-
+      const {
+        data,
+        error
+      } = await supabase.from('expense_categories').select('*').eq('company_id', selectedCompanyId).order('name');
       if (error) {
         throw error;
       }
-
       setExpenseCategories(data || []);
-      
       if (data?.length === 0) {
-        const { data: defaultCategories, error: defaultError } = await supabase
-          .from('expense_categories')
-          .select('*')
-          .is('company_id', null);
-        
+        const {
+          data: defaultCategories,
+          error: defaultError
+        } = await supabase.from('expense_categories').select('*').is('company_id', null);
         if (defaultError) {
           throw defaultError;
         }
-        
         const categoriesToInsert = defaultCategories.map(cat => ({
           name: cat.name,
           company_id: selectedCompanyId
         }));
-        
-        const { data: insertedData, error: insertError } = await supabase
-          .from('expense_categories')
-          .insert(categoriesToInsert)
-          .select();
-            
+        const {
+          data: insertedData,
+          error: insertError
+        } = await supabase.from('expense_categories').insert(categoriesToInsert).select();
         if (insertError) {
           throw insertError;
         }
-        
         setExpenseCategories(insertedData || []);
       } else {
         if (!data.some(cat => cat.name.toLowerCase() === 'uncategorized')) {
-          const { data: uncategorizedData, error: uncategorizedError } = await supabase
-            .from('expense_categories')
-            .insert({ name: 'Uncategorized', company_id: selectedCompanyId })
-            .select();
-            
+          const {
+            data: uncategorizedData,
+            error: uncategorizedError
+          } = await supabase.from('expense_categories').insert({
+            name: 'Uncategorized',
+            company_id: selectedCompanyId
+          }).select();
           if (uncategorizedError) {
             throw uncategorizedError;
           }
-          
           setExpenseCategories([...data, ...(uncategorizedData || [])]);
         }
       }
@@ -354,26 +295,24 @@ const Accounts = () => {
       });
     }
   };
-  
   const fetchExpenses = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('expenses')
-        .select(`
+      const {
+        data,
+        error
+      } = await supabase.from('expenses').select(`
           *,
           category:category_id (
             id,
             name
           )
-        `)
-        .eq('company_id', selectedCompanyId)
-        .order('date', { ascending: false });
-
+        `).eq('company_id', selectedCompanyId).order('date', {
+        ascending: false
+      });
       if (error) {
         throw error;
       }
-      
       const transformedExpenses: Expense[] = (data || []).map(expense => ({
         id: expense.id,
         description: expense.description,
@@ -385,7 +324,6 @@ const Accounts = () => {
         },
         company_id: expense.company_id
       }));
-      
       setExpenses(transformedExpenses);
     } catch (error) {
       console.error('Error fetching expenses:', error);
@@ -398,84 +336,51 @@ const Accounts = () => {
       setIsLoading(false);
     }
   };
-
   const filterItems = () => {
-    const { start, end } = getDateRange();
-    
+    const {
+      start,
+      end
+    } = getDateRange();
     let filteredPayments = [...payments];
-    
     if (start && end) {
       filteredPayments = filteredPayments.filter(payment => {
         const dueDate = parseISO(payment.dueDate);
         return dueDate >= start && dueDate <= end;
       });
     }
-    
     if (statusFilter && statusFilter !== 'all') {
       filteredPayments = filteredPayments.filter(payment => payment.status === statusFilter);
     }
-    
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      filteredPayments = filteredPayments.filter(payment => 
-        payment.clientName.toLowerCase().includes(query) ||
-        payment.invoiceNumber.toLowerCase().includes(query) ||
-        (payment.jobTitle && payment.jobTitle.toLowerCase().includes(query))
-      );
+      filteredPayments = filteredPayments.filter(payment => payment.clientName.toLowerCase().includes(query) || payment.invoiceNumber.toLowerCase().includes(query) || payment.jobTitle && payment.jobTitle.toLowerCase().includes(query));
     }
-    
     setFilteredPayments(filteredPayments);
-    
     let filteredExpenses = [...expenses];
-    
     if (start && end) {
       filteredExpenses = filteredExpenses.filter(expense => {
         const expenseDate = parseISO(expense.date);
         return expenseDate >= start && expenseDate <= end;
       });
     }
-    
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      filteredExpenses = filteredExpenses.filter(expense => 
-        expense.description.toLowerCase().includes(query) ||
-        expense.category.name.toLowerCase().includes(query)
-      );
+      filteredExpenses = filteredExpenses.filter(expense => expense.description.toLowerCase().includes(query) || expense.category.name.toLowerCase().includes(query));
     }
-    
     setFilteredExpenses(filteredExpenses);
-    
-    const dateFilteredPayments = start && end 
-      ? payments.filter(payment => {
-          const dueDate = parseISO(payment.dueDate);
-          return dueDate >= start && dueDate <= end;
-        })
-      : payments;
-    
-    const dateFilteredExpenses = start && end
-      ? expenses.filter(expense => {
-          const expenseDate = parseISO(expense.date);
-          return expenseDate >= start && expenseDate <= end;
-        })
-      : expenses;
-    
-    const paid = dateFilteredPayments
-      .filter(payment => payment.status === 'paid')
-      .reduce((sum, payment) => sum + payment.amount, 0);
-    
-    const unpaid = dateFilteredPayments
-      .filter(payment => payment.status === 'unpaid')
-      .reduce((sum, payment) => sum + payment.amount, 0);
-    
-    const writeOff = dateFilteredPayments
-      .filter(payment => payment.status === 'write-off')
-      .reduce((sum, payment) => sum + payment.amount, 0);
-    
-    const expensesTotal = dateFilteredExpenses
-      .reduce((sum, expense) => sum + expense.amount, 0);
-    
+    const dateFilteredPayments = start && end ? payments.filter(payment => {
+      const dueDate = parseISO(payment.dueDate);
+      return dueDate >= start && dueDate <= end;
+    }) : payments;
+    const dateFilteredExpenses = start && end ? expenses.filter(expense => {
+      const expenseDate = parseISO(expense.date);
+      return expenseDate >= start && expenseDate <= end;
+    }) : expenses;
+    const paid = dateFilteredPayments.filter(payment => payment.status === 'paid').reduce((sum, payment) => sum + payment.amount, 0);
+    const unpaid = dateFilteredPayments.filter(payment => payment.status === 'unpaid').reduce((sum, payment) => sum + payment.amount, 0);
+    const writeOff = dateFilteredPayments.filter(payment => payment.status === 'write-off').reduce((sum, payment) => sum + payment.amount, 0);
+    const expensesTotal = dateFilteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
     const profit = paid - expensesTotal;
-    
     setAccountStats({
       paid,
       unpaid,
@@ -484,10 +389,8 @@ const Accounts = () => {
       profit
     });
   };
-
   const handleStatusUpdate = async (payment: PaymentScheduleWithDetails, newStatus: 'paid' | 'unpaid' | 'write-off', event: React.MouseEvent) => {
     event.stopPropagation();
-    
     if (newStatus === 'paid') {
       setSelectedPayment(payment);
       setIsPaymentDialogOpen(true);
@@ -495,49 +398,42 @@ const Accounts = () => {
       await updatePaymentStatus(payment.id, newStatus);
     }
   };
-
   const updatePaymentStatus = async (paymentId: string, status: string, paymentDate?: string) => {
     if (!isMountedRef.current || isUpdating) return;
-
     setIsUpdating(true);
     try {
-      const updateData: any = { status };
+      const updateData: any = {
+        status
+      };
       if (paymentDate) {
         updateData.payment_date = paymentDate;
       }
-      
-      const { error } = await supabase
-        .from('payment_schedules')
-        .update(updateData)
-        .eq('id', paymentId);
-
+      const {
+        error
+      } = await supabase.from('payment_schedules').update(updateData).eq('id', paymentId);
       if (error) throw error;
-      
       toast({
         title: 'Success',
         description: `Payment marked as ${status}`,
         variant: 'default'
       });
-      
       const updatedPayments = payments.map(payment => {
         if (payment.id === paymentId) {
-          return { 
-            ...payment, 
+          return {
+            ...payment,
             status: status as 'paid' | 'unpaid' | 'write-off',
             paymentDate: paymentDate
           };
         }
         return payment;
       });
-      
       setPayments(updatedPayments);
-      
       const updatedPayment = updatedPayments.find(p => p.id === paymentId);
-      
       if (updatedPayment) {
-        setAccountStats((prevStats) => {
-          const newStats = { ...prevStats };
-          
+        setAccountStats(prevStats => {
+          const newStats = {
+            ...prevStats
+          };
           if (status === 'paid' && updatedPayment.status !== 'paid') {
             newStats.paid += updatedPayment.amount;
             if (updatedPayment.status === 'unpaid') newStats.unpaid -= updatedPayment.amount;
@@ -551,9 +447,7 @@ const Accounts = () => {
             if (updatedPayment.status === 'paid') newStats.paid -= updatedPayment.amount;
             if (updatedPayment.status === 'unpaid') newStats.unpaid -= updatedPayment.amount;
           }
-          
           newStats.profit = newStats.paid - newStats.expenses;
-          
           return newStats;
         });
       }
@@ -570,7 +464,6 @@ const Accounts = () => {
       }
     }
   };
-
   const closePaymentDialog = () => {
     if (isUpdating) return;
     setIsPaymentDialogOpen(false);
@@ -581,38 +474,29 @@ const Accounts = () => {
       }
     }, 100);
   };
-
   const confirmPayment = async () => {
     if (!selectedPayment || !isMountedRef.current) return;
-    
     const formattedDate = paymentDate ? formatDate(paymentDate, 'yyyy-MM-dd') : undefined;
     await updatePaymentStatus(selectedPayment.id, 'paid', formattedDate);
     closePaymentDialog();
   };
-  
   const getUncategorizedCategoryId = () => {
-    const uncategorizedCategory = expenseCategories.find(cat => 
-      cat.name.toLowerCase() === 'uncategorized');
+    const uncategorizedCategory = expenseCategories.find(cat => cat.name.toLowerCase() === 'uncategorized');
     return uncategorizedCategory?.id || '';
   };
-  
   const addExpense = async () => {
     setExpenseFormErrors({});
-    
     const newErrors: {
       description?: string;
       date?: string;
       amount?: string;
     } = {};
-    
     if (!newExpense.description.trim()) {
       newErrors.description = "Description is required";
     }
-    
     if (!newExpense.date) {
       newErrors.date = "Date is required";
     }
-    
     if (!newExpense.amount || newExpense.amount === '') {
       newErrors.amount = "Amount is required";
     } else {
@@ -621,39 +505,32 @@ const Accounts = () => {
         newErrors.amount = "Amount must be a positive number";
       }
     }
-    
     if (Object.keys(newErrors).length > 0) {
       setExpenseFormErrors(newErrors);
       return;
     }
-    
     const amount = parseFloat(newExpense.amount);
-    
     const categoryId = newExpense.categoryId || getUncategorizedCategoryId();
-    
     setIsUpdating(true);
     try {
       if (isEditMode && newExpense.id) {
-        const { data, error } = await supabase
-          .from('expenses')
-          .update({
-            description: newExpense.description,
-            amount: amount,
-            date: formatDate(newExpense.date, 'yyyy-MM-dd'),
-            category_id: categoryId,
-            company_id: selectedCompanyId
-          })
-          .eq('id', newExpense.id)
-          .select(`
+        const {
+          data,
+          error
+        } = await supabase.from('expenses').update({
+          description: newExpense.description,
+          amount: amount,
+          date: formatDate(newExpense.date, 'yyyy-MM-dd'),
+          category_id: categoryId,
+          company_id: selectedCompanyId
+        }).eq('id', newExpense.id).select(`
             *,
             category:category_id (
               id,
               name
             )
           `);
-        
         if (error) throw error;
-        
         if (data && data.length > 0) {
           const updatedExpense: Expense = {
             id: data[0].id,
@@ -666,9 +543,7 @@ const Accounts = () => {
             },
             company_id: data[0].company_id
           };
-          
           setExpenses(prev => prev.map(exp => exp.id === updatedExpense.id ? updatedExpense : exp));
-          
           toast({
             title: 'Success',
             description: 'Expense updated successfully',
@@ -676,25 +551,23 @@ const Accounts = () => {
           });
         }
       } else {
-        const { data, error } = await supabase
-          .from('expenses')
-          .insert({
-            description: newExpense.description,
-            amount: amount,
-            date: formatDate(newExpense.date, 'yyyy-MM-dd'),
-            category_id: categoryId,
-            company_id: selectedCompanyId
-          })
-          .select(`
+        const {
+          data,
+          error
+        } = await supabase.from('expenses').insert({
+          description: newExpense.description,
+          amount: amount,
+          date: formatDate(newExpense.date, 'yyyy-MM-dd'),
+          category_id: categoryId,
+          company_id: selectedCompanyId
+        }).select(`
             *,
             category:category_id (
               id,
               name
             )
           `);
-        
         if (error) throw error;
-        
         if (data && data.length > 0) {
           const newExpenseItem: Expense = {
             id: data[0].id,
@@ -707,15 +580,12 @@ const Accounts = () => {
             },
             company_id: data[0].company_id
           };
-          
           setExpenses(prev => [newExpenseItem, ...prev]);
-          
           setAccountStats(prev => ({
             ...prev,
             expenses: prev.expenses + amount,
             profit: prev.paid - (prev.expenses + amount)
           }));
-          
           toast({
             title: 'Success',
             description: 'Expense added successfully',
@@ -723,7 +593,6 @@ const Accounts = () => {
           });
         }
       }
-      
       resetExpenseForm();
       setIsExpenseDialogOpen(false);
     } catch (error) {
@@ -737,7 +606,6 @@ const Accounts = () => {
       setIsUpdating(false);
     }
   };
-  
   const editExpense = (expense: Expense) => {
     setIsEditMode(true);
     setNewExpense({
@@ -745,30 +613,24 @@ const Accounts = () => {
       description: expense.description,
       date: parseISO(expense.date),
       amount: expense.amount.toString(),
-      categoryId: expense.category.id,
+      categoryId: expense.category.id
     });
     setIsExpenseDialogOpen(true);
   };
-  
   const deleteExpense = async (expense: Expense) => {
     if (window.confirm("Are you sure you want to delete this expense?")) {
       setIsUpdating(true);
       try {
-        const { error } = await supabase
-          .from('expenses')
-          .delete()
-          .eq('id', expense.id);
-        
+        const {
+          error
+        } = await supabase.from('expenses').delete().eq('id', expense.id);
         if (error) throw error;
-        
         setExpenses(prev => prev.filter(exp => exp.id !== expense.id));
-        
         setAccountStats(prev => ({
           ...prev,
           expenses: prev.expenses - expense.amount,
           profit: prev.paid - (prev.expenses - expense.amount)
         }));
-        
         toast({
           title: 'Success',
           description: 'Expense deleted successfully',
@@ -786,18 +648,16 @@ const Accounts = () => {
       }
     }
   };
-  
   const resetExpenseForm = () => {
     setNewExpense({
       description: '',
       date: new Date(),
       amount: '',
-      categoryId: '',
+      categoryId: ''
     });
     setIsEditMode(false);
     setExpenseFormErrors({});
   };
-  
   const addExpenseCategory = async () => {
     if (!newCategory.trim()) {
       toast({
@@ -807,24 +667,20 @@ const Accounts = () => {
       });
       return;
     }
-    
     setIsUpdating(true);
     try {
-      const { data, error } = await supabase
-        .from('expense_categories')
-        .insert({
-          name: newCategory.trim(),
-          company_id: selectedCompanyId
-        })
-        .select();
-      
+      const {
+        data,
+        error
+      } = await supabase.from('expense_categories').insert({
+        name: newCategory.trim(),
+        company_id: selectedCompanyId
+      }).select();
       if (error) throw error;
-      
       if (data && data.length > 0) {
         setExpenseCategories(prev => [...prev, data[0]]);
         setNewCategory('');
         setIsCategoryDialogOpen(false);
-        
         toast({
           title: 'Success',
           description: 'Category added successfully',
@@ -842,20 +698,16 @@ const Accounts = () => {
       setIsUpdating(false);
     }
   };
-
   const handleRowClick = (invoiceId: string, event: React.MouseEvent) => {
     if (!(event.target as HTMLElement).closest('.dropdown-actions')) {
       navigate(`/invoice/${invoiceId}`);
     }
   };
-
   const formatDueDate = (dueDate: string, status: string) => {
     if (status !== 'unpaid') return format(parseISO(dueDate), 'dd MMM yyyy');
-    
     const today = new Date();
     const due = parseISO(dueDate);
     const daysLeft = differenceInDays(due, today);
-    
     let daysText = '';
     if (daysLeft < 0) {
       daysText = `(${Math.abs(daysLeft)} days overdue)`;
@@ -866,10 +718,8 @@ const Accounts = () => {
     } else {
       daysText = `(in ${daysLeft} days)`;
     }
-    
     return `${format(due, 'dd MMM yyyy')} ${daysText}`;
   };
-
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'paid':
@@ -880,7 +730,6 @@ const Accounts = () => {
         return <Badge className="bg-amber-500">Unpaid</Badge>;
     }
   };
-
   const exportData = () => {
     toast({
       title: 'Info',
@@ -888,7 +737,6 @@ const Accounts = () => {
       variant: 'default'
     });
   };
-
   const handleExport = (format: 'csv' | 'xlsx') => {
     if (activeTab === 'income') {
       if (filteredPayments.length === 0) {
@@ -899,13 +747,11 @@ const Accounts = () => {
         });
         return;
       }
-      
       const formattedData = formatPaymentsForExport(filteredPayments);
       exportDataToFile(formattedData, {
         filename: `payments-export-${formatDate(new Date(), 'yyyy-MM-dd')}`,
         format
       });
-      
       toast({
         title: 'Export successful',
         description: `Payments have been exported to ${format.toUpperCase()} format.`,
@@ -920,13 +766,11 @@ const Accounts = () => {
         });
         return;
       }
-      
       const formattedData = formatExpensesForExport(filteredExpenses);
       exportDataToFile(formattedData, {
         filename: `expenses-export-${formatDate(new Date(), 'yyyy-MM-dd')}`,
         format
       });
-      
       toast({
         title: 'Export successful',
         description: `Expenses have been exported to ${format.toUpperCase()} format.`,
@@ -934,9 +778,7 @@ const Accounts = () => {
       });
     }
   };
-
-  return (
-    <div className="container mx-auto px-4 py-6">
+  return <div className="container mx-auto px-4 py-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold">Account Management</h1>
@@ -979,19 +821,18 @@ const Accounts = () => {
       
       <Tabs defaultValue="income" value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="mb-6">
-          <TabsTrigger value="income" className="flex items-center">
+          <TabsTrigger value="income" className="flex items-center bg-emerald-300 hover:bg-emerald-200">
             <TrendingUp className="mr-2 h-4 w-4" />
             Income
           </TabsTrigger>
-          <TabsTrigger value="expenses" className="flex items-center">
+          <TabsTrigger value="expenses" className="flex items-center bg-orange-400 hover:bg-orange-300">
             <TrendingDown className="mr-2 h-4 w-4" />
             Expenses
           </TabsTrigger>
         </TabsList>
         
         <div className="flex flex-col md:flex-row flex-wrap gap-4 mb-6">
-          {activeTab === "income" && (
-            <div className="w-full md:w-auto">
+          {activeTab === "income" && <div className="w-full md:w-auto">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-full md:w-[180px]">
                   <SelectValue placeholder="Filter by status" />
@@ -1003,14 +844,13 @@ const Accounts = () => {
                   <SelectItem value="write-off">Write-off</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-          )}
+            </div>}
           
           <div className="w-full md:w-auto">
             <Select value={periodFilter} onValueChange={(value: PeriodOption) => {
-              setPeriodFilter(value);
-              setShowCustomDateRange(value === 'custom');
-            }}>
+            setPeriodFilter(value);
+            setShowCustomDateRange(value === 'custom');
+          }}>
               <SelectTrigger className="w-full md:w-[180px]">
                 <SelectValue placeholder="Time period" />
               </SelectTrigger>
@@ -1024,8 +864,7 @@ const Accounts = () => {
             </Select>
           </div>
           
-          {showCustomDateRange && (
-            <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+          {showCustomDateRange && <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline">
@@ -1033,12 +872,7 @@ const Accounts = () => {
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0">
-                  <DatePicker
-                    mode="single"
-                    selected={customStartDate}
-                    onSelect={(date) => setCustomStartDate(date)}
-                    initialFocus
-                  />
+                  <DatePicker mode="single" selected={customStartDate} onSelect={date => setCustomStartDate(date)} initialFocus />
                 </PopoverContent>
               </Popover>
               
@@ -1049,64 +883,33 @@ const Accounts = () => {
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0">
-                  <DatePicker
-                    mode="single"
-                    selected={customEndDate}
-                    onSelect={(date) => setCustomEndDate(date)}
-                    initialFocus
-                  />
+                  <DatePicker mode="single" selected={customEndDate} onSelect={date => setCustomEndDate(date)} initialFocus />
                 </PopoverContent>
               </Popover>
-            </div>
-          )}
+            </div>}
           
           <div className="relative w-full md:w-auto md:flex-1">
-            <Input
-              placeholder={activeTab === "income" ? "Search by client, invoice, or job..." : "Search by description or category..."}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pr-10"
-            />
+            <Input placeholder={activeTab === "income" ? "Search by client, invoice, or job..." : "Search by description or category..."} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full pr-10" />
             <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
           </div>
           
-          {activeTab === "income" ? (
-            <Button 
-              variant="outline" 
-              onClick={() => setIsExportDialogOpen(true)}
-              className="whitespace-nowrap"
-            >
+          {activeTab === "income" ? <Button variant="outline" onClick={() => setIsExportDialogOpen(true)} className="whitespace-nowrap">
               <Download className="mr-2 h-4 w-4" />
               Export Payments
-            </Button>
-          ) : (
-            <>
-              <Button 
-                variant="outline" 
-                onClick={() => setIsExpenseDialogOpen(true)}
-                className="whitespace-nowrap"
-              >
+            </Button> : <>
+              <Button variant="outline" onClick={() => setIsExpenseDialogOpen(true)} className="whitespace-nowrap">
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Add Expense
               </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => setIsCategoryDialogOpen(true)}
-                className="whitespace-nowrap"
-              >
+              <Button variant="outline" onClick={() => setIsCategoryDialogOpen(true)} className="whitespace-nowrap">
                 <Plus className="mr-2 h-4 w-4" />
                 Add Category
               </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => setIsExportDialogOpen(true)}
-                className="whitespace-nowrap"
-              >
+              <Button variant="outline" onClick={() => setIsExportDialogOpen(true)} className="whitespace-nowrap">
                 <Download className="mr-2 h-4 w-4" />
                 Export Expenses
               </Button>
-            </>
-          )}
+            </>}
         </div>
         
         <TabsContent value="income" className="mt-0">
@@ -1124,49 +927,30 @@ const Accounts = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {isLoading ? (
-                    <TableRow>
+                  {isLoading ? <TableRow>
                       <TableCell colSpan={6} className="text-center py-10">
                         Loading payments...
                       </TableCell>
-                    </TableRow>
-                  ) : filteredPayments.length === 0 ? (
-                    <TableRow>
+                    </TableRow> : filteredPayments.length === 0 ? <TableRow>
                       <TableCell colSpan={6} className="text-center py-10">
                         No payments found
                       </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredPayments.map((payment) => (
-                      <TableRow 
-                        key={payment.id} 
-                        className="hover:bg-gray-50 cursor-pointer"
-                        onClick={(e) => handleRowClick(payment.invoiceId, e)}
-                      >
-                        <TableCell 
-                          className="dropdown-actions"
-                          onClick={(e) => e.stopPropagation()}
-                        >
+                    </TableRow> : filteredPayments.map(payment => <TableRow key={payment.id} className="hover:bg-gray-50 cursor-pointer" onClick={e => handleRowClick(payment.invoiceId, e)}>
+                        <TableCell className="dropdown-actions" onClick={e => e.stopPropagation()}>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               {getStatusBadge(payment.status)}
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="start">
-                              {payment.status !== 'paid' && (
-                                <DropdownMenuItem onClick={(e) => handleStatusUpdate(payment, 'paid', e)}>
+                              {payment.status !== 'paid' && <DropdownMenuItem onClick={e => handleStatusUpdate(payment, 'paid', e)}>
                                   Mark as Paid
-                                </DropdownMenuItem>
-                              )}
-                              {payment.status !== 'unpaid' && (
-                                <DropdownMenuItem onClick={(e) => handleStatusUpdate(payment, 'unpaid', e)}>
+                                </DropdownMenuItem>}
+                              {payment.status !== 'unpaid' && <DropdownMenuItem onClick={e => handleStatusUpdate(payment, 'unpaid', e)}>
                                   Mark as Unpaid
-                                </DropdownMenuItem>
-                              )}
-                              {payment.status !== 'write-off' && (
-                                <DropdownMenuItem onClick={(e) => handleStatusUpdate(payment, 'write-off', e)}>
+                                </DropdownMenuItem>}
+                              {payment.status !== 'write-off' && <DropdownMenuItem onClick={e => handleStatusUpdate(payment, 'write-off', e)}>
                                   Write Off
-                                </DropdownMenuItem>
-                              )}
+                                </DropdownMenuItem>}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
@@ -1177,9 +961,7 @@ const Accounts = () => {
                         <TableCell className="text-right font-medium">
                           {formatCurrency(payment.amount, companyCurrency)}
                         </TableCell>
-                      </TableRow>
-                    ))
-                  )}
+                      </TableRow>)}
                 </TableBody>
               </Table>
             </CardContent>
@@ -1200,21 +982,15 @@ const Accounts = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {isLoading ? (
-                    <TableRow>
+                  {isLoading ? <TableRow>
                       <TableCell colSpan={5} className="text-center py-10">
                         Loading expenses...
                       </TableCell>
-                    </TableRow>
-                  ) : filteredExpenses.length === 0 ? (
-                    <TableRow>
+                    </TableRow> : filteredExpenses.length === 0 ? <TableRow>
                       <TableCell colSpan={5} className="text-center py-10">
                         No expenses found
                       </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredExpenses.map((expense) => (
-                      <TableRow key={expense.id}>
+                    </TableRow> : filteredExpenses.map(expense => <TableRow key={expense.id}>
                         <TableCell>{format(parseISO(expense.date), 'dd MMM yyyy')}</TableCell>
                         <TableCell>{expense.description}</TableCell>
                         <TableCell>
@@ -1227,25 +1003,15 @@ const Accounts = () => {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end space-x-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => editExpense(expense)}
-                            >
+                            <Button variant="ghost" size="icon" onClick={() => editExpense(expense)}>
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => deleteExpense(expense)}
-                            >
+                            <Button variant="ghost" size="icon" onClick={() => deleteExpense(expense)}>
                               <Trash className="h-4 w-4" />
                             </Button>
                           </div>
                         </TableCell>
-                      </TableRow>
-                    ))
-                  )}
+                      </TableRow>)}
                 </TableBody>
               </Table>
             </CardContent>
@@ -1253,10 +1019,9 @@ const Accounts = () => {
         </TabsContent>
       </Tabs>
       
-      <Dialog open={isPaymentDialogOpen} onOpenChange={(open) => {
-        if (!open) closePaymentDialog();
-        else setIsPaymentDialogOpen(true);
-      }}>
+      <Dialog open={isPaymentDialogOpen} onOpenChange={open => {
+      if (!open) closePaymentDialog();else setIsPaymentDialogOpen(true);
+    }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Select Payment Date</DialogTitle>
@@ -1267,21 +1032,12 @@ const Accounts = () => {
           <div className="py-4">
             <Popover>
               <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start text-left font-normal"
-                  disabled={isUpdating}
-                >
+                <Button variant="outline" className="w-full justify-start text-left font-normal" disabled={isUpdating}>
                   {paymentDate ? formatDate(paymentDate, "PPP") : "Select date"}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
-                <DatePicker
-                  mode="single"
-                  selected={paymentDate}
-                  onSelect={(date) => setPaymentDate(date as Date)}
-                  initialFocus
-                />
+                <DatePicker mode="single" selected={paymentDate} onSelect={date => setPaymentDate(date as Date)} initialFocus />
               </PopoverContent>
             </Popover>
           </div>
@@ -1296,12 +1052,12 @@ const Accounts = () => {
         </DialogContent>
       </Dialog>
       
-      <Dialog open={isExpenseDialogOpen} onOpenChange={(open) => {
-        if (!open) {
-          resetExpenseForm();
-        }
-        setIsExpenseDialogOpen(open);
-      }}>
+      <Dialog open={isExpenseDialogOpen} onOpenChange={open => {
+      if (!open) {
+        resetExpenseForm();
+      }
+      setIsExpenseDialogOpen(open);
+    }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{isEditMode ? 'Edit' : 'Add New'} Expense</DialogTitle>
@@ -1312,84 +1068,62 @@ const Accounts = () => {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <label htmlFor="description" className="text-sm font-medium">Description</label>
-              <Input
-                id="description"
-                value={newExpense.description}
-                onChange={(e) => setNewExpense({...newExpense, description: e.target.value})}
-                placeholder="Enter expense description"
-                className={expenseFormErrors.description ? "border-red-500" : ""}
-              />
-              {expenseFormErrors.description && (
-                <p className="text-sm font-medium text-red-500 mt-1">
+              <Input id="description" value={newExpense.description} onChange={e => setNewExpense({
+              ...newExpense,
+              description: e.target.value
+            })} placeholder="Enter expense description" className={expenseFormErrors.description ? "border-red-500" : ""} />
+              {expenseFormErrors.description && <p className="text-sm font-medium text-red-500 mt-1">
                   {expenseFormErrors.description}
-                </p>
-              )}
+                </p>}
             </div>
             
             <div className="space-y-2">
               <label htmlFor="amount" className="text-sm font-medium">Amount</label>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
-                <Input
-                  id="amount"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  className={`pl-10 ${expenseFormErrors.amount ? "border-red-500" : ""}`}
-                  value={newExpense.amount}
-                  onChange={(e) => setNewExpense({...newExpense, amount: e.target.value})}
-                  placeholder="0.00"
-                />
+                <Input id="amount" type="number" min="0" step="0.01" className={`pl-10 ${expenseFormErrors.amount ? "border-red-500" : ""}`} value={newExpense.amount} onChange={e => setNewExpense({
+                ...newExpense,
+                amount: e.target.value
+              })} placeholder="0.00" />
               </div>
-              {expenseFormErrors.amount && (
-                <p className="text-sm font-medium text-red-500 mt-1">
+              {expenseFormErrors.amount && <p className="text-sm font-medium text-red-500 mt-1">
                   {expenseFormErrors.amount}
-                </p>
-              )}
+                </p>}
             </div>
             
             <div className="space-y-2">
               <label htmlFor="date" className="text-sm font-medium">Date</label>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={`w-full justify-start text-left font-normal ${expenseFormErrors.date ? "border-red-500" : ""}`}
-                  >
+                  <Button variant="outline" className={`w-full justify-start text-left font-normal ${expenseFormErrors.date ? "border-red-500" : ""}`}>
                     {newExpense.date ? formatDate(newExpense.date, "PPP") : "Select date"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0">
-                  <DatePicker
-                    mode="single"
-                    selected={newExpense.date}
-                    onSelect={(date) => setNewExpense({...newExpense, date})}
-                    initialFocus
-                  />
+                  <DatePicker mode="single" selected={newExpense.date} onSelect={date => setNewExpense({
+                  ...newExpense,
+                  date
+                })} initialFocus />
                 </PopoverContent>
               </Popover>
-              {expenseFormErrors.date && (
-                <p className="text-sm font-medium text-red-500 mt-1">
+              {expenseFormErrors.date && <p className="text-sm font-medium text-red-500 mt-1">
                   {expenseFormErrors.date}
-                </p>
-              )}
+                </p>}
             </div>
             
             <div className="space-y-2">
               <label htmlFor="category" className="text-sm font-medium">Category (Optional)</label>
-              <Select 
-                value={newExpense.categoryId} 
-                onValueChange={(value) => setNewExpense({...newExpense, categoryId: value})}
-              >
+              <Select value={newExpense.categoryId} onValueChange={value => setNewExpense({
+              ...newExpense,
+              categoryId: value
+            })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select category (optional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  {expenseCategories.map(category => (
-                    <SelectItem key={category.id} value={category.id}>
+                  {expenseCategories.map(category => <SelectItem key={category.id} value={category.id}>
                       {category.name}
-                    </SelectItem>
-                  ))}
+                    </SelectItem>)}
                 </SelectContent>
               </Select>
               <p className="text-xs text-gray-500">
@@ -1399,13 +1133,13 @@ const Accounts = () => {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => {
-              setIsExpenseDialogOpen(false);
-              resetExpenseForm();
-            }}>
+            setIsExpenseDialogOpen(false);
+            resetExpenseForm();
+          }}>
               Cancel
             </Button>
             <Button onClick={addExpense} disabled={isUpdating}>
-              {isUpdating ? (isEditMode ? 'Updating...' : 'Adding...') : (isEditMode ? 'Update Expense' : 'Add Expense')}
+              {isUpdating ? isEditMode ? 'Updating...' : 'Adding...' : isEditMode ? 'Update Expense' : 'Add Expense'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1422,12 +1156,7 @@ const Accounts = () => {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <label htmlFor="categoryName" className="text-sm font-medium">Category Name</label>
-              <Input
-                id="categoryName"
-                value={newCategory}
-                onChange={(e) => setNewCategory(e.target.value)}
-                placeholder="Enter category name"
-              />
+              <Input id="categoryName" value={newCategory} onChange={e => setNewCategory(e.target.value)} placeholder="Enter category name" />
             </div>
           </div>
           <DialogFooter>
@@ -1441,16 +1170,7 @@ const Accounts = () => {
         </DialogContent>
       </Dialog>
       
-      <ExportDialog
-        isOpen={isExportDialogOpen}
-        onClose={() => setIsExportDialogOpen(false)}
-        onExport={handleExport}
-        title={`Export ${activeTab === 'income' ? 'Payments' : 'Expenses'}`}
-        description={`Choose a format to export your ${activeTab === 'income' ? 'payment' : 'expense'} data.`}
-        count={activeTab === 'income' ? filteredPayments.length : filteredExpenses.length}
-      />
-    </div>
-  );
+      <ExportDialog isOpen={isExportDialogOpen} onClose={() => setIsExportDialogOpen(false)} onExport={handleExport} title={`Export ${activeTab === 'income' ? 'Payments' : 'Expenses'}`} description={`Choose a format to export your ${activeTab === 'income' ? 'payment' : 'expense'} data.`} count={activeTab === 'income' ? filteredPayments.length : filteredExpenses.length} />
+    </div>;
 };
-
 export default Accounts;

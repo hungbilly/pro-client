@@ -83,14 +83,6 @@ const JobCalendar: React.FC<JobCalendarProps> = ({ jobs }) => {
     }
   });
   
-  // Custom day render function to show job indicators
-  const dayClassName = (day: Date) => {
-    const dateStr = format(day, 'yyyy-MM-dd');
-    const hasJobs = jobDates[dateStr] && jobDates[dateStr].length > 0;
-    
-    return hasJobs ? 'bg-primary/10 rounded-md' : '';
-  };
-  
   // Custom day content function to show job count
   const dayContent = (day: Date) => {
     const dateStr = format(day, 'yyyy-MM-dd');
@@ -176,9 +168,6 @@ const JobCalendar: React.FC<JobCalendarProps> = ({ jobs }) => {
           }}
           modifiersClassNames={{
             hasJob: "bg-primary/10"
-          }}
-          classNames={{
-            day: (date) => dayClassName(date),
           }}
         />
       </CardContent>

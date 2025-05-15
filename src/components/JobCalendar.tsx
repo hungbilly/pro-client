@@ -66,30 +66,42 @@ const JobCalendar: React.FC<JobCalendarProps> = ({ jobs }) => {
   // Count upcoming and completed jobs for the current month
   const upcomingJobs = jobs.filter(job => {
     if (!job.date) return false;
+    
     try {
       const jobDate = parseISO(job.date);
+      const today = new Date();
+      
       return (
         isSameMonth(jobDate, currentMonth) && 
-        isAfter(jobDate, new Date()) &&
+        isAfter(jobDate, today) &&
         job.status !== 'cancelled'
       );
     } catch (e) {
+      console.error('Error filtering upcoming jobs:', e);
       return false;
     }
   });
   
   const completedJobs = jobs.filter(job => {
     if (!job.date) return false;
+    
     try {
       const jobDate = parseISO(job.date);
+      
       return (
         isSameMonth(jobDate, currentMonth) &&
         job.status === 'completed'
       );
     } catch (e) {
+      console.error('Error filtering completed jobs:', e);
       return false;
     }
   });
+
+  console.log('Current month:', format(currentMonth, 'MMMM yyyy'));
+  console.log('Total jobs:', jobs.length);
+  console.log('Upcoming jobs:', upcomingJobs.length, upcomingJobs.map(j => j.title));
+  console.log('Completed jobs:', completedJobs.length, completedJobs.map(j => j.title));
   
   // Handle day click to show jobs for that day
   const handleDayClick = (day: Date | undefined) => {

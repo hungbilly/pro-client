@@ -70,7 +70,8 @@ const JobCalendar: React.FC<JobCalendarProps> = ({ jobs }) => {
       const jobDate = parseISO(job.date);
       return (
         isSameMonth(jobDate, currentMonth) && 
-        isAfter(jobDate, new Date())
+        isAfter(jobDate, new Date()) &&
+        job.status !== 'cancelled'
       );
     } catch (e) {
       return false;
@@ -78,10 +79,13 @@ const JobCalendar: React.FC<JobCalendarProps> = ({ jobs }) => {
   });
   
   const completedJobs = jobs.filter(job => {
-    if (!job.date || job.status !== 'completed') return false;
+    if (!job.date) return false;
     try {
       const jobDate = parseISO(job.date);
-      return isSameMonth(jobDate, currentMonth);
+      return (
+        isSameMonth(jobDate, currentMonth) &&
+        job.status === 'completed'
+      );
     } catch (e) {
       return false;
     }
@@ -178,14 +182,14 @@ const JobCalendar: React.FC<JobCalendarProps> = ({ jobs }) => {
                 </div>
               ),
             }}
+            modifiersClassNames={{
+              hasJob: "bg-primary/10"
+            }}
             modifiers={{
               hasJob: (date) => {
                 const dateStr = format(date, 'yyyy-MM-dd');
                 return !!jobDates[dateStr]?.length;
               }
-            }}
-            modifiersClassNames={{
-              hasJob: "bg-primary/10"
             }}
           />
         </CardContent>

@@ -71,12 +71,15 @@ const JobCalendar: React.FC<JobCalendarProps> = ({ jobs }) => {
     
     try {
       const jobDate = parseISO(job.date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
       
-      // Consider any active job in the current month as "upcoming"
-      // regardless of date, as long as it's not completed or cancelled
+      // An upcoming job is in the current month, not cancelled, and in the future or today
       return (
         isSameMonth(jobDate, currentMonth) && 
-        job.status === 'active'
+        job.status !== 'cancelled' &&
+        job.status !== 'completed' &&
+        (isAfter(jobDate, today) || isSameDay(jobDate, today))
       );
     } catch (e) {
       console.error('Error filtering upcoming jobs:', e, job);
@@ -91,11 +94,16 @@ const JobCalendar: React.FC<JobCalendarProps> = ({ jobs }) => {
     
     try {
       const jobDate = parseISO(job.date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
       
-      // A completed job is in the current month and has 'completed' status
+      // Count jobs as completed if:
+      // 1. They have 'completed' status, or
+      // 2. Their date is in the past (but still in the current month) and not cancelled
       return (
         isSameMonth(jobDate, currentMonth) &&
-        job.status === 'completed'
+        (job.status === 'completed' || 
+          (isBefore(jobDate, today) && !isSameDay(jobDate, today) && job.status !== 'cancelled'))
       );
     } catch (e) {
       console.error('Error filtering completed jobs:', e, job);
@@ -104,6 +112,7 @@ const JobCalendar: React.FC<JobCalendarProps> = ({ jobs }) => {
   });
 
   console.log('Current month:', format(currentMonth, 'MMMM yyyy'));
+  console.log('Today:', format(new Date(), 'yyyy-MM-dd'));
   console.log('Total jobs:', jobs.length);
   console.log('Raw jobs data:', jobs.map(j => ({ title: j.title, date: j.date, status: j.status })));
   console.log('Upcoming jobs:', upcomingJobs.length, upcomingJobs.map(j => j.title));
@@ -241,9 +250,13 @@ const JobCalendar: React.FC<JobCalendarProps> = ({ jobs }) => {
                               ? 'bg-green-100 text-green-800' 
                               : job.status === 'cancelled' 
                                 ? 'bg-red-100 text-red-800' 
-                                : 'bg-blue-100 text-blue-800'
+                                : isDateInPast(job.date)
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-blue-100 text-blue-800'
                           }>
-                            {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
+                            {job.status === 'completed' || isDateInPast(job.date) 
+                              ? 'Completed' 
+                              : job.status.charAt(0).toUpperCase() + job.status.slice(1)}
                           </Badge>
                         </div>
                         
@@ -289,6 +302,22 @@ const JobCalendar: React.FC<JobCalendarProps> = ({ jobs }) => {
       </Dialog>
     </>
   );
+};
+
+// Helper function to check if a date is in the past
+const isDateInPast = (dateString?: string): boolean => {
+  if (!dateString) return false;
+  
+  try {
+    const jobDate = parseISO(dateString);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
+    
+    return isBefore(jobDate, today) && !isSameDay(jobDate, today);
+  } catch (e) {
+    console.error('Error checking if date is in past:', e);
+    return false;
+  }
 };
 
 export default JobCalendar;

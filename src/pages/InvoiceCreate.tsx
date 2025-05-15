@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
@@ -290,6 +289,11 @@ const InvoiceCreate = () => {
         return;
       }
       
+      // Preserve the current invoice date, number, and status
+      const currentDate = invoice?.date || format(new Date(), 'yyyy-MM-dd');
+      const currentNumber = invoice?.number || '';
+      const currentStatus = invoice?.status || 'draft';
+      
       // Create a new invoice object with the template data
       const newInvoice: Partial<Invoice> = {
         ...(invoice || {}),
@@ -297,6 +301,10 @@ const InvoiceCreate = () => {
         contractTerms: parsedContent.contractTerms || '',
         notes: parsedContent.notes || '',
         paymentSchedules: parsedContent.paymentSchedules || [],
+        // Explicitly preserve these important fields
+        date: currentDate,
+        number: currentNumber,
+        status: currentStatus
       };
       
       // Update the invoice state

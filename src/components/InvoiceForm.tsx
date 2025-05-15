@@ -418,17 +418,20 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   const applyTemplate = () => {
     if (selectedTemplate) {
       setInvoice(prevInvoice => {
-        // Save the current date and number
+        // Preserve important fields when applying a template
         const currentDate = prevInvoice.date || format(new Date(), 'yyyy-MM-dd');
         // Add null check for number
         const currentNumber = prevInvoice.number || '';
+        // Preserve invoice status
+        const currentStatus = prevInvoice.status || 'draft';
         
         return {
           ...prevInvoice,
           contractTerms: selectedTemplate.content || '',
-          // Ensure date and number are preserved when applying a template
+          // Ensure these important fields are preserved
           date: currentDate,
-          number: currentNumber
+          number: currentNumber,
+          status: currentStatus
         };
       });
     }

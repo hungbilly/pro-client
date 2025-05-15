@@ -1,3 +1,4 @@
+
 export interface Client {
   id: string;
   name: string;
@@ -162,7 +163,7 @@ export interface Expense {
   companyId: string;
   amount: number;
   description: string;
-  category: string;
+  category: string; // This represents the category_id from the database
   date: string;
   notes?: string;
   createdAt: string;

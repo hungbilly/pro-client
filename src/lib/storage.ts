@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Client, Invoice, InvoiceItem, Job, PaymentSchedule, InvoiceStatus, ContractStatus, PaymentStatus, Expense } from '@/types';
 import { format } from 'date-fns';
@@ -1236,7 +1237,7 @@ export const getExpenses = async (companyId: string): Promise<Expense[]> => {
       companyId: expense.company_id,
       amount: expense.amount,
       description: expense.description,
-      category: expense.category,
+      category: expense.category_id, // Use category_id instead of category
       date: expense.date,
       notes: expense.notes,
       createdAt: expense.created_at,

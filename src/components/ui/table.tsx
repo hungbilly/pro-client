@@ -1,5 +1,6 @@
 
 import * as React from "react"
+import { ChevronDown, ChevronUp, ChevronsUpDown } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -69,16 +70,33 @@ TableRow.displayName = "TableRow"
 
 const TableHead = React.forwardRef<
   HTMLTableCellElement,
-  React.ThHTMLAttributes<HTMLTableCellElement>
->(({ className, ...props }, ref) => (
+  React.ThHTMLAttributes<HTMLTableCellElement> & {
+    sortable?: boolean;
+    sorted?: 'asc' | 'desc' | null;
+    onSort?: () => void;
+  }
+>(({ className, children, sortable, sorted, onSort, ...props }, ref) => (
   <th
     ref={ref}
     className={cn(
       "h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0",
+      sortable && "cursor-pointer select-none",
       className
     )}
+    onClick={sortable ? onSort : undefined}
     {...props}
-  />
+  >
+    <div className="flex items-center gap-1">
+      {children}
+      {sortable && (
+        <div className="ml-1">
+          {sorted === 'asc' && <ChevronUp className="h-4 w-4" />}
+          {sorted === 'desc' && <ChevronDown className="h-4 w-4" />}
+          {sorted === null && <ChevronsUpDown className="h-4 w-4 opacity-50" />}
+        </div>
+      )}
+    </div>
+  </th>
 ))
 TableHead.displayName = "TableHead"
 

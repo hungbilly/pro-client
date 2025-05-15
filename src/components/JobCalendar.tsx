@@ -65,41 +65,50 @@ const JobCalendar: React.FC<JobCalendarProps> = ({ jobs }) => {
   
   // Count upcoming and completed jobs for the current month
   const upcomingJobs = jobs.filter(job => {
-    if (!job.date) return false;
+    if (!job.date) {
+      return false;
+    }
     
     try {
       const jobDate = parseISO(job.date);
       const today = new Date();
+      today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
       
+      // An upcoming job is in the current month, after today, and not cancelled or completed
       return (
         isSameMonth(jobDate, currentMonth) && 
-        isAfter(jobDate, today) &&
-        job.status !== 'cancelled'
+        (isAfter(jobDate, today) || isSameDay(jobDate, today)) &&
+        job.status !== 'cancelled' &&
+        job.status !== 'completed'
       );
     } catch (e) {
-      console.error('Error filtering upcoming jobs:', e);
+      console.error('Error filtering upcoming jobs:', e, job);
       return false;
     }
   });
   
   const completedJobs = jobs.filter(job => {
-    if (!job.date) return false;
+    if (!job.date) {
+      return false;
+    }
     
     try {
       const jobDate = parseISO(job.date);
       
+      // A completed job is in the current month and has 'completed' status
       return (
         isSameMonth(jobDate, currentMonth) &&
         job.status === 'completed'
       );
     } catch (e) {
-      console.error('Error filtering completed jobs:', e);
+      console.error('Error filtering completed jobs:', e, job);
       return false;
     }
   });
 
   console.log('Current month:', format(currentMonth, 'MMMM yyyy'));
   console.log('Total jobs:', jobs.length);
+  console.log('Raw jobs data:', jobs.map(j => ({ title: j.title, date: j.date, status: j.status })));
   console.log('Upcoming jobs:', upcomingJobs.length, upcomingJobs.map(j => j.title));
   console.log('Completed jobs:', completedJobs.length, completedJobs.map(j => j.title));
   

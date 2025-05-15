@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { format, startOfMonth, endOfMonth, parseISO, subMonths, addMonths, subDays, startOfYear, endOfYear, differenceInDays, getMonth, getYear, isValid } from 'date-fns';
+import { format, startOfMonth, endOfMonth, parseISO, subMonths, addMonths, getMonth, getYear, isValid } from 'date-fns';
 import { 
   BarChart, 
   Bar,
@@ -10,10 +10,9 @@ import {
   Tooltip, 
   ResponsiveContainer,
   Legend,
-  Line,
-  ComposedChart
+  ReferenceLine
 } from 'recharts';
-import { ChevronLeft, ChevronRight, Calendar, TrendingUp, TrendingDown } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, TrendingUp, TrendingDown, BarChart as BarChartIcon } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -22,6 +21,13 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Switch } from "@/components/ui/switch";
 import { type DateRange } from "react-day-picker";
 import { Invoice, Job, Expense } from '@/types';
+import { 
+  ChartContainer, 
+  ChartTooltip, 
+  ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent
+} from '@/components/ui/chart';
 import { logDebug } from '@/integrations/supabase/client';
 
 interface RevenueChartProps {
@@ -30,14 +36,10 @@ interface RevenueChartProps {
   expenses: Expense[];
 }
 
-type DateRangeType = 'custom' | 'this-month' | 'last-month' | 'this-year' | 'last-30-days' | 'last-60-days';
+type DateRangeType = 'this-month' | 'last-month' | 'this-year' | 'last-year' | 'last-3-months' | 'last-6-months';
 
 const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs, expenses }) => {
   const [currentDateRange, setCurrentDateRange] = useState<DateRangeType>('this-month');
-  const [customDateRange, setCustomDateRange] = useState<DateRange | undefined>({
-    from: subDays(new Date(), 30),
-    to: new Date()
-  });
   const [chartData, setChartData] = useState<any[]>([]);
   
   const [showRevenue, setShowRevenue] = useState(true);
@@ -45,21 +47,13 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs, expenses })
   const [showProfit, setShowProfit] = useState(true);
   
   useEffect(() => {
-    logDebug('RevenueChart: Generating chart data with', { 
-      invoiceCount: invoices.length, 
-      jobCount: jobs.length,
-      expensesCount: expenses.length,
-      currentDateRange 
-    });
-    
     generateChartData();
-  }, [invoices, jobs, expenses, currentDateRange, customDateRange]);
+  }, [invoices, expenses, currentDateRange]);
   
   const formatDateToYYYYMMDD = (date: Date): string => {
     try {
       return format(date, 'yyyy-MM-dd');
     } catch (error) {
-      logDebug('Error formatting date', { date, error });
       return '';
     }
   };
@@ -69,7 +63,6 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs, expenses })
       const parsedDate = parseISO(dateString);
       return isValid(parsedDate) ? parsedDate : new Date();
     } catch (error) {
-      logDebug('Error parsing date', { dateString, error });
       return new Date();
     }
   };
@@ -91,23 +84,23 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs, expenses })
         };
       case 'this-year':
         return {
-          startDate: startOfYear(today),
-          endDate: endOfYear(today)
+          startDate: new Date(today.getFullYear(), 0, 1),
+          endDate: new Date(today.getFullYear(), 11, 31)
         };
-      case 'last-30-days':
+      case 'last-year':
         return {
-          startDate: subDays(today, 30),
-          endDate: today
+          startDate: new Date(today.getFullYear() - 1, 0, 1),
+          endDate: new Date(today.getFullYear() - 1, 11, 31)
         };
-      case 'last-60-days':
+      case 'last-3-months':
         return {
-          startDate: subDays(today, 60),
-          endDate: today
+          startDate: startOfMonth(subMonths(today, 2)),
+          endDate: endOfMonth(today)
         };
-      case 'custom':
+      case 'last-6-months':
         return {
-          startDate: customDateRange?.from || subDays(today, 30),
-          endDate: customDateRange?.to || today
+          startDate: startOfMonth(subMonths(today, 5)),
+          endDate: endOfMonth(today)
         };
       default:
         return {
@@ -119,111 +112,29 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs, expenses })
   
   const generateChartData = () => {
     const { startDate, endDate } = getDateRange();
-    const daysDifference = differenceInDays(endDate, startDate);
-    
-    logDebug('RevenueChart: Generating data for date range:', { 
-      startDate: formatDateToYYYYMMDD(startDate), 
-      endDate: formatDateToYYYYMMDD(endDate),
-      daysDifference
-    });
-    
-    // If the date range is greater than 30 days, show monthly data
-    if (daysDifference > 30) {
-      generateMonthlyChartData(startDate, endDate);
-    } else {
-      generateDailyChartData(startDate, endDate);
-    }
-  };
-  
-  const generateDailyChartData = (startDate: Date, endDate: Date) => {
-    const daysInRange = [];
-    const currentDate = new Date(startDate);
-    while (currentDate <= endDate) {
-      daysInRange.push(new Date(currentDate));
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
-    
-    logDebug(`Date range contains ${daysInRange.length} days (daily view)`);
-    
-    const data = daysInRange.map(day => {
-      const dayFormatted = formatDateToYYYYMMDD(day);
-      
-      // Calculate revenue for the day
-      let totalRevenue = 0;
-      
-      invoices.forEach(invoice => {
-        // Check if invoice has paymentSchedules and use them
-        const schedules = invoice.paymentSchedules && invoice.paymentSchedules.length > 0
-          ? invoice.paymentSchedules
-          : [{
-              id: `default-${invoice.id}`,
-              dueDate: invoice.date,
-              percentage: 100,
-              description: 'Default schedule',
-              status: invoice.status === 'paid' ? 'paid' : 'unpaid'
-            }];
-        
-        schedules.forEach(schedule => {
-          // Only count paid payments as revenue
-          if (schedule.status === 'paid') {
-            let relevantDate = schedule.paymentDate || schedule.dueDate || invoice.date;
-            
-            if (!relevantDate) return;
-            
-            const scheduleDate = parseDate(relevantDate);
-            const scheduleDateFormatted = formatDateToYYYYMMDD(scheduleDate);
-            
-            if (scheduleDateFormatted === dayFormatted) {
-              const scheduleAmount = (schedule.percentage / 100) * invoice.amount;
-              totalRevenue += scheduleAmount;
-            }
-          }
-        });
-      });
-      
-      // Calculate expenses for the day
-      let totalExpenses = 0;
-      
-      expenses.forEach(expense => {
-        if (!expense.date) return;
-        
-        const expenseDate = parseDate(expense.date);
-        const expenseDateFormatted = formatDateToYYYYMMDD(expenseDate);
-        
-        if (expenseDateFormatted === dayFormatted) {
-          totalExpenses += expense.amount;
-        }
-      });
-      
-      // Calculate profit/loss
-      const profitLoss = totalRevenue - totalExpenses;
-      
-      return {
-        date: dayFormatted,
-        displayDate: format(day, 'd MMM'),
-        revenue: totalRevenue,
-        expenses: totalExpenses,
-        profitLoss: profitLoss
-      };
-    });
-    
-    const totalRevenue = data.reduce((sum, item) => sum + item.revenue, 0);
-    const totalExpenses = data.reduce((sum, item) => sum + item.expenses, 0);
-    const totalProfitLoss = data.reduce((sum, item) => sum + item.profitLoss, 0);
-    
-    logDebug('RevenueChart: Final daily chart data summary:', {
-      dataPointsCount: data.length,
-      totalRevenue,
-      totalExpenses,
-      totalProfitLoss
-    });
-    
-    setChartData(data);
+    generateMonthlyChartData(startDate, endDate);
   };
   
   const generateMonthlyChartData = (startDate: Date, endDate: Date) => {
     // Create a map to store monthly aggregated data
     const monthlyData = new Map();
+    
+    // Determine all months in the range
+    let currentDate = new Date(startDate);
+    while (currentDate <= endDate) {
+      const monthYear = `${getYear(currentDate)}-${getMonth(currentDate)}`;
+      
+      monthlyData.set(monthYear, {
+        month: getMonth(currentDate),
+        year: getYear(currentDate),
+        date: new Date(currentDate),
+        revenue: 0,
+        expenses: 0,
+        profit: 0
+      });
+      
+      currentDate = addMonths(currentDate, 1);
+    }
     
     // Process invoices for revenue
     invoices.forEach(invoice => {
@@ -250,22 +161,13 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs, expenses })
           if (scheduleDate < startDate || scheduleDate > endDate) return;
           
           const monthYear = `${getYear(scheduleDate)}-${getMonth(scheduleDate)}`;
-          const scheduleAmount = (schedule.percentage / 100) * invoice.amount;
           
-          if (!monthlyData.has(monthYear)) {
-            monthlyData.set(monthYear, {
-              month: getMonth(scheduleDate),
-              year: getYear(scheduleDate),
-              date: scheduleDate,
-              revenue: 0,
-              expenses: 0,
-              profitLoss: 0
-            });
+          if (monthlyData.has(monthYear)) {
+            const monthData = monthlyData.get(monthYear);
+            const scheduleAmount = (schedule.percentage / 100) * invoice.amount;
+            monthData.revenue += scheduleAmount;
+            monthData.profit = monthData.revenue - monthData.expenses;
           }
-          
-          const monthData = monthlyData.get(monthYear);
-          monthData.revenue += scheduleAmount;
-          monthData.profitLoss = monthData.revenue - monthData.expenses;
         }
       });
     });
@@ -281,20 +183,11 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs, expenses })
       
       const monthYear = `${getYear(expenseDate)}-${getMonth(expenseDate)}`;
       
-      if (!monthlyData.has(monthYear)) {
-        monthlyData.set(monthYear, {
-          month: getMonth(expenseDate),
-          year: getYear(expenseDate),
-          date: expenseDate,
-          revenue: 0,
-          expenses: 0,
-          profitLoss: 0
-        });
+      if (monthlyData.has(monthYear)) {
+        const monthData = monthlyData.get(monthYear);
+        monthData.expenses += expense.amount;
+        monthData.profit = monthData.revenue - monthData.expenses;
       }
-      
-      const monthData = monthlyData.get(monthYear);
-      monthData.expenses += expense.amount;
-      monthData.profitLoss = monthData.revenue - monthData.expenses;
     });
     
     // Convert map to array and sort by date
@@ -302,14 +195,8 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs, expenses })
       .sort((a, b) => a.date.getTime() - b.date.getTime())
       .map(data => ({
         ...data,
-        date: formatDateToYYYYMMDD(data.date),
         displayDate: format(data.date, 'MMM yyyy')
       }));
-    
-    logDebug('RevenueChart: Final monthly chart data summary:', {
-      dataPointsCount: monthlyDataArray.length,
-      months: monthlyDataArray.map(m => m.displayDate)
-    });
     
     setChartData(monthlyDataArray);
   };
@@ -324,9 +211,6 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs, expenses })
 
   const dateRangeLabel = () => {
     const { startDate, endDate } = getDateRange();
-    if (currentDateRange === 'custom' && customDateRange) {
-      return `${format(startDate, 'MMM d, yyyy')} - ${format(endDate, 'MMM d, yyyy')}`;
-    }
     
     switch (currentDateRange) {
       case 'this-month':
@@ -335,10 +219,12 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs, expenses })
         return format(startDate, 'MMMM yyyy');
       case 'this-year':
         return format(startDate, 'yyyy');
-      case 'last-30-days':
-        return 'Last 30 Days';
-      case 'last-60-days':
-        return 'Last 60 Days';
+      case 'last-year':
+        return `${format(startDate, 'yyyy')}`;
+      case 'last-3-months':
+        return `Last 3 Months (${format(startDate, 'MMM')} - ${format(endDate, 'MMM')})`;
+      case 'last-6-months':
+        return `Last 6 Months (${format(startDate, 'MMM')} - ${format(endDate, 'MMM')})`;
       default:
         return 'Custom Date Range';
     }
@@ -348,22 +234,41 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs, expenses })
     setCurrentDateRange(range);
   };
 
-  // Determine if we're in monthly view (for label in UI)
-  const isMonthlyView = () => {
-    const { startDate, endDate } = getDateRange();
-    return differenceInDays(endDate, startDate) > 30;
-  };
-
-  // Calculate total profit/loss
+  // Calculate total revenue, expenses, and profit
   const totalRevenue = chartData.reduce((sum, item) => sum + item.revenue, 0);
   const totalExpenses = chartData.reduce((sum, item) => sum + item.expenses, 0);
-  const totalProfitLoss = totalRevenue - totalExpenses;
-  const isProfitable = totalProfitLoss >= 0;
+  const totalProfit = totalRevenue - totalExpenses;
+  const isProfitable = totalProfit >= 0;
+
+  // Chart configuration
+  const chartConfig = {
+    revenue: {
+      label: 'Revenue',
+      theme: {
+        light: '#9b87f5',
+        dark: '#7E69AB'
+      }
+    },
+    expenses: {
+      label: 'Expenses',
+      theme: {
+        light: '#f87171',
+        dark: '#ef4444'
+      }
+    },
+    profit: {
+      label: 'Profit',
+      theme: {
+        light: '#10b981',
+        dark: '#059669'
+      }
+    }
+  };
 
   return (
     <Card className="w-full backdrop-blur-sm bg-white/80 border-transparent shadow-soft">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-md font-medium">Expense vs. Revenue Balance</CardTitle>
+        <CardTitle className="text-md font-medium">Monthly Revenue vs. Expenses</CardTitle>
         <div className="flex items-center space-x-2">
           <Popover>
             <PopoverTrigger asChild>
@@ -372,7 +277,7 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs, expenses })
                 size="sm"
                 className="h-8 px-2 gap-1 text-xs md:text-sm"
               >
-                <Calendar className="h-3 w-3 md:h-4 md:w-4" />
+                <BarChartIcon className="h-3 w-3 md:h-4 md:w-4" />
                 <span className="max-w-[120px] md:max-w-[180px] truncate">
                   {dateRangeLabel()}
                 </span>
@@ -380,7 +285,7 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs, expenses })
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0 max-w-[300px]" align="end">
               <div className="p-3 flex flex-col gap-2">
-                <p className="font-medium text-sm">Date Range</p>
+                <p className="font-medium text-sm">Time Range</p>
                 <div className="grid gap-1">
                   <Button 
                     variant={currentDateRange === 'this-month' ? 'default' : 'outline'} 
@@ -397,6 +302,20 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs, expenses })
                     Last Month
                   </Button>
                   <Button 
+                    variant={currentDateRange === 'last-3-months' ? 'default' : 'outline'} 
+                    className="justify-start text-xs h-8" 
+                    onClick={() => handleDateRangeChange('last-3-months')}
+                  >
+                    Last 3 Months
+                  </Button>
+                  <Button 
+                    variant={currentDateRange === 'last-6-months' ? 'default' : 'outline'} 
+                    className="justify-start text-xs h-8" 
+                    onClick={() => handleDateRangeChange('last-6-months')}
+                  >
+                    Last 6 Months
+                  </Button>
+                  <Button 
                     variant={currentDateRange === 'this-year' ? 'default' : 'outline'} 
                     className="justify-start text-xs h-8" 
                     onClick={() => handleDateRangeChange('this-year')}
@@ -404,43 +323,13 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs, expenses })
                     This Year
                   </Button>
                   <Button 
-                    variant={currentDateRange === 'last-30-days' ? 'default' : 'outline'} 
+                    variant={currentDateRange === 'last-year' ? 'default' : 'outline'} 
                     className="justify-start text-xs h-8" 
-                    onClick={() => handleDateRangeChange('last-30-days')}
+                    onClick={() => handleDateRangeChange('last-year')}
                   >
-                    Last 30 Days
-                  </Button>
-                  <Button 
-                    variant={currentDateRange === 'last-60-days' ? 'default' : 'outline'} 
-                    className="justify-start text-xs h-8" 
-                    onClick={() => handleDateRangeChange('last-60-days')}
-                  >
-                    Last 60 Days
-                  </Button>
-                  <Button 
-                    variant={currentDateRange === 'custom' ? 'default' : 'outline'} 
-                    className="justify-start text-xs h-8" 
-                    onClick={() => handleDateRangeChange('custom')}
-                  >
-                    Custom Range
+                    Last Year
                   </Button>
                 </div>
-                
-                {currentDateRange === 'custom' && (
-                  <div className="mt-2">
-                    <DatePicker
-                      mode="range"
-                      selected={customDateRange}
-                      onSelect={(range) => setCustomDateRange(range)}
-                      highlightToday={true}
-                      classNames={{
-                        day_range_start: "bg-primary text-primary-foreground rounded-l-md",
-                        day_range_end: "bg-primary text-primary-foreground rounded-r-md",
-                        day_range_middle: "bg-primary/20 text-primary rounded-none",
-                      }}
-                    />
-                  </div>
-                )}
               </div>
             </PopoverContent>
           </Popover>
@@ -481,7 +370,7 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs, expenses })
             <div className="text-sm font-medium">
               Overall Balance: 
               <span className={`ml-2 font-bold ${isProfitable ? 'text-green-600' : 'text-red-500'}`}>
-                {formatCurrency(totalProfitLoss)}
+                {formatCurrency(totalProfit)}
               </span>
             </div>
             <div className="flex items-center text-sm">
@@ -496,17 +385,14 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs, expenses })
               )}
             </div>
           </div>
-
-          {isMonthlyView() && (
-            <span className="text-xs text-muted-foreground italic mt-2">
-              Showing monthly aggregated data
-            </span>
-          )}
         </div>
         
         <div className="h-[300px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart
+          <ChartContainer 
+            className="h-full w-full" 
+            config={chartConfig}
+          >
+            <BarChart
               data={chartData}
               margin={{
                 top: 5,
@@ -523,62 +409,54 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs, expenses })
                 axisLine={false}
               />
               <YAxis 
-                yAxisId="left"
                 tick={{ fontSize: 12 }}
                 tickFormatter={formatCurrency}
                 tickLine={false}
                 axisLine={false}
-                domain={[0, 'auto']}
               />
-              <Tooltip 
-                formatter={(value: number, name: string) => {
-                  if (name === 'revenue') {
-                    return [formatCurrency(value), 'Revenue'];
-                  } else if (name === 'expenses') {
-                    return [formatCurrency(value), 'Expenses'];
-                  } else if (name === 'profitLoss') {
-                    const prefix = value >= 0 ? 'Profit: ' : 'Loss: ';
-                    return [formatCurrency(value), prefix];
-                  }
-                  return [value, name];
-                }}
-                labelFormatter={(label) => `Date: ${label}`}
+              <ChartTooltip 
+                content={
+                  <ChartTooltipContent 
+                    formatter={(value: number, name: string) => {
+                      return [formatCurrency(value), name];
+                    }}
+                  />
+                }
               />
-              <Legend />
+              <ReferenceLine y={0} stroke="#666" strokeDasharray="3 3" />
+              <ChartLegend 
+                content={<ChartLegendContent />} 
+                verticalAlign="top"
+              />
               {showRevenue && (
                 <Bar
-                  yAxisId="left"
                   dataKey="revenue"
-                  name="Revenue"
-                  fill="#9b87f5"
+                  name="revenue"
+                  fill="var(--color-revenue)"
                   radius={[4, 4, 0, 0]}
-                  maxBarSize={40}
+                  maxBarSize={50}
                 />
               )}
               {showExpenses && (
                 <Bar
-                  yAxisId="left"
                   dataKey="expenses"
-                  name="Expenses"
-                  fill="#f87171"
+                  name="expenses"
+                  fill="var(--color-expenses)"
                   radius={[4, 4, 0, 0]}
-                  maxBarSize={40}
+                  maxBarSize={50}
                 />
               )}
               {showProfit && (
-                <Line
-                  yAxisId="left"
-                  type="monotone"
-                  dataKey="profitLoss"
-                  name="Profit/Loss"
-                  stroke="#10b981"
-                  strokeWidth={2}
-                  dot={{ r: 4 }}
-                  activeDot={{ r: 6 }}
+                <Bar
+                  dataKey="profit"
+                  name="profit"
+                  fill="var(--color-profit)"
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={50}
                 />
               )}
-            </ComposedChart>
-          </ResponsiveContainer>
+            </BarChart>
+          </ChartContainer>
         </div>
       </CardContent>
     </Card>

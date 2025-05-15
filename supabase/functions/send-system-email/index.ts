@@ -36,7 +36,8 @@ function replaceVariables(text: string, variables: EmailVariables): string {
 
 // Helper function to validate email configuration
 async function validateEmailConfig() {
-  const emailHost = Deno.env.get("EMAIL_HOST");
+  // Use hardcoded value if environment variable is not set
+  const emailHost = Deno.env.get("EMAIL_HOST") || "smtp.gmail.com";
   const emailPort = Number(Deno.env.get("EMAIL_PORT"));
   const emailUsername = Deno.env.get("EMAIL_USERNAME");
   const emailPassword = Deno.env.get("EMAIL_PASSWORD");
@@ -44,7 +45,7 @@ async function validateEmailConfig() {
 
   // Log all environment variables to diagnose issues
   console.log("======== DETAILED EMAIL CONFIGURATION DEBUG ========");
-  console.log(`EMAIL_HOST: ${emailHost || 'UNDEFINED'}`);
+  console.log(`EMAIL_HOST: ${emailHost} (using ${Deno.env.get("EMAIL_HOST") ? 'from env' : 'hardcoded default'})`);
   console.log(`EMAIL_PORT: ${emailPort || 'UNDEFINED'}`);
   console.log(`EMAIL_USERNAME: ${emailUsername ? '✓ SET (hidden)' : 'UNDEFINED'}`);
   console.log(`EMAIL_PASSWORD: ${emailPassword ? '✓ SET (hidden)' : 'UNDEFINED'}`);
@@ -64,7 +65,7 @@ async function validateEmailConfig() {
     from: emailFrom
   });
 
-  if (!emailHost || !emailPort || !emailUsername || !emailPassword || !emailFrom) {
+  if (!emailPort || !emailUsername || !emailPassword || !emailFrom) {
     return { isValid: false, message: "Email credentials not configured properly" };
   }
 
@@ -273,14 +274,14 @@ serve(async (req) => {
       });
     }
 
-    // Get email credentials
-    const emailHost = Deno.env.get("EMAIL_HOST");
+    // Get email credentials, using hardcoded host if environment variable is not set
+    const emailHost = Deno.env.get("EMAIL_HOST") || "smtp.gmail.com";
     const emailPort = Number(Deno.env.get("EMAIL_PORT"));
     const emailUsername = Deno.env.get("EMAIL_USERNAME");
     const emailPassword = Deno.env.get("EMAIL_PASSWORD");
     const emailFrom = Deno.env.get("EMAIL_FROM");
 
-    if (!emailHost || !emailPort || !emailUsername || !emailPassword || !emailFrom) {
+    if (!emailPort || !emailUsername || !emailPassword || !emailFrom) {
       console.error("Email credentials not configured");
       return new Response(JSON.stringify({ error: 'Email credentials not configured' }), {
         status: 500,
@@ -400,8 +401,8 @@ serve(async (req) => {
       error: 'Failed to send email', 
       details: error.message || String(error)
     }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 });

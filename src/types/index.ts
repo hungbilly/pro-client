@@ -157,6 +157,18 @@ export interface DiscountTemplate {
   updated_at: string;
 }
 
+export interface Expense {
+  id: string;
+  companyId: string;
+  amount: number;
+  description: string;
+  category: string;
+  date: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export const STORAGE_KEYS = {
   CLIENTS: 'wedding-clients',
   INVOICES: 'wedding-invoices',

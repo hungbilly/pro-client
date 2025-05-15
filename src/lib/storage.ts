@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { Client, Invoice, InvoiceItem, Job, PaymentSchedule, InvoiceStatus, ContractStatus, PaymentStatus } from '@/types';
+import { Client, Invoice, InvoiceItem, Job, PaymentSchedule, InvoiceStatus, ContractStatus, PaymentStatus, Expense } from '@/types';
 import { format } from 'date-fns';
 
 // Job functions
@@ -1215,5 +1215,35 @@ export const updatePaymentScheduleStatus = async (scheduleId: string, status: Pa
   } catch (error) {
     console.error('Error in updatePaymentScheduleStatus:', error);
     return false;
+  }
+};
+
+export const getExpenses = async (companyId: string): Promise<Expense[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('expenses')
+      .select('*')
+      .eq('company_id', companyId)
+      .order('date', { ascending: false });
+    
+    if (error) {
+      console.error('Error getting expenses:', error);
+      return [];
+    }
+
+    return data.map(expense => ({
+      id: expense.id,
+      companyId: expense.company_id,
+      amount: expense.amount,
+      description: expense.description,
+      category: expense.category,
+      date: expense.date,
+      notes: expense.notes,
+      createdAt: expense.created_at,
+      updatedAt: expense.updated_at
+    }));
+  } catch (error) {
+    console.error('Error in getExpenses:', error);
+    return [];
   }
 };

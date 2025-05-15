@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { getClients, getInvoices, getJobs, deleteClient } from '@/lib/storage';
-import { Client, Invoice } from '@/types';
+import { getClients, getInvoices, getJobs, deleteClient, getExpenses } from '@/lib/storage';
+import { Client, Invoice, Expense } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -20,6 +20,7 @@ import AddJobButton from './ui-custom/AddJobButton';
 import RevenueChart from './RevenueChart';
 import { supabase } from '@/integrations/supabase/client';
 import { logDebug } from '@/integrations/supabase/client';
+
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const [clientToDelete, setClientToDelete] = React.useState<string | null>(null);
@@ -45,6 +46,9 @@ const Dashboard: React.FC = () => {
       });
       queryClient.invalidateQueries({
         queryKey: ['invoices', selectedCompanyId]
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['expenses', selectedCompanyId]
       });
     }
   }, [selectedCompanyId, queryClient]);
@@ -154,6 +158,14 @@ const Dashboard: React.FC = () => {
     });
     setJobDates(dateMap);
   }, [jobs]);
+  const {
+    data: expenses = [],
+    isLoading: expensesLoading
+  } = useQuery({
+    queryKey: ['expenses', selectedCompanyId],
+    queryFn: () => getExpenses(selectedCompanyId),
+    enabled: !!selectedCompanyId
+  });
   if (companyLoading) {
     return <div className="flex items-center justify-center h-screen">
         <div className="text-center">
@@ -234,7 +246,7 @@ const Dashboard: React.FC = () => {
     }
     return <span className="text-muted-foreground text-sm">Not set</span>;
   };
-  const isLoading = clientsLoading || invoicesLoading || jobsLoading;
+  const isLoading = clientsLoading || invoicesLoading || jobsLoading || expensesLoading;
   if (isLoading) {
     return <div className="flex items-center justify-center h-screen">
         <div className="text-center">
@@ -270,7 +282,7 @@ const Dashboard: React.FC = () => {
         </div>
 
         <div className="mb-8">
-          <RevenueChart invoices={invoices} jobs={jobs} />
+          <RevenueChart invoices={invoices} jobs={jobs} expenses={expenses} />
         </div>
 
         <Card className="backdrop-blur-sm bg-white/80 border-transparent shadow-soft">
@@ -505,4 +517,5 @@ const Dashboard: React.FC = () => {
       </div>
     </AnimatedBackground>;
 };
+
 export default Dashboard;

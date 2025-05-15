@@ -2,18 +2,18 @@
 import React, { useState, useEffect } from 'react';
 import { format, startOfMonth, endOfMonth, parseISO, subMonths, addMonths, subDays, startOfYear, endOfYear, differenceInDays, getMonth, getYear, isValid } from 'date-fns';
 import { 
-  LineChart, 
-  Line, 
+  BarChart, 
+  Bar,
   XAxis, 
   YAxis, 
   CartesianGrid, 
   Tooltip, 
   ResponsiveContainer,
   Legend,
-  Area,
+  Line,
   ComposedChart
 } from 'recharts';
-import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, TrendingUp, TrendingDown } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -21,18 +21,18 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { DatePicker } from "@/components/ui/date-picker";
 import { Switch } from "@/components/ui/switch";
 import { type DateRange } from "react-day-picker";
-import { Invoice, Job, PaymentSchedule } from '@/types';
-import { getInvoicesByDate, getInvoice } from '@/lib/storage';
-import { logDebug, logError, logDataTransformation } from '@/integrations/supabase/client';
+import { Invoice, Job, Expense } from '@/types';
+import { logDebug } from '@/integrations/supabase/client';
 
 interface RevenueChartProps {
   invoices: Invoice[];
   jobs: Job[];
+  expenses: Expense[];
 }
 
 type DateRangeType = 'custom' | 'this-month' | 'last-month' | 'this-year' | 'last-30-days' | 'last-60-days';
 
-const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
+const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs, expenses }) => {
   const [currentDateRange, setCurrentDateRange] = useState<DateRangeType>('this-month');
   const [customDateRange, setCustomDateRange] = useState<DateRange | undefined>({
     from: subDays(new Date(), 30),
@@ -40,34 +40,20 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
   });
   const [chartData, setChartData] = useState<any[]>([]);
   
-  const [showPaidRevenue, setShowPaidRevenue] = useState(true);
-  const [showUnpaidRevenue, setShowUnpaidRevenue] = useState(true);
-  const [showTotalRevenue, setShowTotalRevenue] = useState(true);
-  const [showJobCount, setShowJobCount] = useState(true);
+  const [showRevenue, setShowRevenue] = useState(true);
+  const [showExpenses, setShowExpenses] = useState(true);
+  const [showProfit, setShowProfit] = useState(true);
   
   useEffect(() => {
     logDebug('RevenueChart: Generating chart data with', { 
       invoiceCount: invoices.length, 
       jobCount: jobs.length,
+      expensesCount: expenses.length,
       currentDateRange 
     });
     
-    if (invoices.length > 0) {
-      // Log more detailed information about invoices and their payment schedules
-      logDebug('Sample invoices with payment schedules:', invoices.slice(0, 3).map(inv => ({
-        id: inv.id,
-        amount: inv.amount,
-        status: inv.status,
-        date: inv.date,
-        dateFormatted: inv.date ? formatDateToYYYYMMDD(parseDate(inv.date)) : 'no date',
-        paymentSchedules: inv?.paymentSchedules || [],
-        paymentSchedulesCount: inv?.paymentSchedules?.length || 0,
-        hasAnyPaidSchedules: inv?.paymentSchedules?.some(schedule => schedule.status === 'paid') || false
-      })));
-    }
-    
     generateChartData();
-  }, [invoices, jobs, currentDateRange, customDateRange]);
+  }, [invoices, jobs, expenses, currentDateRange, customDateRange]);
   
   const formatDateToYYYYMMDD = (date: Date): string => {
     try {
@@ -162,14 +148,8 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
     const data = daysInRange.map(day => {
       const dayFormatted = formatDateToYYYYMMDD(day);
       
-      const dayJobs = jobs.filter(job => {
-        if (!job.date) return false;
-        const jobDate = parseDate(job.date);
-        return formatDateToYYYYMMDD(jobDate) === dayFormatted;
-      });
-      
-      let paidAmount = 0;
-      let unpaidAmount = 0;
+      // Calculate revenue for the day
+      let totalRevenue = 0;
       
       invoices.forEach(invoice => {
         // Check if invoice has paymentSchedules and use them
@@ -183,107 +163,59 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
               status: invoice.status === 'paid' ? 'paid' : 'unpaid'
             }];
         
-        // Debug log for problematic invoices that might not have payment schedules
-        if (!invoice.paymentSchedules || invoice.paymentSchedules.length === 0) {
-          logDebug(`Invoice ${invoice.id} has no payment schedules, using default`, {
-            invoiceStatus: invoice.status,
-            amount: invoice.amount,
-            date: invoice.date
-          });
-        }
-      
         schedules.forEach(schedule => {
-          // Determine which date to use based on the schedule status
-          let relevantDate: string;
-          let dateType: string;
-          
-          if (schedule.status === 'paid' && schedule.paymentDate) {
-            // For paid schedules, use payment_date if available
-            relevantDate = schedule.paymentDate;
-            dateType = 'paymentDate';
-          } else if (schedule.dueDate) {
-            // For unpaid schedules or paid without payment_date, use due_date
-            relevantDate = schedule.dueDate;
-            dateType = 'dueDate';
-          } else {
-            // Fallback to invoice date if nothing else available
-            relevantDate = invoice.date;
-            dateType = 'invoiceDate';
-          }
-          
-          if (!relevantDate) {
-            logDebug(`Schedule has no valid date for invoice ${invoice.id}`, schedule);
-            return;
-          }
-          
-          const scheduleDate = parseDate(relevantDate);
-          const scheduleDateFormatted = formatDateToYYYYMMDD(scheduleDate);
-          
-          if (scheduleDateFormatted === dayFormatted) {
-            const scheduleAmount = (schedule.percentage / 100) * invoice.amount;
+          // Only count paid payments as revenue
+          if (schedule.status === 'paid') {
+            let relevantDate = schedule.paymentDate || schedule.dueDate || invoice.date;
             
-            logDebug(`Found payment schedule for day ${dayFormatted}:`, {
-              invoiceId: invoice.id,
-              scheduleId: schedule.id,
-              totalAmount: invoice.amount,
-              schedulePercentage: schedule.percentage,
-              scheduleAmount,
-              status: schedule.status,
-              dateUsed: dateType,
-              dateValue: relevantDate,
-              formattedDate: scheduleDateFormatted
-            });
+            if (!relevantDate) return;
             
-            // Explicitly check for 'paid' status string
-            if (schedule.status === 'paid') {
-              paidAmount += scheduleAmount;
-              logDebug(`Adding ${scheduleAmount} to paidAmount for invoice ${invoice.id}`, {
-                scheduleId: schedule.id,
-                newTotal: paidAmount
-              });
-            } else {
-              unpaidAmount += scheduleAmount;
-              logDebug(`Adding ${scheduleAmount} to unpaidAmount for invoice ${invoice.id}`, {
-                scheduleId: schedule.id,
-                newTotal: unpaidAmount
-              });
+            const scheduleDate = parseDate(relevantDate);
+            const scheduleDateFormatted = formatDateToYYYYMMDD(scheduleDate);
+            
+            if (scheduleDateFormatted === dayFormatted) {
+              const scheduleAmount = (schedule.percentage / 100) * invoice.amount;
+              totalRevenue += scheduleAmount;
             }
           }
         });
       });
       
-      const totalAmount = paidAmount + unpaidAmount;
+      // Calculate expenses for the day
+      let totalExpenses = 0;
       
-      if (paidAmount > 0 || unpaidAmount > 0) {
-        logDebug(`Revenue data for ${dayFormatted}:`, { 
-          paidAmount, 
-          unpaidAmount, 
-          totalAmount, 
-          jobCount: dayJobs.length 
-        });
-      }
+      expenses.forEach(expense => {
+        if (!expense.date) return;
+        
+        const expenseDate = parseDate(expense.date);
+        const expenseDateFormatted = formatDateToYYYYMMDD(expenseDate);
+        
+        if (expenseDateFormatted === dayFormatted) {
+          totalExpenses += expense.amount;
+        }
+      });
+      
+      // Calculate profit/loss
+      const profitLoss = totalRevenue - totalExpenses;
       
       return {
         date: dayFormatted,
         displayDate: format(day, 'd MMM'),
-        paidAmount,
-        unpaidAmount,
-        totalAmount,
-        jobCount: dayJobs.length,
+        revenue: totalRevenue,
+        expenses: totalExpenses,
+        profitLoss: profitLoss
       };
     });
     
-    const totalPaid = data.reduce((sum, item) => sum + item.paidAmount, 0);
-    const totalUnpaid = data.reduce((sum, item) => sum + item.unpaidAmount, 0);
-    const totalRevenue = data.reduce((sum, item) => sum + item.totalAmount, 0);
-    const totalJobs = data.reduce((sum, item) => sum + item.jobCount, 0);
+    const totalRevenue = data.reduce((sum, item) => sum + item.revenue, 0);
+    const totalExpenses = data.reduce((sum, item) => sum + item.expenses, 0);
+    const totalProfitLoss = data.reduce((sum, item) => sum + item.profitLoss, 0);
     
     logDebug('RevenueChart: Final daily chart data summary:', {
       dataPointsCount: data.length,
-      totalPaid,
-      totalUnpaid,
       totalRevenue,
-      totalJobs
+      totalExpenses,
+      totalProfitLoss
     });
     
     setChartData(data);
@@ -293,7 +225,7 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
     // Create a map to store monthly aggregated data
     const monthlyData = new Map();
     
-    // Loop through all invoices and aggregate by month
+    // Process invoices for revenue
     invoices.forEach(invoice => {
       const schedules = invoice.paymentSchedules && invoice.paymentSchedules.length > 0
         ? invoice.paymentSchedules
@@ -306,75 +238,63 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
           }];
       
       schedules.forEach(schedule => {
-        let relevantDate: string;
-        
-        if (schedule.status === 'paid' && schedule.paymentDate) {
-          relevantDate = schedule.paymentDate;
-        } else if (schedule.dueDate) {
-          relevantDate = schedule.dueDate;
-        } else {
-          relevantDate = invoice.date;
-        }
-        
-        if (!relevantDate) return;
-        
-        const scheduleDate = parseDate(relevantDate);
-        
-        // Skip if outside date range
-        if (scheduleDate < startDate || scheduleDate > endDate) return;
-        
-        const monthYear = `${getYear(scheduleDate)}-${getMonth(scheduleDate)}`;
-        const scheduleAmount = (schedule.percentage / 100) * invoice.amount;
-        
-        if (!monthlyData.has(monthYear)) {
-          monthlyData.set(monthYear, {
-            month: getMonth(scheduleDate),
-            year: getYear(scheduleDate),
-            date: scheduleDate,
-            paidAmount: 0,
-            unpaidAmount: 0,
-            totalAmount: 0,
-            jobCount: 0
-          });
-        }
-        
-        const monthData = monthlyData.get(monthYear);
-        
+        // Only count paid payments as revenue
         if (schedule.status === 'paid') {
-          monthData.paidAmount += scheduleAmount;
-        } else {
-          monthData.unpaidAmount += scheduleAmount;
+          let relevantDate = schedule.paymentDate || schedule.dueDate || invoice.date;
+          
+          if (!relevantDate) return;
+          
+          const scheduleDate = parseDate(relevantDate);
+          
+          // Skip if outside date range
+          if (scheduleDate < startDate || scheduleDate > endDate) return;
+          
+          const monthYear = `${getYear(scheduleDate)}-${getMonth(scheduleDate)}`;
+          const scheduleAmount = (schedule.percentage / 100) * invoice.amount;
+          
+          if (!monthlyData.has(monthYear)) {
+            monthlyData.set(monthYear, {
+              month: getMonth(scheduleDate),
+              year: getYear(scheduleDate),
+              date: scheduleDate,
+              revenue: 0,
+              expenses: 0,
+              profitLoss: 0
+            });
+          }
+          
+          const monthData = monthlyData.get(monthYear);
+          monthData.revenue += scheduleAmount;
+          monthData.profitLoss = monthData.revenue - monthData.expenses;
         }
-        
-        monthData.totalAmount = monthData.paidAmount + monthData.unpaidAmount;
       });
     });
     
-    // Aggregate jobs by month
-    jobs.forEach(job => {
-      if (!job.date) return;
+    // Process expenses
+    expenses.forEach(expense => {
+      if (!expense.date) return;
       
-      const jobDate = parseDate(job.date);
+      const expenseDate = parseDate(expense.date);
       
       // Skip if outside date range
-      if (jobDate < startDate || jobDate > endDate) return;
+      if (expenseDate < startDate || expenseDate > endDate) return;
       
-      const monthYear = `${getYear(jobDate)}-${getMonth(jobDate)}`;
+      const monthYear = `${getYear(expenseDate)}-${getMonth(expenseDate)}`;
       
       if (!monthlyData.has(monthYear)) {
         monthlyData.set(monthYear, {
-          month: getMonth(jobDate),
-          year: getYear(jobDate),
-          date: jobDate,
-          paidAmount: 0,
-          unpaidAmount: 0,
-          totalAmount: 0,
-          jobCount: 0
+          month: getMonth(expenseDate),
+          year: getYear(expenseDate),
+          date: expenseDate,
+          revenue: 0,
+          expenses: 0,
+          profitLoss: 0
         });
       }
       
       const monthData = monthlyData.get(monthYear);
-      monthData.jobCount += 1;
+      monthData.expenses += expense.amount;
+      monthData.profitLoss = monthData.revenue - monthData.expenses;
     });
     
     // Convert map to array and sort by date
@@ -434,10 +354,16 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
     return differenceInDays(endDate, startDate) > 30;
   };
 
+  // Calculate total profit/loss
+  const totalRevenue = chartData.reduce((sum, item) => sum + item.revenue, 0);
+  const totalExpenses = chartData.reduce((sum, item) => sum + item.expenses, 0);
+  const totalProfitLoss = totalRevenue - totalExpenses;
+  const isProfitable = totalProfitLoss >= 0;
+
   return (
     <Card className="w-full backdrop-blur-sm bg-white/80 border-transparent shadow-soft">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-md font-medium">Revenue & Jobs Overview</CardTitle>
+        <CardTitle className="text-md font-medium">Expense vs. Revenue Balance</CardTitle>
         <div className="flex items-center space-x-2">
           <Popover>
             <PopoverTrigger asChild>
@@ -521,45 +447,58 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="flex flex-wrap gap-4 mb-4">
-          <label className="flex items-center space-x-2">
-            <Checkbox 
-              checked={showPaidRevenue} 
-              onCheckedChange={(checked) => setShowPaidRevenue(checked as boolean)} 
-              className="data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500"
-            />
-            <span className="text-sm">Paid Revenue</span>
-          </label>
-          
-          <label className="flex items-center space-x-2">
-            <Checkbox 
-              checked={showUnpaidRevenue} 
-              onCheckedChange={(checked) => setShowUnpaidRevenue(checked as boolean)}
-              className="data-[state=checked]:bg-blue-300 data-[state=checked]:border-blue-300" 
-            />
-            <span className="text-sm">Unpaid Revenue</span>
-          </label>
-          
-          <label className="flex items-center space-x-2">
-            <Checkbox 
-              checked={showTotalRevenue} 
-              onCheckedChange={(checked) => setShowTotalRevenue(checked as boolean)}
-              className="data-[state=checked]:bg-purple-700 data-[state=checked]:border-purple-700"
-            />
-            <span className="text-sm">Total Revenue</span>
-          </label>
-          
-          <label className="flex items-center space-x-2">
-            <Checkbox 
-              checked={showJobCount} 
-              onCheckedChange={(checked) => setShowJobCount(checked as boolean)}
-              className="data-[state=checked]:bg-orange-500 data-[state=checked]:border-orange-500"
-            />
-            <span className="text-sm">Jobs Count</span>
-          </label>
+        <div className="flex flex-col mb-4">
+          <div className="flex flex-wrap gap-4 mb-4">
+            <label className="flex items-center space-x-2">
+              <Checkbox 
+                checked={showRevenue} 
+                onCheckedChange={(checked) => setShowRevenue(checked as boolean)} 
+                className="data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500"
+              />
+              <span className="text-sm">Revenue</span>
+            </label>
+            
+            <label className="flex items-center space-x-2">
+              <Checkbox 
+                checked={showExpenses} 
+                onCheckedChange={(checked) => setShowExpenses(checked as boolean)}
+                className="data-[state=checked]:bg-red-500 data-[state=checked]:border-red-500" 
+              />
+              <span className="text-sm">Expenses</span>
+            </label>
+            
+            <label className="flex items-center space-x-2">
+              <Checkbox 
+                checked={showProfit} 
+                onCheckedChange={(checked) => setShowProfit(checked as boolean)}
+                className="data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600"
+              />
+              <span className="text-sm">Profit/Loss</span>
+            </label>
+          </div>
+
+          <div className="flex items-center justify-between px-2">
+            <div className="text-sm font-medium">
+              Overall Balance: 
+              <span className={`ml-2 font-bold ${isProfitable ? 'text-green-600' : 'text-red-500'}`}>
+                {formatCurrency(totalProfitLoss)}
+              </span>
+            </div>
+            <div className="flex items-center text-sm">
+              {isProfitable ? (
+                <div className="flex items-center text-green-600">
+                  <TrendingUp size={16} className="mr-1" /> Profit
+                </div>
+              ) : (
+                <div className="flex items-center text-red-500">
+                  <TrendingDown size={16} className="mr-1" /> Loss
+                </div>
+              )}
+            </div>
+          </div>
 
           {isMonthlyView() && (
-            <span className="ml-auto text-xs text-muted-foreground italic">
+            <span className="text-xs text-muted-foreground italic mt-2">
               Showing monthly aggregated data
             </span>
           )}
@@ -591,76 +530,51 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ invoices, jobs }) => {
                 axisLine={false}
                 domain={[0, 'auto']}
               />
-              <YAxis 
-                yAxisId="right"
-                orientation="right"
-                tick={{ fontSize: 12 }}
-                tickLine={false}
-                axisLine={false}
-                domain={[0, 'auto']}
-              />
               <Tooltip 
                 formatter={(value: number, name: string) => {
-                  if (name === 'paidAmount') {
-                    return [formatCurrency(value), 'Paid Revenue'];
-                  } else if (name === 'unpaidAmount') {
-                    return [formatCurrency(value), 'Unpaid Revenue'];
-                  } else if (name === 'totalAmount') {
-                    return [formatCurrency(value), 'Total Revenue'];
-                  } else if (name === 'jobCount') {
-                    return [value, 'Jobs Count'];
+                  if (name === 'revenue') {
+                    return [formatCurrency(value), 'Revenue'];
+                  } else if (name === 'expenses') {
+                    return [formatCurrency(value), 'Expenses'];
+                  } else if (name === 'profitLoss') {
+                    const prefix = value >= 0 ? 'Profit: ' : 'Loss: ';
+                    return [formatCurrency(value), prefix];
                   }
                   return [value, name];
                 }}
                 labelFormatter={(label) => `Date: ${label}`}
               />
               <Legend />
-              {showPaidRevenue && (
-                <Area
+              {showRevenue && (
+                <Bar
                   yAxisId="left"
-                  type="monotone"
-                  dataKey="paidAmount"
-                  name="Paid Revenue"
+                  dataKey="revenue"
+                  name="Revenue"
                   fill="#9b87f5"
-                  fillOpacity={0.3}
-                  stroke="#9b87f5"
-                  activeDot={{ r: 8 }}
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={40}
                 />
               )}
-              {showUnpaidRevenue && (
-                <Area
+              {showExpenses && (
+                <Bar
+                  yAxisId="left"
+                  dataKey="expenses"
+                  name="Expenses"
+                  fill="#f87171"
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={40}
+                />
+              )}
+              {showProfit && (
+                <Line
                   yAxisId="left"
                   type="monotone"
-                  dataKey="unpaidAmount"
-                  name="Unpaid Revenue"
-                  fill="#E5DEFF"
-                  fillOpacity={0.3}
-                  stroke="#E5DEFF"
+                  dataKey="profitLoss"
+                  name="Profit/Loss"
+                  stroke="#10b981"
+                  strokeWidth={2}
+                  dot={{ r: 4 }}
                   activeDot={{ r: 6 }}
-                />
-              )}
-              {showTotalRevenue && (
-                <Line
-                  yAxisId="left"
-                  type="monotone"
-                  dataKey="totalAmount"
-                  name="Total Revenue"
-                  stroke="#6E59A5"
-                  strokeWidth={2}
-                  dot={{ r: 4 }}
-                  activeDot={{ r: 8 }}
-                />
-              )}
-              {showJobCount && (
-                <Line
-                  yAxisId="right"
-                  type="monotone"
-                  dataKey="jobCount"
-                  name="Jobs Count"
-                  stroke="#F97316"
-                  strokeWidth={2}
-                  dot={{ r: 4 }}
-                  activeDot={{ r: 8 }}
                 />
               )}
             </ComposedChart>

@@ -42,6 +42,20 @@ async function validateEmailConfig() {
   const emailPassword = Deno.env.get("EMAIL_PASSWORD");
   const emailFrom = Deno.env.get("EMAIL_FROM");
 
+  // Log all environment variables to diagnose issues
+  console.log("======== DETAILED EMAIL CONFIGURATION DEBUG ========");
+  console.log(`EMAIL_HOST: ${emailHost || 'UNDEFINED'}`);
+  console.log(`EMAIL_PORT: ${emailPort || 'UNDEFINED'}`);
+  console.log(`EMAIL_USERNAME: ${emailUsername ? '✓ SET (hidden)' : 'UNDEFINED'}`);
+  console.log(`EMAIL_PASSWORD: ${emailPassword ? '✓ SET (hidden)' : 'UNDEFINED'}`);
+  console.log(`EMAIL_FROM: ${emailFrom || 'UNDEFINED'}`);
+  
+  // List all available environment variables (without values for security)
+  console.log("\n======== ALL AVAILABLE ENVIRONMENT VARIABLES ========");
+  const envKeys = Object.keys(Deno.env.toObject());
+  console.log(`Available env variables: ${envKeys.join(", ")}`);
+  console.log("====================================================\n");
+
   console.log("Email configuration:", {
     host: emailHost, 
     port: emailPort,

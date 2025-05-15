@@ -4,7 +4,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import InvoiceForm from '@/components/InvoiceForm';
 import { getInvoice, getClient, getJob } from '@/lib/storage';
 import { Invoice, Client, Job, InvoiceTemplate, PaymentSchedule } from '@/types';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { supabase, logDebug, logError, logDataTransformation, formatDate, parseDate } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
@@ -264,6 +264,46 @@ const InvoiceCreate = () => {
     }
   };
 
+  const handleTemplateSelection = async (templateId: string) => {
+    try {
+      setSelectedTemplate(templateId);
+      
+      // Find the template in the already loaded templates
+      const selectedTemplate = templates.find(t => t.id === templateId);
+      
+      if (!selectedTemplate) {
+        console.error('Selected template not found');
+        return;
+      }
+      
+      let parsedContent: any = {};
+      try {
+        parsedContent = selectedTemplate.content ? JSON.parse(selectedTemplate.content) : {};
+      } catch (e) {
+        console.error('Error parsing template content:', e);
+        return;
+      }
+      
+      // Create a new invoice object with the template data
+      const newInvoice: Invoice = {
+        ...(invoice || {}),
+        items: parsedContent.items || [],
+        contractTerms: parsedContent.contractTerms || '',
+        notes: parsedContent.notes || '',
+        paymentSchedules: parsedContent.paymentSchedules || [],
+      };
+      
+      // Update the invoice state
+      setInvoice(newInvoice);
+      
+      toast.success(`Template "${selectedTemplate.name}" applied successfully`);
+      
+    } catch (error) {
+      console.error('Error applying template:', error);
+      toast.error('Failed to apply template');
+    }
+  };
+
   const getBreadcrumbPaths = () => {
     const paths = [
       { label: "Dashboard", path: "/" },
@@ -395,7 +435,7 @@ const InvoiceCreate = () => {
                   <FormLabel>Use Template (Optional)</FormLabel>
                   <Select
                     value={selectedTemplate || ''}
-                    onValueChange={(value) => setSelectedTemplate(value)}
+                    onValueChange={handleTemplateSelection}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select a template..." />

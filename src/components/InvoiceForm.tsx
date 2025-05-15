@@ -7,8 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2, Calendar as CalendarIcon, CalendarPlus, Pencil, Copy, Package as PackageIcon, AlertCircle, Briefcase, Mail, User, BadgePercent } from 'lucide-react';
-import { toast } from 'sonner';
+import { Plus, Trash2, Calendar as CalendarIcon, CalendarPlus, Pencil, Copy, Package as PackageIcon, AlertCircle, Briefcase, Mail, User, BadgePercent, Save } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 import { getClient, saveInvoice, updateInvoice, getJob, getInvoice, getInvoicesByDate, deleteInvoice } from '@/lib/storage';
 import { format } from 'date-fns';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -26,6 +26,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import AddDiscountDialog from './AddDiscountDialog';
 import PaymentScheduleTable from './invoice/PaymentScheduleTable';
+import SaveAsTemplateDialog from './SaveAsTemplateDialog';
 
 export interface InvoiceFormProps {
   invoice?: Invoice;
@@ -108,6 +109,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [showAddProductDialog, setShowAddProductDialog] = useState(false);
   const [showAddDiscountDialog, setShowAddDiscountDialog] = useState(false);
+  const [showSaveAsTemplateDialog, setShowSaveAsTemplateDialog] = useState(false);
   const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({});
   const [isGeneratingInvoiceNumber, setIsGeneratingInvoiceNumber] = useState(false);
 
@@ -955,13 +957,24 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
         </div>
       </CardContent>
       <CardFooter className="flex justify-between">
-        <Button 
-          variant="outline" 
-          onClick={() => setShowDeleteConfirmation(true)}
-          disabled={!invoice.id || isSaving || isDeleting}
-        >
-          {isDeleting ? 'Deleting...' : 'Delete Invoice'}
-        </Button>
+        <div className="flex space-x-2">
+          <Button 
+            variant="outline" 
+            onClick={() => setShowDeleteConfirmation(true)}
+            disabled={!invoice.id || isSaving || isDeleting}
+          >
+            {isDeleting ? 'Deleting...' : 'Delete Invoice'}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setShowSaveAsTemplateDialog(true)}
+            disabled={isSaving || invoice.items.length === 0}
+            className="flex items-center"
+          >
+            <Save className="mr-2 h-4 w-4" />
+            Save as Template
+          </Button>
+        </div>
         <div className="flex space-x-2">
           <Button 
             variant="outline" 
@@ -997,6 +1010,12 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
         onOpenChange={setShowAddDiscountDialog} 
         onAddDiscount={handleAddDiscountDialog} 
         subtotal={calculateTotal()}
+      />
+
+      <SaveAsTemplateDialog 
+        open={showSaveAsTemplateDialog} 
+        onOpenChange={setShowSaveAsTemplateDialog} 
+        invoice={invoice}
       />
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Users, Briefcase, Settings, CreditCard, LogOut, Building, Menu, User, UserCog, FileText, Shield } from 'lucide-react';
+import { Home, Users, Briefcase, Settings, CreditCard, LogOut, Building, Menu, User, UserCog, FileText, Shield, DollarSign, CreditCard as Payment } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
 import { useCompany } from './CompanySelector';
@@ -85,9 +85,14 @@ const TopNavbar = () => {
       icon: <FileText className="w-5 h-5" />
     },
     {
-      path: '/account',
-      label: 'Account',
-      icon: <CreditCard className="w-5 h-5" />
+      path: '/expenses',
+      label: 'Expenses',
+      icon: <DollarSign className="w-5 h-5" />
+    },
+    {
+      path: '/payments',
+      label: 'Payments',
+      icon: <Payment className="w-5 h-5" />
     },
     {
       path: '/settings',

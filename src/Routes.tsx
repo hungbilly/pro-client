@@ -1,3 +1,4 @@
+
 import React from 'react';
 import {
   Routes as ReactRoutes,
@@ -31,6 +32,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import SubscriptionGuard from '@/components/SubscriptionGuard';
 import Settings from '@/pages/Settings';
 import Payments from '@/pages/Payments';
+import Accounts from '@/pages/Accounts';
 import EmailVerification from '@/pages/EmailVerification';
 import JobCreate from '@/pages/JobCreate';
 import JobDetail from '@/pages/JobDetail';
@@ -73,7 +75,8 @@ const AppRoutes = () => {
         <Route path="/client/:id/edit" element={<ClientEdit />} />
         <Route path="/invoices" element={<Invoices />} />
         <Route path="/jobs" element={<Jobs />} />
-        <Route path="/account" element={<Payments />} />
+        <Route path="/expenses" element={<Accounts />} />
+        <Route path="/payments" element={<Payments />} />
         <Route path="/settings" element={<Settings />} />
         
         {/* Job routes */}

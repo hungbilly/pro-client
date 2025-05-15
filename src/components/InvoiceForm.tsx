@@ -189,6 +189,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
         number: newInvoiceNumber
       }));
       
+      // Clear validation errors for number field
       setValidationErrors(prev => ({
         ...prev,
         number: ''
@@ -280,7 +281,8 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   const validateForm = (): boolean => {
     const errors: {[key: string]: string} = {};
     
-    if (!invoice.number) {
+    // Check if invoice number is empty or consists only of whitespace
+    if (!invoice.number || invoice.number.trim() === '') {
       errors.number = 'Invoice number is required';
     }
     
@@ -306,6 +308,12 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     e.preventDefault();
     console.log("Default form behavior prevented");
     
+    // Ensure the invoice number is trimmed of whitespace
+    setInvoice(prev => ({
+      ...prev,
+      number: prev.number.trim()
+    }));
+    
     if (!validateForm()) {
       console.error("Validation failed", validationErrors);
       
@@ -327,6 +335,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
       const invoiceToSave = {
         ...invoice,
         date: invoice.date || format(new Date(), 'yyyy-MM-dd'),
+        number: invoice.number.trim() // Ensure number is trimmed
       };
       
       console.log("Preparing to save invoice with data:", {
@@ -334,6 +343,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
         clientId: invoiceToSave.clientId,
         jobId: invoiceToSave.jobId,
         date: invoiceToSave.date,
+        number: invoiceToSave.number,
         items: invoiceToSave.items.length,
         status: invoiceToSave.status,
         userId: user?.id,
@@ -405,12 +415,19 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
   const applyTemplate = () => {
     if (selectedTemplate) {
-      setInvoice(prevInvoice => ({
-        ...prevInvoice,
-        contractTerms: selectedTemplate.content || '',
-        // Ensure date is preserved when applying a template
-        date: prevInvoice.date || format(new Date(), 'yyyy-MM-dd'),
-      }));
+      setInvoice(prevInvoice => {
+        // Save the current date and number
+        const currentDate = prevInvoice.date || format(new Date(), 'yyyy-MM-dd');
+        const currentNumber = prevInvoice.number;
+        
+        return {
+          ...prevInvoice,
+          contractTerms: selectedTemplate.content || '',
+          // Ensure date and number are preserved when applying a template
+          date: currentDate,
+          number: currentNumber
+        };
+      });
     }
     setIsDialogOpen(false);
   };

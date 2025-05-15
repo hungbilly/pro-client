@@ -41,6 +41,8 @@ const Jobs = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [sortBy, setSortBy] = useState<string>('date');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   
   const { data: jobs = [], isLoading, error } = useQuery({
     queryKey: ['jobs', selectedCompanyId],
@@ -68,6 +70,15 @@ const Jobs = () => {
 
   const handleRowClick = (jobId: string) => {
     navigate(`/job/${jobId}`);
+  };
+
+  const handleSort = (field: string) => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(field);
+      setSortOrder('asc');
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -110,6 +121,43 @@ const Jobs = () => {
     }
     
     return matchesSearch && matchesDateRange;
+  });
+
+  // Sort filtered jobs
+  const sortedJobs = [...filteredJobs].sort((a, b) => {
+    let valueA, valueB;
+    
+    switch (sortBy) {
+      case 'title':
+        valueA = a.title || '';
+        valueB = b.title || '';
+        break;
+      case 'client':
+        valueA = getClientName(a.clientId) || '';
+        valueB = getClientName(b.clientId) || '';
+        break;
+      case 'date':
+        valueA = a.date ? new Date(a.date).getTime() : 0;
+        valueB = b.date ? new Date(b.date).getTime() : 0;
+        break;
+      case 'location':
+        valueA = a.location || '';
+        valueB = b.location || '';
+        break;
+      case 'status':
+        valueA = a.status || '';
+        valueB = b.status || '';
+        break;
+      default:
+        valueA = a.date ? new Date(a.date).getTime() : 0;
+        valueB = b.date ? new Date(b.date).getTime() : 0;
+    }
+    
+    if (sortOrder === 'asc') {
+      return valueA > valueB ? 1 : -1;
+    } else {
+      return valueA < valueB ? 1 : -1;
+    }
   });
 
   const handleExportOpen = () => {
@@ -202,16 +250,48 @@ const Jobs = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Title</TableHead>
-                      <TableHead>Client</TableHead>
-                      <TableHead className="hidden md:table-cell">Date</TableHead>
-                      <TableHead className="hidden md:table-cell">Location</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead 
+                        sortable 
+                        sorted={sortBy === 'title' ? sortOrder : null}
+                        onSort={() => handleSort('title')}
+                      >
+                        Title
+                      </TableHead>
+                      <TableHead 
+                        sortable 
+                        sorted={sortBy === 'client' ? sortOrder : null}
+                        onSort={() => handleSort('client')}
+                      >
+                        Client
+                      </TableHead>
+                      <TableHead 
+                        className="hidden md:table-cell"
+                        sortable 
+                        sorted={sortBy === 'date' ? sortOrder : null}
+                        onSort={() => handleSort('date')}
+                      >
+                        Date
+                      </TableHead>
+                      <TableHead 
+                        className="hidden md:table-cell"
+                        sortable 
+                        sorted={sortBy === 'location' ? sortOrder : null}
+                        onSort={() => handleSort('location')}
+                      >
+                        Location
+                      </TableHead>
+                      <TableHead 
+                        sortable 
+                        sorted={sortBy === 'status' ? sortOrder : null}
+                        onSort={() => handleSort('status')}
+                      >
+                        Status
+                      </TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredJobs.map((job) => (
+                    {sortedJobs.map((job) => (
                       <TableRow 
                         key={job.id} 
                         className="cursor-pointer"

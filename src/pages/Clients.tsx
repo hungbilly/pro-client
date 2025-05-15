@@ -72,6 +72,8 @@ const ClientsTable = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [sortBy, setSortBy] = useState<string>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   
   const { data: clients = [], isLoading, error, refetch } = useQuery({
     queryKey: ['clients', selectedCompanyId],
@@ -116,6 +118,15 @@ const ClientsTable = () => {
     navigate(`/client/${clientId}`);
   };
 
+  const handleSort = (field: string) => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(field);
+      setSortOrder('asc');
+    }
+  };
+
   // Filter clients based on search query and date range
   const filteredClients = clients.filter(client => {
     // Text search filter
@@ -141,6 +152,39 @@ const ClientsTable = () => {
     }
     
     return matchesSearch && matchesDateRange;
+  });
+
+  // Sort filtered clients
+  const sortedClients = [...filteredClients].sort((a, b) => {
+    let valueA, valueB;
+    
+    switch (sortBy) {
+      case 'name':
+        valueA = a.name || '';
+        valueB = b.name || '';
+        break;
+      case 'email':
+        valueA = a.email || '';
+        valueB = b.email || '';
+        break;
+      case 'phone':
+        valueA = a.phone || '';
+        valueB = b.phone || '';
+        break;
+      case 'createdAt':
+        valueA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        valueB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        break;
+      default:
+        valueA = a.name || '';
+        valueB = b.name || '';
+    }
+    
+    if (sortOrder === 'asc') {
+      return valueA > valueB ? 1 : -1;
+    } else {
+      return valueA < valueB ? 1 : -1;
+    }
   });
 
   const handleExportOpen = () => {
@@ -223,22 +267,47 @@ const ClientsTable = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead className="hidden md:table-cell">Added On</TableHead>
+                  <TableHead 
+                    sortable 
+                    sorted={sortBy === 'name' ? sortOrder : null}
+                    onSort={() => handleSort('name')}
+                  >
+                    Name
+                  </TableHead>
+                  <TableHead 
+                    sortable 
+                    sorted={sortBy === 'email' ? sortOrder : null}
+                    onSort={() => handleSort('email')}
+                  >
+                    Email
+                  </TableHead>
+                  <TableHead 
+                    sortable 
+                    sorted={sortBy === 'phone' ? sortOrder : null}
+                    onSort={() => handleSort('phone')}
+                  >
+                    Phone
+                  </TableHead>
+                  <TableHead 
+                    className="hidden md:table-cell"
+                    sortable 
+                    sorted={sortBy === 'createdAt' ? sortOrder : null}
+                    onSort={() => handleSort('createdAt')}
+                  >
+                    Added On
+                  </TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredClients.length === 0 ? (
+                {sortedClients.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                       No clients match your search or date filter
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredClients.map((client) => (
+                  sortedClients.map((client) => (
                     <TableRow 
                       key={client.id}
                       onClick={() => handleClientRowClick(client.id)}

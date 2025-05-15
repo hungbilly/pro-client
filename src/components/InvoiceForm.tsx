@@ -131,18 +131,27 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   }, []);
 
   useEffect(() => {
-    console.log("InvoiceForm mounted with props:", { 
+    console.log("InvoiceForm props changed:", { 
       propInvoice, 
-      propClientId, 
-      propJobId, 
-      propInvoiceId,
-      hasContractTemplates: contractTemplates?.length > 0
+      currentInvoice: invoice,
+      hasNumber: !!invoice.number
     });
-    console.log("Current invoice state:", invoice);
-    console.log("User:", user);
-    console.log("Selected company:", selectedCompany);
     
-    if (!propInvoice && !invoice.number) {
+    // If propInvoice changes and has valid data, update the state
+    if (propInvoice) {
+      console.log("Updating invoice state from propInvoice:", {
+        propInvoiceNumber: propInvoice.number,
+        propInvoiceItems: propInvoice.items?.length || 0
+      });
+      
+      // Make sure we preserve the invoice number if propInvoice doesn't have one but we do
+      const updatedInvoice = {
+        ...propInvoice,
+        number: propInvoice.number || invoice.number || ''
+      };
+      
+      setInvoice(updatedInvoice);
+    } else if (!invoice.number) {
       generateInvoiceNumber();
     }
   }, [propInvoice]);
@@ -428,7 +437,11 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
   const applyTemplate = () => {
     if (selectedTemplate) {
-      console.log("Before applying template - Current invoice number:", invoice.number);
+      console.log("Before applying template - Current invoice state:", {
+        invoiceNumber: invoice.number,
+        itemCount: invoice.items.length,
+        contractTerms: invoice.contractTerms?.substring(0, 50) + '...'
+      });
       
       setInvoice(prevInvoice => {
         // Preserve important fields when applying a template
@@ -437,24 +450,35 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
         const currentNumber = prevInvoice.number || '';
         // Preserve invoice status
         const currentStatus = prevInvoice.status || 'draft';
+        // Preserve items
+        const currentItems = prevInvoice.items || [];
         
         console.log("Template application - Preserving fields:", {
           currentDate,
           currentNumber,
-          currentStatus
+          currentStatus,
+          currentItems: currentItems.length
         });
         
-        return {
+        const newInvoice = {
           ...prevInvoice,
           contractTerms: selectedTemplate.content || '',
           // Ensure these important fields are preserved
           date: currentDate,
           number: currentNumber,
-          status: currentStatus
+          status: currentStatus,
+          items: currentItems
         };
+        
+        console.log("After template application - New invoice state:", {
+          number: newInvoice.number,
+          items: newInvoice.items.length
+        });
+        
+        return newInvoice;
       });
       
-      console.log("After applying template - Invoice number should still be:", invoice.number);
+      toast.success(`Contract template "${selectedTemplate.name}" applied successfully`);
     }
     setIsDialogOpen(false);
   };

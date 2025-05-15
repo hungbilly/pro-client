@@ -271,7 +271,12 @@ const InvoiceCreate = () => {
 
   const handleTemplateSelection = async (templateId: string) => {
     try {
-      console.log('Template selection started', { templateId, currentInvoiceNumber: invoice?.number });
+      console.log('Template selection started', { 
+        templateId, 
+        currentInvoiceNumber: invoice?.number,
+        currentItems: invoice?.items?.length || 0
+      });
+      
       setSelectedTemplate(templateId);
       
       // Find the template in the already loaded templates
@@ -279,6 +284,7 @@ const InvoiceCreate = () => {
       
       if (!selectedTemplate) {
         console.error('Selected template not found');
+        toast.error('Failed to find selected template');
         return;
       }
       
@@ -293,36 +299,73 @@ const InvoiceCreate = () => {
         currentStatus 
       });
       
+      // Parse the template content with improved error handling
       let parsedContent: any = {};
       try {
-        parsedContent = selectedTemplate.content ? JSON.parse(selectedTemplate.content) : {};
+        if (selectedTemplate.content) {
+          console.log('Raw template content:', selectedTemplate.content);
+          parsedContent = JSON.parse(selectedTemplate.content);
+          console.log('Parsed template content:', parsedContent);
+        } else {
+          console.warn('Template has no content');
+          toast.warning('The selected template has no content');
+        }
       } catch (e) {
         console.error('Error parsing template content:', e);
+        toast.error('Failed to parse template content');
+        return;
+      }
+      
+      // Validate parsed content
+      if (!parsedContent) {
+        console.error('Parsed content is empty');
+        toast.error('Template content is empty or invalid');
         return;
       }
       
       // Create a new invoice object with the template data
       const newInvoice: Partial<Invoice> = {
         ...(invoice || {}),
-        items: parsedContent.items || [],
+        items: Array.isArray(parsedContent.items) ? parsedContent.items : [],
         contractTerms: parsedContent.contractTerms || '',
         notes: parsedContent.notes || '',
-        paymentSchedules: parsedContent.paymentSchedules || [],
+        paymentSchedules: Array.isArray(parsedContent.paymentSchedules) ? parsedContent.paymentSchedules : [],
         // Explicitly preserve these important fields
         date: currentDate,
         number: currentNumber,
         status: currentStatus
       };
       
+      // Validate the items array
+      if (!Array.isArray(newInvoice.items) || newInvoice.items.length === 0) {
+        console.warn('Template has no items or invalid items array', {
+          isArray: Array.isArray(newInvoice.items),
+          itemsLength: Array.isArray(newInvoice.items) ? newInvoice.items.length : 'N/A',
+          parsedItems: parsedContent.items
+        });
+        
+        // Ensure we have a valid items array
+        newInvoice.items = Array.isArray(newInvoice.items) ? newInvoice.items : [];
+        
+        if (newInvoice.items.length === 0) {
+          toast.warning('The selected template does not contain any items');
+        }
+      }
+      
       console.log('New invoice after template application', { 
         newInvoiceNumber: newInvoice.number,
-        itemsCount: newInvoice.items?.length || 0
+        itemsCount: newInvoice.items?.length || 0,
+        items: newInvoice.items,
       });
       
       // Update the invoice state
       setInvoice(newInvoice as Invoice);
       
-      toast.success(`Template "${selectedTemplate.name}" applied successfully`);
+      if (newInvoice.items && newInvoice.items.length > 0) {
+        toast.success(`Template "${selectedTemplate.name}" applied successfully with ${newInvoice.items.length} items`);
+      } else {
+        toast.warning(`Template "${selectedTemplate.name}" applied, but contains no items`);
+      }
       
     } catch (error) {
       console.error('Error applying template:', error);

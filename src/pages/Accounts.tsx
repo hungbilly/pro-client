@@ -48,7 +48,6 @@ import { FormMessage } from '@/components/ui/form';
 import ExportDialog from '@/components/ExportDialog';
 import { exportDataToFile, formatPaymentsForExport, formatExpensesForExport } from '@/utils/exportUtils';
 import { formatCurrency } from '@/lib/utils';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 type PaymentScheduleWithDetails = {
   id: string;
@@ -978,292 +977,281 @@ const Accounts = () => {
         </div>
       </div>
       
-      <ToggleGroup 
-        type="single" 
-        value={activeTab} 
-        onValueChange={(value) => value && setActiveTab(value)}
-        className="mb-6"
-      >
-        <ToggleGroupItem 
-          value="income" 
-          aria-label="Income"
-          className={`flex items-center ${activeTab === 'income' ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'hover:bg-gray-100'}`}
-        >
-          <TrendingUp className="mr-2 h-4 w-4" />
-          Income
-        </ToggleGroupItem>
-        <ToggleGroupItem 
-          value="expenses" 
-          aria-label="Expenses"
-          className={`flex items-center ${activeTab === 'expenses' ? 'bg-red-100 text-red-700 hover:bg-red-200' : 'hover:bg-gray-100'}`}
-        >
-          <TrendingDown className="mr-2 h-4 w-4" />
-          Expenses
-        </ToggleGroupItem>
-      </ToggleGroup>
+      <Tabs defaultValue="income" value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="mb-6">
+          <TabsTrigger value="income" className="flex items-center">
+            <TrendingUp className="mr-2 h-4 w-4" />
+            Income
+          </TabsTrigger>
+          <TabsTrigger value="expenses" className="flex items-center">
+            <TrendingDown className="mr-2 h-4 w-4" />
+            Expenses
+          </TabsTrigger>
+        </TabsList>
         
-      <div className="flex flex-col md:flex-row flex-wrap gap-4 mb-6">
-        {activeTab === "income" && (
+        <div className="flex flex-col md:flex-row flex-wrap gap-4 mb-6">
+          {activeTab === "income" && (
+            <div className="w-full md:w-auto">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full md:w-[180px]">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Payments</SelectItem>
+                  <SelectItem value="unpaid">Unpaid</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="write-off">Write-off</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          
           <div className="w-full md:w-auto">
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select value={periodFilter} onValueChange={(value: PeriodOption) => {
+              setPeriodFilter(value);
+              setShowCustomDateRange(value === 'custom');
+            }}>
               <SelectTrigger className="w-full md:w-[180px]">
-                <SelectValue placeholder="Filter by status" />
+                <SelectValue placeholder="Time period" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Payments</SelectItem>
-                <SelectItem value="unpaid">Unpaid</SelectItem>
-                <SelectItem value="paid">Paid</SelectItem>
-                <SelectItem value="write-off">Write-off</SelectItem>
+                <SelectItem value="all">All time</SelectItem>
+                <SelectItem value="this-month">This month</SelectItem>
+                <SelectItem value="last-month">Last month</SelectItem>
+                <SelectItem value="this-year">This year</SelectItem>
+                <SelectItem value="custom">Custom range</SelectItem>
               </SelectContent>
             </Select>
           </div>
-        )}
-        
-        <div className="w-full md:w-auto">
-          <Select value={periodFilter} onValueChange={(value: PeriodOption) => {
-            setPeriodFilter(value);
-            setShowCustomDateRange(value === 'custom');
-          }}>
-            <SelectTrigger className="w-full md:w-[180px]">
-              <SelectValue placeholder="Time period" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All time</SelectItem>
-              <SelectItem value="this-month">This month</SelectItem>
-              <SelectItem value="last-month">Last month</SelectItem>
-              <SelectItem value="this-year">This year</SelectItem>
-              <SelectItem value="custom">Custom range</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        {showCustomDateRange && (
-          <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline">
-                  {customStartDate ? formatDate(customStartDate, "dd/MM/yyyy") : "Start date"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <DatePicker
-                  mode="single"
-                  selected={customStartDate}
-                  onSelect={(date) => setCustomStartDate(date)}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-            
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline">
-                  {customEndDate ? formatDate(customEndDate, "dd/MM/yyyy") : "End date"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <DatePicker
-                  mode="single"
-                  selected={customEndDate}
-                  onSelect={(date) => setCustomEndDate(date)}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
+          
+          {showCustomDateRange && (
+            <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline">
+                    {customStartDate ? formatDate(customStartDate, "dd/MM/yyyy") : "Start date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <DatePicker
+                    mode="single"
+                    selected={customStartDate}
+                    onSelect={(date) => setCustomStartDate(date)}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+              
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline">
+                    {customEndDate ? formatDate(customEndDate, "dd/MM/yyyy") : "End date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <DatePicker
+                    mode="single"
+                    selected={customEndDate}
+                    onSelect={(date) => setCustomEndDate(date)}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
+          
+          <div className="relative w-full md:w-auto md:flex-1">
+            <Input
+              placeholder={activeTab === "income" ? "Search by client, invoice, or job..." : "Search by description or category..."}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pr-10"
+            />
+            <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
           </div>
-        )}
-        
-        <div className="relative w-full md:w-auto md:flex-1">
-          <Input
-            placeholder={activeTab === "income" ? "Search by client, invoice, or job..." : "Search by description or category..."}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pr-10"
-          />
-          <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-        </div>
-        
-        {activeTab === "income" ? (
-          <Button 
-            variant="outline" 
-            onClick={() => setIsExportDialogOpen(true)}
-            className="whitespace-nowrap"
-          >
-            <Download className="mr-2 h-4 w-4" />
-            Export Payments
-          </Button>
-        ) : (
-          <>
-            <Button 
-              variant="outline" 
-              onClick={() => setIsExpenseDialogOpen(true)}
-              className="whitespace-nowrap"
-            >
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Add Expense
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={() => setIsCategoryDialogOpen(true)}
-              className="whitespace-nowrap"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Add Category
-            </Button>
+          
+          {activeTab === "income" ? (
             <Button 
               variant="outline" 
               onClick={() => setIsExportDialogOpen(true)}
               className="whitespace-nowrap"
             >
               <Download className="mr-2 h-4 w-4" />
-              Export Expenses
+              Export Payments
             </Button>
-          </>
-        )}
-      </div>
-      
-      <TabsContent value="income" className="mt-0">
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Due</TableHead>
-                  <TableHead>Invoice ID</TableHead>
-                  <TableHead>Client</TableHead>
-                  <TableHead>Job</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
+          ) : (
+            <>
+              <Button 
+                variant="outline" 
+                onClick={() => setIsExpenseDialogOpen(true)}
+                className="whitespace-nowrap"
+              >
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Add Expense
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => setIsCategoryDialogOpen(true)}
+                className="whitespace-nowrap"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add Category
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => setIsExportDialogOpen(true)}
+                className="whitespace-nowrap"
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Export Expenses
+              </Button>
+            </>
+          )}
+        </div>
+        
+        <TabsContent value="income" className="mt-0">
+          <Card>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-10">
-                      Loading payments...
-                    </TableCell>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Due</TableHead>
+                    <TableHead>Invoice ID</TableHead>
+                    <TableHead>Client</TableHead>
+                    <TableHead>Job</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
                   </TableRow>
-                ) : filteredPayments.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-10">
-                      No payments found
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredPayments.map((payment) => (
-                    <TableRow 
-                      key={payment.id} 
-                      className="hover:bg-gray-50 cursor-pointer"
-                      onClick={(e) => handleRowClick(payment.invoiceId, e)}
-                    >
-                      <TableCell 
-                        className="dropdown-actions"
-                        onClick={(e) => e.stopPropagation()}
+                </TableHeader>
+                <TableBody>
+                  {isLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-10">
+                        Loading payments...
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredPayments.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-10">
+                        No payments found
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredPayments.map((payment) => (
+                      <TableRow 
+                        key={payment.id} 
+                        className="hover:bg-gray-50 cursor-pointer"
+                        onClick={(e) => handleRowClick(payment.invoiceId, e)}
                       >
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            {getStatusBadge(payment.status)}
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="start">
-                            {payment.status !== 'paid' && (
-                              <DropdownMenuItem onClick={(e) => handleStatusUpdate(payment, 'paid', e)}>
-                                Mark as Paid
-                              </DropdownMenuItem>
-                            )}
-                            {payment.status !== 'unpaid' && (
-                              <DropdownMenuItem onClick={(e) => handleStatusUpdate(payment, 'unpaid', e)}>
-                                Mark as Unpaid
-                              </DropdownMenuItem>
-                            )}
-                            {payment.status !== 'write-off' && (
-                              <DropdownMenuItem onClick={(e) => handleStatusUpdate(payment, 'write-off', e)}>
-                                Write Off
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                      <TableCell>{formatDueDate(payment.dueDate, payment.status)}</TableCell>
-                      <TableCell>{payment.invoiceNumber}</TableCell>
-                      <TableCell>{payment.clientName}</TableCell>
-                      <TableCell className="max-w-[200px] truncate">{payment.jobTitle || 'N/A'}</TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatCurrency(payment.amount, companyCurrency)}
+                        <TableCell 
+                          className="dropdown-actions"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              {getStatusBadge(payment.status)}
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start">
+                              {payment.status !== 'paid' && (
+                                <DropdownMenuItem onClick={(e) => handleStatusUpdate(payment, 'paid', e)}>
+                                  Mark as Paid
+                                </DropdownMenuItem>
+                              )}
+                              {payment.status !== 'unpaid' && (
+                                <DropdownMenuItem onClick={(e) => handleStatusUpdate(payment, 'unpaid', e)}>
+                                  Mark as Unpaid
+                                </DropdownMenuItem>
+                              )}
+                              {payment.status !== 'write-off' && (
+                                <DropdownMenuItem onClick={(e) => handleStatusUpdate(payment, 'write-off', e)}>
+                                  Write Off
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                        <TableCell>{formatDueDate(payment.dueDate, payment.status)}</TableCell>
+                        <TableCell>{payment.invoiceNumber}</TableCell>
+                        <TableCell>{payment.clientName}</TableCell>
+                        <TableCell className="max-w-[200px] truncate">{payment.jobTitle || 'N/A'}</TableCell>
+                        <TableCell className="text-right font-medium">
+                          {formatCurrency(payment.amount, companyCurrency)}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="expenses" className="mt-0">
+          <Card>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-10">
+                        Loading expenses...
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      </TabsContent>
-      
-      <TabsContent value="expenses" className="mt-0">
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center py-10">
-                      Loading expenses...
-                    </TableCell>
-                  </TableRow>
-                ) : filteredExpenses.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center py-10">
-                      No expenses found
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredExpenses.map((expense) => (
-                    <TableRow key={expense.id}>
-                      <TableCell>{format(parseISO(expense.date), 'dd MMM yyyy')}</TableCell>
-                      <TableCell>{expense.description}</TableCell>
-                      <TableCell>
-                        <Badge>
-                          {expense.category.name}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatCurrency(expense.amount, companyCurrency)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end space-x-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => editExpense(expense)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => deleteExpense(expense)}
-                          >
-                            <Trash className="h-4 w-4" />
-                          </Button>
-                        </div>
+                  ) : filteredExpenses.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-10">
+                        No expenses found
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      </TabsContent>
+                  ) : (
+                    filteredExpenses.map((expense) => (
+                      <TableRow key={expense.id}>
+                        <TableCell>{format(parseISO(expense.date), 'dd MMM yyyy')}</TableCell>
+                        <TableCell>{expense.description}</TableCell>
+                        <TableCell>
+                          <Badge>
+                            {expense.category.name}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                          {formatCurrency(expense.amount, companyCurrency)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end space-x-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => editExpense(expense)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => deleteExpense(expense)}
+                            >
+                              <Trash className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
       
       <Dialog open={isPaymentDialogOpen} onOpenChange={(open) => {
         if (!open) closePaymentDialog();

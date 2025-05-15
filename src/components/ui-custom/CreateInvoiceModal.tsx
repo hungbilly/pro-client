@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -8,6 +9,7 @@ import { FileText, Plus, Search } from 'lucide-react';
 import { useCompanyContext } from '@/context/CompanyContext';
 import AddJobButton from './AddJobButton';
 import { Input } from '@/components/ui/input';
+import { supabase } from '@/integrations/supabase/client';
 import {
   Table,
   TableBody,
@@ -34,9 +36,37 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({ isOpen, onClose
     enabled: !!selectedCompanyId && isOpen,
   });
 
+  // Query to fetch clients information for display
+  const { data: clients = [] } = useQuery({
+    queryKey: ['clients-for-modal', selectedCompanyId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('clients')
+        .select('id, name')
+        .eq('company_id', selectedCompanyId);
+      return data || [];
+    },
+    enabled: !!selectedCompanyId && isOpen,
+  });
+
+  // Create a map of client IDs to client names for quick lookup
+  const clientNameMap = React.useMemo(() => {
+    const map: Record<string, string> = {};
+    clients.forEach(client => {
+      map[client.id] = client.name;
+    });
+    return map;
+  }, [clients]);
+
+  // Get client name from the map
+  const getClientName = (clientId: string | null | undefined): string => {
+    if (!clientId) return 'Unknown Client';
+    return clientNameMap[clientId] || 'Unknown Client';
+  };
+
   const filteredJobs = jobs.filter(job => 
     job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (job.clientId && job.clientId.toLowerCase().includes(searchQuery.toLowerCase()))
+    getClientName(job.clientId).toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleJobSelect = (jobId: string, clientId: string) => {
@@ -111,7 +141,7 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({ isOpen, onClose
                   {filteredJobs.map((job) => (
                     <TableRow key={job.id}>
                       <TableCell className="font-medium">{job.title}</TableCell>
-                      <TableCell>{job.clientId}</TableCell>
+                      <TableCell>{getClientName(job.clientId)}</TableCell>
                       <TableCell>
                         <span className={`px-2 py-1 rounded-full text-xs ${
                           job.status === 'active' ? 'bg-green-100 text-green-800' : 

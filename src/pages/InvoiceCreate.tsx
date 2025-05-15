@@ -285,7 +285,7 @@ const InvoiceCreate = () => {
       }
       
       // Create a new invoice object with the template data
-      const newInvoice: Invoice = {
+      const newInvoice: Partial<Invoice> = {
         ...(invoice || {}),
         items: parsedContent.items || [],
         contractTerms: parsedContent.contractTerms || '',
@@ -294,7 +294,7 @@ const InvoiceCreate = () => {
       };
       
       // Update the invoice state
-      setInvoice(newInvoice);
+      setInvoice(newInvoice as Invoice);
       
       toast.success(`Template "${selectedTemplate.name}" applied successfully`);
       

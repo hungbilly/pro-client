@@ -311,8 +311,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
       
       if (validationErrors.paymentSchedules) {
         toast.error(validationErrors.paymentSchedules, {
-          duration: 5000,
-          position: 'top-center'
+          duration: 5000
         });
       } else {
         toast.error('Please fix the errors in the form');
@@ -489,8 +488,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     });
     
     toast.success('Payment amount updated successfully', {
-      duration: 3000,
-      position: 'top-center'
+      duration: 3000
     });
   };
 

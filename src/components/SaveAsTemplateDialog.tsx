@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from './CompanySelector';
 import { useAuth } from '@/context/AuthContext';
@@ -45,17 +45,17 @@ const SaveAsTemplateDialog: React.FC<SaveAsTemplateDialogProps> = ({
         paymentSchedules: invoice.paymentSchedules || []
       };
 
-      const newTemplate: Partial<InvoiceTemplate> = {
+      const newTemplate = {
         name: templateName,
         description: templateDescription,
         content: JSON.stringify(templateContent),
-        userId: user?.id,
-        companyId: selectedCompany?.id
+        user_id: user?.id,
+        company_id: selectedCompany?.id
       };
 
       const { data, error } = await supabase
         .from('invoice_templates')
-        .insert([newTemplate])
+        .insert(newTemplate)
         .select('id')
         .single();
 

@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
@@ -101,8 +102,9 @@ async function validateEmailConfig() {
 
 // Helper function to check if content is HTML
 function isHtml(content: string): boolean {
-  // Simple check for HTML tags
-  return /<[a-z][\s\S]*>/i.test(content);
+  // More comprehensive check for HTML content
+  return /<([a-z][a-z0-9]*)\b[^>]*>(.*?)<\/\1>/i.test(content) || 
+         /<(br|hr|img|input|link|meta|area|base|col|embed|keygen|param|source|track|wbr)\b[^>]*\/?>/i.test(content);
 }
 
 // Convert plain text to simple HTML if needed
@@ -331,14 +333,18 @@ serve(async (req) => {
 
       console.log("SMTP client initialized successfully");
 
-      // Prepare HTML content (convert to HTML if needed)
-      const htmlBody = convertToHtml(body);
-
+      // Check if content is HTML and prepare HTML body
+      const isHtmlContent = isHtml(body);
+      console.log("Content type detection:", { isHtml: isHtmlContent });
+      
+      // Always prepare HTML content
+      const htmlBody = isHtmlContent ? body : convertToHtml(body);
+      
       console.log("Sending email...");
       console.log("Email content summary:", {
         subject: subject,
         bodyLength: body.length,
-        isHtml: isHtml(body),
+        isHtml: isHtmlContent,
         recipient: requestData.recipientEmail,
       });
 
@@ -349,7 +355,7 @@ serve(async (req) => {
           from: emailFrom,
           to: requestData.recipientEmail,
           subject: subject,
-          content: isHtml(body) ? undefined : body, // Only include plain text if not HTML
+          content: isHtmlContent ? undefined : body, // Plain text version if the content is not HTML
           html: htmlBody, // Always include HTML version
         });
         const sendDuration = performance.now() - sendStart;
@@ -382,6 +388,7 @@ serve(async (req) => {
             subject: subject,
             body: body,
             status: 'sent',
+            is_html: isHtmlContent,  // Store whether this was an HTML email
           })
           .select()
           .single();

@@ -261,9 +261,9 @@ const EmailTemplateForm = () => {
               value={template.body}
               onChange={handleBodyChange}
               placeholder="Enter the email content here..."
-              className="min-h-[200px]"
+              className="min-h-[300px]"
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground mt-2">
               Use {'{{variable}}'} syntax for dynamic content. Example: Hello {'{{name}}'}
             </p>
           </div>

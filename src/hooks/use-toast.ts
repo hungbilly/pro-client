@@ -3,7 +3,6 @@
 
 import * as React from "react"
 import { Toast, ToastClose, ToastDescription, ToastProvider, ToastTitle, ToastViewport } from "@/components/ui/toast"
-import { useToast as useToastPrimitive } from "@radix-ui/react-toast"
 
 export const ToastContext = React.createContext<{
   toast: (props: ToastProps) => void;
@@ -192,6 +191,7 @@ export function useToast() {
   }
 }
 
+// Helper functions for toast variants
 export const toast = {
   error: (description: string, options?: Omit<ToastProps, "description">) => {
     const { toast: toastFn } = useToast()

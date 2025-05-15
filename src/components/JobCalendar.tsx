@@ -145,6 +145,20 @@ const JobCalendar: React.FC<JobCalendarProps> = ({ jobs }) => {
       </div>
     );
   };
+
+  // Get all jobs for the current month
+  const currentMonthJobs = jobs.filter(job => {
+    if (!job.date) return false;
+    try {
+      const jobDate = parseISO(job.date);
+      return isSameMonth(jobDate, currentMonth);
+    } catch (e) {
+      return false;
+    }
+  }).sort((a, b) => {
+    if (!a.date || !b.date) return 0;
+    return new Date(a.date).getTime() - new Date(b.date).getTime();
+  });
   
   return (
     <>
@@ -194,31 +208,89 @@ const JobCalendar: React.FC<JobCalendarProps> = ({ jobs }) => {
             </div>
           </div>
           
-          <Calendar
-            mode="single"
-            month={currentMonth}
-            onMonthChange={setCurrentMonth}
-            selected={undefined}
-            onSelect={handleDayClick}
-            className="rounded-md border"
-            components={{
-              DayContent: ({ date }) => (
-                <div className="relative w-full h-full flex items-center justify-center">
-                  {date.getDate()}
-                  {dayContent(date)}
-                </div>
-              ),
-            }}
-            modifiersClassNames={{
-              hasJob: "bg-primary/10"
-            }}
-            modifiers={{
-              hasJob: (date) => {
-                const dateStr = format(date, 'yyyy-MM-dd');
-                return !!jobDates[dateStr]?.length;
-              }
-            }}
-          />
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="md:w-1/2">
+              <Calendar
+                mode="single"
+                month={currentMonth}
+                onMonthChange={setCurrentMonth}
+                selected={undefined}
+                onSelect={handleDayClick}
+                className="rounded-md border"
+                components={{
+                  DayContent: ({ date }) => (
+                    <div className="relative w-full h-full flex items-center justify-center">
+                      {date.getDate()}
+                      {dayContent(date)}
+                    </div>
+                  ),
+                }}
+                modifiersClassNames={{
+                  hasJob: "bg-primary/10"
+                }}
+                modifiers={{
+                  hasJob: (date) => {
+                    const dateStr = format(date, 'yyyy-MM-dd');
+                    return !!jobDates[dateStr]?.length;
+                  }
+                }}
+              />
+            </div>
+            
+            <div className="md:w-1/2">
+              <div className="h-full overflow-y-auto max-h-[400px] pr-2">
+                <h3 className="font-medium text-sm mb-2">Jobs This Month</h3>
+                
+                {currentMonthJobs.length === 0 ? (
+                  <div className="text-center p-4 bg-gray-50 rounded-md">
+                    <p className="text-sm text-muted-foreground">No jobs scheduled this month</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {currentMonthJobs.map(job => {
+                      const isJobInPast = isDateInPast(job.date);
+                      const statusDisplay = job.status === 'completed' || isJobInPast
+                        ? 'Completed'
+                        : job.status === 'cancelled'
+                          ? 'Cancelled'
+                          : 'Active';
+                      
+                      return (
+                        <Card key={job.id} className="overflow-hidden cursor-pointer hover:shadow-sm transition-all" onClick={() => {
+                          if (job.date) {
+                            handleDayClick(parseISO(job.date));
+                          }
+                        }}>
+                          <CardContent className="p-3">
+                            <div className="flex justify-between items-start gap-2">
+                              <div>
+                                <p className="font-medium text-sm">{job.title}</p>
+                                {job.date && (
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {format(parseISO(job.date), 'MMM d, yyyy')}
+                                    {job.startTime && ` · ${job.startTime}`}
+                                  </p>
+                                )}
+                              </div>
+                              <Badge className={
+                                job.status === 'completed' || isJobInPast
+                                  ? 'bg-green-100 text-green-800'
+                                  : job.status === 'cancelled'
+                                    ? 'bg-red-100 text-red-800'
+                                    : 'bg-blue-100 text-blue-800'
+                              }>
+                                {statusDisplay}
+                              </Badge>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
 

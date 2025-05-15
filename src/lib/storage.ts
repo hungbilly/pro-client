@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Client, Invoice, InvoiceItem, Job, PaymentSchedule, InvoiceStatus, ContractStatus, PaymentStatus, Expense } from '@/types';
 import { format } from 'date-fns';
@@ -903,6 +902,9 @@ export const saveInvoice = async (invoice: Omit<Invoice, 'id' | 'viewLink'>): Pr
     // Generate a view link
     const viewLink = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
     
+    // Ensure there's always a due date (use invoice date if due date is missing)
+    const due_date = invoice.dueDate || invoice.date;
+    
     // Insert invoice data
     const { data: invoiceData, error: invoiceError } = await supabase
       .from('invoices')
@@ -912,7 +914,7 @@ export const saveInvoice = async (invoice: Omit<Invoice, 'id' | 'viewLink'>): Pr
         job_id: invoice.jobId,
         number: invoice.number,
         date: invoice.date,
-        due_date: invoice.dueDate,
+        due_date: due_date, // Use the ensured due date value
         amount: invoice.amount,
         status: invoice.status,
         contract_status: invoice.contractStatus,
@@ -1001,6 +1003,9 @@ export const saveInvoice = async (invoice: Omit<Invoice, 'id' | 'viewLink'>): Pr
 
 export const updateInvoice = async (invoice: Invoice): Promise<Invoice> => {
   try {
+    // Ensure there's always a due date (use invoice date if due date is missing)
+    const due_date = invoice.dueDate || invoice.date;
+    
     // Update invoice data - now clearing pdf_url to force regeneration on next view
     const { error: invoiceError } = await supabase
       .from('invoices')
@@ -1010,7 +1015,7 @@ export const updateInvoice = async (invoice: Invoice): Promise<Invoice> => {
         job_id: invoice.jobId,
         number: invoice.number,
         date: invoice.date,
-        due_date: invoice.dueDate,
+        due_date: due_date, // Use the ensured due date value
         amount: invoice.amount,
         status: invoice.status,
         contract_status: invoice.contractStatus,

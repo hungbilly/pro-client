@@ -323,30 +323,37 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     console.log("Setting saving state to true");
     
     try {
+      // Ensure we have a date set
+      const invoiceToSave = {
+        ...invoice,
+        date: invoice.date || format(new Date(), 'yyyy-MM-dd'),
+      };
+      
       console.log("Preparing to save invoice with data:", {
-        id: invoice.id,
-        clientId: invoice.clientId,
-        jobId: invoice.jobId,
-        items: invoice.items.length,
-        status: invoice.status,
+        id: invoiceToSave.id,
+        clientId: invoiceToSave.clientId,
+        jobId: invoiceToSave.jobId,
+        date: invoiceToSave.date,
+        items: invoiceToSave.items.length,
+        status: invoiceToSave.status,
         userId: user?.id,
         companyId: selectedCompany?.id
       });
       
       let savedInvoice;
-      if (invoice.id) {
-        console.log("Updating existing invoice:", invoice.id);
-        savedInvoice = await updateInvoice(invoice);
+      if (invoiceToSave.id) {
+        console.log("Updating existing invoice:", invoiceToSave.id);
+        savedInvoice = await updateInvoice(invoiceToSave);
         console.log("Invoice updated successfully");
         toast.success('Invoice updated successfully!');
       } else {
         console.log("Creating new invoice");
         const newInvoice = { 
-          ...invoice, 
+          ...invoiceToSave, 
           userId: user?.id, 
           companyId: selectedCompany?.id || '', 
-          clientId: propClientId || invoice.clientId, 
-          jobId: propJobId || invoice.jobId 
+          clientId: propClientId || invoiceToSave.clientId, 
+          jobId: propJobId || invoiceToSave.jobId 
         };
         console.log("New invoice data:", newInvoice);
         savedInvoice = await saveInvoice(newInvoice);
@@ -401,6 +408,8 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
       setInvoice(prevInvoice => ({
         ...prevInvoice,
         contractTerms: selectedTemplate.content || '',
+        // Ensure date is preserved when applying a template
+        date: prevInvoice.date || format(new Date(), 'yyyy-MM-dd'),
       }));
     }
     setIsDialogOpen(false);

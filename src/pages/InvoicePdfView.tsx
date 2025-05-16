@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Download, AlertTriangle, FileText, RefreshCw, Bug } from 'lucide-react';
@@ -63,7 +62,10 @@ const InvoicePdfView = () => {
                 .single();
               
               if (!companyError && companyData) {
+                console.log('Fetched client view company data:', companyData);
                 setClientViewCompany(companyData);
+              } else {
+                console.error('Error fetching company client view:', companyError);
               }
             } catch (err) {
               console.error('Failed to fetch company data:', err);
@@ -202,12 +204,15 @@ const InvoicePdfView = () => {
       // Generate PDF on client side
       const company = selectedCompany || clientViewCompany?.company;
       
-      // Debug info
+      // Enhanced debug info
       const debugData = {
         invoiceId: invoice.id,
         companyId: invoice.companyId,
         companyName: company?.name || clientViewCompany?.name,
         hasPaymentMethods: !!clientViewCompany?.payment_methods,
+        paymentMethodsText: clientViewCompany?.payment_methods ? 
+          (clientViewCompany.payment_methods.substring(0, 50) + '...') : 'None',
+        paymentMethodsLength: clientViewCompany?.payment_methods?.length || 0,
         clientInfo: {
           userAgent: navigator.userAgent,
           timestamp: new Date().getTime()
@@ -221,7 +226,8 @@ const InvoicePdfView = () => {
         client,
         job,
         company,
-        clientViewCompany
+        clientViewCompany,
+        paymentMethods: clientViewCompany?.payment_methods || 'None provided'
       });
       
       // Generate the PDF
@@ -279,6 +285,16 @@ const InvoicePdfView = () => {
       toast.info('Generating simplified debug PDF with only company info...');
       
       const company = selectedCompany || clientViewCompany?.company;
+      
+      // Log detailed debug info about payment methods
+      console.log('[Debug PDF] Payment methods info:', {
+        hasClientViewCompany: !!clientViewCompany,
+        paymentMethodsExists: !!clientViewCompany?.payment_methods,
+        paymentMethodsLength: clientViewCompany?.payment_methods?.length || 0,
+        paymentMethodsPreview: clientViewCompany?.payment_methods 
+          ? clientViewCompany.payment_methods.substring(0, 100) + '...' 
+          : 'None'
+      });
       
       // Generate debug PDF
       const pdfBlob = await generateInvoicePdf(
@@ -388,7 +404,7 @@ const InvoicePdfView = () => {
                 </AlertDescription>
               </Alert>
             )}
-
+            
             <div className="pt-2">
               <Button 
                 onClick={handleDownloadInvoice} 
@@ -404,11 +420,32 @@ const InvoicePdfView = () => {
               <Button 
                 onClick={handleCopyInvoiceLink}
                 variant="outline" 
-                className="w-full"
+                className="w-full mb-2"
               >
                 Copy Invoice Link
               </Button>
+              
+              <Button
+                onClick={handleDebugPdf}
+                variant="outline"
+                className="w-full"
+              >
+                <Bug className="h-4 w-4 mr-2" /> Debug PDF
+              </Button>
             </div>
+            
+            {clientViewCompany && (
+              <div>
+                <Separator className="my-4" />
+                <h3 className="text-sm font-medium mb-2">Payment Methods Status</h3>
+                <div className="text-sm bg-muted p-3 rounded-md">
+                  <p><strong>Has payment methods:</strong> {clientViewCompany.payment_methods ? 'Yes' : 'No'}</p>
+                  {clientViewCompany.payment_methods && (
+                    <p><strong>Length:</strong> {clientViewCompany.payment_methods.length} characters</p>
+                  )}
+                </div>
+              </div>
+            )}
             
             {debugInfo && (
               <div className="mt-6">

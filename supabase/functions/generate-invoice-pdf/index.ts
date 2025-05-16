@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import puppeteer from 'https://deno.land/x/puppeteer@16.2.0/mod.ts';
@@ -127,7 +126,7 @@ serve(async (req) => {
           body {
             font-family: Arial, sans-serif;
             margin: 0;
-            padding: 40px;
+            padding: 50px; /* Increased padding for more margin */
             color: #333;
           }
           .invoice-container {
@@ -193,6 +192,7 @@ serve(async (req) => {
             border-top: 1px solid #ddd;
           }
           .contract-terms {
+            page-break-before: always; /* Force contract to start on new page */
             margin-top: 30px;
             padding-top: 20px;
             border-top: 1px solid #ddd;
@@ -358,6 +358,7 @@ serve(async (req) => {
             </div>
           ` : ''}
 
+          <!-- Force the contract terms onto a new page with page-break-before -->
           ${invoice.contract_terms ? `
             <div class="contract-terms">
               <div class="label">CONTRACT TERMS</div>
@@ -373,9 +374,19 @@ serve(async (req) => {
       </html>
     `;
 
+    // Add additional debug logging for payment methods
+    console.log('[DEBUG] Payment methods data:', {
+      hasCompanyData: !!companyData,
+      paymentMethods: companyData?.payment_methods || 'None provided',
+      paymentMethodsLength: companyData?.payment_methods?.length || 0
+    });
+
     // Add payment methods to the template if available
     if (companyData?.payment_methods) {
       htmlTemplate = addPaymentMethodsToTemplate(htmlTemplate, companyData.payment_methods);
+      console.log('[DEBUG] Payment methods added to template');
+    } else {
+      console.log('[DEBUG] No payment methods available to add to template');
     }
 
     // If in debug mode, return a simplified version
@@ -432,7 +443,7 @@ serve(async (req) => {
       htmlTemplate = debugHtml;
     }
 
-    // Launch browser and create PDF
+    // Launch browser and create PDF with better margins
     const browser = await puppeteer.launch({
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
@@ -444,10 +455,10 @@ serve(async (req) => {
       format: 'A4',
       printBackground: true,
       margin: {
-        top: '20px',
-        right: '20px',
-        bottom: '20px',
-        left: '20px'
+        top: '30px',
+        right: '30px',
+        bottom: '30px',
+        left: '30px'
       }
     });
     

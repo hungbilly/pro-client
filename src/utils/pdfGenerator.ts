@@ -28,6 +28,13 @@ export async function generateInvoicePdf(
   document.body.appendChild(container);
   
   try {
+    // Add debug logging for payment methods
+    console.log('[PDF Debug] Generating PDF with payment methods:', {
+      hasClientViewCompany: !!clientViewCompany,
+      paymentMethods: clientViewCompany?.payment_methods || 'None',
+      paymentMethodsLength: clientViewCompany?.payment_methods?.length || 0
+    });
+    
     // Create a PDF
     const pdf = new jsPDF({
       orientation: 'portrait',
@@ -50,8 +57,8 @@ export async function generateInvoicePdf(
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
     
-    // Add image with margins (20 points on each side)
-    const margin = 20;
+    // Add image with larger margins (30 points on each side)
+    const margin = 30;
     const printWidth = pdfWidth - (margin * 2);
     const printHeight = (imgProps.height * printWidth) / imgProps.width;
     
@@ -155,6 +162,14 @@ function createInvoiceHtml(
     if (typeof amount !== 'number') return '$0.00';
     return formatCurrency(amount, companyCurrency);
   };
+
+  // Debug logging for payment methods
+  console.log('[PDF Debug] Creating HTML with payment methods:', {
+    hasClientViewCompany: !!clientViewCompany,
+    clientViewCompanyObj: clientViewCompany,
+    paymentMethods: clientViewCompany?.payment_methods || 'None provided',
+    paymentMethodsLength: clientViewCompany?.payment_methods?.length || 0
+  });
   
   if (debugMode) {
     // Simplified debug HTML
@@ -216,7 +231,7 @@ function createInvoiceHtml(
         body {
           font-family: Arial, sans-serif;
           margin: 0;
-          padding: 40px;
+          padding: 50px; /* Increased padding for more margin */
           color: #333;
         }
         .invoice-container {
@@ -281,11 +296,6 @@ function createInvoiceHtml(
           padding-top: 20px;
           border-top: 1px solid #ddd;
         }
-        .contract-terms {
-          margin-top: 30px;
-          padding-top: 20px;
-          border-top: 1px solid #ddd;
-        }
         .payment-schedule {
           margin-top: 30px;
           padding-top: 20px;
@@ -296,6 +306,12 @@ function createInvoiceHtml(
           padding-top: 20px;
           border-top: 1px solid #ddd;
           white-space: pre-line;
+        }
+        .contract-terms {
+          page-break-before: always; /* Force contract to start on new page */
+          margin-top: 30px;
+          padding-top: 20px;
+          border-top: 1px solid #ddd;
         }
         .footer {
           margin-top: 50px;
@@ -444,6 +460,7 @@ function createInvoiceHtml(
           </div>
         ` : ''}
         
+        <!-- Force the contract terms onto a new page with page-break-before -->
         ${invoice.contractTerms ? `
           <div class="contract-terms">
             <div class="label">CONTRACT TERMS</div>

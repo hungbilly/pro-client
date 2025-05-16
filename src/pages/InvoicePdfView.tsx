@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { Download, AlertTriangle, FileText, RefreshCw } from 'lucide-react';
+import { Download, AlertTriangle, FileText, RefreshCw, Bug } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getInvoiceByViewLink, getInvoice, getClient, getJob } from '@/lib/storage';
@@ -233,18 +233,26 @@ const InvoicePdfView = () => {
         clientViewCompany
       );
       
-      // Upload the PDF to Supabase
-      const pdfUrl = await uploadInvoicePdf(
-        invoice.id,
-        pdfBlob,
-        invoice.number,
-        supabase
-      );
+      // Try to upload the PDF to Supabase (but continue even if it fails)
+      try {
+        const pdfUrl = await uploadInvoicePdf(
+          invoice.id,
+          pdfBlob,
+          invoice.number,
+          supabase
+        );
+        
+        // Update the invoice with the new PDF URL if upload was successful
+        if (pdfUrl) {
+          setInvoice(prev => prev ? { ...prev, pdfUrl } : null);
+        }
+      } catch (uploadError) {
+        // Log the upload error but continue with direct download
+        console.error('Failed to upload PDF to storage:', uploadError);
+        // We don't set downloadError here as the PDF generation succeeded
+      }
       
-      // Update the invoice with the new PDF URL
-      setInvoice(prev => prev ? { ...prev, pdfUrl } : null);
-      
-      // Open the PDF in a new tab
+      // Create an object URL for direct download regardless of storage success
       const pdfObjectUrl = URL.createObjectURL(pdfBlob);
       window.open(pdfObjectUrl, '_blank');
       
@@ -347,7 +355,7 @@ const InvoicePdfView = () => {
           <CardContent className="space-y-4">
             <div>
               <h2 className="text-xl font-medium flex items-center gap-2">
-                Invoice #{invoice.number}
+                Invoice #{invoice?.number}
               </h2>
               <p className="text-muted-foreground text-sm mt-1">
                 Download or view this invoice as a PDF
@@ -355,12 +363,12 @@ const InvoicePdfView = () => {
             </div>
             
             <div className="flex items-center gap-2">
-              <Badge variant={invoice.status === 'paid' ? 'success' : invoice.status === 'accepted' ? 'default' : 'outline'}>
-                {invoice.status.toUpperCase()}
+              <Badge variant={invoice?.status === 'paid' ? 'success' : invoice?.status === 'accepted' ? 'default' : 'outline'}>
+                {invoice?.status?.toUpperCase()}
               </Badge>
               
               <Badge variant="outline">
-                {new Date(invoice.date).toLocaleDateString()}
+                {invoice?.date ? new Date(invoice.date).toLocaleDateString() : '--'}
               </Badge>
             </div>
             

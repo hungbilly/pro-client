@@ -332,15 +332,20 @@ const InvoiceView = () => {
       
       // If we already have a valid PDF URL, use it directly
       if (invoice.pdfUrl) {
-        const { data: { publicUrl } } = supabase
-          .storage
-          .from('public')
-          .getPublicUrl(invoice.pdfUrl.split('/').pop() || '');
-          
-        if (publicUrl) {
-          window.open(publicUrl, '_blank');
-          toast.success('Invoice downloaded successfully');
-          return;
+        try {
+          const { data: { publicUrl } } = supabase
+            .storage
+            .from('public')
+            .getPublicUrl(invoice.pdfUrl.split('/').pop() || '');
+            
+          if (publicUrl) {
+            window.open(publicUrl, '_blank');
+            toast.success('Invoice downloaded successfully');
+            return;
+          }
+        } catch (err) {
+          console.log('Error getting public URL, falling back to generation:', err);
+          // Continue to PDF generation below
         }
       }
       
@@ -360,18 +365,25 @@ const InvoiceView = () => {
           clientViewCompany
         );
         
-        // Upload the PDF to Supabase
-        const pdfUrl = await uploadInvoicePdf(
-          invoice.id,
-          pdfBlob,
-          invoice.number,
-          supabase
-        );
+        // Try to upload the PDF to Supabase but continue even if it fails
+        try {
+          const pdfUrl = await uploadInvoicePdf(
+            invoice.id,
+            pdfBlob,
+            invoice.number,
+            supabase
+          );
+          
+          // Only update the invoice if upload was successful
+          if (pdfUrl) {
+            setInvoice(prev => prev ? { ...prev, pdfUrl } : null);
+          }
+        } catch (uploadError) {
+          console.error('Error uploading PDF, continuing with direct download:', uploadError);
+          // Continue with direct download
+        }
         
-        // Update the invoice with the new PDF URL
-        setInvoice(prev => prev ? { ...prev, pdfUrl } : null);
-        
-        // Open the PDF in a new tab
+        // Create an object URL for direct download regardless of storage success
         const pdfObjectUrl = URL.createObjectURL(pdfBlob);
         window.open(pdfObjectUrl, '_blank');
         

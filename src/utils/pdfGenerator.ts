@@ -62,52 +62,58 @@ export async function generateInvoicePdf(
 
 /**
  * Upload PDF to Supabase storage and update invoice record
+ * Returns the URL if successful, null if there's an error (to allow fallback to direct download)
  */
 export async function uploadInvoicePdf(
   invoiceId: string, 
   pdfBlob: Blob, 
   invoiceNumber: string,
   supabase: any
-): Promise<string> {
-  // Create a timestamp
-  const timestamp = new Date().getTime();
-  const filename = `invoices/${invoiceId}/invoice-${invoiceNumber}-${timestamp}.pdf`;
-  
-  // Upload to Supabase Storage
-  const { data: uploadData, error: uploadError } = await supabase
-    .storage
-    .from('public')
-    .upload(filename, pdfBlob, {
-      contentType: 'application/pdf',
-      cacheControl: '3600',
-      upsert: true
-    });
-  
-  if (uploadError) {
-    console.error('Error uploading PDF:', uploadError);
-    throw new Error(`Failed to upload PDF: ${uploadError.message}`);
+): Promise<string | null> {
+  try {
+    // Create a timestamp
+    const timestamp = new Date().getTime();
+    const filename = `invoices/${invoiceId}/invoice-${invoiceNumber}-${timestamp}.pdf`;
+    
+    // Upload to Supabase Storage
+    const { data: uploadData, error: uploadError } = await supabase
+      .storage
+      .from('public')
+      .upload(filename, pdfBlob, {
+        contentType: 'application/pdf',
+        cacheControl: '3600',
+        upsert: true
+      });
+    
+    if (uploadError) {
+      console.error('Error uploading PDF:', uploadError);
+      return null; // Return null instead of throwing an error
+    }
+    
+    // Get public URL
+    const { data: publicUrlData } = await supabase
+      .storage
+      .from('public')
+      .getPublicUrl(filename);
+    
+    const pdfUrl = publicUrlData.publicUrl;
+    
+    // Update invoice record with PDF URL
+    const { error: updateError } = await supabase
+      .from('invoices')
+      .update({ pdf_url: pdfUrl })
+      .eq('id', invoiceId);
+    
+    if (updateError) {
+      console.error('Error updating invoice with PDF URL:', updateError);
+      return null; // Return null instead of throwing an error
+    }
+    
+    return pdfUrl;
+  } catch (err) {
+    console.error('Error in uploadInvoicePdf:', err);
+    return null; // Return null to allow fallback
   }
-  
-  // Get public URL
-  const { data: publicUrlData } = await supabase
-    .storage
-    .from('public')
-    .getPublicUrl(filename);
-  
-  const pdfUrl = publicUrlData.publicUrl;
-  
-  // Update invoice record with PDF URL
-  const { error: updateError } = await supabase
-    .from('invoices')
-    .update({ pdf_url: pdfUrl })
-    .eq('id', invoiceId);
-  
-  if (updateError) {
-    console.error('Error updating invoice with PDF URL:', updateError);
-    throw new Error(`Failed to update invoice with PDF URL: ${updateError.message}`);
-  }
-  
-  return pdfUrl;
 }
 
 /**

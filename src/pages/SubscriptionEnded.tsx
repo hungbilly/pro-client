@@ -25,7 +25,8 @@ const SubscriptionEnded = () => {
   
   const handleSubscribe = async () => {
     try {
-      const url = await createSubscription(false); // No trial since they've already had one
+      // Updated to use trial (true) instead of false
+      const url = await createSubscription(true);
       if (url) {
         window.location.href = url;
       }
@@ -109,7 +110,7 @@ const SubscriptionEnded = () => {
                     <li>• Low monthly fee</li>
                     <li>• Cancel anytime</li>
                     <li>• No long-term contracts</li>
-                    <li>• Immediate access upon subscribing</li>
+                    <li>• 30-day free trial</li>
                     <li>• Free updates and new features</li>
                   </ul>
                 </div>
@@ -130,7 +131,7 @@ const SubscriptionEnded = () => {
                   Processing...
                 </>
               ) : (
-                'Subscribe Now'
+                'Subscribe Now with 30-Day Trial'
               )}
             </Button>
             <Button 

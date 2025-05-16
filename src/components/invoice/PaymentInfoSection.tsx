@@ -27,7 +27,7 @@ const PaymentInfoSection: React.FC<PaymentInfoSectionProps> = ({
     <div className="space-y-4">
       {invoice.paymentSchedules && invoice.paymentSchedules.length > 0 && (
         <PaymentScheduleTable 
-          schedules={invoice.paymentSchedules}
+          paymentSchedules={invoice.paymentSchedules}
           amount={invoice.amount}
           isClientView={isClientView}
           updatingPaymentId={updatingPaymentId}

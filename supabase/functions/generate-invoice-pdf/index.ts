@@ -50,7 +50,7 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Check if we already have a PDF URL for this invoice and not forcing regeneration
+    // Check if we already have a PDF URL
     if (!forceRegenerate) {
       const { data: existingInvoice, error: fetchError } = await supabase
         .from('invoices')
@@ -347,7 +347,7 @@ serve(async (req) => {
       htmlTemplate = addPaymentMethodsToTemplate(htmlTemplate, companyData.payment_methods);
     }
 
-    // If in debug mode, return a simplified version with just company info
+    // If in debug mode, return a simplified version
     if (debugMode) {
       const debugInfo = {
         invoiceId,

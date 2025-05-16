@@ -57,8 +57,8 @@ export async function generateInvoicePdf(
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
     
-    // Add image with larger margins (30 points on each side)
-    const margin = 30;
+    // Add image with larger margins (40 points on each side)
+    const margin = 40;
     const printWidth = pdfWidth - (margin * 2);
     const printHeight = (imgProps.height * printWidth) / imgProps.width;
     
@@ -231,7 +231,7 @@ function createInvoiceHtml(
         body {
           font-family: Arial, sans-serif;
           margin: 0;
-          padding: 50px; /* Increased padding for more margin */
+          padding: 60px; /* Increased padding for more margin */
           color: #333;
         }
         .invoice-container {

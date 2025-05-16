@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import puppeteer from 'https://deno.land/x/puppeteer@16.2.0/mod.ts';
@@ -126,7 +127,7 @@ serve(async (req) => {
           body {
             font-family: Arial, sans-serif;
             margin: 0;
-            padding: 50px; /* Increased padding for more margin */
+            padding: 60px; /* Increased padding for more margin */
             color: #333;
           }
           .invoice-container {
@@ -377,8 +378,9 @@ serve(async (req) => {
     // Add additional debug logging for payment methods
     console.log('[DEBUG] Payment methods data:', {
       hasCompanyData: !!companyData,
-      paymentMethods: companyData?.payment_methods || 'None provided',
-      paymentMethodsLength: companyData?.payment_methods?.length || 0
+      paymentMethods: companyData?.payment_methods ? 'Present' : 'None provided',
+      paymentMethodsLength: companyData?.payment_methods?.length || 0,
+      contractTermsLength: invoice.contract_terms?.length || 0
     });
 
     // Add payment methods to the template if available
@@ -455,10 +457,10 @@ serve(async (req) => {
       format: 'A4',
       printBackground: true,
       margin: {
-        top: '30px',
-        right: '30px',
-        bottom: '30px',
-        left: '30px'
+        top: '50px',
+        right: '40px',
+        bottom: '50px',
+        left: '40px'
       }
     });
     

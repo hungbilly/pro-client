@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Download, AlertTriangle, FileText, RefreshCw, Bug } from 'lucide-react';
@@ -63,6 +64,13 @@ const InvoicePdfView = () => {
               
               if (!companyError && companyData) {
                 console.log('Fetched client view company data:', companyData);
+                console.log('Payment methods in client view company:', {
+                  exists: !!companyData.payment_methods,
+                  length: companyData.payment_methods?.length || 0,
+                  preview: companyData.payment_methods ? 
+                    companyData.payment_methods.substring(0, 50) + '...' : 
+                    'None found'
+                });
                 setClientViewCompany(companyData);
               } else {
                 console.error('Error fetching company client view:', companyError);
@@ -227,7 +235,9 @@ const InvoicePdfView = () => {
         job,
         company,
         clientViewCompany,
-        paymentMethods: clientViewCompany?.payment_methods || 'None provided'
+        paymentMethods: clientViewCompany?.payment_methods || 'None provided',
+        paymentMethodsLength: clientViewCompany?.payment_methods?.length || 0,
+        contractTermsLength: invoice.contractTerms?.length || 0
       });
       
       // Generate the PDF
@@ -441,7 +451,10 @@ const InvoicePdfView = () => {
                 <div className="text-sm bg-muted p-3 rounded-md">
                   <p><strong>Has payment methods:</strong> {clientViewCompany.payment_methods ? 'Yes' : 'No'}</p>
                   {clientViewCompany.payment_methods && (
-                    <p><strong>Length:</strong> {clientViewCompany.payment_methods.length} characters</p>
+                    <>
+                      <p><strong>Length:</strong> {clientViewCompany.payment_methods.length} characters</p>
+                      <p><strong>Preview:</strong> {clientViewCompany.payment_methods.substring(0, 100)}...</p>
+                    </>
                   )}
                 </div>
               </div>

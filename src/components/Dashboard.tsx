@@ -25,6 +25,16 @@ const Dashboard = () => {
   const mockInvoices = [];
   const mockExpenses = [];
   
+  // Mock client for components that require it
+  const mockClient = {
+    id: 'mock-client-id',
+    name: 'Mock Client',
+    email: 'mock@example.com',
+    phone: '555-1234',
+    address: '123 Mock St',
+    createdAt: new Date().toISOString(),
+  };
+  
   // Determine if user has any companies yet
   const hasCompanies = useMemo(() => companies.length > 0, [companies]);
 
@@ -152,7 +162,7 @@ const Dashboard = () => {
               <CardTitle>Recent Invoices</CardTitle>
             </CardHeader>
             <CardContent>
-              <InvoiceList invoices={mockInvoices} />
+              <InvoiceList invoices={mockInvoices} client={mockClient} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -163,7 +173,7 @@ const Dashboard = () => {
               <CardTitle>Current Jobs</CardTitle>
             </CardHeader>
             <CardContent>
-              <JobList jobs={mockJobs} onJobDelete={() => {
+              <JobList jobs={mockJobs} client={mockClient} onJobDelete={() => {
                 toast({
                   title: "Not implemented",
                   description: "Job deletion is not yet implemented"

@@ -145,9 +145,9 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }) => {
   }
 
   if (!hasAccess) {
-    // Redirect to subscription ended page
+    // Redirect to subscription ended page without passing the location state
     console.log("SubscriptionGuard: No access, redirecting to /subscription/ended");
-    return <Navigate to="/subscription/ended" state={{ from: location.pathname }} replace />;
+    return <Navigate to="/subscription/ended" replace />;
   }
 
   console.log('SubscriptionGuard: Access granted, rendering children');

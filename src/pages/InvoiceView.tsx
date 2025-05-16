@@ -28,6 +28,7 @@ import isEqual from 'lodash/isEqual';
 import ContractAcceptance from '@/components/invoice/ContractAcceptance';
 import { formatCurrency as utilFormatCurrency } from "@/lib/utils";
 import TopNavbar from '@/components/TopNavbar';
+import PaymentMethodsSection from '@/components/invoice/PaymentMethodsSection';
 
 const InvoiceView = () => {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
@@ -817,6 +818,10 @@ const InvoiceView = () => {
                       <div className="text-muted-foreground border rounded-md p-4 bg-gray-50 dark:bg-gray-900/50">
                         Full payment of {formatCurrency(invoice.amount)} due on {new Date(invoice.dueDate).toLocaleDateString()}
                       </div>
+                    )}
+                    
+                    {clientViewCompany?.payment_methods && (
+                      <PaymentMethodsSection paymentMethods={clientViewCompany.payment_methods} />
                     )}
                   </div>
                 </TabsContent>

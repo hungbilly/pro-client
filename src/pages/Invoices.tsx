@@ -2,14 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getInvoices, deleteInvoice } from '@/lib/storage';
-import { Link, useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, MoreHorizontal, Receipt, Download, ArrowUp, ArrowDown, CalendarDays } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import PageTransition from '@/components/ui-custom/PageTransition';
-import { formatCurrency } from '@/lib/utils';
-import CreateInvoiceModal from '@/components/ui-custom/CreateInvoiceModal';
 import SearchBox from '@/components/ui-custom/SearchBox';
 import ExportDialog from '@/components/ExportDialog';
 import { exportDataToFile, formatInvoicesForExport } from '@/utils/exportUtils';
@@ -17,45 +11,20 @@ import { DateRange } from 'react-day-picker';
 import { toast } from 'sonner';
 import DateRangeFilter from '@/components/ui-custom/DateRangeFilter';
 import { supabase } from '@/integrations/supabase/client';
-
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-
 import { useCompanyContext } from '@/context/CompanyContext';
+import { sortInvoices, filterInvoices } from '@/utils/invoiceUtils';
 
-type SortConfig = {
-  key: string;
-  direction: 'asc' | 'desc' | null;
-};
+// Import the new components
+import InvoicesEmptyState from '@/components/invoices/InvoicesEmptyState';
+import InvoicesTable from '@/components/invoices/InvoicesTable';
+import DeleteInvoiceDialog from '@/components/invoices/DeleteInvoiceDialog';
+import InvoicesToolbar from '@/components/invoices/InvoicesToolbar';
+import CreateInvoiceModal from '@/components/ui-custom/CreateInvoiceModal';
+import { SortConfig } from '@/components/invoices/InvoicesTable';
 
 const Invoices = () => {
   const { selectedCompany } = useCompanyContext();
   const selectedCompanyId = selectedCompany?.id;
-  const navigate = useNavigate();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [invoiceToDelete, setInvoiceToDelete] = useState<string | null>(null);
@@ -66,13 +35,14 @@ const Invoices = () => {
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'date', direction: 'desc' });
   const [jobDates, setJobDates] = useState<Record<string, string>>({});
   
+  // Query to fetch invoices
   const { data: invoices = [], isLoading, error } = useQuery({
     queryKey: ['invoices', selectedCompanyId],
     queryFn: () => getInvoices(selectedCompanyId),
     enabled: !!selectedCompanyId,
   });
 
-  // Add query to get all jobs for their dates
+  // Query to get all jobs for their dates
   const { data: allJobs = [] } = useQuery({
     queryKey: ['all-jobs', selectedCompanyId],
     queryFn: async () => {
@@ -87,8 +57,8 @@ const Invoices = () => {
     enabled: !!selectedCompanyId,
   });
 
+  // Set up job dates map from fetched jobs
   useEffect(() => {
-    // Process jobs to create a lookup map of job dates
     const jobDateMap: Record<string, string> = {};
     allJobs.forEach((job) => {
       if (job.id && job.date) {
@@ -100,6 +70,7 @@ const Invoices = () => {
     setJobDates(jobDateMap);
   }, [allJobs]);
 
+  // Update local invoices when data changes
   useEffect(() => {
     if (invoices) {
       console.log('[Invoices] Fetched invoices from database:', invoices);
@@ -139,6 +110,7 @@ const Invoices = () => {
     }
   }, [invoices]);
 
+  // Query to fetch clients
   const { data: clients = [] } = useQuery({
     queryKey: ['clients', selectedCompanyId],
     queryFn: async () => {
@@ -151,6 +123,7 @@ const Invoices = () => {
     enabled: !!selectedCompanyId,
   });
 
+  // Query to fetch jobs
   const { data: jobs = [] } = useQuery({
     queryKey: ['jobs', selectedCompanyId],
     queryFn: async () => {
@@ -163,6 +136,7 @@ const Invoices = () => {
     enabled: !!selectedCompanyId,
   });
 
+  // Helper functions
   const getClientName = (clientId) => {
     const client = clients.find(client => client.id === clientId);
     return client ? client.name : 'Unknown Client';
@@ -174,7 +148,6 @@ const Invoices = () => {
     return job ? job.title : 'Unknown Job';
   };
 
-  // Helper function to get job date display
   const getJobDateDisplay = (invoice: any) => {
     if (invoice.shootingDate) {
       return <span>{new Date(invoice.shootingDate).toLocaleDateString()}</span>;
@@ -187,10 +160,7 @@ const Invoices = () => {
     return <span className="text-muted-foreground text-sm">Not set</span>;
   };
 
-  const handleRowClick = (invoiceId: string) => {
-    navigate(`/invoice/${invoiceId}`);
-  };
-
+  // Modal handlers
   const openCreateModal = () => {
     setIsCreateModalOpen(true);
   };
@@ -199,6 +169,7 @@ const Invoices = () => {
     setIsCreateModalOpen(false);
   };
 
+  // Delete invoice handlers
   const handleDeleteInvoice = async () => {
     if (!invoiceToDelete) return;
 
@@ -223,21 +194,7 @@ const Invoices = () => {
     setLocalInvoices(prev => prev.filter(invoice => invoice.id !== invoiceId));
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'sent':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-      case 'paid':
-        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-      case 'overdue':
-        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
-      case 'draft':
-        return 'bg-muted text-muted-foreground';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
+  // Sorting handler
   const handleSort = (key: string) => {
     setSortConfig(prevConfig => {
       if (prevConfig.key === key) {
@@ -256,128 +213,7 @@ const Invoices = () => {
     });
   };
 
-  const getSortIndicator = (columnKey: string) => {
-    if (sortConfig.key === columnKey) {
-      if (sortConfig.direction === 'asc') {
-        return <ArrowUp className="inline-block ml-1 h-4 w-4" />;
-      } else if (sortConfig.direction === 'desc') {
-        return <ArrowDown className="inline-block ml-1 h-4 w-4" />;
-      }
-    }
-    return null;
-  };
-
-  const filteredInvoices = localInvoices.filter(invoice => {
-    const matchesSearch = 
-      invoice.number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      getClientName(invoice.clientId).toLowerCase().includes(searchQuery.toLowerCase()) ||
-      invoice.status.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (getJobName(invoice.jobId) && getJobName(invoice.jobId).toLowerCase().includes(searchQuery.toLowerCase()));
-    
-    let matchesDateRange = true;
-    if (dateRange?.from) {
-      const invoiceDate = new Date(invoice.date);
-      
-      const fromDate = new Date(dateRange.from);
-      fromDate.setHours(0, 0, 0, 0);
-      
-      if (dateRange.to) {
-        const toDate = new Date(dateRange.to);
-        toDate.setHours(23, 59, 59, 999);
-        matchesDateRange = invoiceDate >= fromDate && invoiceDate <= toDate;
-      } else {
-        matchesDateRange = invoiceDate >= fromDate;
-      }
-    }
-    
-    return matchesSearch && matchesDateRange;
-  });
-
-  const sortedInvoices = React.useMemo(() => {
-    if (!sortConfig.direction) {
-      return filteredInvoices;
-    }
-    
-    return [...filteredInvoices].sort((a, b) => {
-      let aValue, bValue;
-      
-      switch (sortConfig.key) {
-        case 'number':
-          aValue = a.number || '';
-          bValue = b.number || '';
-          break;
-        case 'client':
-          aValue = getClientName(a.clientId);
-          bValue = getClientName(b.clientId);
-          break;
-        case 'job':
-          aValue = getJobName(a.jobId);
-          bValue = getJobName(b.jobId);
-          break;
-        case 'date':
-          aValue = new Date(a.date || 0).getTime();
-          bValue = new Date(b.date || 0).getTime();
-          break;
-        case 'shootingDate':
-          if (a.shootingDate) {
-            aValue = new Date(a.shootingDate).getTime();
-          } else if (a.jobId && jobDates[a.jobId]) {
-            aValue = new Date(jobDates[a.jobId]).getTime();
-          } else {
-            aValue = 0;
-          }
-          
-          if (b.shootingDate) {
-            bValue = new Date(b.shootingDate).getTime();
-          } else if (b.jobId && jobDates[b.jobId]) {
-            bValue = new Date(jobDates[b.jobId]).getTime();
-          } else {
-            bValue = 0;
-          }
-          break;
-        case 'amount':
-          aValue = a.amount || 0;
-          bValue = b.amount || 0;
-          break;
-        case 'status':
-          const statusOrder = { 'paid': 1, 'accepted': 2, 'sent': 3, 'draft': 4, 'overdue': 5 };
-          aValue = statusOrder[a.status] || 999;
-          bValue = statusOrder[b.status] || 999;
-          break;
-        default:
-          aValue = a[sortConfig.key];
-          bValue = b[sortConfig.key];
-      }
-      
-      if (typeof aValue === 'string' && typeof bValue === 'string') {
-        if (sortConfig.direction === 'asc') {
-          return aValue.localeCompare(bValue);
-        } else {
-          return bValue.localeCompare(aValue);
-        }
-      }
-      
-      if (sortConfig.direction === 'asc') {
-        return (aValue > bValue) ? 1 : -1;
-      } else {
-        return (aValue < bValue) ? 1 : -1;
-      }
-    });
-  }, [filteredInvoices, sortConfig, clients, jobs, jobDates]);
-
-  React.useEffect(() => {
-    if (sortedInvoices.length > 0) {
-      console.log('[Invoices] First few sorted invoices:', sortedInvoices.slice(0, 3).map(inv => ({
-        id: inv.id,
-        number: inv.number,
-        date: inv.date,
-        shootingDate: inv.shootingDate,
-        jobId: inv.jobId,
-        jobDate: inv.jobId && jobDates[inv.jobId] ? jobDates[inv.jobId] : null
-      })));
-    }
-  }, [sortedInvoices, jobDates]);
-
+  // Export handlers
   const handleExportOpen = () => {
     setIsExportDialogOpen(true);
   };
@@ -396,30 +232,46 @@ const Invoices = () => {
     toast.success(`Invoices exported as ${format.toUpperCase()} successfully`);
   };
 
+  // Filter and sort invoices
+  const filteredInvoices = filterInvoices(
+    localInvoices,
+    searchQuery,
+    dateRange,
+    getClientName,
+    getJobName
+  );
+
+  const sortedInvoices = sortInvoices(
+    filteredInvoices,
+    sortConfig,
+    getClientName,
+    getJobName,
+    jobDates
+  );
+
+  // Log sorted invoices for debugging
+  React.useEffect(() => {
+    if (sortedInvoices.length > 0) {
+      console.log('[Invoices] First few sorted invoices:', sortedInvoices.slice(0, 3).map(inv => ({
+        id: inv.id,
+        number: inv.number,
+        date: inv.date,
+        shootingDate: inv.shootingDate,
+        jobId: inv.jobId,
+        jobDate: inv.jobId && jobDates[inv.jobId] ? jobDates[inv.jobId] : null
+      })));
+    }
+  }, [sortedInvoices, jobDates]);
+
   const companyCurrency = selectedCompany?.currency || 'USD';
 
   return (
     <PageTransition>
-      <AlertDialog open={!!invoiceToDelete} onOpenChange={(open) => !open && setInvoiceToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure you want to delete this invoice?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the invoice
-              and all associated data from our servers.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleDeleteInvoice} 
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteInvoiceDialog 
+        invoiceId={invoiceToDelete}
+        onClose={() => setInvoiceToDelete(null)}
+        onConfirm={handleDeleteInvoice}
+      />
 
       <ExportDialog
         isOpen={isExportDialogOpen}
@@ -431,19 +283,12 @@ const Invoices = () => {
       />
 
       <div className="container mx-auto py-6 px-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
-          <h1 className="text-3xl font-bold mb-4 sm:mb-0">Invoices</h1>
-          <div className="flex gap-2">
-            <Button onClick={openCreateModal}>
-              <FileText className="mr-2 h-4 w-4" />
-              <span>Create New Invoice</span>
-            </Button>
-            <Button variant="outline" onClick={handleExportOpen}>
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </Button>
-          </div>
-        </div>
+        <InvoicesToolbar 
+          onCreateInvoice={openCreateModal}
+          onExportOpen={handleExportOpen}
+          dateRange={dateRange}
+          onDateRangeChange={setDateRange}
+        />
         
         <Card className="backdrop-blur-sm bg-white/80 border-transparent shadow-soft">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -468,19 +313,7 @@ const Invoices = () => {
             ) : error ? (
               <div className="text-center py-4 text-red-500">Failed to load invoices</div>
             ) : localInvoices.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <Receipt className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium mb-2">No Invoices Yet</h3>
-                <p className="text-muted-foreground mb-6 max-w-md">
-                  You haven't created any invoices yet. Create your first invoice to get started.
-                </p>
-                <Button asChild>
-                  <Link to="/client/new/invoice/create">
-                    <FileText className="mr-2 h-4 w-4" />
-                    <span>Create Invoice</span>
-                  </Link>
-                </Button>
-              </div>
+              <InvoicesEmptyState />
             ) : filteredInvoices.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-muted-foreground">No invoices match your search or date filter</p>
@@ -495,89 +328,15 @@ const Invoices = () => {
                 )}
               </div>
             ) : (
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead 
-                        className="cursor-pointer" 
-                        onClick={() => handleSort('number')}
-                      >
-                        Invoice # {getSortIndicator('number')}
-                      </TableHead>
-                      <TableHead 
-                        className="cursor-pointer" 
-                        onClick={() => handleSort('client')}
-                      >
-                        Client {getSortIndicator('client')}
-                      </TableHead>
-                      <TableHead 
-                        className="hidden md:table-cell cursor-pointer" 
-                        onClick={() => handleSort('job')}
-                      >
-                        Job {getSortIndicator('job')}
-                      </TableHead>
-                      <TableHead 
-                        className="hidden md:table-cell cursor-pointer" 
-                        onClick={() => handleSort('date')}
-                      >
-                        Invoice Date {getSortIndicator('date')}
-                      </TableHead>
-                      <TableHead 
-                        className="hidden md:table-cell cursor-pointer" 
-                        onClick={() => handleSort('shootingDate')}
-                      >
-                        Job Date {getSortIndicator('shootingDate')}
-                      </TableHead>
-                      <TableHead 
-                        className="hidden md:table-cell cursor-pointer" 
-                        onClick={() => handleSort('amount')}
-                      >
-                        Amount {getSortIndicator('amount')}
-                      </TableHead>
-                      <TableHead 
-                        className="cursor-pointer" 
-                        onClick={() => handleSort('status')}
-                      >
-                        Status {getSortIndicator('status')}
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {sortedInvoices.map((invoice) => {
-                      console.log(`[Invoices] Rendering invoice row for ${invoice.id}, jobId: ${invoice.jobId}, shootingDate: ${invoice.shootingDate}, jobDate: ${invoice.jobId ? jobDates[invoice.jobId] : 'no job'}`);
-                      return (
-                        <TableRow 
-                          key={invoice.id} 
-                          className="cursor-pointer"
-                          onClick={() => handleRowClick(invoice.id)}
-                        >
-                          <TableCell className="font-medium">{invoice.number || '-'}</TableCell>
-                          <TableCell>{getClientName(invoice.clientId)}</TableCell>
-                          <TableCell className="hidden md:table-cell">{getJobName(invoice.jobId)}</TableCell>
-                          <TableCell className="hidden md:table-cell">
-                            {invoice.date ? new Date(invoice.date).toLocaleDateString() : '-'}
-                          </TableCell>
-                          <TableCell className="hidden md:table-cell">
-                            <div className="flex items-center">
-                              <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
-                              {getJobDateDisplay(invoice)}
-                            </div>
-                          </TableCell>
-                          <TableCell className="hidden md:table-cell">
-                            {formatCurrency(invoice.amount || 0, companyCurrency)}
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={getStatusColor(invoice.status)}>
-                              {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
+              <InvoicesTable 
+                invoices={sortedInvoices}
+                sortConfig={sortConfig}
+                onSort={handleSort}
+                getClientName={getClientName}
+                getJobName={getJobName}
+                getJobDateDisplay={getJobDateDisplay}
+                companyCurrency={companyCurrency}
+              />
             )}
           </CardContent>
         </Card>

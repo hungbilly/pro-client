@@ -286,18 +286,23 @@ serve(async (req) => {
               </tr>
             </thead>
             <tbody>
-              ${invoice.invoice_items.map(item => `
-                <tr>
-                  <td>${item.name || 'Item'}</td>
-                  <td>${item.description || ''}</td>
-                  <td>${item.quantity}</td>
-                  <td>$${item.rate.toFixed(2)}</td>
-                  <td class="amount-column">$${item.amount.toFixed(2)}</td>
-                </tr>
-              `).join('')}
+              ${invoice.invoice_items.map(item => {
+                // Add null checks and default values for rate and amount
+                const rate = typeof item.rate === 'number' ? item.rate.toFixed(2) : '0.00';
+                const amount = typeof item.amount === 'number' ? item.amount.toFixed(2) : '0.00';
+                return `
+                  <tr>
+                    <td>${item.name || 'Item'}</td>
+                    <td>${item.description || ''}</td>
+                    <td>${item.quantity || 1}</td>
+                    <td>$${rate}</td>
+                    <td class="amount-column">$${amount}</td>
+                  </tr>
+                `;
+              }).join('')}
               <tr class="total-row">
                 <td colspan="4" style="text-align: right;">Total</td>
-                <td class="amount-column">$${invoice.amount.toFixed(2)}</td>
+                <td class="amount-column">$${typeof invoice.amount === 'number' ? invoice.amount.toFixed(2) : '0.00'}</td>
               </tr>
             </tbody>
           </table>
@@ -326,7 +331,7 @@ serve(async (req) => {
                     <tr>
                       <td>${new Date(schedule.due_date).toLocaleDateString()}</td>
                       <td>${schedule.description || 'Payment'}</td>
-                      <td class="amount-column">$${schedule.amount.toFixed(2)}</td>
+                      <td class="amount-column">$${typeof schedule.amount === 'number' ? schedule.amount.toFixed(2) : '0.00'}</td>
                       <td>${schedule.status.toUpperCase()}</td>
                     </tr>
                   `).join('')}

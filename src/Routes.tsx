@@ -44,6 +44,7 @@ import CalendarTest from '@/pages/CalendarTest';
 import EmailTemplates from '@/pages/EmailTemplates';
 import EmailHistory from '@/pages/EmailHistory';
 import SendEmail from '@/pages/SendEmail';
+import SubscriptionEnded from '@/pages/SubscriptionEnded';
 
 const AppRoutes = () => {
   const { user } = useAuth();
@@ -51,46 +52,36 @@ const AppRoutes = () => {
 
   return (
     <ReactRoutes>
+      {/* Authentication routes - public */}
       <Route path="/auth" element={<Auth />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
       <Route path="/auth/verify-email" element={<EmailVerification />} />
       
-      {/* Static pages */}
+      {/* Static pages - public */}
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/terms" element={<Terms />} />
       
-      {/* Move subscription routes inside AppLayout to have navigation */}
+      {/* Public invoice view routes */}
+      <Route path="/invoice/:idOrViewLink" element={<InvoiceView />} />
+      <Route path="/invoice-pdf/:viewLink" element={<InvoicePdfView />} />
+      
+      {/* Subscription routes - protected but not subscription-guarded */}
       <Route path="/" element={
         <ProtectedRoute>
           <AppLayout />
         </ProtectedRoute>
       }>
+        {/* Dashboard accessible to all authenticated users */}
         <Route index element={<Index />} />
+        
+        {/* Subscription management routes */}
         <Route path="/subscription" element={<Subscription />} />
         <Route path="/subscription/success" element={<SubscriptionSuccess />} />
         <Route path="/subscription/cancel" element={<SubscriptionCancel />} />
-        <Route path="/clients" element={<Clients />} />
-        <Route path="/client/new" element={<ClientNew />} />
-        <Route path="/client/:id" element={<ClientDetail />} />
-        <Route path="/client/:id/edit" element={<ClientEdit />} />
-        <Route path="/invoices" element={<Invoices />} />
-        <Route path="/jobs" element={<Jobs />} />
-        <Route path="/expenses" element={<Accounts />} />
-        <Route path="/payments" element={<Payments />} />
-        <Route path="/settings" element={<Settings />} />
-        
-        {/* Job routes */}
-        <Route path="/job/:id" element={<JobDetail />} />
-        <Route path="/job/:id/edit" element={<JobEdit />} />
-        <Route path="/client/:clientId/job/create" element={<JobCreate />} />
-        
-        {/* Invoice routes - ensure all needed routes exist */}
-        <Route path="/job/:jobId/invoice/create" element={<InvoiceCreate />} />
-        <Route path="/job/:jobId/invoice/new" element={<InvoiceCreate />} />
-        <Route path="/invoice/:invoiceId/edit" element={<InvoiceCreate />} />
+        <Route path="/subscription/ended" element={<SubscriptionEnded />} />
       </Route>
       
-      {/* Subscription Guard for paid features */}
+      {/* Premium features - protected AND subscription-guarded */}
       <Route path="/" element={
         <ProtectedRoute>
           <SubscriptionGuard>
@@ -98,7 +89,30 @@ const AppRoutes = () => {
           </SubscriptionGuard>
         </ProtectedRoute>
       }>
-        {/* These routes remain subscription guarded */}
+        {/* Client management */}
+        <Route path="/clients" element={<Clients />} />
+        <Route path="/client/new" element={<ClientNew />} />
+        <Route path="/client/:id" element={<ClientDetail />} />
+        <Route path="/client/:id/edit" element={<ClientEdit />} />
+        
+        {/* Invoice management */}
+        <Route path="/invoices" element={<Invoices />} />
+        <Route path="/job/:jobId/invoice/create" element={<InvoiceCreate />} />
+        <Route path="/job/:jobId/invoice/new" element={<InvoiceCreate />} />
+        <Route path="/invoice/:invoiceId/edit" element={<InvoiceCreate />} />
+        
+        {/* Job management */}
+        <Route path="/jobs" element={<Jobs />} />
+        <Route path="/job/:id" element={<JobDetail />} />
+        <Route path="/job/:id/edit" element={<JobEdit />} />
+        <Route path="/client/:clientId/job/create" element={<JobCreate />} />
+        
+        {/* Financial management */}
+        <Route path="/expenses" element={<Accounts />} />
+        <Route path="/payments" element={<Payments />} />
+        
+        {/* Settings */}
+        <Route path="/settings" element={<Settings />} />
       </Route>
       
       {/* Admin routes */}
@@ -114,10 +128,6 @@ const AppRoutes = () => {
         <Route path="email-history" element={<EmailHistory />} />
         <Route path="send-email" element={<SendEmail />} />
       </Route>
-      
-      {/* Public invoice view routes - moved outside of the protected routes */}
-      <Route path="/invoice/:idOrViewLink" element={<InvoiceView />} />
-      <Route path="/invoice-pdf/:viewLink" element={<InvoicePdfView />} />
       
       <Route path="*" element={<NotFound />} />
     </ReactRoutes>

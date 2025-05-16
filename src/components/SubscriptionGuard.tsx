@@ -1,12 +1,11 @@
 
 import React, { useEffect, useState } from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { toast } from '@/components/ui/use-toast';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { format } from 'date-fns';
 
@@ -28,6 +27,7 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }) => {
   const [hasChecked, setHasChecked] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   
   // Add effect to check subscription on mount
   useEffect(() => {
@@ -54,10 +54,11 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }) => {
         } : null,
         isInTrialPeriod,
         trialDaysLeft,
-        isAdmin
+        isAdmin,
+        currentPath: location.pathname,
       });
     }
-  }, [hasAccess, isLoading, subscription, isInTrialPeriod, trialDaysLeft, hasChecked, isAdmin]);
+  }, [hasAccess, isLoading, subscription, isInTrialPeriod, trialDaysLeft, hasChecked, isAdmin, location]);
 
   // Modified notification effect with localStorage tracking and more precise trial information
   useEffect(() => {
@@ -144,59 +145,9 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }) => {
   }
 
   if (!hasAccess) {
-    // For debugging purposes, show more information about what's happening
-    console.log("SubscriptionGuard: No access, redirecting to /subscription");
-    console.log("Subscription check failed:", { 
-      hasAccess, 
-      isLoading, 
-      subscription: subscription ? {
-        id: subscription.id,
-        status: subscription.status,
-        currentPeriodEnd: subscription.currentPeriodEnd
-      } : null
-    });
-
-    return (
-      <div className="p-6 max-w-md mx-auto">
-        <Alert variant="destructive" className="mb-4">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Subscription Required</AlertTitle>
-          <AlertDescription>
-            You need an active subscription to access this feature. 
-            {subscription ? ` Current status: ${subscription.status}` : ' No subscription found.'}
-            {trialEndDate && ' Your trial has ended.'}
-          </AlertDescription>
-        </Alert>
-        
-        <div className="flex flex-col space-y-4 mt-4">
-          <Button 
-            variant="default"
-            onClick={() => navigate('/subscription')}
-            className="w-full"
-          >
-            View Subscription Options
-          </Button>
-          
-          <Button 
-            variant="outline" 
-            onClick={handleRefreshStatus}
-            disabled={isRefreshing}
-            className="w-full"
-          >
-            {isRefreshing ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Refreshing...
-              </>
-            ) : (
-              'Refresh Status'
-            )}
-          </Button>
-        </div>
-        
-        <Navigate to="/subscription" replace />
-      </div>
-    );
+    // Redirect to subscription ended page
+    console.log("SubscriptionGuard: No access, redirecting to /subscription/ended");
+    return <Navigate to="/subscription/ended" state={{ from: location.pathname }} replace />;
   }
 
   console.log('SubscriptionGuard: Access granted, rendering children');

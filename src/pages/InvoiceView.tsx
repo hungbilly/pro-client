@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback, memo, useRef } from 'react';
 import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
@@ -391,7 +392,7 @@ const InvoiceView = () => {
         contract_status: 'accepted' as ContractStatus,
         contract_accepted_at: new Date().toISOString(),
         invoice_accepted_by: name,
-        updated_at: new Date().toISOString(),
+        // Removed updated_at field as it doesn't exist in the invoices table
       };
 
       const { data, error } = await supabase

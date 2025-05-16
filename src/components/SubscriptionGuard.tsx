@@ -23,23 +23,30 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }) => {
     subscription,
     checkSubscription
   } = useSubscription();
-  const { isAdmin } = useAuth();
+  const { isAdmin, session } = useAuth();
   const [hasChecked, setHasChecked] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Add effect to check subscription on mount
+  // Add effect to check subscription on mount or when session changes
   useEffect(() => {
-    console.log('SubscriptionGuard: Checking subscription status...');
+    console.log('SubscriptionGuard: Checking subscription status...', 
+      session ? `Session active for ${session.user.email}` : 'No active session');
+    
     const verifySubscription = async () => {
       await checkSubscription(); // Wait for the subscription check to complete
       console.log('SubscriptionGuard: Subscription check completed');
       setHasChecked(true);
     };
 
-    verifySubscription();
-  }, [checkSubscription]);
+    if (session) {
+      verifySubscription();
+    } else {
+      // If no session, still mark as checked but we'll handle access denial later
+      setHasChecked(true);
+    }
+  }, [checkSubscription, session]);
 
   // Add debug logging
   useEffect(() => {
@@ -56,9 +63,10 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }) => {
         trialDaysLeft,
         isAdmin,
         currentPath: location.pathname,
+        hasActiveSession: !!session
       });
     }
-  }, [hasAccess, isLoading, subscription, isInTrialPeriod, trialDaysLeft, hasChecked, isAdmin, location]);
+  }, [hasAccess, isLoading, subscription, isInTrialPeriod, trialDaysLeft, hasChecked, isAdmin, location, session]);
 
   // Modified notification effect with localStorage tracking and more precise trial information
   useEffect(() => {
@@ -136,6 +144,12 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }) => {
         </div>
       </div>
     );
+  }
+
+  // Check for no session before admin bypass
+  if (!session) {
+    console.log('SubscriptionGuard: No active session, redirecting to auth page');
+    return <Navigate to="/auth" state={{ from: location.pathname }} replace />;
   }
 
   // Admin bypass - let admins through regardless of subscription status

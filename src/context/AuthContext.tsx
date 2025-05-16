@@ -92,6 +92,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.error('Failed to store auth backup data:', e);
           }
 
+          // Check if the session is expired or will expire soon (within 5 minutes)
+          const nowInSeconds = Math.floor(Date.now() / 1000);
+          const expiresInSeconds = currentSession.expires_at - nowInSeconds;
+          
+          if (expiresInSeconds < 300) { // Less than 5 minutes until expiry
+            console.log('Session expires soon or is expired, refreshing...');
+            try {
+              const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+              if (refreshError) {
+                console.error('Failed to refresh session:', refreshError);
+              } else if (refreshData.session) {
+                console.log('Session refreshed successfully. New expiry:', 
+                  new Date(refreshData.session.expires_at * 1000).toISOString());
+                
+                // Update the session with the refreshed one
+                setSession(refreshData.session);
+                setUser(refreshData.session.user);
+                setIsAdmin(refreshData.session.user.user_metadata?.is_admin || false);
+                
+                // Update backup data
+                try {
+                  localStorage.setItem('auth_user_id', refreshData.session.user.id);
+                  localStorage.setItem('auth_session_active', 'true');
+                  localStorage.setItem('auth_session_expiry', String(refreshData.session.expires_at));
+                } catch (e) {
+                  console.error('Failed to store refreshed auth backup data:', e);
+                }
+                
+                return; // Skip the setSession calls below since we've already set them
+              }
+            } catch (refreshError) {
+              console.error('Error during session refresh:', refreshError);
+            }
+          }
+
           // Additional validate to confirm session is working
           try {
             const { data: userData, error: userError } = await supabase.auth.getUser();
@@ -103,7 +138,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           } catch (validationError) {
             console.error('Session validation failed, clearing session:', validationError);
             await supabase.auth.signOut({ scope: 'local' });
+            return;
           }
+          
+          // Set the session and user state with the current session
+          setSession(currentSession);
+          setUser(currentSession.user);
+          setIsAdmin(currentSession.user.user_metadata?.is_admin || false);
         } else {
           console.log('No current session found');
           // Check for backup data
@@ -120,8 +161,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 console.log('Found valid backup session data, attempting refresh...');
                 // We have backup data that's not expired, attempt a refresh
                 try {
-                  await supabase.auth.refreshSession();
-                  console.log('Session refresh attempted');
+                  const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+                  if (!refreshError && refreshData.session) {
+                    console.log('Session refresh successful');
+                    setSession(refreshData.session);
+                    setUser(refreshData.session.user);
+                    setIsAdmin(refreshData.session.user.user_metadata?.is_admin || false);
+                  } else {
+                    console.error('Failed to refresh session:', refreshError);
+                  }
                 } catch (refreshError) {
                   console.error('Failed to refresh session:', refreshError);
                 }
@@ -135,24 +183,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
           } catch (e) {
             console.error('Error checking backup auth data:', e);
-          }
-        }
-        
-        // Don't call setState if unmounted
-        setSession(currentSession);
-        setUser(currentSession?.user ?? null);
-        setIsAdmin(currentSession?.user?.user_metadata?.is_admin || false);
-        
-        // For Google auth, make sure we have the is_admin field set
-        if (currentSession?.user && currentSession.user.app_metadata?.provider === 'google' && 
-            !currentSession.user.user_metadata.hasOwnProperty('is_admin')) {
-          console.log('Adding is_admin metadata for Google auth user');
-          try {
-            await supabase.auth.updateUser({
-              data: { is_admin: false }
-            });
-          } catch (error) {
-            console.error('Error updating user metadata:', error);
           }
         }
       } catch (error) {

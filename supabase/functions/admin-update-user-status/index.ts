@@ -17,24 +17,44 @@ serve(async (req) => {
     // Get the authorization header from the request
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
+      console.error('Missing Authorization header in request');
       throw new Error('Missing Authorization header');
+    }
+
+    // Extract the token from the header
+    const token = authHeader.replace('Bearer ', '');
+    if (!token || token === 'null' || token === 'undefined') {
+      console.error(`Invalid token received: "${token}"`);
+      throw new Error('Invalid authentication token');
     }
 
     // Initialize Supabase client with SERVICE ROLE KEY to bypass RLS
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
     const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    
+    if (!supabaseUrl || !supabaseServiceRoleKey) {
+      console.error('Missing Supabase configuration environment variables');
+      throw new Error('Server configuration error');
+    }
+    
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
     // Get admin user from token
-    const token = authHeader.replace('Bearer ', '');
+    console.log(`Validating admin user with token: ${token.substring(0, 10)}...`);
     const { data: adminData, error: adminError } = await supabase.auth.getUser(token);
     
-    if (adminError || !adminData.user) {
+    if (adminError) {
       console.error('Error getting admin user:', adminError);
-      throw new Error('Invalid admin token');
+      throw new Error(`Invalid admin token: ${adminError.message}`);
+    }
+
+    if (!adminData || !adminData.user) {
+      console.error('No user found in admin token data');
+      throw new Error('Invalid admin token: No user found');
     }
 
     const adminUser = adminData.user;
+    console.log(`Admin user authenticated: ${adminUser.email} (${adminUser.id})`);
     
     // Verify that the requesting user is an admin
     const { data: adminProfile, error: adminProfileError } = await supabase
@@ -43,13 +63,25 @@ serve(async (req) => {
       .eq('id', adminUser.id)
       .single();
       
-    if (adminProfileError || !adminProfile || !adminProfile.is_admin) {
-      console.error('Admin verification failed:', adminProfileError);
+    if (adminProfileError) {
+      console.error('Admin verification query error:', adminProfileError);
+      throw new Error(`Admin verification failed: ${adminProfileError.message}`);
+    }
+    
+    if (!adminProfile || !adminProfile.is_admin) {
+      console.error('User is not an admin:', adminUser.email);
       throw new Error('User is not an admin');
     }
 
     // Parse request body
-    const requestData = await req.json();
+    let requestData;
+    try {
+      requestData = await req.json();
+    } catch (parseError) {
+      console.error('Error parsing request body:', parseError);
+      throw new Error('Invalid request body format');
+    }
+    
     const { 
       userId,
       status,
@@ -59,6 +91,7 @@ serve(async (req) => {
     } = requestData;
     
     if (!userId || !status) {
+      console.error('Missing required fields in request data:', { userId, status });
       throw new Error('Missing required fields: userId and status');
     }
     
@@ -175,7 +208,11 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error updating user status:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        success: false,
+        message: `Update failed: ${error.message}`
+      }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500,

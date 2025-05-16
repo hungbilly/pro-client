@@ -14,6 +14,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useAuth } from "@/context/AuthContext";
 
 interface UserStatusManagerProps {
   userId: string;
@@ -36,6 +37,7 @@ const UserStatusManager: React.FC<UserStatusManagerProps> = ({
   currentTrialEndDate,
   onStatusUpdated
 }) => {
+  const { session } = useAuth(); // Get current auth session
   const [status, setStatus] = useState<string>(currentStatus || "");
   const [trialEndDate, setTrialEndDate] = useState<Date | undefined>(
     currentTrialEndDate ? new Date(currentTrialEndDate) : undefined
@@ -63,6 +65,12 @@ const UserStatusManager: React.FC<UserStatusManagerProps> = ({
       return;
     }
 
+    if (!session) {
+      setError("You must be logged in to perform this action");
+      toast.error("Authentication error: No active session");
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setSuccess(false);
@@ -71,24 +79,34 @@ const UserStatusManager: React.FC<UserStatusManagerProps> = ({
       // Format date to ISO string if it exists
       const formattedTrialEndDate = trialEndDate ? trialEndDate.toISOString() : null;
       
+      console.log("Updating user status with session token:", 
+        session.access_token ? `${session.access_token.substring(0, 10)}...` : "missing");
+      
+      // Pass the auth token explicitly
       const { data, error } = await supabase.functions.invoke('admin-update-user-status', {
         body: {
           userId,
           status,
           trialEndDate: formattedTrialEndDate,
           notes,
-          adminOverride // Pass the admin override flag to the function
+          adminOverride
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
         }
       });
 
       if (error) {
+        console.error('Function error:', error);
         throw new Error(`Function error: ${error.message}`);
       }
 
       if (!data || !data.success) {
-        throw new Error('Failed to update user status');
+        console.error('Invalid response data:', data);
+        throw new Error('Failed to update user status: Invalid response from server');
       }
 
+      console.log('Status update successful:', data);
       setSuccess(true);
       toast.success(`User ${email || userId} status updated to ${status}`);
       
@@ -159,13 +177,23 @@ const UserStatusManager: React.FC<UserStatusManagerProps> = ({
           </Alert>
         )}
 
+        {!session && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Authentication Error</AlertTitle>
+            <AlertDescription>
+              No active session found. Please log out and log back in to refresh your authentication.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="status">Subscription Status</Label>
             <Select
               value={status}
               onValueChange={setStatus}
-              disabled={!userId || loading}
+              disabled={!userId || loading || !session}
             >
               <SelectTrigger id="status" className="w-full">
                 <SelectValue placeholder="Select a status" />
@@ -190,7 +218,7 @@ const UserStatusManager: React.FC<UserStatusManagerProps> = ({
                     "w-full justify-start text-left font-normal",
                     !trialEndDate && "text-muted-foreground"
                   )}
-                  disabled={!userId || loading}
+                  disabled={!userId || loading || !session}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {trialEndDate ? format(trialEndDate, "PPP") : "No trial end date"}
@@ -217,7 +245,7 @@ const UserStatusManager: React.FC<UserStatusManagerProps> = ({
                 id="admin-override"
                 checked={adminOverride}
                 onCheckedChange={setAdminOverride}
-                disabled={!userId || loading}
+                disabled={!userId || loading || !session}
               />
             </div>
             <p className="text-xs text-muted-foreground">
@@ -233,14 +261,14 @@ const UserStatusManager: React.FC<UserStatusManagerProps> = ({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               className="min-h-[80px]"
-              disabled={!userId || loading}
+              disabled={!userId || loading || !session}
             />
           </div>
 
           <div className="flex space-x-2">
             <Button
               onClick={handleUpdateStatus}
-              disabled={!userId || !status || loading}
+              disabled={!userId || !status || loading || !session}
               className="flex-1"
             >
               {loading ? "Updating..." : "Update Status"}

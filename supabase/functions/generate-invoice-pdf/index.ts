@@ -127,7 +127,7 @@ serve(async (req) => {
           body {
             font-family: Arial, sans-serif;
             margin: 0;
-            padding: 20px;
+            padding: 40px;
             color: #333;
           }
           .invoice-container {
@@ -192,10 +192,21 @@ serve(async (req) => {
             padding-top: 20px;
             border-top: 1px solid #ddd;
           }
+          .contract-terms {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+          }
           .payment-schedule {
             margin-top: 30px;
             padding-top: 20px;
             border-top: 1px solid #ddd;
+          }
+          .payment-methods {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            white-space: pre-line;
           }
           .footer {
             margin-top: 50px;
@@ -337,6 +348,20 @@ serve(async (req) => {
                   `).join('')}
                 </tbody>
               </table>
+            </div>
+          ` : ''}
+
+          ${companyData?.payment_methods ? `
+            <div class="payment-methods">
+              <div class="label">PAYMENT METHODS</div>
+              <div>${companyData.payment_methods}</div>
+            </div>
+          ` : ''}
+
+          ${invoice.contract_terms ? `
+            <div class="contract-terms">
+              <div class="label">CONTRACT TERMS</div>
+              <div>${invoice.contract_terms}</div>
             </div>
           ` : ''}
 

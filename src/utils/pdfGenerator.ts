@@ -55,7 +55,21 @@ export async function generateInvoicePdf(
     const printWidth = pdfWidth - (margin * 2);
     const printHeight = (imgProps.height * printWidth) / imgProps.width;
     
-    pdf.addImage(imgData, 'PNG', margin, margin, printWidth, printHeight);
+    // Multiple pages logic for long content
+    let heightLeft = printHeight;
+    let position = margin;
+    
+    // Add first page
+    pdf.addImage(imgData, 'PNG', margin, position, printWidth, printHeight);
+    heightLeft -= pdf.internal.pageSize.getHeight() - 2 * margin;
+    
+    // Add new pages if content exceeds page height
+    while (heightLeft > 0) {
+      pdf.addPage();
+      position = margin - (printHeight - heightLeft);
+      pdf.addImage(imgData, 'PNG', margin, position, printWidth, printHeight);
+      heightLeft -= pdf.internal.pageSize.getHeight() - 2 * margin;
+    }
     
     // Return as blob
     return pdf.output('blob');
@@ -397,13 +411,6 @@ function createInvoiceHtml(
           </div>
         ` : ''}
         
-        ${invoice.contractTerms ? `
-          <div class="contract-terms">
-            <div class="label">CONTRACT TERMS</div>
-            <div>${invoice.contractTerms}</div>
-          </div>
-        ` : ''}
-
         ${invoice.paymentSchedules && invoice.paymentSchedules.length > 0 ? `
           <div class="payment-schedule">
             <div class="label">PAYMENT SCHEDULE</div>
@@ -434,6 +441,13 @@ function createInvoiceHtml(
           <div class="payment-methods">
             <div class="label">PAYMENT METHODS</div>
             <div>${clientViewCompany.payment_methods}</div>
+          </div>
+        ` : ''}
+        
+        ${invoice.contractTerms ? `
+          <div class="contract-terms">
+            <div class="label">CONTRACT TERMS</div>
+            <div>${invoice.contractTerms}</div>
           </div>
         ` : ''}
 

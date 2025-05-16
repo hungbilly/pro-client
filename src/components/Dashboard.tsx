@@ -447,8 +447,9 @@ const Dashboard: React.FC = () => {
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-semibold">Your Invoices</h2>
                   {jobs.length > 0 && <Button asChild size="sm">
-                      <Link to={`/jobs`}>
-                        View Jobs
+                      <Link to={`/invoice/create/${clients.length > 0 ? clients[0].id : ''}`}>
+                        <FilePlus className="h-4 w-4 mr-2" />
+                        Add Invoice
                       </Link>
                     </Button>}
                 </div>

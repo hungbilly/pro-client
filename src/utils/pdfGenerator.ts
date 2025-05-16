@@ -28,11 +28,17 @@ export async function generateInvoicePdf(
   document.body.appendChild(container);
   
   try {
-    // Add debug logging for payment methods
+    // Add debug logging for payment methods and payment schedules
     console.log('[PDF Debug] Generating PDF with payment methods:', {
       hasClientViewCompany: !!clientViewCompany,
       paymentMethods: clientViewCompany?.payment_methods || 'None',
       paymentMethodsLength: clientViewCompany?.payment_methods?.length || 0
+    });
+    
+    console.log('[PDF Debug] Payment schedules info:', {
+      hasPaymentSchedules: !!invoice.paymentSchedules,
+      paymentSchedulesLength: invoice.paymentSchedules?.length || 0,
+      paymentSchedulesData: invoice.paymentSchedules || 'No payment schedules'
     });
     
     // Create a PDF
@@ -163,12 +169,18 @@ function createInvoiceHtml(
     return formatCurrency(amount, companyCurrency);
   };
 
-  // Debug logging for payment methods
+  // Debug logging for payment methods and payment schedules
   console.log('[PDF Debug] Creating HTML with payment methods:', {
     hasClientViewCompany: !!clientViewCompany,
     clientViewCompanyObj: clientViewCompany,
     paymentMethods: clientViewCompany?.payment_methods || 'None provided',
     paymentMethodsLength: clientViewCompany?.payment_methods?.length || 0
+  });
+
+  console.log('[PDF Debug] Creating HTML with payment schedules:', {
+    hasPaymentSchedules: !!invoice.paymentSchedules,
+    paymentSchedulesLength: invoice.paymentSchedules?.length || 0,
+    paymentSchedulesItems: invoice.paymentSchedules ? JSON.stringify(invoice.paymentSchedules) : 'None'
   });
   
   if (debugMode) {
@@ -195,7 +207,9 @@ function createInvoiceHtml(
             companyName: company?.name,
             companyLogo: displayCompany?.logo_url,
             hasPaymentMethods: !!clientViewCompany?.payment_methods,
-            paymentMethodsLength: clientViewCompany?.payment_methods?.length || 0
+            paymentMethodsLength: clientViewCompany?.payment_methods?.length || 0,
+            hasPaymentSchedules: !!invoice.paymentSchedules,
+            paymentSchedulesLength: invoice.paymentSchedules?.length || 0
           }, null, 2)}</pre>
         </div>
         
@@ -207,6 +221,28 @@ function createInvoiceHtml(
           <p><strong>Phone:</strong> ${company?.phone || 'Not available'}</p>
           <p><strong>Address:</strong> ${company?.address || 'Not available'}</p>
         </div>
+        
+        ${invoice.paymentSchedules && invoice.paymentSchedules.length > 0 ? `
+          <h2>Payment Schedules</h2>
+          <div style="border: 1px solid #ddd; padding: 10px; background: #fff;">
+            <table border="1" cellpadding="5">
+              <tr>
+                <th>Due Date</th>
+                <th>Description</th>
+                <th>Amount</th>
+                <th>Status</th>
+              </tr>
+              ${invoice.paymentSchedules.map(schedule => `
+                <tr>
+                  <td>${schedule.dueDate}</td>
+                  <td>${schedule.description || 'Payment'}</td>
+                  <td>${formatAmount(schedule.amount)}</td>
+                  <td>${schedule.status}</td>
+                </tr>
+              `).join('')}
+            </table>
+          </div>
+        ` : '<p>No payment schedules defined</p>'}
         
         ${clientViewCompany?.payment_methods ? `
           <h2>Payment Methods</h2>
@@ -231,7 +267,7 @@ function createInvoiceHtml(
         body {
           font-family: Arial, sans-serif;
           margin: 0;
-          padding: 60px; /* Increased padding for more margin */
+          padding: 80px; /* Increased padding for more margin */
           color: #333;
         }
         .invoice-container {
@@ -342,6 +378,11 @@ function createInvoiceHtml(
         .status-paid {
           background-color: #f3e5f5;
           color: #7b1fa2;
+        }
+        @media print {
+          .contract-terms {
+            page-break-before: always;
+          }
         }
       </style>
     </head>

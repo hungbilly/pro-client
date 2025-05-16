@@ -100,6 +100,9 @@ serve(async (req) => {
 
     if (schedulesError) {
       console.error('Error fetching payment schedules:', schedulesError);
+    } else {
+      console.log(`Fetched ${paymentSchedules?.length || 0} payment schedules for invoice ${invoiceId}`);
+      console.log('Payment schedules data:', paymentSchedules);
     }
 
     // Fetch company client view data for additional display settings
@@ -127,7 +130,7 @@ serve(async (req) => {
           body {
             font-family: Arial, sans-serif;
             margin: 0;
-            padding: 60px; /* Increased padding for more margin */
+            padding: 80px; /* Increased padding for more margin */
             color: #333;
           }
           .invoice-container {
@@ -192,12 +195,6 @@ serve(async (req) => {
             padding-top: 20px;
             border-top: 1px solid #ddd;
           }
-          .contract-terms {
-            page-break-before: always; /* Force contract to start on new page */
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #ddd;
-          }
           .payment-schedule {
             margin-top: 30px;
             padding-top: 20px;
@@ -208,6 +205,12 @@ serve(async (req) => {
             padding-top: 20px;
             border-top: 1px solid #ddd;
             white-space: pre-line;
+          }
+          .contract-terms {
+            page-break-before: always; /* Force contract to start on new page */
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
           }
           .footer {
             margin-top: 50px;
@@ -238,6 +241,11 @@ serve(async (req) => {
           .status-paid {
             background-color: #f3e5f5;
             color: #7b1fa2;
+          }
+          @media print {
+            .contract-terms {
+              page-break-before: always;
+            }
           }
         </style>
       </head>
@@ -375,12 +383,18 @@ serve(async (req) => {
       </html>
     `;
 
-    // Add additional debug logging for payment methods
+    // Add additional debug logging for payment methods and schedule
     console.log('[DEBUG] Payment methods data:', {
       hasCompanyData: !!companyData,
       paymentMethods: companyData?.payment_methods ? 'Present' : 'None provided',
       paymentMethodsLength: companyData?.payment_methods?.length || 0,
       contractTermsLength: invoice.contract_terms?.length || 0
+    });
+    
+    console.log('[DEBUG] Payment schedule data:', {
+      hasPaymentSchedules: !!paymentSchedules,
+      paymentSchedulesCount: paymentSchedules?.length || 0,
+      paymentSchedulesData: paymentSchedules ? JSON.stringify(paymentSchedules.slice(0, 2)) : 'None'
     });
 
     // Add payment methods to the template if available
@@ -400,7 +414,9 @@ serve(async (req) => {
         companyLogo: companyData?.logo_url || invoice.company?.logo_url,
         clientInfo,
         hasPaymentMethods: !!companyData?.payment_methods,
-        paymentMethodsLength: companyData?.payment_methods?.length || 0
+        paymentMethodsLength: companyData?.payment_methods?.length || 0,
+        hasPaymentSchedules: !!paymentSchedules,
+        paymentSchedulesCount: paymentSchedules?.length || 0
       };
       
       // For debug mode, create a simpler HTML template
@@ -431,6 +447,28 @@ serve(async (req) => {
             <p><strong>Phone:</strong> ${invoice.company?.phone || 'Not available'}</p>
             <p><strong>Address:</strong> ${invoice.company?.address || 'Not available'}</p>
           </div>
+          
+          ${paymentSchedules && paymentSchedules.length > 0 ? `
+            <h2>Payment Schedules</h2>
+            <div style="border: 1px solid #ddd; padding: 10px; background: #fff;">
+              <table border="1" cellpadding="5">
+                <tr>
+                  <th>Due Date</th>
+                  <th>Description</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                </tr>
+                ${paymentSchedules.map(schedule => `
+                  <tr>
+                    <td>${new Date(schedule.due_date).toLocaleDateString()}</td>
+                    <td>${schedule.description || 'Payment'}</td>
+                    <td>$${typeof schedule.amount === 'number' ? schedule.amount.toFixed(2) : '0.00'}</td>
+                    <td>${schedule.status.toUpperCase()}</td>
+                  </tr>
+                `).join('')}
+              </table>
+            </div>
+          ` : '<p>No payment schedules defined</p>'}
           
           ${companyData?.payment_methods ? `
             <h2>Payment Methods</h2>
@@ -517,6 +555,8 @@ serve(async (req) => {
           companyName: invoice.company?.name,
           hasPaymentMethods: !!companyData?.payment_methods,
           paymentMethodsLength: companyData?.payment_methods?.length || 0,
+          hasPaymentSchedules: !!paymentSchedules,
+          paymentSchedulesCount: paymentSchedules?.length || 0,
           clientInfo
         } : undefined
       }),

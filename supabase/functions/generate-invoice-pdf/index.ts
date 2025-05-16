@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { jsPDF } from 'https://esm.sh/jspdf@3.0.1';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
@@ -52,6 +51,7 @@ interface Company {
   website?: string;
   logo_url?: string;
   user_id: string;
+  payment_methods?: string; // Added payment methods field
 }
 
 interface Job {
@@ -101,6 +101,7 @@ interface FormattedInvoice {
     phone?: string;
     website?: string;
     logoUrl?: string;
+    payment_methods?: string; // Added mapping for payment_methods
   };
   job?: {
     id: string;
@@ -393,7 +394,8 @@ serve(async (req) => {
         email: company.email,
         phone: company.phone,
         website: company.website,
-        logoUrl: company.logo_url
+        logoUrl: company.logo_url,
+        payment_methods: company.payment_methods // Added mapping for payment_methods
       } : { id: 'unknown', name: 'Unknown Company' },
       job: job ? {
         id: job.id,
@@ -933,6 +935,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
     contractTermsLength: invoiceData.contractTerms?.length || 0,
     contractTermsPreview: invoiceData.contractTerms?.substring(0, 100),
     companyLogoUrl: invoiceData.company.logoUrl,
+    hasPaymentMethods: !!invoiceData.company.payment_methods, // Added debug info
   });
   
   try {
@@ -1286,6 +1289,41 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       });
     } else {
       log.debug('No payment schedules to render');
+    }
+    
+    // Payment Methods - Add new section for payment methods
+    if (invoiceData.company.payment_methods) {
+      if (y > pageHeight - 70) {
+        doc.addPage();
+        y = margin;
+        log.debug('Added new page for payment methods, new y position:', y);
+      }
+      
+      log.debug('Rendering PAYMENT METHODS section');
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('PAYMENT METHODS', margin, y);
+      
+      y += 8;
+      
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      log.debug('Payment methods content:', invoiceData.company.payment_methods);
+      
+      const paymentMethodsY = addWrappedText(
+        doc, 
+        invoiceData.company.payment_methods, 
+        margin, 
+        y, 
+        contentWidth, 
+        5, 
+        pageHeight, 
+        margin
+      );
+      y = paymentMethodsY + 15;
+      log.debug('Payment methods section drawn, new y position:', y);
+    } else {
+      log.debug('No payment methods to render');
     }
     
     // Notes

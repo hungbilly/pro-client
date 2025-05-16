@@ -1,44 +1,39 @@
+
 import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getClients, getInvoices, getJobs, deleteClient, getExpenses } from '@/lib/storage';
-import { Client, Invoice, Expense } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Link, useNavigate } from 'react-router-dom';
-import { UserPlus, FileText, Users, Briefcase, FilePlus, Eye, FileEdit, MoreHorizontal, Trash2, Search, CalendarDays } from 'lucide-react';
+import { Users, Briefcase, FileText } from 'lucide-react';
 import { AnimatedBackground } from './ui-custom/AnimatedBackground';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from './ui/badge';
 import { toast } from 'sonner';
-import { Input } from '@/components/ui/input';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useCompany } from './CompanySelector';
-import AddClientButton from './ui-custom/AddClientButton';
-import AddJobButton from './ui-custom/AddJobButton';
-import RevenueChart from './RevenueChart';
-import JobCalendar from './JobCalendar';
 import { supabase } from '@/integrations/supabase/client';
 import { logDebug } from '@/integrations/supabase/client';
 import CreateInvoiceModal from './ui-custom/CreateInvoiceModal';
 
+// Import refactored components
+import DashboardHeader from './dashboard/DashboardHeader';
+import DashboardAnalytics from './dashboard/DashboardAnalytics';
+import ClientsTabContent from './dashboard/ClientsTabContent';
+import JobsTabContent from './dashboard/JobsTabContent';
+import InvoicesTabContent from './dashboard/InvoicesTabContent';
+import DeleteClientDialog from './dashboard/DeleteClientDialog';
+import { getStatusColor } from './dashboard/StatusUtils';
+
 const Dashboard: React.FC = () => {
-  const navigate = useNavigate();
   const [clientToDelete, setClientToDelete] = React.useState<string | null>(null);
-  const [isAddJobModalOpen, setIsAddJobModalOpen] = useState(false);
   const [isCreateInvoiceModalOpen, setIsCreateInvoiceModalOpen] = useState(false);
   const queryClient = useQueryClient();
-  const [clientSearchQuery, setClientSearchQuery] = useState('');
-  const [jobSearchQuery, setJobSearchQuery] = useState('');
-  const [invoiceSearchQuery, setInvoiceSearchQuery] = useState('');
   const [localInvoices, setLocalInvoices] = useState<any[]>([]);
   const [jobDates, setJobDates] = useState<Record<string, string>>({});
+  
   const {
     companies,
     selectedCompanyId,
     loading: companyLoading
   } = useCompany();
+
   useEffect(() => {
     if (selectedCompanyId) {
       queryClient.invalidateQueries({
@@ -55,6 +50,7 @@ const Dashboard: React.FC = () => {
       });
     }
   }, [selectedCompanyId, queryClient]);
+
   const {
     data: clients = [],
     isLoading: clientsLoading
@@ -63,6 +59,7 @@ const Dashboard: React.FC = () => {
     queryFn: () => getClients(selectedCompanyId),
     enabled: !!selectedCompanyId
   });
+
   const fetchInvoicesWithSchedules = async (companyId: string) => {
     try {
       const {
@@ -118,6 +115,7 @@ const Dashboard: React.FC = () => {
           paymentSchedules: invoiceSchedules
         };
       });
+      
       logDebug('Processed invoices with schedules:', {
         totalInvoices: invoicesWithSchedules.length,
         sampleInvoice: invoicesWithSchedules.length > 0 ? {
@@ -127,12 +125,14 @@ const Dashboard: React.FC = () => {
           paymentDates: invoicesWithSchedules[0].paymentSchedules.map(s => s.paymentDate)
         } : null
       });
+      
       return invoicesWithSchedules;
     } catch (error) {
       logDebug('Unexpected error fetching invoices with schedules:', error);
       return [];
     }
   };
+
   const {
     data: invoices = [],
     isLoading: invoicesLoading
@@ -141,9 +141,11 @@ const Dashboard: React.FC = () => {
     queryFn: () => selectedCompanyId ? fetchInvoicesWithSchedules(selectedCompanyId) : [],
     enabled: !!selectedCompanyId
   });
+
   React.useEffect(() => {
     setLocalInvoices(invoices);
   }, [invoices]);
+
   const {
     data: jobs = [],
     isLoading: jobsLoading
@@ -152,6 +154,7 @@ const Dashboard: React.FC = () => {
     queryFn: () => getJobs(selectedCompanyId),
     enabled: !!selectedCompanyId
   });
+
   React.useEffect(() => {
     const dateMap: Record<string, string> = {};
     jobs.forEach(job => {
@@ -161,6 +164,7 @@ const Dashboard: React.FC = () => {
     });
     setJobDates(dateMap);
   }, [jobs]);
+
   const {
     data: expenses = [],
     isLoading: expensesLoading
@@ -169,6 +173,7 @@ const Dashboard: React.FC = () => {
     queryFn: () => getExpenses(selectedCompanyId),
     enabled: !!selectedCompanyId
   });
+
   if (companyLoading) {
     return <div className="flex items-center justify-center h-screen">
         <div className="text-center">
@@ -176,36 +181,12 @@ const Dashboard: React.FC = () => {
         </div>
       </div>;
   }
-  if (companies.length === 0) {
-    return <div className="flex items-center justify-center h-screen">
-        <div className="text-center p-8 max-w-md">
-          <h2 className="text-2xl font-bold mb-4">Welcome to Wedding Studio Manager</h2>
-          <p className="mb-6 text-red-500">To get started, you need to create a company first. please refresh the page if you don't see the new company after added</p>
-          <Button asChild>
-            <Link to="/settings">Create Your Company</Link>
-          </Button>
-        </div>
-      </div>;
-  }
-  const sortedClients = [...clients].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).filter(client => client.name.toLowerCase().includes(clientSearchQuery.toLowerCase()) || client.email.toLowerCase().includes(clientSearchQuery.toLowerCase()) || client.phone.toLowerCase().includes(clientSearchQuery.toLowerCase()));
-  const filteredJobs = [...jobs].filter(job => job.title.toLowerCase().includes(jobSearchQuery.toLowerCase()) || clients.find(c => c.id === job.clientId)?.name.toLowerCase().includes(jobSearchQuery.toLowerCase()) || job.location && job.location.toLowerCase().includes(jobSearchQuery.toLowerCase()));
-  const filteredInvoices = [...localInvoices].filter(invoice => invoice.number.toLowerCase().includes(invoiceSearchQuery.toLowerCase()) || clients.find(c => c.id === invoice.clientId)?.name.toLowerCase().includes(invoiceSearchQuery.toLowerCase()) || invoice.status.toLowerCase().includes(invoiceSearchQuery.toLowerCase()));
-  const handleClientRowClick = (clientId: string) => {
-    navigate(`/client/${clientId}`);
-  };
-  const handleJobRowClick = (jobId: string) => {
-    navigate(`/job/${jobId}`);
-  };
-  const handleInvoiceRowClick = (invoiceId: string) => {
-    navigate(`/invoice/${invoiceId}`);
-  };
-  const handleInvoiceDeleted = (invoiceId: string) => {
-    setLocalInvoices(prev => prev.filter(invoice => invoice.id !== invoiceId));
-  };
+
   const confirmDeleteClient = (e: React.MouseEvent, clientId: string) => {
     e.stopPropagation();
     setClientToDelete(clientId);
   };
+
   const handleDeleteClient = async () => {
     if (!clientToDelete) return;
     try {
@@ -220,26 +201,11 @@ const Dashboard: React.FC = () => {
       toast.error("Failed to delete client");
     }
   };
+
   const cancelDeleteClient = () => {
     setClientToDelete(null);
   };
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active':
-      case 'sent':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-      case 'completed':
-      case 'accepted':
-      case 'paid':
-        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
-      case 'draft':
-        return 'bg-muted text-muted-foreground';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
+
   const getJobDateDisplay = (invoice: any) => {
     if (invoice.shootingDate) {
       return <span>{new Date(invoice.shootingDate).toLocaleDateString()}</span>;
@@ -249,6 +215,7 @@ const Dashboard: React.FC = () => {
     }
     return <span className="text-muted-foreground text-sm">Not set</span>;
   };
+
   const handleOpenCreateInvoiceModal = () => {
     setIsCreateInvoiceModalOpen(true);
   };
@@ -257,7 +224,12 @@ const Dashboard: React.FC = () => {
     setIsCreateInvoiceModalOpen(false);
   };
 
+  const handleInvoiceDeleted = (invoiceId: string) => {
+    setLocalInvoices(prev => prev.filter(invoice => invoice.id !== invoiceId));
+  };
+
   const isLoading = clientsLoading || invoicesLoading || jobsLoading || expensesLoading;
+  
   if (isLoading) {
     return <div className="flex items-center justify-center h-screen">
         <div className="text-center">
@@ -265,275 +237,79 @@ const Dashboard: React.FC = () => {
         </div>
       </div>;
   }
-  return <AnimatedBackground className="py-6">
-      <AlertDialog open={!!clientToDelete} onOpenChange={open => !open && setClientToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure you want to delete this client?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the client
-              and all associated data from our servers.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={cancelDeleteClient}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteClient} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+
+  return (
+    <AnimatedBackground className="py-6">
+      <DeleteClientDialog 
+        clientId={clientToDelete}
+        onClose={cancelDeleteClient}
+        onConfirm={handleDeleteClient}
+      />
 
       <div className="container px-4 mx-auto">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
-          <h1 className="text-3xl font-bold mb-3 md:mb-0">Client Management</h1>
-          <div className="flex flex-wrap gap-2">
-            <AddClientButton />
-          </div>
-        </div>
+        <DashboardHeader hasCompanies={companies.length > 0} />
+        
+        {companies.length > 0 && (
+          <>
+            <DashboardAnalytics 
+              invoices={invoices} 
+              jobs={jobs} 
+              expenses={expenses} 
+            />
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Monthly Bar Chart */}
-          <div className="lg:col-span-1">
-            <RevenueChart invoices={invoices} jobs={jobs} expenses={expenses} />
-          </div>
-          
-          {/* Job Calendar */}
-          <div className="lg:col-span-1">
-            <JobCalendar jobs={jobs} />
-          </div>
-        </div>
-
-        <Card className="backdrop-blur-sm bg-white/80 border-transparent shadow-soft">
-          <CardHeader>
-            <CardTitle>Manage Your Business</CardTitle>
-            <CardDescription>View and manage clients, jobs, and invoices</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Tabs defaultValue="clients" className="w-full">
-              <TabsList className="grid w-full grid-cols-3 mb-6">
-                <TabsTrigger value="clients" className="flex items-center gap-2">
-                  <Users size={16} />
-                  <span>Clients</span>
-                </TabsTrigger>
-                <TabsTrigger value="jobs" className="flex items-center gap-2">
-                  <Briefcase size={16} />
-                  <span>Jobs</span>
-                </TabsTrigger>
-                <TabsTrigger value="invoices" className="flex items-center gap-2">
-                  <FileText size={16} />
-                  <span>Invoices</span>
-                </TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="clients">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-semibold">Your Clients</h2>
-                  <AddClientButton />
-                </div>
-                
-                <div className="relative mb-4">
-                  <Input placeholder="Search clients by name, email, or phone..." value={clientSearchQuery} onChange={e => setClientSearchQuery(e.target.value)} className="pr-10" />
-                  <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                </div>
-                
-                {clients.length === 0 ? <div className="flex flex-col items-center justify-center py-8 text-center">
-                    <Users className="h-12 w-12 text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-medium mb-2">No Clients Yet</h3>
-                    <p className="text-muted-foreground mb-6 max-w-md">
-                      You haven't added any clients yet. Add your first client to get started.
-                    </p>
-                    <AddClientButton />
-                  </div> : sortedClients.length === 0 ? <div className="text-center py-8">
-                    <p className="text-muted-foreground">No clients match your search</p>
-                  </div> : <div className="rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Name</TableHead>
-                          <TableHead>Email</TableHead>
-                          <TableHead>Phone</TableHead>
-                          <TableHead className="hidden md:table-cell">Added On</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {sortedClients.map(client => <TableRow key={client.id} onClick={() => handleClientRowClick(client.id)} className="cursor-pointer">
-                            <TableCell className="font-medium">{client.name}</TableCell>
-                            <TableCell>{client.email}</TableCell>
-                            <TableCell>{client.phone}</TableCell>
-                            <TableCell className="hidden md:table-cell">
-                              {new Date(client.createdAt).toLocaleDateString()}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end" onClick={e => e.stopPropagation()}>
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                      <MoreHorizontal className="h-4 w-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end" className="bg-popover">
-                                    <DropdownMenuItem onClick={() => navigate(`/client/${client.id}/job/create`)} className="cursor-pointer">
-                                      <Briefcase className="mr-2 h-4 w-4" />
-                                      <span>Add Job</span>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => navigate(`/client/${client.id}/edit`)} className="cursor-pointer">
-                                      <FileEdit className="mr-2 h-4 w-4" />
-                                      <span>Edit</span>
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </div>
-                            </TableCell>
-                          </TableRow>)}
-                      </TableBody>
-                    </Table>
-                  </div>}
-              </TabsContent>
-              
-              <TabsContent value="jobs">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-semibold">Current Jobs</h2>
-                  {clients.length > 0 && <AddJobButton />}
-                </div>
-                
-                <div className="relative mb-4">
-                  <Input placeholder="Search jobs by title, client name, or location..." value={jobSearchQuery} onChange={e => setJobSearchQuery(e.target.value)} className="pr-10" />
-                  <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                </div>
-                
-                {jobs.length === 0 ? <div className="flex flex-col items-center justify-center py-8 text-center">
-                    <Briefcase className="h-12 w-12 text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-medium mb-2">No Jobs Yet</h3>
-                    <p className="text-muted-foreground mb-6 max-w-md">
-                      You haven't created any jobs yet. Select a client to create your first job.
-                    </p>
-                    {clients.length > 0 && <AddJobButton />}
-                  </div> : filteredJobs.length === 0 ? <div className="text-center py-8">
-                    <p className="text-muted-foreground">No jobs match your search</p>
-                  </div> : <div className="rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Title</TableHead>
-                          <TableHead>Client</TableHead>
-                          <TableHead className="hidden md:table-cell">Date</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredJobs.map(job => {
-                      const jobClient = clients.find(c => c.id === job.clientId) || null;
-                      return <TableRow key={job.id} onClick={() => handleJobRowClick(job.id)} className="cursor-pointer">
-                              <TableCell className="font-medium">{job.title}</TableCell>
-                              <TableCell>{jobClient?.name}</TableCell>
-                              <TableCell className="hidden md:table-cell">
-                                {job.date ? new Date(job.date).toLocaleDateString() : 'N/A'}
-                              </TableCell>
-                              <TableCell>
-                                <Badge className={getStatusColor(job.status)}>
-                                  {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex justify-end gap-2" onClick={e => e.stopPropagation()}>
-                                  <Button variant="outline" size="sm" asChild>
-                                    <Link to={`/job/${job.id}`}>
-                                      <MoreHorizontal className="h-4 w-4" />
-                                    </Link>
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>;
-                    })}
-                      </TableBody>
-                    </Table>
-                  </div>}
-              </TabsContent>
-              
-              <TabsContent value="invoices">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-semibold">Your Invoices</h2>
-                  {jobs.length > 0 && 
-                    <Button size="sm" onClick={handleOpenCreateInvoiceModal}>
-                      <FilePlus className="h-4 w-4 mr-2" />
-                      Add Invoice
-                    </Button>
-                  }
-                </div>
-                
-                <div className="relative mb-4">
-                  <Input placeholder="Search invoices by number, client name, or status..." value={invoiceSearchQuery} onChange={e => setInvoiceSearchQuery(e.target.value)} className="pr-10" />
-                  <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                </div>
-                
-                {localInvoices.length === 0 ? <div className="flex flex-col items-center justify-center py-8 text-center">
-                    <FilePlus className="h-12 w-12 text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-medium mb-2">No Invoices Yet</h3>
-                    <p className="text-muted-foreground mb-6 max-w-md">
-                      You haven't created any invoices yet. Select a job to create your first invoice.
-                    </p>
-                    {jobs.length > 0 && <Button asChild>
-                        <Link to={`/job/${jobs[0].id}`}>
-                          Select a Job
-                        </Link>
-                      </Button>}
-                  </div> : filteredInvoices.length === 0 ? <div className="text-center py-8">
-                    <p className="text-muted-foreground">No invoices match your search</p>
-                  </div> : <div className="rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Invoice #</TableHead>
-                          <TableHead>Client</TableHead>
-                          <TableHead className="hidden md:table-cell">Invoice Date</TableHead>
-                          <TableHead className="hidden md:table-cell">Job Date</TableHead>
-                          <TableHead>Amount</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredInvoices.map(invoice => {
-                      const invoiceClient = clients.find(c => c.id === invoice.clientId) || null;
-                      return <TableRow key={invoice.id} onClick={() => handleInvoiceRowClick(invoice.id)} className="cursor-pointer">
-                            <TableCell className="font-medium">{invoice.number}</TableCell>
-                            <TableCell>{invoiceClient?.name}</TableCell>
-                            <TableCell className="hidden md:table-cell">
-                              {new Date(invoice.date).toLocaleDateString()}
-                            </TableCell>
-                            <TableCell className="hidden md:table-cell">
-                              <div className="flex items-center">
-                                <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
-                                {getJobDateDisplay(invoice)}
-                              </div>
-                            </TableCell>
-                            <TableCell>${invoice.amount.toFixed(2)}</TableCell>
-                            <TableCell>
-                              <Badge className={getStatusColor(invoice.status)}>
-                                {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-2" onClick={e => e.stopPropagation()}>
-                                <Button variant="outline" size="sm" asChild>
-                                  <Link to={`/invoice/${invoice.id}`}>
-                                    <Eye className="h-4 w-4" />
-                                  </Link>
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>;
-                    })}
-                      </TableBody>
-                    </Table>
-                  </div>}
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
+            <Card className="backdrop-blur-sm bg-white/80 border-transparent shadow-soft">
+              <CardHeader>
+                <CardTitle>Manage Your Business</CardTitle>
+                <CardDescription>View and manage clients, jobs, and invoices</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Tabs defaultValue="clients" className="w-full">
+                  <TabsList className="grid w-full grid-cols-3 mb-6">
+                    <TabsTrigger value="clients" className="flex items-center gap-2">
+                      <Users size={16} />
+                      <span>Clients</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="jobs" className="flex items-center gap-2">
+                      <Briefcase size={16} />
+                      <span>Jobs</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="invoices" className="flex items-center gap-2">
+                      <FileText size={16} />
+                      <span>Invoices</span>
+                    </TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="clients">
+                    <ClientsTabContent 
+                      clients={clients}
+                      onDeleteClient={confirmDeleteClient}
+                    />
+                  </TabsContent>
+                  
+                  <TabsContent value="jobs">
+                    <JobsTabContent 
+                      jobs={jobs}
+                      clients={clients}
+                      getStatusColor={getStatusColor}
+                    />
+                  </TabsContent>
+                  
+                  <TabsContent value="invoices">
+                    <InvoicesTabContent 
+                      invoices={localInvoices}
+                      clients={clients}
+                      jobs={jobs}
+                      jobDates={jobDates}
+                      getStatusColor={getStatusColor}
+                      getJobDateDisplay={getJobDateDisplay}
+                      onOpenCreateInvoiceModal={handleOpenCreateInvoiceModal}
+                    />
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
       
       {/* Create Invoice Modal */}
@@ -541,7 +317,8 @@ const Dashboard: React.FC = () => {
         isOpen={isCreateInvoiceModalOpen} 
         onClose={handleCloseCreateInvoiceModal} 
       />
-    </AnimatedBackground>;
+    </AnimatedBackground>
+  );
 };
 
 export default Dashboard;

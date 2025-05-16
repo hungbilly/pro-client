@@ -21,11 +21,13 @@ import RevenueChart from './RevenueChart';
 import JobCalendar from './JobCalendar';
 import { supabase } from '@/integrations/supabase/client';
 import { logDebug } from '@/integrations/supabase/client';
+import CreateInvoiceModal from './ui-custom/CreateInvoiceModal';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const [clientToDelete, setClientToDelete] = React.useState<string | null>(null);
   const [isAddJobModalOpen, setIsAddJobModalOpen] = useState(false);
+  const [isCreateInvoiceModalOpen, setIsCreateInvoiceModalOpen] = useState(false);
   const queryClient = useQueryClient();
   const [clientSearchQuery, setClientSearchQuery] = useState('');
   const [jobSearchQuery, setJobSearchQuery] = useState('');
@@ -247,6 +249,14 @@ const Dashboard: React.FC = () => {
     }
     return <span className="text-muted-foreground text-sm">Not set</span>;
   };
+  const handleOpenCreateInvoiceModal = () => {
+    setIsCreateInvoiceModalOpen(true);
+  };
+
+  const handleCloseCreateInvoiceModal = () => {
+    setIsCreateInvoiceModalOpen(false);
+  };
+
   const isLoading = clientsLoading || invoicesLoading || jobsLoading || expensesLoading;
   if (isLoading) {
     return <div className="flex items-center justify-center h-screen">
@@ -446,12 +456,12 @@ const Dashboard: React.FC = () => {
               <TabsContent value="invoices">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-semibold">Your Invoices</h2>
-                  {jobs.length > 0 && <Button asChild size="sm">
-                      <Link to={`/invoice/create/${clients.length > 0 ? clients[0].id : ''}`}>
-                        <FilePlus className="h-4 w-4 mr-2" />
-                        Add Invoice
-                      </Link>
-                    </Button>}
+                  {jobs.length > 0 && 
+                    <Button size="sm" onClick={handleOpenCreateInvoiceModal}>
+                      <FilePlus className="h-4 w-4 mr-2" />
+                      Add Invoice
+                    </Button>
+                  }
                 </div>
                 
                 <div className="relative mb-4">
@@ -525,6 +535,12 @@ const Dashboard: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+      
+      {/* Create Invoice Modal */}
+      <CreateInvoiceModal 
+        isOpen={isCreateInvoiceModalOpen} 
+        onClose={handleCloseCreateInvoiceModal} 
+      />
     </AnimatedBackground>;
 };
 

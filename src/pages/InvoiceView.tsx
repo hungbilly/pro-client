@@ -28,7 +28,6 @@ import isEqual from 'lodash/isEqual';
 import ContractAcceptance from '@/components/invoice/ContractAcceptance';
 import { formatCurrency as utilFormatCurrency } from "@/lib/utils";
 import TopNavbar from '@/components/TopNavbar';
-import PaymentMethodsSection from '@/components/invoice/PaymentMethodsSection';
 
 const InvoiceView = () => {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
@@ -325,72 +324,41 @@ const InvoiceView = () => {
   };
 
   const handleDownloadInvoice = async () => {
-    if (!invoice || !client) return;
+    if (!invoice) return;
     
     try {
       toast.info('Preparing PDF for download...');
       
-      // If we already have a valid PDF URL, use it directly
+      // If we already have a PDF URL, use it directly
       if (invoice.pdfUrl) {
-        try {
-          const { data: { publicUrl } } = supabase
-            .storage
-            .from('public')
-            .getPublicUrl(invoice.pdfUrl.split('/').pop() || '');
-            
-          if (publicUrl) {
-            window.open(publicUrl, '_blank');
-            toast.success('Invoice downloaded successfully');
-            return;
-          }
-        } catch (err) {
-          console.log('Error getting public URL, falling back to generation:', err);
-          // Continue to PDF generation below
-        }
+        window.open(invoice.pdfUrl, '_blank');
+        toast.success('Invoice downloaded successfully');
+        return;
       }
       
-      // Generate PDF using client-side generation
-      try {
-        // Import dynamically to reduce initial load time
-        const { generateInvoicePdf, uploadInvoicePdf } = await import('@/utils/pdfGenerator');
-        
-        const displayCompany = getDisplayCompany();
-        
-        // Generate the PDF
-        const pdfBlob = await generateInvoicePdf(
-          invoice, 
-          client, 
-          job, 
-          displayCompany, 
-          clientViewCompany
-        );
-        
-        // Try to upload the PDF to Supabase but continue even if it fails
-        try {
-          const pdfUrl = await uploadInvoicePdf(
-            invoice.id,
-            pdfBlob,
-            invoice.number,
-            supabase
-          );
-          
-          // Only update the invoice if upload was successful
-          if (pdfUrl) {
-            setInvoice(prev => prev ? { ...prev, pdfUrl } : null);
-          }
-        } catch (uploadError) {
-          console.error('Error uploading PDF, continuing with direct download:', uploadError);
-          // Continue with direct download
+      // Generate a new PDF
+      const { data, error } = await supabase.functions.invoke('generate-invoice-pdf', {
+        body: { 
+          invoiceId: invoice.id,
+          forceRegenerate: true // Force regeneration to ensure we get a fresh PDF
         }
+      });
+      
+      if (error) {
+        console.error('Error generating PDF:', error);
+        toast.error('Failed to generate invoice PDF');
+        return;
+      }
+      
+      if (data?.pdfUrl) {
+        // Update the invoice object with the new PDF URL
+        setInvoice(prev => prev ? { ...prev, pdfUrl: data.pdfUrl } : null);
         
-        // Create an object URL for direct download regardless of storage success
-        const pdfObjectUrl = URL.createObjectURL(pdfBlob);
-        window.open(pdfObjectUrl, '_blank');
-        
+        // Open the PDF in a new tab
+        window.open(data.pdfUrl, '_blank');
         toast.success('Invoice downloaded successfully');
-      } catch (err) {
-        console.error('Error with client-side PDF generation:', err);
-        throw err;
+      } else {
+        throw new Error('No PDF URL returned');
       }
     } catch (err) {
       console.error('Error downloading invoice:', err);
@@ -457,32 +425,36 @@ const InvoiceView = () => {
   };
 
   const handleDebugPdf = async () => {
-    if (!invoice || !client) return;
+    if (!invoice) return;
     
     try {
-      toast.info('Generating simplified debug PDF...');
+      toast.info('Generating simplified debug PDF with only company info...');
       
-      const { generateInvoicePdf } = await import('@/utils/pdfGenerator');
+      const { data, error } = await supabase.functions.invoke('generate-invoice-pdf', {
+        body: { 
+          invoiceId: invoice.id, 
+          debugMode: true 
+        }
+      });
       
-      const displayCompany = getDisplayCompany();
+      if (error) {
+        console.error('Error generating debug PDF:', error);
+        toast.error('Failed to generate debug PDF');
+        return;
+      }
       
-      // Generate debug PDF
-      const pdfBlob = await generateInvoicePdf(
-        invoice, 
-        client, 
-        job, 
-        displayCompany,
-        clientViewCompany,
-        true // Debug mode
-      );
-      
-      // Create an object URL for the blob
-      const pdfObjectUrl = URL.createObjectURL(pdfBlob);
-      
-      // Open the PDF in a new tab
-      window.open(pdfObjectUrl, '_blank');
-      
-      toast.success('Debug PDF generated successfully');
+      if (data?.pdfUrl) {
+        const debugPdfUrl = data.pdfUrl;
+        
+        const link = document.createElement('a');
+        link.href = debugPdfUrl;
+        link.setAttribute('download', `Invoice-${invoice.number}-debug.pdf`);
+        document.body.appendChild(link);
+        link.click();
+        
+        document.body.removeChild(link);
+        toast.success('Debug PDF downloaded successfully');
+      }
     } catch (err) {
       console.error('Error generating debug PDF:', err);
       toast.error('Failed to generate debug PDF');
@@ -845,10 +817,6 @@ const InvoiceView = () => {
                       <div className="text-muted-foreground border rounded-md p-4 bg-gray-50 dark:bg-gray-900/50">
                         Full payment of {formatCurrency(invoice.amount)} due on {new Date(invoice.dueDate).toLocaleDateString()}
                       </div>
-                    )}
-                    
-                    {clientViewCompany?.payment_methods && (
-                      <PaymentMethodsSection paymentMethods={clientViewCompany.payment_methods} />
                     )}
                   </div>
                 </TabsContent>

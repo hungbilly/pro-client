@@ -1,11 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { Download, AlertTriangle, FileText, RefreshCw, Bug } from 'lucide-react';
+import { Download, AlertTriangle, FileText, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getInvoiceByViewLink, getInvoice, getClient, getJob } from '@/lib/storage';
-import { Invoice, Client, Job } from '@/types';
+import { getInvoiceByViewLink } from '@/lib/storage';
+import { Invoice } from '@/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { supabase } from "@/integrations/supabase/client";
@@ -13,23 +13,17 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import PdfDebugger from '@/components/ui-custom/PdfDebugger';
-import { generateInvoicePdf, uploadInvoicePdf } from '@/utils/pdfGenerator';
-import { useCompanyContext } from '@/context/CompanyContext';
 
 const InvoicePdfView = () => {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
-  const [client, setClient] = useState<Client | null>(null);
-  const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadAttempts, setDownloadAttempts] = useState(0);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<any>(null);
-  const [clientViewCompany, setClientViewCompany] = useState<any>(null);
   const { viewLink } = useParams<{ viewLink: string }>();
   const navigate = useNavigate();
-  const { selectedCompany } = useCompanyContext();
 
   useEffect(() => {
     const fetchInvoice = async () => {
@@ -39,47 +33,6 @@ const InvoicePdfView = () => {
         const invoiceData = await getInvoiceByViewLink(viewLink);
         setInvoice(invoiceData);
         console.log('Fetched invoice data:', invoiceData);
-        
-        if (invoiceData) {
-          // Fetch client data
-          if (invoiceData.clientId) {
-            const clientData = await getClient(invoiceData.clientId);
-            setClient(clientData);
-          }
-          
-          // Fetch job data if exists
-          if (invoiceData.jobId) {
-            const jobData = await getJob(invoiceData.jobId);
-            setJob(jobData);
-          }
-          
-          // Fetch company client view data if exists
-          if (invoiceData.companyId) {
-            try {
-              const { data: companyData, error: companyError } = await supabase
-                .from('company_clientview')
-                .select('*')
-                .eq('company_id', invoiceData.companyId)
-                .single();
-              
-              if (!companyError && companyData) {
-                console.log('Fetched client view company data:', companyData);
-                console.log('Payment methods in client view company:', {
-                  exists: !!companyData.payment_methods,
-                  length: companyData.payment_methods?.length || 0,
-                  preview: companyData.payment_methods ? 
-                    companyData.payment_methods.substring(0, 50) + '...' : 
-                    'None found'
-                });
-                setClientViewCompany(companyData);
-              } else {
-                console.error('Error fetching company client view:', companyError);
-              }
-            } catch (err) {
-              console.error('Failed to fetch company data:', err);
-            }
-          }
-        }
       } catch (err) {
         console.error("Error fetching invoice:", err);
         setError("Could not load invoice data. Please check the link and try again.");
@@ -170,6 +123,16 @@ const InvoicePdfView = () => {
         };
       }
       
+      // Check if it's suspiciously large (> 5MB)
+      if (size > 5000000) {
+        return {
+          isValid: false,
+          contentType,
+          contentLength,
+          error: `PDF is suspiciously large: ${(size / 1024 / 1024).toFixed(2)} MB`
+        };
+      }
+      
       return {
         isValid: true,
         contentType,
@@ -185,7 +148,7 @@ const InvoicePdfView = () => {
   };
 
   const handleDownloadInvoice = async () => {
-    if (!invoice || !client) return;
+    if (!invoice) return;
     
     setIsDownloading(true);
     setDownloadError(null);
@@ -193,84 +156,53 @@ const InvoicePdfView = () => {
     toast.info('Preparing PDF for download...');
     
     try {
-      // Check if we already have a valid PDF URL
-      if (invoice.pdfUrl) {
-        const validation = await validatePdfUrl(invoice.pdfUrl);
-        
-        if (validation.isValid) {
-          window.open(invoice.pdfUrl, '_blank');
-          toast.success('Invoice downloaded successfully');
-          setIsDownloading(false);
-          return;
-        }
-        
-        console.log('Existing PDF URL is invalid, generating new one:', validation);
-      }
-      
+      // Always force regenerate to ensure we get the latest PDF
+      console.log('Generating new PDF via edge function');
       setDownloadAttempts(prev => prev + 1);
       
-      // Generate PDF on client side
-      const company = selectedCompany || clientViewCompany?.company;
+      // Add a timestamp to prevent caching issues
+      const timestamp = new Date().getTime();
       
-      // Enhanced debug info
-      const debugData = {
-        invoiceId: invoice.id,
-        companyId: invoice.companyId,
-        companyName: company?.name || clientViewCompany?.name,
-        hasPaymentMethods: !!clientViewCompany?.payment_methods,
-        paymentMethodsText: clientViewCompany?.payment_methods ? 
-          (clientViewCompany.payment_methods.substring(0, 50) + '...') : 'None',
-        paymentMethodsLength: clientViewCompany?.payment_methods?.length || 0,
-        clientInfo: {
-          userAgent: navigator.userAgent,
-          timestamp: new Date().getTime()
+      const { data, error } = await supabase.functions.invoke('generate-invoice-pdf', {
+        body: { 
+          invoiceId: invoice.id,
+          forceRegenerate: true,  // Always force regeneration
+          debugMode: true, // Always enable debug mode for better troubleshooting
+          clientInfo: {
+            userAgent: navigator.userAgent,
+            timestamp: timestamp
+          }
         }
-      };
-      
-      setDebugInfo(debugData);
-      
-      console.log('Generating PDF with data:', { 
-        invoice, 
-        client,
-        job,
-        company,
-        clientViewCompany,
-        paymentMethods: clientViewCompany?.payment_methods || 'None provided',
-        paymentMethodsLength: clientViewCompany?.payment_methods?.length || 0,
-        contractTermsLength: invoice.contractTerms?.length || 0
       });
       
-      // Generate the PDF
-      const pdfBlob = await generateInvoicePdf(
-        invoice, 
-        client, 
-        job, 
-        company, 
-        clientViewCompany
-      );
+      console.log("PDF generation response:", data);
       
-      // Try to upload the PDF to Supabase (but continue even if it fails)
-      try {
-        const pdfUrl = await uploadInvoicePdf(
-          invoice.id,
-          pdfBlob,
-          invoice.number,
-          supabase
-        );
-        
-        // Update the invoice with the new PDF URL if upload was successful
-        if (pdfUrl) {
-          setInvoice(prev => prev ? { ...prev, pdfUrl } : null);
-        }
-      } catch (uploadError) {
-        // Log the upload error but continue with direct download
-        console.error('Failed to upload PDF to storage:', uploadError);
-        // We don't set downloadError here as the PDF generation succeeded
+      if (error) {
+        throw new Error(`Failed to generate PDF: ${error.message}`);
       }
       
-      // Create an object URL for direct download regardless of storage success
-      const pdfObjectUrl = URL.createObjectURL(pdfBlob);
-      window.open(pdfObjectUrl, '_blank');
+      // Save debug info if available
+      if (data?.debugInfo) {
+        setDebugInfo(data.debugInfo);
+      }
+      
+      if (!data?.pdfUrl) {
+        throw new Error('No PDF URL returned from generation service');
+      }
+      
+      // Validate the generated PDF URL
+      const validation = await validatePdfUrl(data.pdfUrl);
+      console.log('New PDF validation result:', validation);
+      
+      if (!validation.isValid) {
+        throw new Error(`Generated PDF validation failed: ${validation.error}`);
+      }
+      
+      // Update the invoice with the new PDF URL
+      setInvoice(prev => prev ? { ...prev, pdfUrl: data.pdfUrl } : null);
+      
+      // Open the PDF in a new tab
+      window.open(data.pdfUrl, '_blank');
       
       // Show success message
       toast.success('Invoice downloaded successfully');
@@ -285,47 +217,6 @@ const InvoicePdfView = () => {
       });
     } finally {
       setIsDownloading(false);
-    }
-  };
-
-  const handleDebugPdf = async () => {
-    if (!invoice || !client) return;
-    
-    try {
-      toast.info('Generating simplified debug PDF with only company info...');
-      
-      const company = selectedCompany || clientViewCompany?.company;
-      
-      // Log detailed debug info about payment methods
-      console.log('[Debug PDF] Payment methods info:', {
-        hasClientViewCompany: !!clientViewCompany,
-        paymentMethodsExists: !!clientViewCompany?.payment_methods,
-        paymentMethodsLength: clientViewCompany?.payment_methods?.length || 0,
-        paymentMethodsPreview: clientViewCompany?.payment_methods 
-          ? clientViewCompany.payment_methods.substring(0, 100) + '...' 
-          : 'None'
-      });
-      
-      // Generate debug PDF
-      const pdfBlob = await generateInvoicePdf(
-        invoice, 
-        client, 
-        job, 
-        company,
-        clientViewCompany,
-        true // Debug mode
-      );
-      
-      // Create an object URL for the blob
-      const pdfObjectUrl = URL.createObjectURL(pdfBlob);
-      
-      // Open the PDF in a new tab
-      window.open(pdfObjectUrl, '_blank');
-      
-      toast.success('Debug PDF generated successfully');
-    } catch (err) {
-      console.error('Error generating debug PDF:', err);
-      toast.error('Failed to generate debug PDF');
     }
   };
 
@@ -381,7 +272,7 @@ const InvoicePdfView = () => {
           <CardContent className="space-y-4">
             <div>
               <h2 className="text-xl font-medium flex items-center gap-2">
-                Invoice #{invoice?.number}
+                Invoice #{invoice.number}
               </h2>
               <p className="text-muted-foreground text-sm mt-1">
                 Download or view this invoice as a PDF
@@ -389,12 +280,12 @@ const InvoicePdfView = () => {
             </div>
             
             <div className="flex items-center gap-2">
-              <Badge variant={invoice?.status === 'paid' ? 'success' : invoice?.status === 'accepted' ? 'default' : 'outline'}>
-                {invoice?.status?.toUpperCase()}
+              <Badge variant={invoice.status === 'paid' ? 'success' : invoice.status === 'accepted' ? 'default' : 'outline'}>
+                {invoice.status.toUpperCase()}
               </Badge>
               
               <Badge variant="outline">
-                {invoice?.date ? new Date(invoice.date).toLocaleDateString() : '--'}
+                {new Date(invoice.date).toLocaleDateString()}
               </Badge>
             </div>
             
@@ -414,7 +305,7 @@ const InvoicePdfView = () => {
                 </AlertDescription>
               </Alert>
             )}
-            
+
             <div className="pt-2">
               <Button 
                 onClick={handleDownloadInvoice} 
@@ -430,35 +321,11 @@ const InvoicePdfView = () => {
               <Button 
                 onClick={handleCopyInvoiceLink}
                 variant="outline" 
-                className="w-full mb-2"
+                className="w-full"
               >
                 Copy Invoice Link
               </Button>
-              
-              <Button
-                onClick={handleDebugPdf}
-                variant="outline"
-                className="w-full"
-              >
-                <Bug className="h-4 w-4 mr-2" /> Debug PDF
-              </Button>
             </div>
-            
-            {clientViewCompany && (
-              <div>
-                <Separator className="my-4" />
-                <h3 className="text-sm font-medium mb-2">Payment Methods Status</h3>
-                <div className="text-sm bg-muted p-3 rounded-md">
-                  <p><strong>Has payment methods:</strong> {clientViewCompany.payment_methods ? 'Yes' : 'No'}</p>
-                  {clientViewCompany.payment_methods && (
-                    <>
-                      <p><strong>Length:</strong> {clientViewCompany.payment_methods.length} characters</p>
-                      <p><strong>Preview:</strong> {clientViewCompany.payment_methods.substring(0, 100)}...</p>
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
             
             {debugInfo && (
               <div className="mt-6">

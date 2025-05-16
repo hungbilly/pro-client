@@ -172,7 +172,6 @@ export type Database = {
           id: string
           logo_url: string | null
           name: string
-          payment_methods: string | null
           phone: string | null
           updated_at: string
           website: string | null
@@ -185,7 +184,6 @@ export type Database = {
           id?: string
           logo_url?: string | null
           name: string
-          payment_methods?: string | null
           phone?: string | null
           updated_at?: string
           website?: string | null
@@ -198,7 +196,6 @@ export type Database = {
           id?: string
           logo_url?: string | null
           name?: string
-          payment_methods?: string | null
           phone?: string | null
           updated_at?: string
           website?: string | null

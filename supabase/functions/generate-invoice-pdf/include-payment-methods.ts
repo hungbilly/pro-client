@@ -4,31 +4,20 @@
 
 export function addPaymentMethodsToTemplate(htmlTemplate: string, paymentMethods?: string): string {
   if (!paymentMethods) {
-    console.log('[DEBUG] No payment methods to add');
     return htmlTemplate;
   }
 
-  console.log('[DEBUG] Adding payment methods to template, length:', paymentMethods.length);
-
   // Find the payment section in the template (this is a simplified approach)
-  const paymentMethodsSection = `
-    <div class="payment-methods">
-      <div class="label">PAYMENT METHODS</div>
-      <div style="white-space: pre-line;">${paymentMethods}</div>
+  // In a real implementation, you might need to target a specific div with an ID
+  const paymentMethodsHtml = `
+    <div class="payment-methods-section" style="margin-top: 20px; padding-top: 10px; border-top: 1px solid #eaeaea;">
+      <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">Payment Methods</h4>
+      <div style="font-size: 14px; color: #666; white-space: pre-line;">
+        ${paymentMethods}
+      </div>
     </div>
   `;
-  
-  // Look for contract-terms div which has page-break-before
-  if (htmlTemplate.includes('class="contract-terms"')) {
-    // Insert payment methods before the contract terms section
-    return htmlTemplate.replace('<div class="contract-terms">', `${paymentMethodsSection}<div class="contract-terms">`);
-  } 
-  
-  // If no contract terms, add before the footer
-  if (htmlTemplate.includes('class="footer"')) {
-    return htmlTemplate.replace('<div class="footer">', `${paymentMethodsSection}<div class="footer">`);
-  }
-  
-  // Fallback - insert before closing body tag
-  return htmlTemplate.replace('</body>', `${paymentMethodsSection}</body>`);
+
+  // Insert payment methods before the closing body tag
+  return htmlTemplate.replace('</body>', `${paymentMethodsHtml}</body>`);
 }

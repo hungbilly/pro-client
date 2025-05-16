@@ -13,11 +13,17 @@ import { Plus, CheckCircle2, AlertTriangle, CalendarDays, ListChecks, BarChart3 
 import { useCompanyContext } from '@/context/CompanyContext';
 import OnboardingGuide from './OnboardingGuide';
 import { useNavigate } from 'react-router-dom';
+import { toast } from '@/hooks/use-toast';
 
 const Dashboard = () => {
   const { companies, selectedCompany, loading } = useCompanyContext();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
+  
+  // Mock data for components requiring props
+  const mockJobs = [];
+  const mockInvoices = [];
+  const mockExpenses = [];
   
   // Determine if user has any companies yet
   const hasCompanies = useMemo(() => companies.length > 0, [companies]);
@@ -136,7 +142,7 @@ const Dashboard = () => {
               <CardTitle>Revenue</CardTitle>
             </CardHeader>
             <CardContent className="h-80">
-              <RevenueChart />
+              <RevenueChart invoices={mockInvoices} jobs={mockJobs} expenses={mockExpenses} />
             </CardContent>
           </Card>
           
@@ -146,7 +152,7 @@ const Dashboard = () => {
               <CardTitle>Recent Invoices</CardTitle>
             </CardHeader>
             <CardContent>
-              <InvoiceList limit={5} />
+              <InvoiceList invoices={mockInvoices} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -157,7 +163,12 @@ const Dashboard = () => {
               <CardTitle>Current Jobs</CardTitle>
             </CardHeader>
             <CardContent>
-              <JobList />
+              <JobList jobs={mockJobs} onJobDelete={() => {
+                toast({
+                  title: "Not implemented",
+                  description: "Job deletion is not yet implemented"
+                });
+              }} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -168,7 +179,7 @@ const Dashboard = () => {
               <CardTitle>Job Schedule</CardTitle>
             </CardHeader>
             <CardContent>
-              <JobCalendar />
+              <JobCalendar jobs={mockJobs} />
             </CardContent>
           </Card>
         </TabsContent>

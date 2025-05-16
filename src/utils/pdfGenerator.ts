@@ -50,7 +50,12 @@ export async function generateInvoicePdf(
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
     
-    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+    // Add image with margins (20 points on each side)
+    const margin = 20;
+    const printWidth = pdfWidth - (margin * 2);
+    const printHeight = (imgProps.height * printWidth) / imgProps.width;
+    
+    pdf.addImage(imgData, 'PNG', margin, margin, printWidth, printHeight);
     
     // Return as blob
     return pdf.output('blob');
@@ -197,7 +202,7 @@ function createInvoiceHtml(
         body {
           font-family: Arial, sans-serif;
           margin: 0;
-          padding: 20px;
+          padding: 40px;
           color: #333;
         }
         .invoice-container {
@@ -258,6 +263,11 @@ function createInvoiceHtml(
           font-weight: bold;
         }
         .notes {
+          margin-top: 30px;
+          padding-top: 20px;
+          border-top: 1px solid #ddd;
+        }
+        .contract-terms {
           margin-top: 30px;
           padding-top: 20px;
           border-top: 1px solid #ddd;
@@ -384,6 +394,13 @@ function createInvoiceHtml(
           <div class="notes">
             <div class="label">NOTES</div>
             <div>${invoice.notes}</div>
+          </div>
+        ` : ''}
+        
+        ${invoice.contractTerms ? `
+          <div class="contract-terms">
+            <div class="label">CONTRACT TERMS</div>
+            <div>${invoice.contractTerms}</div>
           </div>
         ` : ''}
 

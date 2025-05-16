@@ -325,41 +325,60 @@ const InvoiceView = () => {
   };
 
   const handleDownloadInvoice = async () => {
-    if (!invoice) return;
+    if (!invoice || !client) return;
     
     try {
       toast.info('Preparing PDF for download...');
       
-      // If we already have a PDF URL, use it directly
+      // If we already have a valid PDF URL, use it directly
       if (invoice.pdfUrl) {
-        window.open(invoice.pdfUrl, '_blank');
-        toast.success('Invoice downloaded successfully');
-        return;
-      }
-      
-      // Generate a new PDF
-      const { data, error } = await supabase.functions.invoke('generate-invoice-pdf', {
-        body: { 
-          invoiceId: invoice.id,
-          forceRegenerate: true // Force regeneration to ensure we get a fresh PDF
+        const { data: { publicUrl } } = supabase
+          .storage
+          .from('public')
+          .getPublicUrl(invoice.pdfUrl.split('/').pop() || '');
+          
+        if (publicUrl) {
+          window.open(publicUrl, '_blank');
+          toast.success('Invoice downloaded successfully');
+          return;
         }
-      });
-      
-      if (error) {
-        console.error('Error generating PDF:', error);
-        toast.error('Failed to generate invoice PDF');
-        return;
       }
       
-      if (data?.pdfUrl) {
-        // Update the invoice object with the new PDF URL
-        setInvoice(prev => prev ? { ...prev, pdfUrl: data.pdfUrl } : null);
+      // Generate PDF using client-side generation
+      try {
+        // Import dynamically to reduce initial load time
+        const { generateInvoicePdf, uploadInvoicePdf } = await import('@/utils/pdfGenerator');
+        
+        const displayCompany = getDisplayCompany();
+        
+        // Generate the PDF
+        const pdfBlob = await generateInvoicePdf(
+          invoice, 
+          client, 
+          job, 
+          displayCompany, 
+          clientViewCompany
+        );
+        
+        // Upload the PDF to Supabase
+        const pdfUrl = await uploadInvoicePdf(
+          invoice.id,
+          pdfBlob,
+          invoice.number,
+          supabase
+        );
+        
+        // Update the invoice with the new PDF URL
+        setInvoice(prev => prev ? { ...prev, pdfUrl } : null);
         
         // Open the PDF in a new tab
-        window.open(data.pdfUrl, '_blank');
+        const pdfObjectUrl = URL.createObjectURL(pdfBlob);
+        window.open(pdfObjectUrl, '_blank');
+        
         toast.success('Invoice downloaded successfully');
-      } else {
-        throw new Error('No PDF URL returned');
+      } catch (err) {
+        console.error('Error with client-side PDF generation:', err);
+        throw err;
       }
     } catch (err) {
       console.error('Error downloading invoice:', err);
@@ -426,36 +445,32 @@ const InvoiceView = () => {
   };
 
   const handleDebugPdf = async () => {
-    if (!invoice) return;
+    if (!invoice || !client) return;
     
     try {
-      toast.info('Generating simplified debug PDF with only company info...');
+      toast.info('Generating simplified debug PDF...');
       
-      const { data, error } = await supabase.functions.invoke('generate-invoice-pdf', {
-        body: { 
-          invoiceId: invoice.id, 
-          debugMode: true 
-        }
-      });
+      const { generateInvoicePdf } = await import('@/utils/pdfGenerator');
       
-      if (error) {
-        console.error('Error generating debug PDF:', error);
-        toast.error('Failed to generate debug PDF');
-        return;
-      }
+      const displayCompany = getDisplayCompany();
       
-      if (data?.pdfUrl) {
-        const debugPdfUrl = data.pdfUrl;
-        
-        const link = document.createElement('a');
-        link.href = debugPdfUrl;
-        link.setAttribute('download', `Invoice-${invoice.number}-debug.pdf`);
-        document.body.appendChild(link);
-        link.click();
-        
-        document.body.removeChild(link);
-        toast.success('Debug PDF downloaded successfully');
-      }
+      // Generate debug PDF
+      const pdfBlob = await generateInvoicePdf(
+        invoice, 
+        client, 
+        job, 
+        displayCompany,
+        clientViewCompany,
+        true // Debug mode
+      );
+      
+      // Create an object URL for the blob
+      const pdfObjectUrl = URL.createObjectURL(pdfBlob);
+      
+      // Open the PDF in a new tab
+      window.open(pdfObjectUrl, '_blank');
+      
+      toast.success('Debug PDF generated successfully');
     } catch (err) {
       console.error('Error generating debug PDF:', err);
       toast.error('Failed to generate debug PDF');

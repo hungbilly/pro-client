@@ -4,8 +4,8 @@ import { toast } from 'sonner';
 import { Download, AlertTriangle, FileText, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getInvoiceByViewLink } from '@/lib/storage';
-import { Invoice } from '@/types';
+import { getInvoiceByViewLink, getInvoice, getClient, getJob } from '@/lib/storage';
+import { Invoice, Client, Job } from '@/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { supabase } from "@/integrations/supabase/client";
@@ -13,17 +13,23 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import PdfDebugger from '@/components/ui-custom/PdfDebugger';
+import { generateInvoicePdf, uploadInvoicePdf } from '@/utils/pdfGenerator';
+import { useCompanyContext } from '@/context/CompanyContext';
 
 const InvoicePdfView = () => {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
+  const [client, setClient] = useState<Client | null>(null);
+  const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadAttempts, setDownloadAttempts] = useState(0);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<any>(null);
+  const [clientViewCompany, setClientViewCompany] = useState<any>(null);
   const { viewLink } = useParams<{ viewLink: string }>();
   const navigate = useNavigate();
+  const { selectedCompany } = useCompanyContext();
 
   useEffect(() => {
     const fetchInvoice = async () => {
@@ -33,6 +39,37 @@ const InvoicePdfView = () => {
         const invoiceData = await getInvoiceByViewLink(viewLink);
         setInvoice(invoiceData);
         console.log('Fetched invoice data:', invoiceData);
+        
+        if (invoiceData) {
+          // Fetch client data
+          if (invoiceData.clientId) {
+            const clientData = await getClient(invoiceData.clientId);
+            setClient(clientData);
+          }
+          
+          // Fetch job data if exists
+          if (invoiceData.jobId) {
+            const jobData = await getJob(invoiceData.jobId);
+            setJob(jobData);
+          }
+          
+          // Fetch company client view data if exists
+          if (invoiceData.companyId) {
+            try {
+              const { data: companyData, error: companyError } = await supabase
+                .from('company_clientview')
+                .select('*')
+                .eq('company_id', invoiceData.companyId)
+                .single();
+              
+              if (!companyError && companyData) {
+                setClientViewCompany(companyData);
+              }
+            } catch (err) {
+              console.error('Failed to fetch company data:', err);
+            }
+          }
+        }
       } catch (err) {
         console.error("Error fetching invoice:", err);
         setError("Could not load invoice data. Please check the link and try again.");
@@ -123,16 +160,6 @@ const InvoicePdfView = () => {
         };
       }
       
-      // Check if it's suspiciously large (> 5MB)
-      if (size > 5000000) {
-        return {
-          isValid: false,
-          contentType,
-          contentLength,
-          error: `PDF is suspiciously large: ${(size / 1024 / 1024).toFixed(2)} MB`
-        };
-      }
-      
       return {
         isValid: true,
         contentType,
@@ -148,7 +175,7 @@ const InvoicePdfView = () => {
   };
 
   const handleDownloadInvoice = async () => {
-    if (!invoice) return;
+    if (!invoice || !client) return;
     
     setIsDownloading(true);
     setDownloadError(null);
@@ -156,53 +183,70 @@ const InvoicePdfView = () => {
     toast.info('Preparing PDF for download...');
     
     try {
-      // Always force regenerate to ensure we get the latest PDF
-      console.log('Generating new PDF via edge function');
+      // Check if we already have a valid PDF URL
+      if (invoice.pdfUrl) {
+        const validation = await validatePdfUrl(invoice.pdfUrl);
+        
+        if (validation.isValid) {
+          window.open(invoice.pdfUrl, '_blank');
+          toast.success('Invoice downloaded successfully');
+          setIsDownloading(false);
+          return;
+        }
+        
+        console.log('Existing PDF URL is invalid, generating new one:', validation);
+      }
+      
       setDownloadAttempts(prev => prev + 1);
       
-      // Add a timestamp to prevent caching issues
-      const timestamp = new Date().getTime();
+      // Generate PDF on client side
+      const company = selectedCompany || clientViewCompany?.company;
       
-      const { data, error } = await supabase.functions.invoke('generate-invoice-pdf', {
-        body: { 
-          invoiceId: invoice.id,
-          forceRegenerate: true,  // Always force regeneration
-          debugMode: true, // Always enable debug mode for better troubleshooting
-          clientInfo: {
-            userAgent: navigator.userAgent,
-            timestamp: timestamp
-          }
+      // Debug info
+      const debugData = {
+        invoiceId: invoice.id,
+        companyId: invoice.companyId,
+        companyName: company?.name || clientViewCompany?.name,
+        hasPaymentMethods: !!clientViewCompany?.payment_methods,
+        clientInfo: {
+          userAgent: navigator.userAgent,
+          timestamp: new Date().getTime()
         }
+      };
+      
+      setDebugInfo(debugData);
+      
+      console.log('Generating PDF with data:', { 
+        invoice, 
+        client,
+        job,
+        company,
+        clientViewCompany
       });
       
-      console.log("PDF generation response:", data);
+      // Generate the PDF
+      const pdfBlob = await generateInvoicePdf(
+        invoice, 
+        client, 
+        job, 
+        company, 
+        clientViewCompany
+      );
       
-      if (error) {
-        throw new Error(`Failed to generate PDF: ${error.message}`);
-      }
-      
-      // Save debug info if available
-      if (data?.debugInfo) {
-        setDebugInfo(data.debugInfo);
-      }
-      
-      if (!data?.pdfUrl) {
-        throw new Error('No PDF URL returned from generation service');
-      }
-      
-      // Validate the generated PDF URL
-      const validation = await validatePdfUrl(data.pdfUrl);
-      console.log('New PDF validation result:', validation);
-      
-      if (!validation.isValid) {
-        throw new Error(`Generated PDF validation failed: ${validation.error}`);
-      }
+      // Upload the PDF to Supabase
+      const pdfUrl = await uploadInvoicePdf(
+        invoice.id,
+        pdfBlob,
+        invoice.number,
+        supabase
+      );
       
       // Update the invoice with the new PDF URL
-      setInvoice(prev => prev ? { ...prev, pdfUrl: data.pdfUrl } : null);
+      setInvoice(prev => prev ? { ...prev, pdfUrl } : null);
       
       // Open the PDF in a new tab
-      window.open(data.pdfUrl, '_blank');
+      const pdfObjectUrl = URL.createObjectURL(pdfBlob);
+      window.open(pdfObjectUrl, '_blank');
       
       // Show success message
       toast.success('Invoice downloaded successfully');
@@ -217,6 +261,37 @@ const InvoicePdfView = () => {
       });
     } finally {
       setIsDownloading(false);
+    }
+  };
+
+  const handleDebugPdf = async () => {
+    if (!invoice || !client) return;
+    
+    try {
+      toast.info('Generating simplified debug PDF with only company info...');
+      
+      const company = selectedCompany || clientViewCompany?.company;
+      
+      // Generate debug PDF
+      const pdfBlob = await generateInvoicePdf(
+        invoice, 
+        client, 
+        job, 
+        company,
+        clientViewCompany,
+        true // Debug mode
+      );
+      
+      // Create an object URL for the blob
+      const pdfObjectUrl = URL.createObjectURL(pdfBlob);
+      
+      // Open the PDF in a new tab
+      window.open(pdfObjectUrl, '_blank');
+      
+      toast.success('Debug PDF generated successfully');
+    } catch (err) {
+      console.error('Error generating debug PDF:', err);
+      toast.error('Failed to generate debug PDF');
     }
   };
 

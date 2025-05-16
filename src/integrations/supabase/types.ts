@@ -117,6 +117,7 @@ export type Database = {
           is_default: boolean | null
           logo_url: string | null
           name: string
+          payment_methods: string | null
           phone: string | null
           theme: string | null
           timezone: string
@@ -134,6 +135,7 @@ export type Database = {
           is_default?: boolean | null
           logo_url?: string | null
           name: string
+          payment_methods?: string | null
           phone?: string | null
           theme?: string | null
           timezone?: string
@@ -151,6 +153,7 @@ export type Database = {
           is_default?: boolean | null
           logo_url?: string | null
           name?: string
+          payment_methods?: string | null
           phone?: string | null
           theme?: string | null
           timezone?: string

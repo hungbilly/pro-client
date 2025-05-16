@@ -1,4 +1,3 @@
-
 export interface Client {
   id: string;
   name: string;
@@ -25,6 +24,7 @@ export interface Company {
   user_id: string;
   created_at: string;
   updated_at: string;
+  payment_methods?: string;
 }
 
 export interface CompanyClientView {

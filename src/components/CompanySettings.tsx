@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -6,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PlusCircle, Trash2, Check, Upload, X, Image, Clock } from 'lucide-react';
+import { PlusCircle, Trash2, Check, Upload, X, Image, Clock, CreditCard } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
@@ -28,6 +27,7 @@ interface Company {
   currency?: string;
   timezone: string;
   is_default: boolean;
+  payment_methods?: string;
 }
 
 const CompanySettings = () => {
@@ -49,6 +49,10 @@ const CompanySettings = () => {
   const [currency, setCurrency] = useState('hkd');
   const [timezone, setTimezone] = useState('UTC');
   const [isDefault, setIsDefault] = useState(false);
+  const [paymentMethods, setPaymentMethods] = useState('');
+
+  // Get user's local timezone for default value when creating a new company
+  const userLocalTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   useEffect(() => {
     console.log("CompanySettings: Companies from context:", companies);
@@ -69,9 +73,6 @@ const CompanySettings = () => {
     }
   }, [companies, companyContextLoading]);
 
-  // Get user's local timezone for default value when creating a new company
-  const userLocalTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
   const populateFormWithCompany = (company: Company) => {
     setName(company.name);
     setAddress(company.address || '');
@@ -83,6 +84,7 @@ const CompanySettings = () => {
     setCurrency(company.currency || 'hkd');
     setTimezone(company.timezone || 'UTC');
     setIsDefault(company.is_default);
+    setPaymentMethods(company.payment_methods || '');
   };
 
   const resetForm = () => {
@@ -96,6 +98,7 @@ const CompanySettings = () => {
     setCurrency('hkd');
     setTimezone(userLocalTimezone); // Set to user's local timezone by default for new companies
     setIsDefault(companies.length === 0);
+    setPaymentMethods('');
   };
 
   const handleCompanySelect = (companyId: string) => {
@@ -141,7 +144,8 @@ const CompanySettings = () => {
             country,
             currency,
             timezone,
-            is_default: isDefault
+            is_default: isDefault,
+            payment_methods: paymentMethods
           })
           .select()
           .single();
@@ -171,6 +175,7 @@ const CompanySettings = () => {
             currency,
             timezone,
             is_default: isDefault,
+            payment_methods: paymentMethods,
             updated_at: new Date().toISOString()
           })
           .eq('id', selectedCompanyId);
@@ -485,6 +490,24 @@ const CompanySettings = () => {
               value={website}
               onChange={(e) => setWebsite(e.target.value)}
             />
+          </div>
+          <div>
+            <Label htmlFor="payment-methods">
+              <div className="flex items-center">
+                <CreditCard className="h-4 w-4 mr-2 opacity-70" />
+                Payment Methods
+              </div>
+            </Label>
+            <Textarea
+              id="payment-methods"
+              value={paymentMethods}
+              onChange={(e) => setPaymentMethods(e.target.value)}
+              placeholder="e.g., Bank Transfer, PayPal, Credit Card"
+              className="h-24"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              These payment methods will be displayed on invoices for clients
+            </p>
           </div>
         </div>
         

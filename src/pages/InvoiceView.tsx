@@ -23,7 +23,7 @@ import { format } from 'date-fns';
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import RichTextEditor from '@/components/RichTextEditor';
-import PaymentScheduleTable from '@/components/invoice/PaymentScheduleTable';
+import PaymentInfoSection from '@/components/invoice/PaymentInfoSection';
 import isEqual from 'lodash/isEqual';
 import ContractAcceptance from '@/components/invoice/ContractAcceptance';
 import { formatCurrency as utilFormatCurrency } from "@/lib/utils";
@@ -470,7 +470,8 @@ const InvoiceView = () => {
         email: clientViewCompany.email,
         phone: clientViewCompany.phone,
         address: clientViewCompany.address,
-        website: clientViewCompany.website
+        website: clientViewCompany.website,
+        payment_methods: clientViewCompany.payment_methods
       } : null;
     } else {
       return selectedCompany;
@@ -803,19 +804,31 @@ const InvoiceView = () => {
                     </div>
                     
                     {Array.isArray(invoice.paymentSchedules) && invoice.paymentSchedules.length > 0 ? (
-                      <PaymentScheduleTable
-                        paymentSchedules={invoice.paymentSchedules}
-                        amount={invoice.amount}
+                      <PaymentInfoSection
+                        invoice={invoice}
+                        paymentMethods={displayCompany?.payment_methods}
                         isClientView={isClientView}
-                        isEditView={isEditView}
                         updatingPaymentId={updatingPaymentId}
                         onUpdateStatus={handlePaymentStatusUpdate}
-                        formatCurrency={formatCurrency}
                         onUpdatePaymentDate={handlePaymentDateUpdate}
+                        formatCurrency={formatCurrency}
                       />
                     ) : (
                       <div className="text-muted-foreground border rounded-md p-4 bg-gray-50 dark:bg-gray-900/50">
                         Full payment of {formatCurrency(invoice.amount)} due on {new Date(invoice.dueDate).toLocaleDateString()}
+                        {displayCompany?.payment_methods && (
+                          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                            <PaymentInfoSection
+                              invoice={invoice}
+                              paymentMethods={displayCompany.payment_methods}
+                              isClientView={isClientView}
+                              updatingPaymentId={updatingPaymentId}
+                              onUpdateStatus={handlePaymentStatusUpdate}
+                              onUpdatePaymentDate={handlePaymentDateUpdate}
+                              formatCurrency={formatCurrency}
+                            />
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

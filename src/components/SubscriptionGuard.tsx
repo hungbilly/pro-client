@@ -159,9 +159,44 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }) => {
   }
 
   if (!hasAccess) {
-    // Redirect to subscription ended page without passing the location state
-    console.log("SubscriptionGuard: No access, redirecting to /subscription/ended");
-    return <Navigate to="/subscription/ended" replace />;
+    // Add a link to tutorial page so users can learn about the app's features
+    return (
+      <div className="container mx-auto max-w-lg py-12 px-4">
+        <Alert className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Subscription Required</AlertTitle>
+          <AlertDescription>
+            You need an active subscription to access this feature. Please subscribe or check your subscription status.
+          </AlertDescription>
+        </Alert>
+        
+        <div className="flex flex-col sm:flex-row gap-3 mt-6 justify-center">
+          <Button onClick={() => navigate('/subscription')}>View Subscription Plans</Button>
+          <Button variant="outline" onClick={() => navigate('/tutorial')}>Explore Features</Button>
+        </div>
+        
+        <div className="text-center mt-8">
+          <p className="text-sm text-muted-foreground mb-2">
+            Having issues with your subscription?
+          </p>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="text-xs"
+            onClick={handleRefreshStatus}
+            disabled={isRefreshing}
+          >
+            {isRefreshing ? (
+              <>
+                <Loader2 className="mr-2 h-3 w-3 animate-spin" /> Refreshing...
+              </>
+            ) : (
+              'Refresh subscription status'
+            )}
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   console.log('SubscriptionGuard: Access granted, rendering children');

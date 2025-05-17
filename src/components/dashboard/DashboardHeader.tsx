@@ -5,7 +5,7 @@ import AddClientButton from '../ui-custom/AddClientButton';
 import OnboardingWelcome from '../ui-custom/OnboardingWelcome';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
-import { Shield } from 'lucide-react';
+import { Shield, BookOpen } from 'lucide-react';
 
 interface DashboardHeaderProps {
   hasCompanies: boolean;
@@ -27,6 +27,15 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ hasCompanies }) => {
     <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
       <h1 className="text-3xl font-bold mb-3 md:mb-0">Client Management</h1>
       <div className="flex flex-wrap gap-2">
+        <Button 
+          variant="outline" 
+          onClick={() => navigate('/tutorial')}
+          className="text-blue-600 border-blue-200 hover:bg-blue-50"
+        >
+          <BookOpen className="mr-2 h-4 w-4" />
+          Tutorial
+        </Button>
+        
         {isAdmin && (
           <Button 
             variant="outline" 

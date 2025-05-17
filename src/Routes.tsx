@@ -45,6 +45,7 @@ import EmailTemplates from '@/pages/EmailTemplates';
 import EmailHistory from '@/pages/EmailHistory';
 import SendEmail from '@/pages/SendEmail';
 import SubscriptionEnded from '@/pages/SubscriptionEnded';
+import Tutorial from '@/pages/Tutorial';
 
 const AppRoutes = () => {
   const { user } = useAuth();
@@ -60,6 +61,9 @@ const AppRoutes = () => {
       {/* Static pages - public */}
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/terms" element={<Terms />} />
+      
+      {/* Tutorial page - public */}
+      <Route path="/tutorial" element={<Tutorial />} />
       
       {/* Public invoice view routes */}
       <Route path="/invoice/:idOrViewLink" element={<InvoiceView />} />

@@ -16,7 +16,8 @@ import {
   Calendar,
   AlertCircle,
   CheckCircle2,
-  ChevronRight
+  ChevronRight,
+  FileText
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 

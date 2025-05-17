@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Users, Briefcase, Settings, CreditCard, LogOut, Building, Menu, User, UserCog, FileText, Shield, DollarSign } from 'lucide-react';
+import { Home, Users, Briefcase, Settings, CreditCard, LogOut, Building, Menu, User, UserCog, FileText, Shield, DollarSign, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
 import { useCompany } from './CompanySelector';
@@ -87,6 +88,11 @@ const TopNavbar = () => {
       path: '/expenses',
       label: 'Account',
       icon: <DollarSign className="w-5 h-5" />
+    },
+    {
+      path: '/tutorial',
+      label: 'Tutorial',
+      icon: <BookOpen className="w-5 h-5" />
     },
     {
       path: '/settings',

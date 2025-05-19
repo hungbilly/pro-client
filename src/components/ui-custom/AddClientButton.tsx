@@ -6,13 +6,20 @@ import { UserPlus } from 'lucide-react';
 
 interface AddClientButtonProps {
   fullWidth?: boolean;
+  size?: 'default' | 'sm' | 'lg' | 'icon' | 'mobile';
+  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
 }
 
-const AddClientButton: React.FC<AddClientButtonProps> = ({ fullWidth = false }) => {
+const AddClientButton: React.FC<AddClientButtonProps> = ({ 
+  fullWidth = false,
+  size = 'default',
+  variant = 'default'
+}) => {
   return (
     <Button 
       className={fullWidth ? 'w-full touch-manipulation' : ''} 
-      size={fullWidth ? 'mobile' : 'default'}
+      size={fullWidth ? 'mobile' : size}
+      variant={variant}
       asChild
     >
       <Link to="/client/new">

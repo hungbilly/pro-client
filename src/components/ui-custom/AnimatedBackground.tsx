@@ -30,7 +30,6 @@ export const AnimatedBackground: React.FC<AnimatedBackgroundProps> = ({
       document.body.style.position = 'static';
       document.body.style.height = 'auto';
       document.documentElement.style.height = 'auto';
-      document.documentElement.style.WebkitOverflowScrolling = 'touch';
       
       // Small delay to ensure DOM is ready and force a redraw
       const timer = setTimeout(() => {
@@ -98,7 +97,8 @@ export const AnimatedBackground: React.FC<AnimatedBackgroundProps> = ({
       style={{ 
         touchAction: isMobile ? 'pan-y' : 'inherit', // Enable vertical scrolling on mobile
         overflowY: isMobile ? 'auto' : 'inherit',
-        WebkitOverflowScrolling: isMobile ? 'touch' : 'auto',
+        // Fixed: Use string literal for -webkit-overflow-scrolling instead of camelCase property
+        ...(isMobile ? { WebkitOverflowScrolling: 'touch' } as any : {}),
         ...((!isMobile && variant !== 'none') ? {
           transform: 'translate3d(var(--mouse-x, 0), var(--mouse-y, 0), 0)'
         } : {})

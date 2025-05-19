@@ -96,6 +96,17 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
+    height: 100%;
+    width: 100%;
+    overflow-y: auto;
+    overscroll-behavior-y: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  html {
+    height: 100%;
+    width: 100%;
+    overflow-y: auto;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -165,6 +176,15 @@
   .text-balance {
     text-wrap: balance;
   }
+  
+  /* Mobile touch utilities */
+  .mobile-scrollable {
+    -webkit-overflow-scrolling: touch;
+    overflow-y: auto;
+    overscroll-behavior-y: none;
+    touch-action: pan-y;
+    height: auto;
+  }
 }
 
 /* Custom scrollbar */
@@ -189,4 +209,20 @@
 .touch-action-manipulation {
   -webkit-overflow-scrolling: touch; /* Enable momentum scrolling on iOS */
   overscroll-behavior-y: contain; /* Prevent pull-to-refresh on mobile */
+  height: auto !important;
+  overflow-y: auto !important;
+  touch-action: pan-y !important;
+}
+
+/* Fix for iOS Safari - force enable scrolling */
+@supports (-webkit-touch-callout: none) {
+  body, html, #root {
+    height: -webkit-fill-available;
+    overflow-y: auto !important;
+    touch-action: pan-y !important;
+  }
+  
+  .touch-action-manipulation {
+    height: -webkit-fill-available !important;
+  }
 }

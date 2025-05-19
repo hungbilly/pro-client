@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getClients, getInvoices, getJobs, deleteClient, getExpenses } from '@/lib/storage';
@@ -11,6 +10,7 @@ import { useCompany } from './CompanySelector';
 import { supabase } from '@/integrations/supabase/client';
 import { logDebug } from '@/integrations/supabase/client';
 import CreateInvoiceModal from './ui-custom/CreateInvoiceModal';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // Import refactored components
 import DashboardHeader from './dashboard/DashboardHeader';
@@ -27,6 +27,7 @@ const Dashboard: React.FC = () => {
   const queryClient = useQueryClient();
   const [localInvoices, setLocalInvoices] = useState<any[]>([]);
   const [jobDates, setJobDates] = useState<Record<string, string>>({});
+  const isMobile = useIsMobile();
   
   const {
     companies,
@@ -50,6 +51,23 @@ const Dashboard: React.FC = () => {
       });
     }
   }, [selectedCompanyId, queryClient]);
+
+  useEffect(() => {
+    if (isMobile) {
+      // Force scroll to work by setting proper styles
+      document.body.style.overflow = 'auto';
+      document.body.style.height = 'auto';
+      document.documentElement.style.height = 'auto';
+      document.body.style.touchAction = 'auto';
+      
+      // Small delay to ensure DOM is ready after route change
+      const timer = setTimeout(() => {
+        window.scrollTo(0, 0);
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isMobile]);
 
   const {
     data: clients = [],
@@ -239,7 +257,19 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-    <AnimatedBackground className="py-6" disableOverflowHidden={true}>
+    <AnimatedBackground 
+      className="py-6" 
+      disableOverflowHidden={true}
+      style={{
+        // Additional styles for mobile to ensure scrolling works
+        ...(isMobile ? {
+          overflow: 'auto',
+          WebkitOverflowScrolling: 'touch',
+          height: 'auto',
+          touchAction: 'auto'
+        } : {})
+      }}
+    >
       <DeleteClientDialog 
         clientId={clientToDelete}
         onClose={cancelDeleteClient}

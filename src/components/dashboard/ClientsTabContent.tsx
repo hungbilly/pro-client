@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { FileEdit, MoreHorizontal, Users, Search, Briefcase } from 'lucide-react';
 import AddClientButton from '../ui-custom/AddClientButton';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ClientsTabContentProps {
   clients: Client[];
@@ -17,6 +18,7 @@ interface ClientsTabContentProps {
 const ClientsTabContent: React.FC<ClientsTabContentProps> = ({ clients, onDeleteClient }) => {
   const navigate = useNavigate();
   const [clientSearchQuery, setClientSearchQuery] = useState('');
+  const isMobile = useIsMobile();
 
   const sortedClients = [...clients]
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
@@ -32,9 +34,11 @@ const ClientsTabContent: React.FC<ClientsTabContentProps> = ({ clients, onDelete
 
   return (
     <>
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">Your Clients</h2>
-        <AddClientButton />
+      <div className={`${isMobile ? 'flex flex-col gap-3' : 'flex justify-between items-center'} mb-4`}>
+        <h2 className={`text-xl font-semibold ${isMobile ? 'mb-1' : ''}`}>Your Clients</h2>
+        <div className={isMobile ? 'w-full' : ''}>
+          <AddClientButton fullWidth={isMobile} />
+        </div>
       </div>
       
       <div className="relative mb-4">
@@ -85,7 +89,7 @@ const ClientsTabContent: React.FC<ClientsTabContentProps> = ({ clients, onDelete
                     <div className="flex justify-end" onClick={e => e.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                          <Button variant="ghost" size={isMobile ? "mobile" : "sm"} className={isMobile ? "h-10 w-10 p-0 touch-manipulation" : "h-8 w-8 p-0"}>
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>

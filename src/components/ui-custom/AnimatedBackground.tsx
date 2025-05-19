@@ -18,17 +18,37 @@ export const AnimatedBackground: React.FC<AnimatedBackgroundProps> = ({
   const backgroundRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
 
-  // Reset scroll position on component mount to fix navigation issues
+  // Fix scrolling on component mount
   useEffect(() => {
     if (isMobile) {
-      // Small delay to ensure DOM is ready
+      // Force enable scrolling on mobile
+      document.body.style.overflow = 'auto';
+      document.body.style.touchAction = 'auto';
+      document.documentElement.style.touchAction = 'auto';
+      
+      // For iOS Safari specifically
+      document.body.style.position = 'static';
+      document.body.style.height = 'auto';
+      document.documentElement.style.height = 'auto';
+      document.documentElement.style.WebkitOverflowScrolling = 'touch';
+      
+      // Small delay to ensure DOM is ready and force a redraw
       const timer = setTimeout(() => {
+        window.scrollTo(0, 1);
         window.scrollTo(0, 0);
-      }, 50);
-      return () => clearTimeout(timer);
+      }, 100);
+      
+      return () => {
+        clearTimeout(timer);
+        // Reset styles when component unmounts
+        document.body.style.overflow = '';
+        document.body.style.touchAction = '';
+        document.body.style.position = '';
+      };
     }
   }, [isMobile]);
 
+  // Only add mouse effect on non-mobile devices
   useEffect(() => {
     if (variant === 'none' || !backgroundRef.current || isMobile) return;
 
@@ -53,20 +73,6 @@ export const AnimatedBackground: React.FC<AnimatedBackgroundProps> = ({
     };
   }, [variant, isMobile]);
 
-  // Force enable scrolling on mobile to prevent iOS issues
-  useEffect(() => {
-    if (isMobile) {
-      document.body.style.overflow = 'auto';
-      document.body.style.touchAction = 'auto';
-      
-      return () => {
-        // Reset styles when component unmounts
-        document.body.style.overflow = '';
-        document.body.style.touchAction = '';
-      };
-    }
-  }, [isMobile]);
-
   const getBgClasses = () => {
     switch (variant) {
       case 'dots':
@@ -85,12 +91,12 @@ export const AnimatedBackground: React.FC<AnimatedBackgroundProps> = ({
         'relative w-full min-h-screen',
         // Only apply overflow-hidden if not disabled and not on mobile
         !disableOverflowHidden && !isMobile && 'overflow-hidden',
-        // Add touch-action property for mobile devices
+        // Add mobile-specific class for scrolling
         isMobile && 'touch-action-manipulation',
         className
       )}
       style={{ 
-        touchAction: isMobile ? 'auto' : 'pan-y', // Full touch control on mobile
+        touchAction: isMobile ? 'pan-y' : 'inherit', // Enable vertical scrolling on mobile
         overflowY: isMobile ? 'auto' : 'inherit',
         WebkitOverflowScrolling: isMobile ? 'touch' : 'auto',
         ...((!isMobile && variant !== 'none') ? {

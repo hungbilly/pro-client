@@ -180,10 +180,29 @@
   /* Mobile touch utilities */
   .mobile-scrollable {
     -webkit-overflow-scrolling: touch;
-    overflow-y: auto;
+    overflow-y: auto !important;
     overscroll-behavior-y: none;
-    touch-action: pan-y;
-    height: auto;
+    touch-action: pan-y !important;
+    height: auto !important;
+    position: static !important;
+  }
+  
+  /* Mobile page layout utilities */
+  .mobile-page-container {
+    @apply px-4 py-6 max-w-full;
+  }
+  
+  .mobile-header {
+    @apply flex flex-col gap-3 mb-4;
+  }
+  
+  .mobile-actions {
+    @apply flex flex-wrap gap-2;
+  }
+  
+  /* Mobile-friendly button styling */
+  .mobile-btn {
+    @apply min-h-[44px] min-w-[44px] touch-manipulation;
   }
 }
 
@@ -212,11 +231,13 @@
   height: auto !important;
   overflow-y: auto !important;
   touch-action: pan-y !important;
+  position: static !important;
 }
 
 /* Fix for iOS Safari - force enable scrolling */
 @supports (-webkit-touch-callout: none) {
   body, html, #root {
+    position: static !important;
     height: -webkit-fill-available;
     overflow-y: auto !important;
     touch-action: pan-y !important;
@@ -224,5 +245,17 @@
   
   .touch-action-manipulation {
     height: -webkit-fill-available !important;
+  }
+  
+  /* Mobile layout improvements for iOS */
+  .mobile-page-container {
+    min-height: -webkit-fill-available;
+  }
+  
+  /* Fix for fixed headers on iOS */
+  .fixed-header-ios {
+    position: sticky !important;
+    top: 0;
+    z-index: 100;
   }
 }

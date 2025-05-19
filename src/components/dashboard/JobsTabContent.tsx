@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Search, Briefcase, MoreHorizontal } from 'lucide-react';
 import AddJobButton from '../ui-custom/AddJobButton';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface JobsTabContentProps {
   jobs: Job[];
@@ -18,6 +19,7 @@ interface JobsTabContentProps {
 const JobsTabContent: React.FC<JobsTabContentProps> = ({ jobs, clients, getStatusColor }) => {
   const navigate = useNavigate();
   const [jobSearchQuery, setJobSearchQuery] = useState('');
+  const isMobile = useIsMobile();
 
   const filteredJobs = [...jobs].filter(job => 
     job.title.toLowerCase().includes(jobSearchQuery.toLowerCase()) || 
@@ -31,9 +33,13 @@ const JobsTabContent: React.FC<JobsTabContentProps> = ({ jobs, clients, getStatu
 
   return (
     <>
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">Current Jobs</h2>
-        {clients.length > 0 && <AddJobButton />}
+      <div className={`${isMobile ? 'flex flex-col gap-3' : 'flex justify-between items-center'} mb-4`}>
+        <h2 className={`text-xl font-semibold ${isMobile ? 'mb-1' : ''}`}>Current Jobs</h2>
+        {clients.length > 0 && (
+          <div className={isMobile ? 'w-full' : ''}>
+            <AddJobButton fullWidth={isMobile} />
+          </div>
+        )}
       </div>
       
       <div className="relative mb-4">
@@ -88,7 +94,7 @@ const JobsTabContent: React.FC<JobsTabContentProps> = ({ jobs, clients, getStatu
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2" onClick={e => e.stopPropagation()}>
-                        <Button variant="outline" size="sm" asChild>
+                        <Button variant="outline" size={isMobile ? "mobile" : "sm"} asChild className={isMobile ? "touch-manipulation" : ""}>
                           <Link to={`/job/${job.id}`}>
                             <MoreHorizontal className="h-4 w-4" />
                           </Link>

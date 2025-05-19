@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Search, FilePlus, Eye, CalendarDays } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface InvoicesTabContentProps {
   invoices: Invoice[];
@@ -29,6 +30,7 @@ const InvoicesTabContent: React.FC<InvoicesTabContentProps> = ({
 }) => {
   const navigate = useNavigate();
   const [invoiceSearchQuery, setInvoiceSearchQuery] = useState('');
+  const isMobile = useIsMobile();
 
   const filteredInvoices = [...invoices].filter(invoice => 
     invoice.number.toLowerCase().includes(invoiceSearchQuery.toLowerCase()) || 
@@ -42,14 +44,20 @@ const InvoicesTabContent: React.FC<InvoicesTabContentProps> = ({
 
   return (
     <>
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">Your Invoices</h2>
-        {jobs.length > 0 && 
-          <Button size="sm" onClick={onOpenCreateInvoiceModal}>
-            <FilePlus className="h-4 w-4 mr-2" />
-            Add Invoice
-          </Button>
-        }
+      <div className={`${isMobile ? 'flex flex-col gap-3' : 'flex justify-between items-center'} mb-4`}>
+        <h2 className={`text-xl font-semibold ${isMobile ? 'mb-1' : ''}`}>Your Invoices</h2>
+        {jobs.length > 0 && (
+          <div className={isMobile ? 'w-full' : ''}>
+            <Button 
+              size={isMobile ? "mobile" : "sm"} 
+              onClick={onOpenCreateInvoiceModal}
+              className={isMobile ? "w-full touch-manipulation" : ""}
+            >
+              <FilePlus className="h-4 w-4 mr-2" />
+              Add Invoice
+            </Button>
+          </div>
+        )}
       </div>
       
       <div className="relative mb-4">
@@ -119,7 +127,7 @@ const InvoicesTabContent: React.FC<InvoicesTabContentProps> = ({
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2" onClick={e => e.stopPropagation()}>
-                        <Button variant="outline" size="sm" asChild>
+                        <Button variant="outline" size={isMobile ? "mobile" : "sm"} asChild className={isMobile ? "touch-manipulation" : ""}>
                           <Link to={`/invoice/${invoice.id}`}>
                             <Eye className="h-4 w-4" />
                           </Link>

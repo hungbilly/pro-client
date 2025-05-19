@@ -239,7 +239,7 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-    <AnimatedBackground className="py-6">
+    <AnimatedBackground className="py-6" disableOverflowHidden={true}>
       <DeleteClientDialog 
         clientId={clientToDelete}
         onClose={cancelDeleteClient}

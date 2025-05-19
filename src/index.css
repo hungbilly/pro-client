@@ -184,3 +184,9 @@
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-gray-400 dark:bg-gray-600;
 }
+
+/* Touch action utilities for mobile devices */
+.touch-action-manipulation {
+  -webkit-overflow-scrolling: touch; /* Enable momentum scrolling on iOS */
+  overscroll-behavior-y: contain; /* Prevent pull-to-refresh on mobile */
+}

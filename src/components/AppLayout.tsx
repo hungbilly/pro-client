@@ -10,7 +10,7 @@ const AppLayout = () => {
   const { isInTrialPeriod } = useSubscription();
   
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col" style={{ touchAction: 'pan-y' }}>
       <TopNavbar />
       {isInTrialPeriod && <TrialBanner />}
       

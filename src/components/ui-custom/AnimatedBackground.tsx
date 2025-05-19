@@ -1,21 +1,25 @@
 
 import React, { useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface AnimatedBackgroundProps extends React.HTMLAttributes<HTMLDivElement> {
   variant?: 'subtle' | 'dots' | 'none';
+  disableOverflowHidden?: boolean;
 }
 
 export const AnimatedBackground: React.FC<AnimatedBackgroundProps> = ({
   children,
   className,
   variant = 'subtle',
+  disableOverflowHidden = false,
   ...props
 }) => {
   const backgroundRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
-    if (variant === 'none' || !backgroundRef.current) return;
+    if (variant === 'none' || !backgroundRef.current || isMobile) return;
 
     const handleMouseMove = (e: MouseEvent) => {
       if (!backgroundRef.current) return;
@@ -36,7 +40,7 @@ export const AnimatedBackground: React.FC<AnimatedBackgroundProps> = ({
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
     };
-  }, [variant]);
+  }, [variant, isMobile]);
 
   const getBgClasses = () => {
     switch (variant) {
@@ -53,9 +57,19 @@ export const AnimatedBackground: React.FC<AnimatedBackgroundProps> = ({
     <div 
       ref={backgroundRef}
       className={cn(
-        'relative w-full min-h-screen overflow-hidden',
+        'relative w-full min-h-screen',
+        // Only apply overflow-hidden if not disabled
+        !disableOverflowHidden && 'overflow-hidden',
+        // Add touch-action property for mobile devices
+        isMobile && 'touch-action-manipulation',
         className
       )}
+      style={{ 
+        touchAction: 'pan-y', // Allow vertical scrolling on touch devices
+        ...((!isMobile && variant !== 'none') ? {
+          transform: 'translate3d(var(--mouse-x, 0), var(--mouse-y, 0), 0)'
+        } : {})
+      }}
       {...props}
     >
       {variant !== 'none' && (
@@ -65,7 +79,7 @@ export const AnimatedBackground: React.FC<AnimatedBackgroundProps> = ({
             getBgClasses()
           )}
           style={{ 
-            transform: 'translate3d(var(--mouse-x, 0), var(--mouse-y, 0), 0)'
+            transform: isMobile ? 'none' : 'translate3d(var(--mouse-x, 0), var(--mouse-y, 0), 0)'
           }}
         />
       )}

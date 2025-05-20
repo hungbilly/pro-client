@@ -35,22 +35,22 @@ const AdminLayout = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
-      <header className="bg-purple-900 text-white shadow-md">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-purple-50 dark:from-gray-900 dark:to-purple-950">
+      <header className="bg-gradient-to-r from-purple-800 to-indigo-800 dark:from-purple-900 dark:to-indigo-900 text-white shadow-md">
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
           <div className="flex items-center">
-            <Shield className="h-6 w-6 mr-2" />
-            <Link to="/admin" className="text-xl font-bold">Admin Portal</Link>
+            <Shield className="h-6 w-6 mr-2 text-purple-200" />
+            <Link to="/admin" className="text-xl font-bold text-white">Admin Portal</Link>
           </div>
           
           <div className="flex items-center gap-4">
             {user && (
-              <span className="text-sm hidden md:inline">
+              <span className="text-sm hidden md:inline text-purple-200">
                 {user.email}
               </span>
             )}
             
-            <Button variant="ghost" size="sm" onClick={handleLogout} className="text-white hover:bg-purple-800">
+            <Button variant="ghost" size="sm" onClick={handleLogout} className="text-white hover:bg-white/10">
               <LogOut className="h-4 w-4 mr-2" />
               Logout
             </Button>
@@ -58,11 +58,11 @@ const AdminLayout = () => {
         </div>
       </header>
       
-      <main className="flex-1 bg-gray-50">
+      <main className="flex-1">
         <Outlet />
       </main>
       
-      <footer className="bg-purple-900 text-white py-4 text-center text-sm">
+      <footer className="bg-gradient-to-r from-purple-800 to-indigo-800 dark:from-purple-900 dark:to-indigo-900 text-white py-4 text-center text-sm">
         <div className="container mx-auto">
           Admin Portal - Restricted Access
         </div>

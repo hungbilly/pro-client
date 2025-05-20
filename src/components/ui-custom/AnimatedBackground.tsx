@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 interface AnimatedBackgroundProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: 'subtle' | 'dots' | 'none' | 'gradient-purple' | 'gradient-blue';
+  variant?: 'subtle' | 'dots' | 'none';
   disableOverflowHidden?: boolean;
 }
 
@@ -78,10 +78,6 @@ export const AnimatedBackground: React.FC<AnimatedBackgroundProps> = ({
         return 'bg-grid-pattern bg-[length:20px_20px] dark:opacity-5 opacity-[0.08]';
       case 'subtle':
         return 'bg-gradient-subtle dark:opacity-20 opacity-30';
-      case 'gradient-purple':
-        return 'bg-gradient-to-br from-purple-50 via-fuchsia-50 to-indigo-50 dark:from-purple-950/10 dark:via-fuchsia-950/10 dark:to-indigo-950/10';
-      case 'gradient-blue':
-        return 'bg-gradient-to-br from-blue-50 via-cyan-50 to-sky-50 dark:from-blue-950/10 dark:via-cyan-950/10 dark:to-sky-950/10';
       default:
         return '';
     }

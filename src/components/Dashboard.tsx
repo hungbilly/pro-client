@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getClients, getInvoices, getJobs, deleteClient, getExpenses } from '@/lib/storage';
@@ -260,7 +259,6 @@ const Dashboard: React.FC = () => {
   return (
     <AnimatedBackground 
       className="py-6" 
-      variant="gradient-purple"
       disableOverflowHidden={true}
       style={{
         // Additional styles for mobile to ensure scrolling works
@@ -289,23 +287,23 @@ const Dashboard: React.FC = () => {
               expenses={expenses} 
             />
 
-            <Card className="backdrop-blur-sm bg-white/90 dark:bg-gray-800/90 border border-purple-100 dark:border-purple-900/30 shadow-lg">
-              <CardHeader className="border-b border-purple-100 dark:border-purple-900/30">
-                <CardTitle className="text-purple-900 dark:text-purple-200">Manage Your Business</CardTitle>
+            <Card className="backdrop-blur-sm bg-white/80 border-transparent shadow-soft">
+              <CardHeader>
+                <CardTitle>Manage Your Business</CardTitle>
                 <CardDescription>View and manage clients, jobs, and invoices</CardDescription>
               </CardHeader>
               <CardContent>
                 <Tabs defaultValue="clients" className="w-full">
-                  <TabsList className="grid w-full grid-cols-3 mb-6 bg-purple-50 dark:bg-purple-900/20">
-                    <TabsTrigger value="clients" className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-purple-800/40 data-[state=active]:text-purple-700 dark:data-[state=active]:text-purple-200">
+                  <TabsList className="grid w-full grid-cols-3 mb-6">
+                    <TabsTrigger value="clients" className="flex items-center gap-2">
                       <Users size={16} />
                       <span>Clients</span>
                     </TabsTrigger>
-                    <TabsTrigger value="jobs" className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-purple-800/40 data-[state=active]:text-purple-700 dark:data-[state=active]:text-purple-200">
+                    <TabsTrigger value="jobs" className="flex items-center gap-2">
                       <Briefcase size={16} />
                       <span>Jobs</span>
                     </TabsTrigger>
-                    <TabsTrigger value="invoices" className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-purple-800/40 data-[state=active]:text-purple-700 dark:data-[state=active]:text-purple-200">
+                    <TabsTrigger value="invoices" className="flex items-center gap-2">
                       <FileText size={16} />
                       <span>Invoices</span>
                     </TabsTrigger>

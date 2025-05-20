@@ -37,31 +37,52 @@ const Tutorial = () => {
 
         <Tabs defaultValue="intro" className="space-y-8">
           <TabsList className="flex flex-wrap gap-2 h-auto w-full justify-center">
-            <TabsTrigger value="intro" className="flex items-center gap-2">
+            <TabsTrigger 
+              value="intro" 
+              className="flex items-center gap-2 bg-blue-50 text-blue-700 hover:bg-blue-100 data-[state=active]:bg-blue-200 data-[state=active]:text-blue-800"
+            >
               <CheckCircle2 className="h-4 w-4" />
               Introduction
             </TabsTrigger>
-            <TabsTrigger value="dashboard" className="flex items-center gap-2">
+            <TabsTrigger 
+              value="dashboard" 
+              className="flex items-center gap-2 bg-purple-50 text-purple-700 hover:bg-purple-100 data-[state=active]:bg-purple-200 data-[state=active]:text-purple-800"
+            >
               <LayoutDashboard className="h-4 w-4" />
               Dashboard
             </TabsTrigger>
-            <TabsTrigger value="company" className="flex items-center gap-2">
+            <TabsTrigger 
+              value="company" 
+              className="flex items-center gap-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 data-[state=active]:bg-indigo-200 data-[state=active]:text-indigo-800"
+            >
               <Building className="h-4 w-4" />
               Company Management
             </TabsTrigger>
-            <TabsTrigger value="clients" className="flex items-center gap-2">
+            <TabsTrigger 
+              value="clients" 
+              className="flex items-center gap-2 bg-green-50 text-green-700 hover:bg-green-100 data-[state=active]:bg-green-200 data-[state=active]:text-green-800"
+            >
               <Users className="h-4 w-4" />
               Client Management
             </TabsTrigger>
-            <TabsTrigger value="jobs" className="flex items-center gap-2">
+            <TabsTrigger 
+              value="jobs" 
+              className="flex items-center gap-2 bg-amber-50 text-amber-700 hover:bg-amber-100 data-[state=active]:bg-amber-200 data-[state=active]:text-amber-800"
+            >
               <Briefcase className="h-4 w-4" />
               Job Management
             </TabsTrigger>
-            <TabsTrigger value="invoices" className="flex items-center gap-2">
+            <TabsTrigger 
+              value="invoices" 
+              className="flex items-center gap-2 bg-rose-50 text-rose-700 hover:bg-rose-100 data-[state=active]:bg-rose-200 data-[state=active]:text-rose-800"
+            >
               <Receipt className="h-4 w-4" />
               Invoice Management
             </TabsTrigger>
-            <TabsTrigger value="settings" className="flex items-center gap-2">
+            <TabsTrigger 
+              value="settings" 
+              className="flex items-center gap-2 bg-slate-50 text-slate-700 hover:bg-slate-100 data-[state=active]:bg-slate-200 data-[state=active]:text-slate-800"
+            >
               <Settings className="h-4 w-4" />
               Settings
             </TabsTrigger>

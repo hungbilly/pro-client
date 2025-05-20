@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getClients, getInvoices, getJobs, deleteClient, getExpenses } from '@/lib/storage';
@@ -295,15 +296,24 @@ const Dashboard: React.FC = () => {
               <CardContent>
                 <Tabs defaultValue="clients" className="w-full">
                   <TabsList className="grid w-full grid-cols-3 mb-6">
-                    <TabsTrigger value="clients" className="flex items-center gap-2">
+                    <TabsTrigger 
+                      value="clients" 
+                      className="flex items-center gap-2 bg-blue-50 text-blue-700 hover:bg-blue-100 data-[state=active]:bg-blue-200 data-[state=active]:text-blue-800 transition-colors"
+                    >
                       <Users size={16} />
                       <span>Clients</span>
                     </TabsTrigger>
-                    <TabsTrigger value="jobs" className="flex items-center gap-2">
+                    <TabsTrigger 
+                      value="jobs" 
+                      className="flex items-center gap-2 bg-green-50 text-green-700 hover:bg-green-100 data-[state=active]:bg-green-200 data-[state=active]:text-green-800 transition-colors"
+                    >
                       <Briefcase size={16} />
                       <span>Jobs</span>
                     </TabsTrigger>
-                    <TabsTrigger value="invoices" className="flex items-center gap-2">
+                    <TabsTrigger 
+                      value="invoices" 
+                      className="flex items-center gap-2 bg-purple-50 text-purple-700 hover:bg-purple-100 data-[state=active]:bg-purple-200 data-[state=active]:text-purple-800 transition-colors"
+                    >
                       <FileText size={16} />
                       <span>Invoices</span>
                     </TabsTrigger>

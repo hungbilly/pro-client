@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { format, startOfMonth, endOfMonth, isSameMonth, isAfter, isBefore, parseISO, addMonths, subMonths, isSameDay } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
@@ -209,14 +210,14 @@ const JobCalendar: React.FC<JobCalendarProps> = ({ jobs }) => {
           </div>
           
           <div className="flex flex-col md:flex-row gap-4">
-            <div className="md:w-1/2">
+            <div className="md:w-1/2 min-w-[280px] overflow-x-auto">
               <Calendar
                 mode="single"
                 month={currentMonth}
                 onMonthChange={setCurrentMonth}
                 selected={undefined}
                 onSelect={handleDayClick}
-                className="rounded-md border"
+                className="rounded-md border w-full min-w-full"
                 components={{
                   DayContent: ({ date }) => (
                     <div className="relative w-full h-full flex items-center justify-center">

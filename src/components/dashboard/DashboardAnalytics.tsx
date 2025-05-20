@@ -19,7 +19,7 @@ const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({ invoices, jobs,
       </div>
       
       {/* Job Calendar */}
-      <div className="lg:col-span-1">
+      <div className="lg:col-span-1 overflow-x-auto">
         <JobCalendar jobs={jobs} />
       </div>
     </div>

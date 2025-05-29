@@ -265,12 +265,13 @@ serve(async (req) => {
               ]
             }
 
-            // Set date/time
+            // Set date/time with proper formatting
             if (job.is_full_day) {
               eventData.start = { date: job.date }
               eventData.end = { date: job.date }
               console.log('Creating full-day event for date:', job.date)
             } else {
+              // Format datetime properly for Google Calendar API
               const startDateTime = `${job.date}T${job.start_time || '09:00:00'}`
               const endDateTime = `${job.date}T${job.end_time || '17:00:00'}`
               

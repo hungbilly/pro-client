@@ -294,7 +294,7 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
           }
         }
 
-        // Handle teammates for existing job
+        // Handle teammates - invite them regardless of whether it's a new or existing job
         if (selectedTeammates.length > 0 && formattedDate) {
           try {
             await inviteTeammatesToJob(existingJob.id, selectedTeammates, timezoneToUse);

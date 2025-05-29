@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building2, FileText, Settings as SettingsIcon, Package, Users } from 'lucide-react';
+import { Building2, FileText, Settings as SettingsIcon, Package, Users, Calendar } from 'lucide-react';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import CompanySettings from '@/components/CompanySettings';
 import InvoiceTemplateSettings from '@/components/InvoiceTemplateSettings';
@@ -10,6 +10,7 @@ import ContractTemplateSettings from '@/components/ContractTemplateSettings';
 import DiscountTemplateSettings from '@/components/DiscountTemplateSettings';
 import PackageSettings from '@/components/PackageSettings';
 import TeammateManagement from '@/components/teammates/TeammateManagement';
+import GoogleCalendarIntegration from '@/components/GoogleCalendarIntegration';
 
 const Settings = () => {
   return (
@@ -27,10 +28,14 @@ const Settings = () => {
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="company" className="w-full">
-              <TabsList className="grid w-full grid-cols-6">
+              <TabsList className="grid w-full grid-cols-7">
                 <TabsTrigger value="company" className="flex items-center gap-2">
                   <Building2 className="h-4 w-4" />
                   Company
+                </TabsTrigger>
+                <TabsTrigger value="calendar" className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Calendar
                 </TabsTrigger>
                 <TabsTrigger value="teammates" className="flex items-center gap-2">
                   <Users className="h-4 w-4" />
@@ -56,6 +61,10 @@ const Settings = () => {
               
               <TabsContent value="company" className="mt-6">
                 <CompanySettings />
+              </TabsContent>
+              
+              <TabsContent value="calendar" className="mt-6">
+                <GoogleCalendarIntegration />
               </TabsContent>
               
               <TabsContent value="teammates" className="mt-6">

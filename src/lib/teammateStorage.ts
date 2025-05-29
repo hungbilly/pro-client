@@ -84,7 +84,10 @@ export const getJobTeammates = async (jobId: string): Promise<JobTeammate[]> => 
     throw error;
   }
 
-  return data || [];
+  return (data || []).map(item => ({
+    ...item,
+    invitation_status: item.invitation_status as 'pending' | 'sent' | 'accepted' | 'declined' | 'error'
+  }));
 };
 
 export const inviteTeammatesToJob = async (

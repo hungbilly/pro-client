@@ -1,20 +1,27 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Plus, X, UserPlus, Mail } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Plus, Users, Mail, User, X } from 'lucide-react';
+import { toast } from 'sonner';
 import { Teammate } from '@/types/teammate';
-import { useQuery } from '@tanstack/react-query';
 import { getTeammates } from '@/lib/teammateStorage';
 import { useCompany } from '@/components/CompanySelector';
 
+interface TeammateSelection {
+  id?: string;
+  name: string;
+  email: string;
+  isNew?: boolean;
+}
+
 interface TeammateSelectorProps {
-  selectedTeammates: Array<{ id?: string; name: string; email: string }>;
-  onTeammatesChange: (teammates: Array<{ id?: string; name: string; email: string }>) => void;
+  selectedTeammates: TeammateSelection[];
+  onTeammatesChange: (teammates: TeammateSelection[]) => void;
 }
 
 const TeammateSelector: React.FC<TeammateSelectorProps> = ({
@@ -22,165 +29,226 @@ const TeammateSelector: React.FC<TeammateSelectorProps> = ({
   onTeammatesChange
 }) => {
   const { selectedCompany } = useCompany();
-  const [manualEmail, setManualEmail] = useState('');
-  const [manualName, setManualName] = useState('');
-  const [showManualForm, setShowManualForm] = useState(false);
+  const [teammates, setTeammates] = useState<Teammate[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [showAddNew, setShowAddNew] = useState(false);
+  const [newTeammate, setNewTeammate] = useState({ name: '', email: '' });
 
-  const { data: teammates = [] } = useQuery({
-    queryKey: ['teammates', selectedCompany?.id],
-    queryFn: () => selectedCompany ? getTeammates(selectedCompany.id) : [],
-    enabled: !!selectedCompany
-  });
+  useEffect(() => {
+    const fetchTeammates = async () => {
+      if (!selectedCompany) return;
+      
+      try {
+        setLoading(true);
+        const data = await getTeammates(selectedCompany.id);
+        setTeammates(data);
+      } catch (error) {
+        console.error('Error fetching teammates:', error);
+        toast.error('Failed to load teammates');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const availableTeammates = teammates.filter(
-    teammate => !selectedTeammates.some(selected => selected.email === teammate.email)
-  );
+    fetchTeammates();
+  }, [selectedCompany]);
 
-  const handleAddExistingTeammate = (teammateId: string) => {
-    const teammate = teammates.find(t => t.id === teammateId);
-    if (teammate) {
-      onTeammatesChange([
-        ...selectedTeammates,
-        { id: teammate.id, name: teammate.name, email: teammate.email }
-      ]);
+  const handleTeammateToggle = (teammate: Teammate, checked: boolean) => {
+    if (checked) {
+      const newSelection = {
+        id: teammate.id,
+        name: teammate.name,
+        email: teammate.email
+      };
+      onTeammatesChange([...selectedTeammates, newSelection]);
+    } else {
+      onTeammatesChange(selectedTeammates.filter(t => t.id !== teammate.id));
     }
   };
 
-  const handleAddManualTeammate = () => {
-    if (!manualEmail || !manualName) return;
+  const handleAddNewTeammate = () => {
+    if (!newTeammate.name.trim() || !newTeammate.email.trim()) {
+      toast.error('Please enter both name and email');
+      return;
+    }
 
-    onTeammatesChange([
-      ...selectedTeammates,
-      { name: manualName, email: manualEmail }
-    ]);
+    // Check if email already exists in selected teammates
+    if (selectedTeammates.some(t => t.email === newTeammate.email)) {
+      toast.error('This teammate is already selected');
+      return;
+    }
 
-    setManualEmail('');
-    setManualName('');
-    setShowManualForm(false);
+    const newSelection = {
+      name: newTeammate.name.trim(),
+      email: newTeammate.email.trim(),
+      isNew: true
+    };
+
+    onTeammatesChange([...selectedTeammates, newSelection]);
+    setNewTeammate({ name: '', email: '' });
+    setShowAddNew(false);
+    toast.success('New teammate added to selection');
   };
 
-  const handleRemoveTeammate = (email: string) => {
+  const handleRemoveSelected = (email: string) => {
     onTeammatesChange(selectedTeammates.filter(t => t.email !== email));
   };
+
+  const isTeammateSelected = (teammate: Teammate) => {
+    return selectedTeammates.some(t => t.id === teammate.id);
+  };
+
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase()
+      .substring(0, 2);
+  };
+
+  if (!selectedCompany) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <p className="text-center text-muted-foreground">Please select a company first</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
+        <CardTitle className="flex items-center gap-2">
           <Users className="h-5 w-5" />
           Assign Teammates
         </CardTitle>
         <CardDescription>
-          Select existing teammates or invite new ones to this job
+          Select existing teammates or add new ones for this job
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Selected teammates */}
+        {/* Selected Teammates */}
         {selectedTeammates.length > 0 && (
           <div>
-            <Label className="text-sm font-medium">Selected Teammates</Label>
+            <Label className="text-sm font-medium">Selected Teammates ({selectedTeammates.length})</Label>
             <div className="flex flex-wrap gap-2 mt-2">
-              {selectedTeammates.map((teammate, index) => (
-                <Badge key={index} variant="secondary" className="flex items-center gap-2">
-                  <span>{teammate.name}</span>
-                  <span className="text-xs text-muted-foreground">({teammate.email})</span>
-                  <X
-                    className="h-3 w-3 cursor-pointer hover:text-destructive"
-                    onClick={() => handleRemoveTeammate(teammate.email)}
-                  />
+              {selectedTeammates.map((teammate) => (
+                <Badge
+                  key={teammate.email}
+                  variant={teammate.isNew ? "secondary" : "default"}
+                  className="flex items-center gap-1 pr-1"
+                >
+                  <User className="h-3 w-3" />
+                  {teammate.name}
+                  {teammate.isNew && <span className="text-xs">(new)</span>}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-4 w-4 p-0 hover:bg-destructive hover:text-destructive-foreground"
+                    onClick={() => handleRemoveSelected(teammate.email)}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
                 </Badge>
               ))}
             </div>
           </div>
         )}
 
-        {/* Add existing teammate */}
-        {availableTeammates.length > 0 && (
+        {/* Existing Teammates */}
+        {loading ? (
+          <p className="text-center py-4">Loading teammates...</p>
+        ) : teammates.length > 0 ? (
           <div>
-            <Label className="text-sm font-medium">Add Existing Teammate</Label>
-            <Select onValueChange={handleAddExistingTeammate}>
-              <SelectTrigger className="mt-2">
-                <SelectValue placeholder="Select a teammate..." />
-              </SelectTrigger>
-              <SelectContent>
-                {availableTeammates.map((teammate) => (
-                  <SelectItem key={teammate.id} value={teammate.id!}>
-                    <div className="flex items-center gap-2">
-                      <span>{teammate.name}</span>
-                      <span className="text-xs text-muted-foreground">({teammate.email})</span>
-                      {teammate.role && (
-                        <Badge variant="outline" className="text-xs">
-                          {teammate.role}
-                        </Badge>
-                      )}
+            <Label className="text-sm font-medium">Existing Teammates</Label>
+            <div className="space-y-2 mt-2 max-h-48 overflow-y-auto">
+              {teammates.map((teammate) => (
+                <div
+                  key={teammate.id}
+                  className="flex items-center gap-3 p-2 border rounded-lg bg-muted/50"
+                >
+                  <Checkbox
+                    id={`teammate-${teammate.id}`}
+                    checked={isTeammateSelected(teammate)}
+                    onCheckedChange={(checked) => 
+                      handleTeammateToggle(teammate, checked as boolean)
+                    }
+                  />
+                  
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                      {getInitials(teammate.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  
+                  <div className="flex-1">
+                    <div className="font-medium text-sm">{teammate.name}</div>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Mail className="h-3 w-3" />
+                      {teammate.email}
                     </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                    {teammate.role && (
+                      <Badge variant="outline" className="text-xs mt-1">
+                        {teammate.role}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
+        ) : (
+          <p className="text-center text-muted-foreground py-4">
+            No teammates found. Add some teammates in Settings first, or add a new one below.
+          </p>
         )}
 
-        {/* Manual teammate addition */}
+        {/* Add New Teammate */}
         <div>
-          <div className="flex items-center justify-between">
-            <Label className="text-sm font-medium">Invite New Teammate</Label>
-            {!showManualForm && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setShowManualForm(true)}
-              >
-                <UserPlus className="h-4 w-4 mr-2" />
-                Add by Email
-              </Button>
-            )}
-          </div>
-          
-          {showManualForm && (
-            <div className="mt-2 space-y-3 p-3 border rounded-md bg-muted/50">
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Label htmlFor="manual-name" className="text-xs">Name</Label>
-                  <Input
-                    id="manual-name"
-                    placeholder="Teammate name"
-                    value={manualName}
-                    onChange={(e) => setManualName(e.target.value)}
-                    size="sm"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="manual-email" className="text-xs">Email</Label>
-                  <Input
-                    id="manual-email"
-                    type="email"
-                    placeholder="teammate@example.com"
-                    value={manualEmail}
-                    onChange={(e) => setManualEmail(e.target.value)}
-                    size="sm"
-                  />
-                </div>
+          {!showAddNew ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowAddNew(true)}
+              className="w-full"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add New Teammate
+            </Button>
+          ) : (
+            <div className="space-y-3 p-3 border rounded-lg bg-muted/30">
+              <Label className="text-sm font-medium">Add New Teammate</Label>
+              <div className="grid grid-cols-1 gap-2">
+                <Input
+                  placeholder="Teammate name"
+                  value={newTeammate.name}
+                  onChange={(e) => setNewTeammate({ ...newTeammate, name: e.target.value })}
+                />
+                <Input
+                  type="email"
+                  placeholder="teammate@example.com"
+                  value={newTeammate.email}
+                  onChange={(e) => setNewTeammate({ ...newTeammate, email: e.target.value })}
+                />
               </div>
               <div className="flex gap-2">
                 <Button
                   type="button"
                   size="sm"
-                  onClick={handleAddManualTeammate}
-                  disabled={!manualEmail || !manualName}
+                  onClick={handleAddNewTeammate}
+                  className="flex-1"
                 >
-                  <Mail className="h-4 w-4 mr-2" />
-                  Add & Invite
+                  Add to Selection
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    setShowManualForm(false);
-                    setManualEmail('');
-                    setManualName('');
+                    setShowAddNew(false);
+                    setNewTeammate({ name: '', email: '' });
                   }}
                 >
                   Cancel
@@ -189,12 +257,6 @@ const TeammateSelector: React.FC<TeammateSelectorProps> = ({
             </div>
           )}
         </div>
-
-        {selectedTeammates.length === 0 && (
-          <div className="text-center py-4 text-muted-foreground text-sm">
-            No teammates assigned to this job yet
-          </div>
-        )}
       </CardContent>
     </Card>
   );

@@ -82,7 +82,7 @@ serve(async (req) => {
     // Get the authenticated user's calendar integration
     console.log(`Looking for calendar integration for authenticated user: ${user.id}`)
     
-    const { data: integration, error: integrationError } = await supabaseClient
+    let { data: integration, error: integrationError } = await supabaseClient
       .from('user_integrations')
       .select('*')
       .eq('user_id', user.id)
@@ -96,6 +96,70 @@ serve(async (req) => {
         hasAccessToken: !!integration.access_token,
         expiresAt: integration.expires_at
       })
+
+      // Check if token is expired and refresh if needed
+      const now = new Date()
+      const expiresAt = new Date(integration.expires_at)
+      console.log('Token expiry check:', {
+        now: now.toISOString(),
+        expiresAt: expiresAt.toISOString(),
+        isExpired: now >= expiresAt
+      })
+
+      if (now >= expiresAt) {
+        console.log('Token expired, refreshing...')
+        
+        try {
+          const refreshResponse = await fetch('https://oauth2.googleapis.com/token', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+              client_id: Deno.env.get('GOOGLE_CLIENT_ID') ?? '',
+              client_secret: Deno.env.get('GOOGLE_CLIENT_SECRET') ?? '',
+              refresh_token: integration.refresh_token ?? '',
+              grant_type: 'refresh_token',
+            }),
+          })
+
+          if (!refreshResponse.ok) {
+            const errorText = await refreshResponse.text()
+            console.error('Token refresh failed:', errorText)
+            throw new Error(`Token refresh failed: ${refreshResponse.status}`)
+          }
+
+          const tokenData = await refreshResponse.json()
+          console.log('Token refreshed successfully')
+
+          // Update the integration with new token
+          const newExpiresAt = new Date(Date.now() + (tokenData.expires_in * 1000)).toISOString()
+          
+          const { data: updatedIntegration, error: updateError } = await supabaseClient
+            .from('user_integrations')
+            .update({
+              access_token: tokenData.access_token,
+              expires_at: newExpiresAt,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', integration.id)
+            .select()
+            .single()
+
+          if (updateError) {
+            console.error('Failed to update integration:', updateError)
+            throw new Error('Failed to update token in database')
+          }
+
+          integration = updatedIntegration
+          console.log('Integration updated with new token, expires at:', newExpiresAt)
+
+        } catch (refreshError) {
+          console.error('Error refreshing token:', refreshError)
+          // Don't fail the whole operation, just skip calendar invites
+          integration = null
+        }
+      }
     } else {
       console.log(`No calendar integration found for user ${user.id}:`, integrationError)
     }

@@ -13,17 +13,45 @@ serve(async (req) => {
   }
 
   try {
+    // Get the authenticated user from the request
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      throw new Error('No authorization header')
+    }
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
+
+    // Create an authenticated client using the user's JWT
+    const userSupabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        global: {
+          headers: {
+            Authorization: authHeader,
+          },
+        },
+      }
+    )
+
+    // Get the authenticated user
+    const { data: { user }, error: userError } = await userSupabaseClient.auth.getUser()
+    if (userError || !user) {
+      throw new Error(`Authentication failed: ${userError?.message}`)
+    }
+
+    console.log('Authenticated user ID:', user.id)
 
     const { jobId, teammates, timeZone } = await req.json()
 
     console.log('Inviting teammates to job:', {
       jobId,
       teammates: teammates?.length || 0,
-      timeZone
+      timeZone,
+      authenticatedUserId: user.id
     })
 
     // First, verify the job exists and get its details
@@ -51,38 +79,25 @@ serve(async (req) => {
       date: job.date
     })
 
-    // Get the user's calendar integration for sending invites
-    // First try to find who owns this job - it could be stored in different fields
-    const possibleUserIds = [job.user_id, job.client_id].filter(Boolean)
-    console.log('Possible user IDs to check for calendar integration:', possibleUserIds)
+    // Get the authenticated user's calendar integration
+    console.log(`Looking for calendar integration for authenticated user: ${user.id}`)
+    
+    const { data: integration, error: integrationError } = await supabaseClient
+      .from('user_integrations')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('provider', 'google_calendar')
+      .single()
 
-    let integration = null
-    for (const userId of possibleUserIds) {
-      console.log(`Checking calendar integration for user: ${userId}`)
-      
-      const { data: userIntegration, error: integrationError } = await supabaseClient
-        .from('user_integrations')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('provider', 'google_calendar')
-        .single()
-
-      if (userIntegration && !integrationError) {
-        console.log(`Found calendar integration for user ${userId}:`, {
-          id: userIntegration.id,
-          provider: userIntegration.provider,
-          hasAccessToken: !!userIntegration.access_token,
-          expiresAt: userIntegration.expires_at
-        })
-        integration = userIntegration
-        break
-      } else {
-        console.log(`No calendar integration found for user ${userId}:`, integrationError)
-      }
-    }
-
-    if (!integration) {
-      console.log('No calendar integration found for any possible user. Calendar invites will be skipped.')
+    if (integration && !integrationError) {
+      console.log(`Found calendar integration for user ${user.id}:`, {
+        id: integration.id,
+        provider: integration.provider,
+        hasAccessToken: !!integration.access_token,
+        expiresAt: integration.expires_at
+      })
+    } else {
+      console.log(`No calendar integration found for user ${user.id}:`, integrationError)
     }
 
     // Remove existing job teammates for this job (to avoid duplicates)
@@ -121,7 +136,7 @@ serve(async (req) => {
               name: teammate.name,
               email: teammate.email,
               company_id: job.company_id,
-              user_id: job.user_id || job.client_id // Use the job's user_id or fallback to client_id
+              user_id: user.id // Use the authenticated user's ID
             })
             .select()
             .single()
@@ -258,7 +273,8 @@ serve(async (req) => {
           console.log('Skipping calendar invitation because:', {
             hasIntegration: !!integration,
             hasJobDate: !!job.date,
-            jobDate: job.date
+            jobDate: job.date,
+            authenticatedUserId: user.id
           })
         }
 
@@ -283,7 +299,8 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         results,
-        message: `Processed ${teammates.length} teammates for job ${jobId}`
+        message: `Processed ${teammates.length} teammates for job ${jobId}`,
+        authenticatedUserId: user.id
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

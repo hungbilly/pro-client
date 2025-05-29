@@ -76,7 +76,11 @@ serve(async (req) => {
       client_id: job.client_id,
       company_id: job.company_id,
       user_id: job.user_id,
-      date: job.date
+      date: job.date,
+      start_time: job.start_time,
+      end_time: job.end_time,
+      is_full_day: job.is_full_day,
+      timezone: job.timezone
     })
 
     // Get the authenticated user's calendar integration
@@ -94,7 +98,8 @@ serve(async (req) => {
         id: integration.id,
         provider: integration.provider,
         hasAccessToken: !!integration.access_token,
-        expiresAt: integration.expires_at
+        expiresAt: integration.expires_at,
+        accessTokenLength: integration.access_token?.length || 0
       })
 
       // Check if token is expired and refresh if needed
@@ -252,7 +257,8 @@ serve(async (req) => {
             console.log('Using calendar integration:', {
               userId: integration.user_id,
               provider: integration.provider,
-              hasToken: !!integration.access_token
+              hasToken: !!integration.access_token,
+              tokenLength: integration.access_token?.length || 0
             })
             
             // Create calendar event data
@@ -265,31 +271,46 @@ serve(async (req) => {
               ]
             }
 
-            // Set date/time with proper formatting
+            // Set date/time with proper RFC3339 formatting for Google Calendar
             if (job.is_full_day) {
               eventData.start = { date: job.date }
               eventData.end = { date: job.date }
               console.log('Creating full-day event for date:', job.date)
             } else {
-              // Format datetime properly for Google Calendar API
-              const startDateTime = `${job.date}T${job.start_time || '09:00:00'}`
-              const endDateTime = `${job.date}T${job.end_time || '17:00:00'}`
+              // Use job timezone or fallback to provided timezone or UTC
+              const eventTimezone = job.timezone || timeZone || 'UTC'
+              console.log('Event timezone determined as:', eventTimezone)
+              
+              // Format as RFC3339 with timezone offset
+              const startTime = job.start_time || '09:00:00'
+              const endTime = job.end_time || '17:00:00'
+              
+              // Create proper ISO datetime strings with timezone
+              const startDateTime = `${job.date}T${startTime}`
+              const endDateTime = `${job.date}T${endTime}`
+              
+              console.log('Raw datetime strings:', {
+                startDateTime,
+                endDateTime,
+                timezone: eventTimezone
+              })
               
               eventData.start = {
                 dateTime: startDateTime,
-                timeZone: timeZone || job.timezone || 'UTC'
+                timeZone: eventTimezone
               }
               eventData.end = {
                 dateTime: endDateTime,
-                timeZone: timeZone || job.timezone || 'UTC'
+                timeZone: eventTimezone
               }
-              console.log('Creating timed event:', {
+              
+              console.log('Final event timing:', {
                 start: eventData.start,
                 end: eventData.end
               })
             }
 
-            console.log('Full event data being sent to Google Calendar:', JSON.stringify(eventData, null, 2))
+            console.log('Complete event data being sent to Google Calendar:', JSON.stringify(eventData, null, 2))
 
             // Call Google Calendar API
             const calendarResponse = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
@@ -302,16 +323,18 @@ serve(async (req) => {
             })
 
             console.log('Google Calendar API response status:', calendarResponse.status)
+            console.log('Google Calendar API response headers:', Object.fromEntries(calendarResponse.headers.entries()))
+            
             const responseText = await calendarResponse.text()
             console.log('Google Calendar API response body:', responseText)
 
             if (calendarResponse.ok) {
               const eventResult = JSON.parse(responseText)
               calendarEventId = eventResult.id
-              console.log('Calendar event created successfully:', calendarEventId)
+              console.log('Calendar event created successfully with ID:', calendarEventId)
 
               // Update job teammate record with calendar event ID
-              await supabaseClient
+              const { error: updateError } = await supabaseClient
                 .from('job_teammates')
                 .update({ 
                   calendar_event_id: calendarEventId,
@@ -320,18 +343,32 @@ serve(async (req) => {
                 })
                 .eq('id', jobTeammate.id)
 
-              console.log('Updated job teammate record with calendar event ID')
+              if (updateError) {
+                console.error('Failed to update job teammate with calendar event ID:', updateError)
+              } else {
+                console.log('Successfully updated job teammate record with calendar event ID')
+              }
 
             } else {
-              console.error('Calendar API error:', {
+              console.error('Calendar API error details:', {
                 status: calendarResponse.status,
                 statusText: calendarResponse.statusText,
+                headers: Object.fromEntries(calendarResponse.headers.entries()),
                 body: responseText
               })
+              
+              // Try to parse error response
+              try {
+                const errorData = JSON.parse(responseText)
+                console.error('Parsed calendar API error:', errorData)
+              } catch (parseError) {
+                console.error('Could not parse calendar API error response')
+              }
             }
 
           } catch (calendarError) {
             console.error('Error sending calendar invitation:', calendarError)
+            console.error('Calendar error stack:', calendarError.stack)
             // Don't fail the whole operation if calendar fails
           }
         } else {
@@ -339,7 +376,8 @@ serve(async (req) => {
             hasIntegration: !!integration,
             hasJobDate: !!job.date,
             jobDate: job.date,
-            authenticatedUserId: user.id
+            authenticatedUserId: user.id,
+            integrationUserId: integration?.user_id
           })
         }
 
@@ -352,6 +390,7 @@ serve(async (req) => {
 
       } catch (error) {
         console.error('Error processing teammate:', error)
+        console.error('Teammate processing error stack:', error.stack)
         results.push({
           email: teammate.email,
           success: false,
@@ -359,6 +398,8 @@ serve(async (req) => {
         })
       }
     }
+
+    console.log('Final results:', results)
 
     return new Response(
       JSON.stringify({
@@ -375,6 +416,7 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in invite-teammate-to-job:', error)
+    console.error('Main error stack:', error.stack)
     return new Response(
       JSON.stringify({ 
         success: false,

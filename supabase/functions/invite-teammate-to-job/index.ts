@@ -42,17 +42,47 @@ serve(async (req) => {
     }
 
     console.log('Found job:', job.title)
+    console.log('Job details:', {
+      id: job.id,
+      title: job.title,
+      client_id: job.client_id,
+      company_id: job.company_id,
+      user_id: job.user_id,
+      date: job.date
+    })
 
     // Get the user's calendar integration for sending invites
-    const { data: integration, error: integrationError } = await supabaseClient
-      .from('user_integrations')
-      .select('*')
-      .eq('user_id', job.client_id) // This should be the job creator's user_id
-      .eq('provider', 'google_calendar')
-      .single()
+    // First try to find who owns this job - it could be stored in different fields
+    const possibleUserIds = [job.user_id, job.client_id].filter(Boolean)
+    console.log('Possible user IDs to check for calendar integration:', possibleUserIds)
 
-    if (integrationError) {
-      console.log('No calendar integration found for job creator:', integrationError)
+    let integration = null
+    for (const userId of possibleUserIds) {
+      console.log(`Checking calendar integration for user: ${userId}`)
+      
+      const { data: userIntegration, error: integrationError } = await supabaseClient
+        .from('user_integrations')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('provider', 'google_calendar')
+        .single()
+
+      if (userIntegration && !integrationError) {
+        console.log(`Found calendar integration for user ${userId}:`, {
+          id: userIntegration.id,
+          provider: userIntegration.provider,
+          hasAccessToken: !!userIntegration.access_token,
+          expiresAt: userIntegration.expires_at
+        })
+        integration = userIntegration
+        break
+      } else {
+        console.log(`No calendar integration found for user ${userId}:`, integrationError)
+      }
+    }
+
+    if (!integration) {
+      console.log('No calendar integration found for any possible user. Calendar invites will be skipped.')
     }
 
     // Remove existing job teammates for this job (to avoid duplicates)
@@ -91,7 +121,7 @@ serve(async (req) => {
               name: teammate.name,
               email: teammate.email,
               company_id: job.company_id,
-              user_id: job.client_id // This might need to be adjusted based on your schema
+              user_id: job.user_id || job.client_id // Use the job's user_id or fallback to client_id
             })
             .select()
             .single()
@@ -140,6 +170,11 @@ serve(async (req) => {
         if (integration && job.date) {
           try {
             console.log('Attempting to send calendar invitation to:', teammate.email)
+            console.log('Using calendar integration:', {
+              userId: integration.user_id,
+              provider: integration.provider,
+              hasToken: !!integration.access_token
+            })
             
             // Create calendar event data
             const eventData = {
@@ -155,6 +190,7 @@ serve(async (req) => {
             if (job.is_full_day) {
               eventData.start = { date: job.date }
               eventData.end = { date: job.date }
+              console.log('Creating full-day event for date:', job.date)
             } else {
               const startDateTime = `${job.date}T${job.start_time || '09:00:00'}`
               const endDateTime = `${job.date}T${job.end_time || '17:00:00'}`
@@ -167,7 +203,13 @@ serve(async (req) => {
                 dateTime: endDateTime,
                 timeZone: timeZone || job.timezone || 'UTC'
               }
+              console.log('Creating timed event:', {
+                start: eventData.start,
+                end: eventData.end
+              })
             }
+
+            console.log('Full event data being sent to Google Calendar:', JSON.stringify(eventData, null, 2))
 
             // Call Google Calendar API
             const calendarResponse = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
@@ -179,10 +221,14 @@ serve(async (req) => {
               body: JSON.stringify(eventData)
             })
 
+            console.log('Google Calendar API response status:', calendarResponse.status)
+            const responseText = await calendarResponse.text()
+            console.log('Google Calendar API response body:', responseText)
+
             if (calendarResponse.ok) {
-              const eventResult = await calendarResponse.json()
+              const eventResult = JSON.parse(responseText)
               calendarEventId = eventResult.id
-              console.log('Calendar event created:', calendarEventId)
+              console.log('Calendar event created successfully:', calendarEventId)
 
               // Update job teammate record with calendar event ID
               await supabaseClient
@@ -194,15 +240,26 @@ serve(async (req) => {
                 })
                 .eq('id', jobTeammate.id)
 
+              console.log('Updated job teammate record with calendar event ID')
+
             } else {
-              const errorText = await calendarResponse.text()
-              console.error('Calendar API error:', errorText)
+              console.error('Calendar API error:', {
+                status: calendarResponse.status,
+                statusText: calendarResponse.statusText,
+                body: responseText
+              })
             }
 
           } catch (calendarError) {
             console.error('Error sending calendar invitation:', calendarError)
             // Don't fail the whole operation if calendar fails
           }
+        } else {
+          console.log('Skipping calendar invitation because:', {
+            hasIntegration: !!integration,
+            hasJobDate: !!job.date,
+            jobDate: job.date
+          })
         }
 
         results.push({

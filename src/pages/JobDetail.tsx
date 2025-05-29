@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getJob, getClient, getJobInvoices, deleteJob } from '@/lib/storage';
@@ -25,7 +24,7 @@ const JobDetail = () => {
   const [client, setClient] = useState<Client | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
 
-  const { data: invoices = [] } = useQuery({
+  const { data: invoices = [], isLoading: isLoadingInvoices } = useQuery({
     queryKey: ['job-invoices', id],
     queryFn: async () => {
       if (!id) return [];
@@ -34,13 +33,14 @@ const JobDetail = () => {
     enabled: !!id,
   });
 
-  const { data: jobTeammates = [] } = useQuery({
+  const { data: jobTeammates = [], isLoading: isLoadingTeammates } = useQuery({
     queryKey: ['job-teammates', id],
     queryFn: async () => {
       if (!id) return [];
       return await getJobTeammates(id);
     },
     enabled: !!id,
+    refetchInterval: 300000,
   });
 
   useEffect(() => {
@@ -125,6 +125,10 @@ const JobDetail = () => {
     }
     
     return null;
+  };
+
+  const handleTeammateStatusRefreshed = () => {
+    queryClient.invalidateQueries({ queryKey: ['job-teammates', id] });
   };
 
   if (isLoading) {
@@ -334,9 +338,7 @@ const JobDetail = () => {
           <JobTeammatesList
             jobId={job.id}
             teammates={jobTeammates}
-            onTeammateRemoved={() => {
-              queryClient.invalidateQueries({ queryKey: ['job-teammates', id] });
-            }}
+            onTeammateRemoved={handleTeammateStatusRefreshed}
           />
         </div>
 

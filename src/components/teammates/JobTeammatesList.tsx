@@ -1,14 +1,15 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Users, Calendar, Mail, Phone, X, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { Users, Calendar, Mail, Phone, X, Clock, CheckCircle, XCircle, AlertCircle, RefreshCw } from 'lucide-react';
 import { JobTeammate } from '@/types/teammate';
 import { removeTeammateFromJob } from '@/lib/teammateStorage';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 interface JobTeammatesListProps {
   jobId: string;
@@ -22,6 +23,22 @@ const JobTeammatesList: React.FC<JobTeammatesListProps> = ({
   onTeammateRemoved
 }) => {
   const queryClient = useQueryClient();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Auto-refresh every 2 minutes if there are pending invitations
+  useEffect(() => {
+    const hasPendingInvitations = teammates.some(
+      teammate => teammate.invitation_status === 'sent' || teammate.invitation_status === 'pending'
+    );
+
+    if (!hasPendingInvitations) return;
+
+    const interval = setInterval(() => {
+      handleRefreshStatus(true); // Silent refresh
+    }, 120000); // 2 minutes
+
+    return () => clearInterval(interval);
+  }, [teammates, jobId]);
 
   const handleRemoveTeammate = async (jobTeammateId: string) => {
     try {
@@ -32,6 +49,44 @@ const JobTeammatesList: React.FC<JobTeammatesListProps> = ({
     } catch (error) {
       console.error('Error removing teammate:', error);
       toast.error('Failed to remove teammate');
+    }
+  };
+
+  const handleRefreshStatus = async (silent = false) => {
+    setIsRefreshing(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('check-calendar-responses', {
+        body: { jobId }
+      });
+
+      if (error) {
+        console.error('Error checking calendar responses:', error);
+        if (!silent) {
+          toast.error('Failed to refresh teammate status');
+        }
+        return;
+      }
+
+      if (data?.success) {
+        const updatedCount = data.results?.filter((r: any) => r.updated)?.length || 0;
+        
+        if (updatedCount > 0) {
+          queryClient.invalidateQueries({ queryKey: ['job-teammates', jobId] });
+          if (!silent) {
+            toast.success(`Updated ${updatedCount} teammate status${updatedCount > 1 ? 'es' : ''}`);
+          }
+        } else if (!silent) {
+          toast.info('No status updates found');
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing status:', error);
+      if (!silent) {
+        toast.error('Failed to refresh teammate status');
+      }
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -72,6 +127,8 @@ const JobTeammatesList: React.FC<JobTeammatesListProps> = ({
       .substring(0, 2);
   };
 
+  const hasCalendarInvites = teammates.some(teammate => teammate.calendar_event_id);
+
   if (teammates.length === 0) {
     return (
       <Card>
@@ -88,13 +145,30 @@ const JobTeammatesList: React.FC<JobTeammatesListProps> = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Users className="h-5 w-5" />
-          Assigned Teammates ({teammates.length})
-        </CardTitle>
-        <CardDescription>
-          Team members invited to this job and their response status
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Assigned Teammates ({teammates.length})
+            </CardTitle>
+            <CardDescription>
+              Team members invited to this job and their response status
+            </CardDescription>
+          </div>
+          
+          {hasCalendarInvites && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleRefreshStatus()}
+              disabled={isRefreshing}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              {isRefreshing ? 'Checking...' : 'Refresh Status'}
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
@@ -169,6 +243,16 @@ const JobTeammatesList: React.FC<JobTeammatesListProps> = ({
             </div>
           ))}
         </div>
+        
+        {hasCalendarInvites && (
+          <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <p className="text-sm text-blue-800">
+              <Clock className="h-4 w-4 inline mr-1" />
+              Status automatically refreshes every 2 minutes for pending invitations. 
+              Use "Refresh Status" to check immediately.
+            </p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

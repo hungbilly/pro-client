@@ -7,6 +7,37 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+const refreshAccessToken = async (refreshToken: string): Promise<{ access_token: string; expires_in: number } | null> => {
+  try {
+    const response = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken,
+        client_id: Deno.env.get('GOOGLE_CLIENT_ID') ?? '',
+        client_secret: Deno.env.get('GOOGLE_CLIENT_SECRET') ?? '',
+      }),
+    })
+
+    if (!response.ok) {
+      console.error('Failed to refresh token:', await response.text())
+      return null
+    }
+
+    const data = await response.json()
+    return {
+      access_token: data.access_token,
+      expires_in: data.expires_in
+    }
+  } catch (error) {
+    console.error('Error refreshing token:', error)
+    return null
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -71,13 +102,42 @@ serve(async (req) => {
       throw new Error('No calendar integration found')
     }
 
-    // Check if token is expired
+    let accessToken = integration.access_token
+    
+    // Check if token is expired and refresh if needed
     const now = new Date()
     const expiresAt = new Date(integration.expires_at)
     
     if (now >= expiresAt) {
-      console.error('Access token expired')
-      throw new Error('Calendar access token expired')
+      console.log('Access token expired, attempting to refresh...')
+      
+      if (!integration.refresh_token) {
+        throw new Error('No refresh token available')
+      }
+      
+      const refreshResult = await refreshAccessToken(integration.refresh_token)
+      if (!refreshResult) {
+        throw new Error('Failed to refresh access token')
+      }
+      
+      // Update the integration with new token
+      const newExpiresAt = new Date(now.getTime() + (refreshResult.expires_in * 1000))
+      
+      const { error: updateError } = await supabaseClient
+        .from('user_integrations')
+        .update({
+          access_token: refreshResult.access_token,
+          expires_at: newExpiresAt.toISOString()
+        })
+        .eq('id', integration.id)
+      
+      if (updateError) {
+        console.error('Error updating integration:', updateError)
+        throw new Error('Failed to update token')
+      }
+      
+      accessToken = refreshResult.access_token
+      console.log('Successfully refreshed access token')
     }
 
     const results = []
@@ -92,7 +152,7 @@ serve(async (req) => {
           `https://www.googleapis.com/calendar/v3/calendars/primary/events/${teammate.calendar_event_id}`,
           {
             headers: {
-              'Authorization': `Bearer ${integration.access_token}`,
+              'Authorization': `Bearer ${accessToken}`,
               'Content-Type': 'application/json',
             },
           }

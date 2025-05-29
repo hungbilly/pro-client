@@ -26,10 +26,13 @@ serve(async (req) => {
       timeZone
     })
 
-    // First, verify the job exists
+    // First, verify the job exists and get its details
     const { data: job, error: jobError } = await supabaseClient
       .from('jobs')
-      .select('*')
+      .select(`
+        *,
+        clients (*)
+      `)
       .eq('id', jobId)
       .single()
 
@@ -39,6 +42,18 @@ serve(async (req) => {
     }
 
     console.log('Found job:', job.title)
+
+    // Get the user's calendar integration for sending invites
+    const { data: integration, error: integrationError } = await supabaseClient
+      .from('user_integrations')
+      .select('*')
+      .eq('user_id', job.client_id) // This should be the job creator's user_id
+      .eq('provider', 'google_calendar')
+      .single()
+
+    if (integrationError) {
+      console.log('No calendar integration found for job creator:', integrationError)
+    }
 
     // Remove existing job teammates for this job (to avoid duplicates)
     const { error: deleteError } = await supabaseClient
@@ -115,14 +130,87 @@ serve(async (req) => {
             success: false,
             error: jobTeammateError.message
           })
-        } else {
-          console.log('Successfully assigned teammate to job:', jobTeammate.id)
-          results.push({
-            email: teammate.email,
-            success: true,
-            jobTeammateId: jobTeammate.id
-          })
+          continue
         }
+
+        console.log('Successfully assigned teammate to job:', jobTeammate.id)
+
+        // Try to send calendar invitation if we have integration and job has a date
+        let calendarEventId = null
+        if (integration && job.date) {
+          try {
+            console.log('Attempting to send calendar invitation to:', teammate.email)
+            
+            // Create calendar event data
+            const eventData = {
+              summary: `${job.title} - ${job.clients?.name || 'Client'}`,
+              description: `Job: ${job.title}\nDate: ${job.date}\nClient: ${job.clients?.name || 'Unknown'}\n\n${job.description || ''}\n\nClient Contact:\nEmail: ${job.clients?.email || ''}\nPhone: ${job.clients?.phone || ''}`,
+              location: job.location || '',
+              attendees: [
+                { email: teammate.email }
+              ]
+            }
+
+            // Set date/time
+            if (job.is_full_day) {
+              eventData.start = { date: job.date }
+              eventData.end = { date: job.date }
+            } else {
+              const startDateTime = `${job.date}T${job.start_time || '09:00:00'}`
+              const endDateTime = `${job.date}T${job.end_time || '17:00:00'}`
+              
+              eventData.start = {
+                dateTime: startDateTime,
+                timeZone: timeZone || job.timezone || 'UTC'
+              }
+              eventData.end = {
+                dateTime: endDateTime,
+                timeZone: timeZone || job.timezone || 'UTC'
+              }
+            }
+
+            // Call Google Calendar API
+            const calendarResponse = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${integration.access_token}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(eventData)
+            })
+
+            if (calendarResponse.ok) {
+              const eventResult = await calendarResponse.json()
+              calendarEventId = eventResult.id
+              console.log('Calendar event created:', calendarEventId)
+
+              // Update job teammate record with calendar event ID
+              await supabaseClient
+                .from('job_teammates')
+                .update({ 
+                  calendar_event_id: calendarEventId,
+                  invitation_status: 'sent',
+                  invited_at: new Date().toISOString()
+                })
+                .eq('id', jobTeammate.id)
+
+            } else {
+              const errorText = await calendarResponse.text()
+              console.error('Calendar API error:', errorText)
+            }
+
+          } catch (calendarError) {
+            console.error('Error sending calendar invitation:', calendarError)
+            // Don't fail the whole operation if calendar fails
+          }
+        }
+
+        results.push({
+          email: teammate.email,
+          success: true,
+          jobTeammateId: jobTeammate.id,
+          calendarEventId: calendarEventId
+        })
 
       } catch (error) {
         console.error('Error processing teammate:', error)

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Client, Job } from '@/types';
@@ -279,7 +280,8 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
               console.error('Failed to update calendar event:', error);
               toast.error('Failed to update calendar event');
             }
-          } else if (!existingJob.calendarEventId && formattedDate) {
+          } else if (!existingJob.calendarEventId && formattedDate && selectedTeammates.length === 0) {
+            // Only create calendar event directly if no teammates are selected
             try {
               const eventId = await addToCalendar(updatedJob);
               if (eventId) {
@@ -337,26 +339,40 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
         
         setNewJob(savedJob);
 
-        // Handle teammates for new job
+        // Handle teammates for new job - this will create the calendar event with invites
         if (selectedTeammates.length > 0 && formattedDate) {
           try {
             await inviteTeammatesToJob(savedJob.id, selectedTeammates, timezoneToUse);
             toast.success('Job created and teammates invited successfully!');
+            
+            // Navigate directly since calendar event was created by invite function
+            if (onSuccess) {
+              onSuccess(savedJob.id);
+            } else {
+              navigate(`/job/${savedJob.id}`);
+            }
           } catch (error) {
             console.error('Error inviting teammates:', error);
             toast.error('Job created but failed to invite teammates');
+            
+            if (onSuccess) {
+              onSuccess(savedJob.id);
+            } else {
+              navigate(`/job/${savedJob.id}`);
+            }
           }
         } else {
+          // No teammates - show calendar dialog for personal calendar event
           toast.success('Job created successfully!');
-        }
-        
-        if (hasCalendarIntegration && formattedDate) {
-          setShowCalendarDialog(true);
-        } else {
-          if (onSuccess) {
-            onSuccess(savedJob.id);
+          
+          if (hasCalendarIntegration && formattedDate) {
+            setShowCalendarDialog(true);
           } else {
-            navigate(`/job/${savedJob.id}`);
+            if (onSuccess) {
+              onSuccess(savedJob.id);
+            } else {
+              navigate(`/job/${savedJob.id}`);
+            }
           }
         }
       }

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getJob, getClient, getJobInvoices, deleteJob } from '@/lib/storage';
@@ -13,6 +14,8 @@ import PageTransition from '@/components/ui-custom/PageTransition';
 import InvoiceList from '@/components/InvoiceList';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import JobTeammatesList from '@/components/teammates/JobTeammatesList';
+import { getJobTeammates } from '@/lib/teammateStorage';
 
 const JobDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -27,6 +30,15 @@ const JobDetail = () => {
     queryFn: async () => {
       if (!id) return [];
       return await getJobInvoices(id);
+    },
+    enabled: !!id,
+  });
+
+  const { data: jobTeammates = [] } = useQuery({
+    queryKey: ['job-teammates', id],
+    queryFn: async () => {
+      if (!id) return [];
+      return await getJobTeammates(id);
     },
     enabled: !!id,
   });
@@ -145,7 +157,7 @@ const JobDetail = () => {
 
   return (
     <PageTransition>
-      <div className="container mx-auto py-8">
+      <div className="container mx-auto py-8 space-y-6">
         <Card className="w-full max-w-4xl mx-auto">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
@@ -305,34 +317,6 @@ const JobDetail = () => {
                   </div>
                 </div>
               </div>
-              
-              <Separator className="my-4" />
-              
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-medium">Invoices</h3>
-                  <Button asChild>
-                    <Link to={`/job/${job.id}/invoice/create`}>
-                      <FileText className="h-4 w-4 mr-2" />
-                      Create Invoice
-                    </Link>
-                  </Button>
-                </div>
-                
-                {invoices.length === 0 ? (
-                  <div className="bg-muted/50 rounded-lg p-6 text-center">
-                    <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
-                    <p className="text-muted-foreground">No invoices have been created for this job yet.</p>
-                    <Button className="mt-4" asChild>
-                      <Link to={`/job/${job.id}/invoice/create`}>
-                        Create First Invoice
-                      </Link>
-                    </Button>
-                  </div>
-                ) : (
-                  <InvoiceList invoices={invoices} client={client} showCreateButton={false} />
-                )}
-              </div>
             </div>
           </CardContent>
           <CardFooter>
@@ -343,6 +327,47 @@ const JobDetail = () => {
               }
             </CardDescription>
           </CardFooter>
+        </Card>
+
+        {/* Job Teammates Section */}
+        <div className="w-full max-w-4xl mx-auto">
+          <JobTeammatesList
+            jobId={job.id}
+            teammates={jobTeammates}
+            onTeammateRemoved={() => {
+              queryClient.invalidateQueries({ queryKey: ['job-teammates', id] });
+            }}
+          />
+        </div>
+
+        {/* Invoices Section */}
+        <Card className="w-full max-w-4xl mx-auto">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg font-medium">Invoices</CardTitle>
+              <Button asChild>
+                <Link to={`/job/${job.id}/invoice/create`}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Create Invoice
+                </Link>
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {invoices.length === 0 ? (
+              <div className="bg-muted/50 rounded-lg p-6 text-center">
+                <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
+                <p className="text-muted-foreground">No invoices have been created for this job yet.</p>
+                <Button className="mt-4" asChild>
+                  <Link to={`/job/${job.id}/invoice/create`}>
+                    Create First Invoice
+                  </Link>
+                </Button>
+              </div>
+            ) : (
+              <InvoiceList invoices={invoices} client={client} showCreateButton={false} />
+            )}
+          </CardContent>
         </Card>
       </div>
     </PageTransition>

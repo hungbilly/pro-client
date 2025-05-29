@@ -21,6 +21,8 @@ import { AddToCalendarDialog } from './AddToCalendarDialog';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
+import TeammateSelector from './teammates/TeammateSelector';
+import { inviteTeammatesToJob } from '@/lib/teammateStorage';
 
 interface JobFormProps {
   job?: Job;
@@ -49,6 +51,7 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
   const [calendarEventId, setCalendarEventId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [selectedTeammates, setSelectedTeammates] = useState<Array<{ id?: string; name: string; email: string }>>([]);
 
   const clientId = predefinedClientId || clientIdParam || existingJob?.clientId || '';
   const { selectedCompany } = useCompany();
@@ -211,7 +214,6 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
     try {
       if (existingJob) {
         const isAddingDate = !existingJob.date && formattedDate;
-        // Modified condition to include title and description changes
         const contentFieldsChanged = 
           existingJob.title !== title || 
           existingJob.description !== description;
@@ -243,8 +245,8 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
         console.log('Updating job with data:', updatedJob);
         await updateJob(updatedJob);
         
+        // Handle calendar updates
         if (hasCalendarIntegration) {
-          // Modified condition to include title and description changes
           if (existingJob.calendarEventId && (dateFieldsChanged || contentFieldsChanged) && formattedDate) {
             try {
               const { data: { session } } = await supabase.auth.getSession();
@@ -291,6 +293,17 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
             }
           }
         }
+
+        // Handle teammates for existing job
+        if (selectedTeammates.length > 0 && formattedDate) {
+          try {
+            await inviteTeammatesToJob(existingJob.id, selectedTeammates, timezoneToUse);
+            toast.success('Teammates invited successfully');
+          } catch (error) {
+            console.error('Error inviting teammates:', error);
+            toast.error('Failed to invite teammates');
+          }
+        }
         
         toast.success('Job updated successfully!');
         
@@ -323,7 +336,19 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
         }
         
         setNewJob(savedJob);
-        toast.success('Job created successfully!');
+
+        // Handle teammates for new job
+        if (selectedTeammates.length > 0 && formattedDate) {
+          try {
+            await inviteTeammatesToJob(savedJob.id, selectedTeammates, timezoneToUse);
+            toast.success('Job created and teammates invited successfully!');
+          } catch (error) {
+            console.error('Error inviting teammates:', error);
+            toast.error('Job created but failed to invite teammates');
+          }
+        } else {
+          toast.success('Job created successfully!');
+        }
         
         if (hasCalendarIntegration && formattedDate) {
           setShowCalendarDialog(true);
@@ -459,7 +484,7 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
             </CardContent>
           </Card>
           
-          <form onSubmit={handleSubmit} className="space-y-4 mt-6">
+          <form onSubmit={handleSubmit} className="space-y-6 mt-6">
             <div>
               <Label htmlFor="title">Job Title</Label>
               <Input
@@ -582,6 +607,12 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
                 </p>
               </div>
             </div>
+
+            {/* Teammate Selection */}
+            <TeammateSelector
+              selectedTeammates={selectedTeammates}
+              onTeammatesChange={setSelectedTeammates}
+            />
           </form>
         </CardContent>
         <CardFooter className="flex justify-between">

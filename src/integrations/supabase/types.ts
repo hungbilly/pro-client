@@ -640,6 +640,63 @@ export type Database = {
           },
         ]
       }
+      job_teammates: {
+        Row: {
+          calendar_event_id: string | null
+          created_at: string
+          id: string
+          invitation_status: string
+          invited_at: string | null
+          job_id: string
+          responded_at: string | null
+          teammate_email: string
+          teammate_id: string | null
+          teammate_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          calendar_event_id?: string | null
+          created_at?: string
+          id?: string
+          invitation_status?: string
+          invited_at?: string | null
+          job_id: string
+          responded_at?: string | null
+          teammate_email: string
+          teammate_id?: string | null
+          teammate_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          calendar_event_id?: string | null
+          created_at?: string
+          id?: string
+          invitation_status?: string
+          invited_at?: string | null
+          job_id?: string
+          responded_at?: string | null
+          teammate_email?: string
+          teammate_id?: string | null
+          teammate_name?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_teammates_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_teammates_teammate_id_fkey"
+            columns: ["teammate_id"]
+            isOneToOne: false
+            referencedRelation: "teammates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       jobs: {
         Row: {
           calendar_event_id: string | null
@@ -915,6 +972,91 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      teammate_calendar_responses: {
+        Row: {
+          calendar_event_id: string
+          created_at: string
+          id: string
+          job_teammate_id: string
+          responded_at: string
+          response_comment: string | null
+          response_status: string
+        }
+        Insert: {
+          calendar_event_id: string
+          created_at?: string
+          id?: string
+          job_teammate_id: string
+          responded_at?: string
+          response_comment?: string | null
+          response_status: string
+        }
+        Update: {
+          calendar_event_id?: string
+          created_at?: string
+          id?: string
+          job_teammate_id?: string
+          responded_at?: string
+          response_comment?: string | null
+          response_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teammate_calendar_responses_job_teammate_id_fkey"
+            columns: ["job_teammate_id"]
+            isOneToOne: false
+            referencedRelation: "job_teammates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teammates: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          email: string
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          role: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          role?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          role?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teammates_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_integrations: {
         Row: {

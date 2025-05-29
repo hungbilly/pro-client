@@ -7,6 +7,56 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Helper function to convert time and timezone to RFC3339 format
+function formatToRFC3339(date: string, time: string, timezone: string): string {
+  console.log('formatToRFC3339 inputs:', { date, time, timezone });
+  
+  // Create a datetime string in the specified timezone
+  const dateTimeString = `${date}T${time}:00`;
+  console.log('Initial datetime string:', dateTimeString);
+  
+  try {
+    // Create date object and format with timezone
+    const tempDate = new Date(`${dateTimeString}Z`);
+    console.log('Temp date object:', tempDate.toISOString());
+    
+    // Get timezone offset for the specified timezone
+    const formatter = new Intl.DateTimeFormat('en', {
+      timeZone: timezone,
+      timeZoneName: 'longOffset'
+    });
+    
+    const parts = formatter.formatToParts(tempDate);
+    const offsetPart = parts.find(part => part.type === 'timeZoneName');
+    let offset = '+00:00'; // Default to UTC
+    
+    if (offsetPart && offsetPart.value !== 'GMT') {
+      offset = offsetPart.value.replace('GMT', '');
+      if (offset.length === 3) { // +8 -> +08:00
+        offset = offset.slice(0, 1) + '0' + offset.slice(1) + ':00';
+      } else if (offset.length === 4) { // +08 -> +08:00
+        offset = offset + ':00';
+      }
+    }
+    
+    console.log('Calculated offset:', offset);
+    
+    // For Asia/Hong_Kong, manually set the offset since it's consistently +08:00
+    if (timezone === 'Asia/Hong_Kong') {
+      offset = '+08:00';
+    }
+    
+    const finalDateTime = `${dateTimeString}${offset}`;
+    console.log('Final RFC3339 datetime:', finalDateTime);
+    
+    return finalDateTime;
+  } catch (error) {
+    console.error('Error in formatToRFC3339:', error);
+    // Fallback: assume UTC
+    return `${dateTimeString}+00:00`;
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -282,32 +332,31 @@ serve(async (req) => {
               console.log('Event timezone determined as:', eventTimezone)
               
               // Format as RFC3339 with timezone offset
-              const startTime = job.start_time || '09:00:00'
-              const endTime = job.end_time || '17:00:00'
+              const startTime = job.start_time || '09:00'
+              const endTime = job.end_time || '17:00'
               
-              // Create proper ISO datetime strings with timezone
-              const startDateTime = `${job.date}T${startTime}`
-              const endDateTime = `${job.date}T${endTime}`
-              
-              console.log('Raw datetime strings:', {
-                startDateTime,
-                endDateTime,
+              console.log('Raw datetime inputs:', {
+                date: job.date,
+                startTime,
+                endTime,
                 timezone: eventTimezone
               })
               
+              // Use the helper function to format properly
+              const startDateTime = formatToRFC3339(job.date, startTime, eventTimezone)
+              const endDateTime = formatToRFC3339(job.date, endTime, eventTimezone)
+              
+              console.log('Formatted datetimes:', {
+                start: startDateTime,
+                end: endDateTime
+              })
+              
               eventData.start = {
-                dateTime: startDateTime,
-                timeZone: eventTimezone
+                dateTime: startDateTime
               }
               eventData.end = {
-                dateTime: endDateTime,
-                timeZone: eventTimezone
+                dateTime: endDateTime
               }
-              
-              console.log('Final event timing:', {
-                start: eventData.start,
-                end: eventData.end
-              })
             }
 
             console.log('Complete event data being sent to Google Calendar:', JSON.stringify(eventData, null, 2))

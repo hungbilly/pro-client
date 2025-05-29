@@ -1,6 +1,6 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -15,190 +15,148 @@ serve(async (req) => {
   try {
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        auth: {
-          persistSession: false,
-        },
-      }
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
-
-    const authHeader = req.headers.get('Authorization')!
-    const token = authHeader.replace('Bearer ', '')
-    const { data: { user } } = await supabaseClient.auth.getUser(token)
-
-    if (!user) {
-      throw new Error('Unauthorized')
-    }
 
     const { jobId, teammates, timeZone } = await req.json()
 
-    console.log('Inviting teammates to job:', { jobId, teammates: teammates.length, timeZone })
+    console.log('Inviting teammates to job:', {
+      jobId,
+      teammates: teammates?.length || 0,
+      timeZone
+    })
 
-    // Get job details
+    // First, verify the job exists
     const { data: job, error: jobError } = await supabaseClient
       .from('jobs')
-      .select(`
-        *,
-        clients (name, email),
-        companies (name)
-      `)
+      .select('*')
       .eq('id', jobId)
       .single()
 
     if (jobError || !job) {
-      throw new Error('Job not found')
+      console.error('Job lookup error:', jobError)
+      throw new Error(`Job not found: ${jobId}`)
     }
 
-    console.log('Job details:', { title: job.title, date: job.date, client: job.clients?.name })
+    console.log('Found job:', job.title)
 
-    // Get user's Google Calendar integration
-    const { data: integration } = await supabaseClient
-      .from('user_integrations')
-      .select('access_token, refresh_token')
-      .eq('user_id', user.id)
-      .eq('provider', 'google_calendar')
-      .single()
+    // Remove existing job teammates for this job (to avoid duplicates)
+    const { error: deleteError } = await supabaseClient
+      .from('job_teammates')
+      .delete()
+      .eq('job_id', jobId)
 
-    if (!integration) {
-      throw new Error('Google Calendar integration not found')
+    if (deleteError) {
+      console.error('Error removing existing teammates:', deleteError)
     }
 
+    // Process each teammate
     const results = []
-
     for (const teammate of teammates) {
       try {
         console.log('Processing teammate:', teammate.email)
 
-        // Create calendar event with attendee
-        const eventData = {
-          summary: `${job.title} - ${job.clients?.name}`,
-          description: `Photography job: ${job.title}\nClient: ${job.clients?.name}\nLocation: ${job.location || 'TBD'}`,
-          location: job.location || '',
-          start: job.is_full_day 
-            ? { date: job.date }
-            : {
-                dateTime: `${job.date}T${job.start_time || '09:00'}:00`,
-                timeZone: timeZone || 'UTC'
-              },
-          end: job.is_full_day
-            ? { date: job.date }
-            : {
-                dateTime: `${job.date}T${job.end_time || '17:00'}:00`,
-                timeZone: timeZone || 'UTC'
-              },
-          attendees: [
-            {
+        // For existing teammates, check if they exist in the teammates table
+        let teammateRecord = null
+        if (teammate.id) {
+          const { data: existingTeammate } = await supabaseClient
+            .from('teammates')
+            .select('*')
+            .eq('id', teammate.id)
+            .single()
+          
+          teammateRecord = existingTeammate
+        }
+
+        // If it's a new teammate (no ID or not found), create the teammate record
+        if (!teammateRecord && teammate.isNew !== false) {
+          const { data: newTeammate, error: teammateError } = await supabaseClient
+            .from('teammates')
+            .insert({
+              name: teammate.name,
               email: teammate.email,
-              displayName: teammate.name,
-              responseStatus: 'needsAction'
-            }
-          ],
-          reminders: {
-            useDefault: false,
-            overrides: [
-              { method: 'email', minutes: 24 * 60 }, // 1 day before
-              { method: 'popup', minutes: 30 }       // 30 minutes before
-            ]
-          },
-          sendUpdates: 'all'
-        }
+              company_id: job.company_id,
+              user_id: job.client_id // This might need to be adjusted based on your schema
+            })
+            .select()
+            .single()
 
-        console.log('Creating calendar event with data:', eventData)
-
-        const calendarResponse = await fetch(
-          'https://www.googleapis.com/calendar/v3/calendars/primary/events',
-          {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${integration.access_token}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(eventData),
+          if (teammateError) {
+            console.error('Error creating teammate:', teammateError)
+          } else {
+            teammateRecord = newTeammate
+            console.log('Created new teammate:', newTeammate.id)
           }
-        )
-
-        if (!calendarResponse.ok) {
-          const errorText = await calendarResponse.text()
-          console.error('Calendar API error:', errorText)
-          throw new Error(`Calendar API error: ${calendarResponse.status}`)
         }
 
-        const calendarEvent = await calendarResponse.json()
-        console.log('Calendar event created:', calendarEvent.id)
+        // Create job_teammate record
+        const jobTeammateData = {
+          job_id: jobId,
+          teammate_email: teammate.email,
+          teammate_name: teammate.name,
+          invitation_status: 'pending'
+        }
 
-        // Save job teammate assignment
-        const { data: jobTeammate, error: teammateError } = await supabaseClient
+        // Add teammate_id if we have a teammate record
+        if (teammateRecord?.id) {
+          jobTeammateData.teammate_id = teammateRecord.id
+        }
+
+        const { data: jobTeammate, error: jobTeammateError } = await supabaseClient
           .from('job_teammates')
-          .insert({
-            job_id: jobId,
-            teammate_id: teammate.id || null,
-            teammate_email: teammate.email,
-            teammate_name: teammate.name,
-            calendar_event_id: calendarEvent.id,
-            invitation_status: 'sent',
-            invited_at: new Date().toISOString()
-          })
+          .insert(jobTeammateData)
           .select()
           .single()
 
-        if (teammateError) {
-          console.error('Error saving job teammate:', teammateError)
-          throw new Error('Failed to save teammate assignment')
+        if (jobTeammateError) {
+          console.error('Error creating job teammate:', jobTeammateError)
+          results.push({
+            email: teammate.email,
+            success: false,
+            error: jobTeammateError.message
+          })
+        } else {
+          console.log('Successfully assigned teammate to job:', jobTeammate.id)
+          results.push({
+            email: teammate.email,
+            success: true,
+            jobTeammateId: jobTeammate.id
+          })
         }
 
-        results.push({
-          success: true,
-          teammate: teammate.email,
-          calendarEventId: calendarEvent.id,
-          jobTeammateId: jobTeammate.id
-        })
-
       } catch (error) {
-        console.error(`Error inviting teammate ${teammate.email}:`, error)
-        
-        // Still save the assignment even if calendar invite fails
-        await supabaseClient
-          .from('job_teammates')
-          .insert({
-            job_id: jobId,
-            teammate_id: teammate.id || null,
-            teammate_email: teammate.email,
-            teammate_name: teammate.name,
-            invitation_status: 'error',
-            invited_at: new Date().toISOString()
-          })
-
+        console.error('Error processing teammate:', error)
         results.push({
+          email: teammate.email,
           success: false,
-          teammate: teammate.email,
           error: error.message
         })
       }
     }
 
-    console.log('Invitation results:', results)
-
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         results,
-        message: `Sent ${results.filter(r => r.success).length} of ${results.length} invitations`
+        message: `Processed ${teammates.length} teammates for job ${jobId}`
       }),
-      { 
+      {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      },
+        status: 200
+      }
     )
 
   } catch (error) {
     console.error('Error in invite-teammate-to-job:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { 
+      JSON.stringify({ 
+        success: false,
+        error: error.message 
+      }),
+      {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
-      },
+        status: 400
+      }
     )
   }
 })

@@ -107,6 +107,7 @@ const AppRoutes = () => {
         
         {/* Job management */}
         <Route path="/jobs" element={<Jobs />} />
+        <Route path="/job/create" element={<JobCreate />} />
         <Route path="/job/:id" element={<JobDetail />} />
         <Route path="/job/:id/edit" element={<JobEdit />} />
         <Route path="/client/:clientId/job/create" element={<JobCreate />} />

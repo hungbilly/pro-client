@@ -15,7 +15,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Check, Calendar, FileText, DollarSign, Send, MailCheck, FileCheck, Edit, CalendarDays, Package, Building, User, Phone, Mail, MapPin, Download, Copy, Link as LinkIcon, Bug } from 'lucide-react';
+import { ArrowLeft, Check, Calendar, FileText, DollarSign, Send, MailCheck, FileCheck, Edit, CalendarDays, Package, Building, User, Phone, Mail, MapPin, Download, Copy, Link as LinkIcon, Bug, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { useAuth } from '@/context/AuthContext';
@@ -29,6 +29,7 @@ import isEqual from 'lodash/isEqual';
 import ContractAcceptance from '@/components/invoice/ContractAcceptance';
 import { formatCurrency as utilFormatCurrency } from "@/lib/utils";
 import TopNavbar from '@/components/TopNavbar';
+import InvoiceShareDialog from '@/components/invoice/InvoiceShareDialog';
 
 const InvoiceView = () => {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
@@ -37,6 +38,7 @@ const InvoiceView = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatingPaymentId, setUpdatingPaymentId] = useState<string | null>(null);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const invoiceRef = useRef<HTMLDivElement>(null);
   const [clientViewCompany, setClientViewCompany] = useState<CompanyClientView | null>(null);
 
@@ -583,7 +585,16 @@ const InvoiceView = () => {
           <Card className="w-full mx-auto bg-white dark:bg-gray-900 shadow-sm" ref={invoiceRef}>
             <CardHeader className="pb-0">
               {!isClientView && (
-                <div className="flex justify-end mb-2">
+                <div className="flex justify-end gap-2 mb-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setShareDialogOpen(true)}
+                    className="flex items-center gap-1"
+                  >
+                    <Share2 className="h-3 w-3" />
+                    Share Invoice
+                  </Button>
                   <Button 
                     variant="outline" 
                     size="sm" 
@@ -915,6 +926,15 @@ const InvoiceView = () => {
               )}
             </CardFooter>
           </Card>
+
+          <InvoiceShareDialog
+            open={shareDialogOpen}
+            onOpenChange={setShareDialogOpen}
+            invoice={invoice}
+            client={client}
+            companyName={displayCompany?.name || 'Company'}
+            currency={companyCurrency}
+          />
         </div>
       </PageTransition>
     </>

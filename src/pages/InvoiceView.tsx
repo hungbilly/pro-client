@@ -717,11 +717,11 @@ const InvoiceView = () => {
                       <span>Contract Terms</span>
                       {invoice.contractStatus === 'accepted' ? (
                         <CheckCircle className="h-4 w-4 text-green-600" />
-                      ) : isClientView && invoice.contractTerms && invoice.contractStatus !== 'accepted' ? (
+                      ) : isClientView && invoice.contractTerms && invoice.contractStatus === 'pending' ? (
                         <AlertCircle className="h-4 w-4 text-orange-500" />
                       ) : null}
                     </div>
-                    {isClientView && invoice.contractTerms && invoice.contractStatus !== 'accepted' && (
+                    {isClientView && invoice.contractTerms && invoice.contractStatus === 'pending' && (
                       <div className="absolute -top-1 -right-1 h-2 w-2 bg-orange-500 rounded-full animate-pulse"></div>
                     )}
                   </TabsTrigger>
@@ -864,7 +864,7 @@ const InvoiceView = () => {
                 </TabsContent>
                 
                 <TabsContent value="contract" className="mt-6">
-                  {isClientView && invoice.contractTerms && invoice.contractStatus !== 'accepted' && (
+                  {isClientView && invoice.contractTerms && invoice.contractStatus === 'pending' && (
                     <div className="mb-4 p-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-900 rounded-md">
                       <div className="flex items-center gap-2 mb-3">
                         <AlertCircle className="h-5 w-5 text-orange-600 dark:text-orange-400" />

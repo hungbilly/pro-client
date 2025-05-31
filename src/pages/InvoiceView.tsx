@@ -704,12 +704,12 @@ const InvoiceView = () => {
                       <span>Invoice Details</span>
                       {invoice.status === 'accepted' ? (
                         <CheckCircle className="h-4 w-4 text-green-600" />
-                      ) : isClientView && ['draft', 'sent'].includes(invoice.status) ? (
-                        <AlertCircle className="h-4 w-4 text-orange-500" />
                       ) : null}
                     </div>
                     {isClientView && ['draft', 'sent'].includes(invoice.status) && (
-                      <div className="absolute -top-1 -right-1 h-2 w-2 bg-orange-500 rounded-full animate-pulse"></div>
+                      <div className="absolute -top-2 -right-2 h-5 w-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold border-2 border-white">
+                        1
+                      </div>
                     )}
                   </TabsTrigger>
                   <TabsTrigger value="contract" className="flex-1 relative">
@@ -717,12 +717,12 @@ const InvoiceView = () => {
                       <span>Contract Terms</span>
                       {invoice.contractStatus === 'accepted' ? (
                         <CheckCircle className="h-4 w-4 text-green-600" />
-                      ) : isClientView && invoice.contractTerms && invoice.contractStatus === 'pending' ? (
-                        <AlertCircle className="h-4 w-4 text-orange-500" />
                       ) : null}
                     </div>
                     {isClientView && invoice.contractTerms && invoice.contractStatus === 'pending' && (
-                      <div className="absolute -top-1 -right-1 h-2 w-2 bg-orange-500 rounded-full animate-pulse"></div>
+                      <div className="absolute -top-2 -right-2 h-5 w-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold border-2 border-white">
+                        1
+                      </div>
                     )}
                   </TabsTrigger>
                 </TabsList>

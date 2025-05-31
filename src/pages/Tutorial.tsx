@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
@@ -6,26 +5,11 @@ import PageTransition from '@/components/ui-custom/PageTransition';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { 
-  LayoutDashboard, 
-  Building, 
-  Users, 
-  Briefcase, 
-  Receipt,
-  Settings,
-  Calendar,
-  AlertCircle,
-  CheckCircle2,
-  ChevronRight,
-  FileText
-} from 'lucide-react';
+import { LayoutDashboard, Building, Users, Briefcase, Receipt, Settings, Calendar, AlertCircle, CheckCircle2, ChevronRight, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
 const Tutorial = () => {
   const navigate = useNavigate();
-
-  return (
-    <PageTransition>
+  return <PageTransition>
       <div className="container mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col items-center mb-10 text-center">
           <h1 className="text-4xl font-bold mb-4">Welcome to ProClient</h1>
@@ -37,52 +21,31 @@ const Tutorial = () => {
 
         <Tabs defaultValue="intro" className="space-y-8">
           <TabsList className="flex flex-wrap gap-2 h-auto w-full justify-center">
-            <TabsTrigger 
-              value="intro" 
-              className="flex items-center gap-2 bg-blue-50 text-blue-700 hover:bg-blue-100 data-[state=active]:bg-blue-200 data-[state=active]:text-blue-800"
-            >
+            <TabsTrigger value="intro" className="flex items-center gap-2 bg-blue-50 text-blue-700 hover:bg-blue-100 data-[state=active]:bg-blue-200 data-[state=active]:text-blue-800">
               <CheckCircle2 className="h-4 w-4" />
               Introduction
             </TabsTrigger>
-            <TabsTrigger 
-              value="dashboard" 
-              className="flex items-center gap-2 bg-purple-50 text-purple-700 hover:bg-purple-100 data-[state=active]:bg-purple-200 data-[state=active]:text-purple-800"
-            >
+            <TabsTrigger value="dashboard" className="flex items-center gap-2 bg-purple-50 text-purple-700 hover:bg-purple-100 data-[state=active]:bg-purple-200 data-[state=active]:text-purple-800">
               <LayoutDashboard className="h-4 w-4" />
               Dashboard
             </TabsTrigger>
-            <TabsTrigger 
-              value="company" 
-              className="flex items-center gap-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 data-[state=active]:bg-indigo-200 data-[state=active]:text-indigo-800"
-            >
+            <TabsTrigger value="company" className="flex items-center gap-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 data-[state=active]:bg-indigo-200 data-[state=active]:text-indigo-800">
               <Building className="h-4 w-4" />
               Company Management
             </TabsTrigger>
-            <TabsTrigger 
-              value="clients" 
-              className="flex items-center gap-2 bg-green-50 text-green-700 hover:bg-green-100 data-[state=active]:bg-green-200 data-[state=active]:text-green-800"
-            >
+            <TabsTrigger value="clients" className="flex items-center gap-2 bg-green-50 text-green-700 hover:bg-green-100 data-[state=active]:bg-green-200 data-[state=active]:text-green-800">
               <Users className="h-4 w-4" />
               Client Management
             </TabsTrigger>
-            <TabsTrigger 
-              value="jobs" 
-              className="flex items-center gap-2 bg-amber-50 text-amber-700 hover:bg-amber-100 data-[state=active]:bg-amber-200 data-[state=active]:text-amber-800"
-            >
+            <TabsTrigger value="jobs" className="flex items-center gap-2 bg-amber-50 text-amber-700 hover:bg-amber-100 data-[state=active]:bg-amber-200 data-[state=active]:text-amber-800">
               <Briefcase className="h-4 w-4" />
               Job Management
             </TabsTrigger>
-            <TabsTrigger 
-              value="invoices" 
-              className="flex items-center gap-2 bg-rose-50 text-rose-700 hover:bg-rose-100 data-[state=active]:bg-rose-200 data-[state=active]:text-rose-800"
-            >
+            <TabsTrigger value="invoices" className="flex items-center gap-2 bg-rose-50 text-rose-700 hover:bg-rose-100 data-[state=active]:bg-rose-200 data-[state=active]:text-rose-800">
               <Receipt className="h-4 w-4" />
               Invoice Management
             </TabsTrigger>
-            <TabsTrigger 
-              value="settings" 
-              className="flex items-center gap-2 bg-slate-50 text-slate-700 hover:bg-slate-100 data-[state=active]:bg-slate-200 data-[state=active]:text-slate-800"
-            >
+            <TabsTrigger value="settings" className="flex items-center gap-2 bg-slate-50 text-slate-700 hover:bg-slate-100 data-[state=active]:bg-slate-200 data-[state=active]:text-slate-800">
               <Settings className="h-4 w-4" />
               Settings
             </TabsTrigger>
@@ -96,10 +59,7 @@ const Tutorial = () => {
                   <h2 className="text-3xl font-bold mb-6">Welcome to ProClient</h2>
                   
                   <div className="space-y-4">
-                    <p className="text-lg">
-                      ProClient is designed for photographers, videographers, and creative professionals 
-                      who need a simple yet powerful way to manage their business operations.
-                    </p>
+                    <p className="text-lg">ProClient is designed for photographers, videographers, makeup artirst or any creative professionals who need a simple yet powerful way to manage their business operations.</p>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 my-8">
                       <div className="border rounded-lg p-6 hover:shadow-md transition-shadow">
@@ -920,8 +880,6 @@ const Tutorial = () => {
           </TabsContent>
         </Tabs>
       </div>
-    </PageTransition>
-  );
+    </PageTransition>;
 };
-
 export default Tutorial;

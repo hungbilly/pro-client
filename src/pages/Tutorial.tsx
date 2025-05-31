@@ -740,9 +740,9 @@ const Tutorial = () => {
                             </p>
                             <ul className="space-y-1 text-sm ml-5 list-disc">
                               <li>Layout and design</li>
-                              <li>Logo placement</li>
-                              <li>Color schemes</li>
-                              <li>Header and footer text</li>
+                              <li>Package Items</li>
+                              <li>Terms and Condidtion</li>
+                              <li>Payment schedule </li>
                               <li>Payment instructions</li>
                             </ul>
                             <div className="mt-3">

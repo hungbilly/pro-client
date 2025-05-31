@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useCallback, memo, useRef } from 'react';
 import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
@@ -15,7 +14,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Check, Calendar, FileText, DollarSign, Send, MailCheck, FileCheck, Edit, CalendarDays, Package, Building, User, Phone, Mail, MapPin, Download, Copy, Link as LinkIcon, Bug, Share2 } from 'lucide-react';
+import { ArrowLeft, Check, Calendar, FileText, DollarSign, Send, MailCheck, FileCheck, Edit, CalendarDays, Package, Building, User, Phone, Mail, MapPin, Download, Copy, Link as LinkIcon, Bug, Share2, AlertCircle, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { useAuth } from '@/context/AuthContext';
@@ -700,35 +699,53 @@ const InvoiceView = () => {
             <CardContent className="pt-6">
               <Tabs defaultValue="invoice" className="w-full">
                 <TabsList className="w-full">
-                  <TabsTrigger value="invoice" className="flex-1">
-                    Invoice Details
-                    {invoice.status === 'accepted' && (
-                      <span className="ml-2">
-                        <FileCheck className="h-3 w-3 inline text-green-600" />
-                      </span>
+                  <TabsTrigger value="invoice" className="flex-1 relative">
+                    <div className="flex items-center gap-2">
+                      <span>Invoice Details</span>
+                      {invoice.status === 'accepted' ? (
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      ) : isClientView && ['draft', 'sent'].includes(invoice.status) ? (
+                        <AlertCircle className="h-4 w-4 text-orange-500" />
+                      ) : null}
+                    </div>
+                    {isClientView && ['draft', 'sent'].includes(invoice.status) && (
+                      <div className="absolute -top-1 -right-1 h-2 w-2 bg-orange-500 rounded-full animate-pulse"></div>
                     )}
                   </TabsTrigger>
-                  <TabsTrigger value="contract" className="flex-1">
-                    Contract Terms
-                    {invoice.contractStatus === 'accepted' && (
-                      <span className="ml-2">
-                        <FileCheck className="h-3 w-3 inline text-green-600" />
-                      </span>
+                  <TabsTrigger value="contract" className="flex-1 relative">
+                    <div className="flex items-center gap-2">
+                      <span>Contract Terms</span>
+                      {invoice.contractStatus === 'accepted' ? (
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      ) : isClientView && invoice.contractTerms && invoice.contractStatus !== 'accepted' ? (
+                        <AlertCircle className="h-4 w-4 text-orange-500" />
+                      ) : null}
+                    </div>
+                    {isClientView && invoice.contractTerms && invoice.contractStatus !== 'accepted' && (
+                      <div className="absolute -top-1 -right-1 h-2 w-2 bg-orange-500 rounded-full animate-pulse"></div>
                     )}
                   </TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="invoice" className="mt-6">
                   {isClientView && ['draft', 'sent'].includes(invoice.status) && (
-                    <Button onClick={handleAcceptInvoice} className="mb-4">
-                      <Check className="h-4 w-4 mr-2" />
-                      Accept Invoice
-                    </Button>
+                    <div className="mb-4 p-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-900 rounded-md">
+                      <div className="flex items-center gap-2 mb-3">
+                        <AlertCircle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                        <span className="font-medium text-orange-800 dark:text-orange-400">
+                          Action Required: Please accept this invoice
+                        </span>
+                      </div>
+                      <Button onClick={handleAcceptInvoice} className="bg-orange-600 hover:bg-orange-700">
+                        <Check className="h-4 w-4 mr-2" />
+                        Accept Invoice
+                      </Button>
+                    </div>
                   )}
                   
                   {invoice.status === 'accepted' && (
                     <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-md flex items-center gap-2">
-                      <FileCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
+                      <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
                       <span className="text-green-800 dark:text-green-400">
                         This invoice has been accepted
                       </span>
@@ -847,16 +864,24 @@ const InvoiceView = () => {
                 </TabsContent>
                 
                 <TabsContent value="contract" className="mt-6">
-                  {isClientView && invoice.contractStatus !== 'accepted' && (
-                    <ContractAcceptance
-                      companyName={displayCompany?.name || 'Company'}
-                      onAccept={handleAcceptContract}
-                    />
+                  {isClientView && invoice.contractTerms && invoice.contractStatus !== 'accepted' && (
+                    <div className="mb-4 p-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-900 rounded-md">
+                      <div className="flex items-center gap-2 mb-3">
+                        <AlertCircle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                        <span className="font-medium text-orange-800 dark:text-orange-400">
+                          Action Required: Please review and accept the contract terms
+                        </span>
+                      </div>
+                      <ContractAcceptance
+                        companyName={displayCompany?.name || 'Company'}
+                        onAccept={handleAcceptContract}
+                      />
+                    </div>
                   )}
                     
                   {invoice.contractStatus === 'accepted' && (
                     <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-md flex items-center gap-2">
-                      <FileCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
+                      <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
                       <div className="text-green-800 dark:text-green-400">
                         <p>This contract has been accepted</p>
                         {invoice.invoice_accepted_by ? (

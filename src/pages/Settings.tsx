@@ -60,31 +60,87 @@ const Settings = () => {
               </TabsList>
               
               <TabsContent value="company" className="mt-6">
-                <CompanySettings />
+                <div className="space-y-4">
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <h3 className="text-sm font-medium text-blue-900 mb-1">Company Information</h3>
+                    <p className="text-sm text-blue-700">
+                      Set up your business details including name, logo, address, and payment methods. This information will appear on your invoices and be visible to clients.
+                    </p>
+                  </div>
+                  <CompanySettings />
+                </div>
               </TabsContent>
               
               <TabsContent value="calendar" className="mt-6">
-                <GoogleCalendarIntegration />
+                <div className="space-y-4">
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <h3 className="text-sm font-medium text-green-900 mb-1">Calendar Integration</h3>
+                    <p className="text-sm text-green-700">
+                      Connect your Google Calendar to sync events and automatically add job dates to your calendar. This helps you stay organized and avoid double-booking.
+                    </p>
+                  </div>
+                  <GoogleCalendarIntegration />
+                </div>
               </TabsContent>
               
               <TabsContent value="teammates" className="mt-6">
-                <TeammateManagement />
+                <div className="space-y-4">
+                  <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                    <h3 className="text-sm font-medium text-purple-900 mb-1">Team Management</h3>
+                    <p className="text-sm text-purple-700">
+                      Add team members who can be assigned to jobs. Manage their contact information and availability to collaborate effectively on projects.
+                    </p>
+                  </div>
+                  <TeammateManagement />
+                </div>
               </TabsContent>
               
               <TabsContent value="packages" className="mt-6">
-                <PackageSettings />
+                <div className="space-y-4">
+                  <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                    <h3 className="text-sm font-medium text-orange-900 mb-1">Service Packages</h3>
+                    <p className="text-sm text-orange-700">
+                      Create reusable service packages with predefined items and pricing. This speeds up invoice creation and ensures consistent pricing for your services.
+                    </p>
+                  </div>
+                  <PackageSettings />
+                </div>
               </TabsContent>
               
               <TabsContent value="invoices" className="mt-6">
-                <InvoiceTemplateSettings />
+                <div className="space-y-4">
+                  <div className="p-4 bg-cyan-50 border border-cyan-200 rounded-lg">
+                    <h3 className="text-sm font-medium text-cyan-900 mb-1">Invoice Templates</h3>
+                    <p className="text-sm text-cyan-700">
+                      Create templates with commonly used items, terms, and notes. Save time when creating invoices by starting with pre-configured templates for different types of projects.
+                    </p>
+                  </div>
+                  <InvoiceTemplateSettings />
+                </div>
               </TabsContent>
               
               <TabsContent value="contracts" className="mt-6">
-                <ContractTemplateSettings />
+                <div className="space-y-4">
+                  <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-lg">
+                    <h3 className="text-sm font-medium text-indigo-900 mb-1">Contract Templates</h3>
+                    <p className="text-sm text-indigo-700">
+                      Create standardized contract templates with your terms and conditions. These can be attached to invoices and require client acceptance before work begins.
+                    </p>
+                  </div>
+                  <ContractTemplateSettings />
+                </div>
               </TabsContent>
               
               <TabsContent value="discounts" className="mt-6">
-                <DiscountTemplateSettings />
+                <div className="space-y-4">
+                  <div className="p-4 bg-rose-50 border border-rose-200 rounded-lg">
+                    <h3 className="text-sm font-medium text-rose-900 mb-1">Discount Templates</h3>
+                    <p className="text-sm text-rose-700">
+                      Set up reusable discount options like early bird specials, referral discounts, or bulk pricing. Apply these quickly when creating invoices to reward loyal clients.
+                    </p>
+                  </div>
+                  <DiscountTemplateSettings />
+                </div>
               </TabsContent>
             </Tabs>
           </CardContent>

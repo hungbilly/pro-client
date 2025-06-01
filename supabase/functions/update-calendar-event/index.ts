@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
@@ -140,10 +141,11 @@ serve(async (req) => {
     
     const { accessToken } = accessTokenData;
 
-    // Determine which calendar to use - prioritize job's stored calendar_id
+    // IMPORTANT: Always use the calendar where the event was originally created
+    // The event ID is unique to the specific calendar, so we must use the original calendar
     let targetCalendarId = accessTokenData.calendarId || 'primary';
     let targetCalendarName = accessTokenData.calendarName || 'Primary Calendar';
-    let calendarSource = 'from user selection';
+    let calendarSource = 'from user current selection (default)';
     
     if (jobId) {
       console.log(`Fetching calendar_id for job: ${jobId}`);
@@ -153,18 +155,23 @@ serve(async (req) => {
         .eq('id', jobId)
         .single();
         
+      console.log(`Job record query result:`, { jobRecord, jobError });
+        
       if (!jobError && jobRecord?.calendar_id) {
         targetCalendarId = jobRecord.calendar_id;
         targetCalendarName = `Calendar ${jobRecord.calendar_id}`;
-        calendarSource = 'from job record';
-        console.log(`Found stored calendar ID for job: ${targetCalendarId}`);
+        calendarSource = 'from job record (original calendar)';
+        console.log(`✅ Found stored calendar ID for job: ${targetCalendarId}`);
       } else {
-        console.log(`No stored calendar ID found for job ${jobId}, using user's current selection: ${targetCalendarId}`);
+        console.log(`⚠️ No stored calendar ID found for job ${jobId}, using user's current selection: ${targetCalendarId}`);
+        console.log(`This may cause issues if the event was created in a different calendar!`);
       }
+    } else {
+      console.log(`⚠️ No jobId provided, using user's current calendar selection: ${targetCalendarId}`);
     }
     
-    console.log(`Using calendar: ${targetCalendarId} (${targetCalendarName})`);
-    console.log(`Calendar source: ${calendarSource}`);
+    console.log(`📅 Using calendar: ${targetCalendarId} (${targetCalendarName})`);
+    console.log(`📝 Calendar source: ${calendarSource}`);
     
     const eventData = testMode && testData ? testData.event : jobData;
     console.log('Using event data:', JSON.stringify(eventData));
@@ -239,7 +246,7 @@ serve(async (req) => {
     }
     
     console.log("Using access token:", accessToken ? "Token present" : "No token");
-    console.log("Updating Google Calendar event with ID:", eventId, "in calendar:", targetCalendarId);
+    console.log("🔄 Updating Google Calendar event with ID:", eventId, "in calendar:", targetCalendarId);
     
     const calendarResponse = await fetch(
       `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCalendarId)}/events/${eventId}`,
@@ -265,12 +272,28 @@ serve(async (req) => {
         errorDetails = { rawText: responseText };
       }
       
-      console.error('Google Calendar API error:', errorDetails);
+      console.error('❌ Google Calendar API error:', errorDetails);
+      
+      // Special handling for 404 errors - likely means event is in wrong calendar
+      if (calendarResponse.status === 404) {
+        console.error(`🚨 404 Error: Event ${eventId} not found in calendar ${targetCalendarId}`);
+        console.error(`This typically means the event was created in a different calendar.`);
+        console.error(`Job calendar_id from DB: ${jobRecord?.calendar_id || 'not set'}`);
+        console.error(`User's current calendar: ${accessTokenData.calendarId}`);
+      }
+      
       return new Response(
         JSON.stringify({ 
           error: 'Failed to update calendar event', 
           details: errorDetails,
-          status: calendarResponse.status
+          status: calendarResponse.status,
+          debugInfo: {
+            eventId,
+            targetCalendarId,
+            calendarSource,
+            jobCalendarId: jobRecord?.calendar_id || null,
+            userCurrentCalendarId: accessTokenData.calendarId
+          }
         }),
         { status: calendarResponse.status || 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -279,7 +302,7 @@ serve(async (req) => {
     let calendarData;
     try {
       calendarData = JSON.parse(responseText);
-      console.log('Successfully updated event:', calendarData.id);
+      console.log('✅ Successfully updated event:', calendarData.id);
       console.log('Event time zone in response:', calendarData.start?.timeZone || 'Not specified');
     } catch (e) {
       console.error('Failed to parse response as JSON:', e);

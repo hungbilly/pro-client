@@ -261,6 +261,7 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
                     eventId: existingJob.calendarEventId,
                     userId: user?.id,
                     timeZone: timezoneToUse,
+                    jobId: existingJob.id,
                     jobData: {
                       title: title,
                       description: description,
@@ -269,7 +270,8 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
                       start_time: isFullDay ? undefined : startTime,
                       end_time: isFullDay ? undefined : endTime,
                       is_full_day: isFullDay,
-                      timeZone: timezoneToUse
+                      timeZone: timezoneToUse,
+                      clientId: client.id
                     }
                   }
                 });
@@ -296,9 +298,10 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
           }
         }
 
-        // Handle teammates - invite them regardless of whether it's a new or existing job
+        // Handle teammates for existing job - invite them if any are selected
         if (selectedTeammates.length > 0 && formattedDate) {
           try {
+            console.log('Inviting teammates to existing job:', existingJob.id, selectedTeammates);
             await inviteTeammatesToJob(existingJob.id, selectedTeammates, timezoneToUse);
             toast.success('Teammates invited successfully');
           } catch (error) {

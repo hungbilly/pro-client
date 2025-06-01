@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -28,34 +27,34 @@ const Settings = () => {
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="company" className="w-full">
-              <TabsList className="grid w-full grid-cols-7">
-                <TabsTrigger value="company" className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4" />
-                  Company
+              <TabsList className="w-full flex flex-wrap h-auto p-1 bg-muted">
+                <TabsTrigger value="company" className="flex items-center gap-2 flex-1 min-w-0 sm:min-w-[120px] justify-center px-2 py-2 text-xs sm:text-sm">
+                  <Building2 className="h-4 w-4 flex-shrink-0" />
+                  <span className="truncate">Company</span>
                 </TabsTrigger>
-                <TabsTrigger value="calendar" className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  Calendar
+                <TabsTrigger value="calendar" className="flex items-center gap-2 flex-1 min-w-0 sm:min-w-[120px] justify-center px-2 py-2 text-xs sm:text-sm">
+                  <Calendar className="h-4 w-4 flex-shrink-0" />
+                  <span className="truncate">Calendar</span>
                 </TabsTrigger>
-                <TabsTrigger value="teammates" className="flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  Team
+                <TabsTrigger value="teammates" className="flex items-center gap-2 flex-1 min-w-0 sm:min-w-[120px] justify-center px-2 py-2 text-xs sm:text-sm">
+                  <Users className="h-4 w-4 flex-shrink-0" />
+                  <span className="truncate">Team</span>
                 </TabsTrigger>
-                <TabsTrigger value="packages" className="flex items-center gap-2">
-                  <Package className="h-4 w-4" />
-                  Packages
+                <TabsTrigger value="packages" className="flex items-center gap-2 flex-1 min-w-0 sm:min-w-[120px] justify-center px-2 py-2 text-xs sm:text-sm">
+                  <Package className="h-4 w-4 flex-shrink-0" />
+                  <span className="truncate">Packages</span>
                 </TabsTrigger>
-                <TabsTrigger value="invoices" className="flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  Invoice Templates
+                <TabsTrigger value="invoices" className="flex items-center gap-2 flex-1 min-w-0 sm:min-w-[120px] justify-center px-2 py-2 text-xs sm:text-sm">
+                  <FileText className="h-4 w-4 flex-shrink-0" />
+                  <span className="truncate">Invoice Templates</span>
                 </TabsTrigger>
-                <TabsTrigger value="contracts" className="flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  Contract Templates
+                <TabsTrigger value="contracts" className="flex items-center gap-2 flex-1 min-w-0 sm:min-w-[120px] justify-center px-2 py-2 text-xs sm:text-sm">
+                  <FileText className="h-4 w-4 flex-shrink-0" />
+                  <span className="truncate">Contract Templates</span>
                 </TabsTrigger>
-                <TabsTrigger value="discounts" className="flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  Discount Templates
+                <TabsTrigger value="discounts" className="flex items-center gap-2 flex-1 min-w-0 sm:min-w-[120px] justify-center px-2 py-2 text-xs sm:text-sm">
+                  <FileText className="h-4 w-4 flex-shrink-0" />
+                  <span className="truncate">Discount Templates</span>
                 </TabsTrigger>
               </TabsList>
               

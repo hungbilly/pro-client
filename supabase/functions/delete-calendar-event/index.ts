@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
@@ -81,9 +82,9 @@ function logTokenDetails(authHeader: string | null) {
   }
 }
 
-async function getAccessToken(userId: string, supabase: any) {
+async function getAccessTokenAndCalendarId(userId: string, supabase: any) {
   try {
-    console.log('Starting getAccessToken for user:', userId);
+    console.log('Starting getAccessTokenAndCalendarId for user:', userId);
     
     if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
       console.error('Missing Google OAuth credentials in environment variables:', {
@@ -131,7 +132,9 @@ async function getAccessToken(userId: string, supabase: any) {
       hasAccessToken: Boolean(integrationData.access_token),
       hasRefreshToken: Boolean(integrationData.refresh_token),
       expiresAt: integrationData.expires_at,
-      userId: integrationData.user_id
+      userId: integrationData.user_id,
+      calendarId: integrationData.calendar_id,
+      calendarName: integrationData.calendar_name
     });
 
     const expiresAt = new Date(integrationData.expires_at);
@@ -177,13 +180,21 @@ async function getAccessToken(userId: string, supabase: any) {
         .eq('id', integrationData.id);
 
       console.log('Token refreshed successfully, returning new access token');
-      return tokenData.access_token;
+      return { 
+        accessToken: tokenData.access_token, 
+        calendarId: integrationData.calendar_id || 'primary',
+        calendarName: integrationData.calendar_name || 'Primary Calendar'
+      };
     }
 
     console.log('Using existing valid token');
-    return integrationData.access_token;
+    return { 
+      accessToken: integrationData.access_token,
+      calendarId: integrationData.calendar_id || 'primary',
+      calendarName: integrationData.calendar_name || 'Primary Calendar'
+    };
   } catch (error) {
-    console.error('Error in getAccessToken:', error);
+    console.error('Error in getAccessTokenAndCalendarId:', error);
     throw error;
   }
 }
@@ -316,10 +327,14 @@ serve(async (req) => {
     console.log(`Using user ID: ${userId}`);
     console.log(`Attempting to delete calendar event with ID: ${requestData.eventId}`);
 
-    let accessToken;
+    let accessTokenData;
     try {
-      accessToken = await getAccessToken(userId, adminClient);
-      console.log('Successfully acquired access token');
+      accessTokenData = await getAccessTokenAndCalendarId(userId, adminClient);
+      console.log('Successfully acquired access token and calendar info:', {
+        hasAccessToken: Boolean(accessTokenData.accessToken),
+        calendarId: accessTokenData.calendarId,
+        calendarName: accessTokenData.calendarName
+      });
     } catch (tokenError) {
       console.error('Failed to get access token:', tokenError);
       return new Response(
@@ -328,9 +343,12 @@ serve(async (req) => {
       );
     }
     
-    console.log(`Calling Google Calendar API to delete event: ${requestData.eventId}`);
+    const { accessToken, calendarId, calendarName } = accessTokenData;
+    const targetCalendarId = calendarId || 'primary';
+    
+    console.log(`Calling Google Calendar API to delete event: ${requestData.eventId} from calendar: ${targetCalendarId} (${calendarName})`);
     const calendarResponse = await fetch(
-      `https://www.googleapis.com/calendar/v3/calendars/primary/events/${requestData.eventId}`,
+      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCalendarId)}/events/${requestData.eventId}`,
       {
         method: 'DELETE',
         headers: {
@@ -382,7 +400,9 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: 'Event deleted from calendar'
+        message: 'Event deleted from calendar',
+        calendarUsed: targetCalendarId,
+        calendarName: calendarName
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

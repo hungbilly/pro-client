@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Client, Job } from '@/types';
@@ -23,6 +24,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import TeammateSelector from './teammates/TeammateSelector';
 import { inviteTeammatesToJob } from '@/lib/teammateStorage';
+import { JobTeammate } from '@/types/teammate';
 
 interface JobFormProps {
   job?: Job;
@@ -52,7 +54,6 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [selectedTeammates, setSelectedTeammates] = useState<Array<{ id?: string; name: string; email: string }>>([]);
-  const [currentJobTeammates, setCurrentJobTeammates] = useState<Array<{ id?: string; name: string; email: string }>>([]);
 
   const clientId = predefinedClientId || clientIdParam || existingJob?.clientId || '';
   const { selectedCompany } = useCompany();
@@ -93,7 +94,7 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
     enabled: !!user
   });
 
-  const { data: currentJobTeammates = [] } = useQuery({
+  const { data: assignedJobTeammates = [] } = useQuery({
     queryKey: ['job-teammates', existingJob?.id],
     queryFn: async () => {
       if (!existingJob?.id) return [];
@@ -641,7 +642,7 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
             <TeammateSelector
               selectedTeammates={selectedTeammates}
               onTeammatesChange={setSelectedTeammates}
-              currentJobTeammates={currentJobTeammates}
+              currentJobTeammates={assignedJobTeammates}
             />
           </form>
         </CardContent>

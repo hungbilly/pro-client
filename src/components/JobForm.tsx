@@ -322,31 +322,32 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
           console.log('👥 [FRONTEND] Existing calendar event ID:', existingJob.calendarEventId);
           
           try {
+            // Step 1: Always create job teammate records in database first
+            console.log('📝 [FRONTEND] Step 1: Creating job teammate records in database');
+            await inviteTeammatesToJob(existingJob.id, selectedTeammates, timezoneToUse, false);
+            console.log('✅ [FRONTEND] Job teammate records created successfully');
+            
+            // Step 2: If there's an existing calendar event and calendar integration, add teammates to it
             if (existingJob.calendarEventId && hasCalendarIntegration) {
-              console.log('📅 [FRONTEND] === STRATEGY: UPDATE EXISTING CALENDAR EVENT ===');
-              console.log('📅 [FRONTEND] Step 1: Creating job teammate records in database (without calendar event)');
-              
-              // Step 1: Create job teammate records in database WITHOUT creating a new calendar event
-              await inviteTeammatesToJob(existingJob.id, selectedTeammates, timezoneToUse, false);
-              console.log('✅ [FRONTEND] Job teammate records created successfully');
-              
               console.log('📅 [FRONTEND] Step 2: Adding teammates to existing calendar event');
-              // Step 2: Add the teammates to the existing calendar event
               await addTeammatesToExistingCalendarEvent(updatedJob, selectedTeammates);
               console.log('✅ [FRONTEND] Teammates added to existing calendar event successfully');
-              
               toast.success('Teammates added to job and calendar event');
-            } else if (hasCalendarIntegration && formattedDate) {
-              console.log('📅 [FRONTEND] === STRATEGY: CREATE NEW CALENDAR EVENT ===');
-              console.log('📅 [FRONTEND] No existing calendar event - creating new one with teammates');
+            } else if (hasCalendarIntegration && !existingJob.calendarEventId) {
+              console.log('📅 [FRONTEND] Step 2: Creating new calendar event with teammates');
               // No existing calendar event, create new one with teammates
-              await inviteTeammatesToJob(existingJob.id, selectedTeammates, timezoneToUse, true);
-              toast.success('Calendar event created with teammates');
+              const eventId = await addToCalendar(updatedJob);
+              if (eventId) {
+                // Now add teammates to the newly created event
+                updatedJob.calendarEventId = eventId;
+                await updateJob(updatedJob);
+                await addTeammatesToExistingCalendarEvent(updatedJob, selectedTeammates);
+                toast.success('Calendar event created with teammates');
+              } else {
+                toast.success('Teammates added to job (calendar event creation failed)');
+              }
             } else {
-              console.log('📝 [FRONTEND] === STRATEGY: DATABASE ONLY ===');
-              console.log('📝 [FRONTEND] No calendar integration - only creating job teammate records');
-              // No calendar integration, just create teammate records
-              await inviteTeammatesToJob(existingJob.id, selectedTeammates, timezoneToUse, false);
+              console.log('📝 [FRONTEND] Step 2: No calendar integration - teammates added to database only');
               toast.success('Teammates added to job');
             }
 
@@ -360,56 +361,40 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
         }
         
         // Handle calendar updates for job details (not teammates)
-        if (hasCalendarIntegration) {
-          if (existingJob.calendarEventId && (dateFieldsChanged || contentFieldsChanged) && formattedDate) {
-            console.log('📅 [FRONTEND] Updating existing calendar event due to job details change');
-            try {
-              const { data: { session } } = await supabase.auth.getSession();
-              
-              if (session) {
-                await supabase.functions.invoke('update-calendar-event', {
-                  headers: {
-                    Authorization: `Bearer ${session.access_token}`,
-                  },
-                  body: {
-                    eventId: existingJob.calendarEventId,
-                    userId: user?.id,
+        if (hasCalendarIntegration && existingJob.calendarEventId && (dateFieldsChanged || contentFieldsChanged) && formattedDate) {
+          console.log('📅 [FRONTEND] Updating existing calendar event due to job details change');
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            
+            if (session) {
+              await supabase.functions.invoke('update-calendar-event', {
+                headers: {
+                  Authorization: `Bearer ${session.access_token}`,
+                },
+                body: {
+                  eventId: existingJob.calendarEventId,
+                  userId: user?.id,
+                  timeZone: timezoneToUse,
+                  jobId: existingJob.id,
+                  jobData: {
+                    title: title,
+                    description: description,
+                    date: formattedDate,
+                    location: location,
+                    start_time: isFullDay ? undefined : startTime,
+                    end_time: isFullDay ? undefined : endTime,
+                    is_full_day: isFullDay,
                     timeZone: timezoneToUse,
-                    jobId: existingJob.id,
-                    jobData: {
-                      title: title,
-                      description: description,
-                      date: formattedDate,
-                      location: location,
-                      start_time: isFullDay ? undefined : startTime,
-                      end_time: isFullDay ? undefined : endTime,
-                      is_full_day: isFullDay,
-                      timeZone: timezoneToUse,
-                      clientId: client.id
-                    }
+                    clientId: client.id
                   }
-                });
-                
-                toast.success('Calendar event updated');
-              }
-            } catch (error) {
-              console.error('Failed to update calendar event:', error);
-              toast.error('Failed to update calendar event');
+                }
+              });
+              
+              toast.success('Calendar event updated');
             }
-          } else if (!existingJob.calendarEventId && formattedDate && selectedTeammates.length === 0) {
-            console.log('📅 [FRONTEND] No existing calendar event and no teammates - creating personal calendar event');
-            // Only create calendar event directly if no teammates are selected
-            try {
-              const eventId = await addToCalendar(updatedJob);
-              if (eventId) {
-                updatedJob.calendarEventId = eventId;
-                await updateJob(updatedJob);
-                toast.success('Calendar event created');
-              }
-            } catch (error) {
-              console.error('Failed to create calendar event:', error);
-              toast.error('Failed to create calendar event');
-            }
+          } catch (error) {
+            console.error('Failed to update calendar event:', error);
+            toast.error('Failed to update calendar event');
           }
         }
         

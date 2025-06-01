@@ -113,22 +113,26 @@ serve(async (req) => {
       );
     }
 
-    // Get the calendar ID from the job record if jobId is provided
-    let jobCalendarId = null;
-    if (jobId) {
-      let supabase;
-      if (authHeader) {
-        supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-          global: {
-            headers: {
-              Authorization: authHeader,
-            }
+    // Create supabase client for database operations
+    let supabase;
+    if (authHeader) {
+      supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        global: {
+          headers: {
+            Authorization: authHeader,
           }
-        });
-      } else {
-        supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-      }
-      
+        }
+      });
+    } else {
+      supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    }
+
+    // Get the calendar ID from the job record if jobId is provided
+    let targetCalendarId = 'primary';
+    let targetCalendarName = 'Primary Calendar';
+    
+    if (jobId) {
+      console.log(`Fetching calendar_id for job: ${jobId}`);
       const { data: jobRecord, error: jobError } = await supabase
         .from('jobs')
         .select('calendar_id')
@@ -136,8 +140,21 @@ serve(async (req) => {
         .single();
         
       if (!jobError && jobRecord?.calendar_id) {
-        jobCalendarId = jobRecord.calendar_id;
-        console.log(`Found stored calendar ID for job: ${jobCalendarId}`);
+        targetCalendarId = jobRecord.calendar_id;
+        targetCalendarName = `Calendar ${jobRecord.calendar_id}`;
+        console.log(`Found stored calendar ID for job: ${targetCalendarId}`);
+      } else {
+        console.log(`No stored calendar ID found for job ${jobId}, falling back to user's current selection`);
+        // Fall back to user's current calendar selection
+        try {
+          const accessTokenData = await getAccessTokenForUser(userId, authHeader);
+          if (accessTokenData.calendarId) {
+            targetCalendarId = accessTokenData.calendarId;
+            targetCalendarName = accessTokenData.calendarName || 'Selected Calendar';
+          }
+        } catch (error) {
+          console.log('Failed to get user calendar selection, using primary:', error);
+        }
       }
     }
 
@@ -152,14 +169,10 @@ serve(async (req) => {
       );
     }
     
-    const { accessToken, calendarId, calendarName } = accessTokenData;
-    
-    // Use the calendar ID from the job record if available, otherwise use current selection
-    const targetCalendarId = jobCalendarId || calendarId || 'primary';
-    const targetCalendarName = jobCalendarId ? `Calendar ${jobCalendarId}` : (calendarName || 'Primary Calendar');
+    const { accessToken } = accessTokenData;
     
     console.log(`Using calendar: ${targetCalendarId} (${targetCalendarName})`);
-    console.log(`Calendar source: ${jobCalendarId ? 'from job record' : 'from user selection'}`);
+    console.log(`Calendar source: ${jobId ? 'from job record or fallback' : 'from user selection'}`);
     
     const eventData = testMode && testData ? testData.event : jobData;
     console.log('Using event data:', JSON.stringify(eventData));
@@ -171,19 +184,6 @@ serve(async (req) => {
     
     let clientData = null;
     if (eventData.clientId) {
-      let supabase;
-      if (authHeader) {
-        supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-          global: {
-            headers: {
-              Authorization: authHeader,
-            }
-          }
-        });
-      } else {
-        supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-      }
-      
       const { data: client, error } = await supabase
         .from('clients')
         .select('*')

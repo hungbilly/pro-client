@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -96,17 +97,17 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  html, body {
     height: 100%;
     width: 100%;
+    overflow-x: hidden;
     overflow-y: auto;
-    overscroll-behavior-y: none;
-    -webkit-overflow-scrolling: touch;
   }
 
   html {
-    height: 100%;
-    width: 100%;
-    overflow-y: auto;
+    scroll-behavior: smooth;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -177,14 +178,16 @@
     text-wrap: balance;
   }
   
-  /* Mobile touch utilities */
+  /* Mobile scrolling utilities - improved */
   .mobile-scrollable {
-    -webkit-overflow-scrolling: touch;
+    position: relative !important;
     overflow-y: auto !important;
-    overscroll-behavior-y: none;
-    touch-action: pan-y !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior-y: contain !important;
+    touch-action: pan-y pan-x !important;
     height: auto !important;
-    position: static !important;
+    min-height: 100vh !important;
   }
   
   /* Mobile page layout utilities */
@@ -224,38 +227,45 @@
   @apply bg-gray-400 dark:bg-gray-600;
 }
 
-/* Touch action utilities for mobile devices */
-.touch-action-manipulation {
-  -webkit-overflow-scrolling: touch; /* Enable momentum scrolling on iOS */
-  overscroll-behavior-y: contain; /* Prevent pull-to-refresh on mobile */
-  height: auto !important;
-  overflow-y: auto !important;
-  touch-action: pan-y !important;
-  position: static !important;
-}
-
-/* Fix for iOS Safari - force enable scrolling */
+/* Enhanced mobile support for iOS Safari */
 @supports (-webkit-touch-callout: none) {
-  body, html, #root {
+  body, html {
     position: static !important;
-    height: -webkit-fill-available;
+    height: 100% !important;
     overflow-y: auto !important;
+    touch-action: manipulation !important;
+  }
+  
+  .mobile-scrollable {
+    height: auto !important;
+    min-height: 100vh !important;
+    position: relative !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior: contain !important;
     touch-action: pan-y !important;
   }
   
-  .touch-action-manipulation {
-    height: -webkit-fill-available !important;
-  }
-  
-  /* Mobile layout improvements for iOS */
+  /* Prevent bounce effect on mobile */
   .mobile-page-container {
-    min-height: -webkit-fill-available;
+    min-height: 100vh;
+    position: relative;
+  }
+}
+
+/* Additional mobile fixes */
+@media (max-width: 768px) {
+  body {
+    position: static !important;
+    overflow-y: auto !important;
+    height: auto !important;
+    touch-action: manipulation !important;
   }
   
-  /* Fix for fixed headers on iOS */
-  .fixed-header-ios {
-    position: sticky !important;
-    top: 0;
-    z-index: 100;
+  #root {
+    position: static !important;
+    height: auto !important;
+    min-height: 100vh !important;
+    overflow-y: visible !important;
   }
 }

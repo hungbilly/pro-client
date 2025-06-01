@@ -6,9 +6,9 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Plus, Users, Mail, User, X } from 'lucide-react';
+import { Plus, Users, Mail, User, X, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { Teammate } from '@/types/teammate';
+import { Teammate, JobTeammate } from '@/types/teammate';
 import { getTeammates } from '@/lib/teammateStorage';
 import { useCompany } from '@/components/CompanySelector';
 
@@ -22,11 +22,13 @@ interface TeammateSelection {
 interface TeammateSelectorProps {
   selectedTeammates: TeammateSelection[];
   onTeammatesChange: (teammates: TeammateSelection[]) => void;
+  currentJobTeammates?: JobTeammate[];
 }
 
 const TeammateSelector: React.FC<TeammateSelectorProps> = ({
   selectedTeammates,
-  onTeammatesChange
+  onTeammatesChange,
+  currentJobTeammates = []
 }) => {
   const { selectedCompany } = useCompany();
   const [teammates, setTeammates] = useState<Teammate[]>([]);
@@ -54,6 +56,17 @@ const TeammateSelector: React.FC<TeammateSelectorProps> = ({
   }, [selectedCompany]);
 
   const handleTeammateToggle = (teammate: Teammate, checked: boolean) => {
+    // Check if teammate is already assigned to the job
+    const isAlreadyAssigned = currentJobTeammates.some(
+      jobTeammate => jobTeammate.teammate_id === teammate.id || 
+                     jobTeammate.teammate_email === teammate.email
+    );
+
+    if (isAlreadyAssigned && checked) {
+      toast.error('This teammate is already assigned to this job');
+      return;
+    }
+
     if (checked) {
       const newSelection = {
         id: teammate.id,
@@ -98,6 +111,13 @@ const TeammateSelector: React.FC<TeammateSelectorProps> = ({
     return selectedTeammates.some(t => t.id === teammate.id);
   };
 
+  const isTeammateAlreadyAssigned = (teammate: Teammate) => {
+    return currentJobTeammates.some(
+      jobTeammate => jobTeammate.teammate_id === teammate.id || 
+                     jobTeammate.teammate_email === teammate.email
+    );
+  };
+
   const getInitials = (name: string) => {
     return name
       .split(' ')
@@ -125,14 +145,34 @@ const TeammateSelector: React.FC<TeammateSelectorProps> = ({
           Assign Teammates
         </CardTitle>
         <CardDescription>
-          Select existing teammates or add new ones for this job
+          Select teammates to add to this job. Already assigned teammates are marked with a checkmark.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Selected Teammates */}
+        {/* Currently Assigned Teammates */}
+        {currentJobTeammates.length > 0 && (
+          <div>
+            <Label className="text-sm font-medium">Currently Assigned ({currentJobTeammates.length})</Label>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {currentJobTeammates.map((jobTeammate) => (
+                <Badge
+                  key={jobTeammate.id}
+                  variant="default"
+                  className="flex items-center gap-1"
+                >
+                  <CheckCircle className="h-3 w-3" />
+                  {jobTeammate.teammate_name || jobTeammate.teammate_email}
+                  <span className="text-xs">({jobTeammate.invitation_status})</span>
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Selected Teammates (new additions) */}
         {selectedTeammates.length > 0 && (
           <div>
-            <Label className="text-sm font-medium">Selected Teammates ({selectedTeammates.length})</Label>
+            <Label className="text-sm font-medium">New Teammates to Add ({selectedTeammates.length})</Label>
             <div className="flex flex-wrap gap-2 mt-2">
               {selectedTeammates.map((teammate) => (
                 <Badge
@@ -162,41 +202,59 @@ const TeammateSelector: React.FC<TeammateSelectorProps> = ({
           <p className="text-center py-4">Loading teammates...</p>
         ) : teammates.length > 0 ? (
           <div>
-            <Label className="text-sm font-medium">Existing Teammates</Label>
+            <Label className="text-sm font-medium">Available Teammates</Label>
             <div className="space-y-2 mt-2 max-h-48 overflow-y-auto">
-              {teammates.map((teammate) => (
-                <div
-                  key={teammate.id}
-                  className="flex items-center gap-3 p-2 border rounded-lg bg-muted/50"
-                >
-                  <Checkbox
-                    id={`teammate-${teammate.id}`}
-                    checked={isTeammateSelected(teammate)}
-                    onCheckedChange={(checked) => 
-                      handleTeammateToggle(teammate, checked as boolean)
-                    }
-                  />
-                  
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                      {getInitials(teammate.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  
-                  <div className="flex-1">
-                    <div className="font-medium text-sm">{teammate.name}</div>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <Mail className="h-3 w-3" />
-                      {teammate.email}
+              {teammates.map((teammate) => {
+                const isAlreadyAssigned = isTeammateAlreadyAssigned(teammate);
+                const isSelected = isTeammateSelected(teammate);
+                
+                return (
+                  <div
+                    key={teammate.id}
+                    className={`flex items-center gap-3 p-2 border rounded-lg ${
+                      isAlreadyAssigned ? 'bg-green-50 border-green-200' : 'bg-muted/50'
+                    }`}
+                  >
+                    <Checkbox
+                      id={`teammate-${teammate.id}`}
+                      checked={isSelected}
+                      onCheckedChange={(checked) => 
+                        handleTeammateToggle(teammate, checked as boolean)
+                      }
+                      disabled={isAlreadyAssigned}
+                    />
+                    
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                        {getInitials(teammate.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <div className="font-medium text-sm">{teammate.name}</div>
+                        {isAlreadyAssigned && (
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Mail className="h-3 w-3" />
+                        {teammate.email}
+                      </div>
+                      {teammate.role && (
+                        <Badge variant="outline" className="text-xs mt-1">
+                          {teammate.role}
+                        </Badge>
+                      )}
+                      {isAlreadyAssigned && (
+                        <Badge variant="secondary" className="text-xs mt-1">
+                          Already assigned
+                        </Badge>
+                      )}
                     </div>
-                    {teammate.role && (
-                      <Badge variant="outline" className="text-xs mt-1">
-                        {teammate.role}
-                      </Badge>
-                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         ) : (

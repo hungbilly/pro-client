@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Client, Job } from '@/types';
@@ -53,6 +52,7 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [selectedTeammates, setSelectedTeammates] = useState<Array<{ id?: string; name: string; email: string }>>([]);
+  const [currentJobTeammates, setCurrentJobTeammates] = useState<Array<{ id?: string; name: string; email: string }>>([]);
 
   const clientId = predefinedClientId || clientIdParam || existingJob?.clientId || '';
   const { selectedCompany } = useCompany();
@@ -91,6 +91,16 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
       return data && data.length > 0;
     },
     enabled: !!user
+  });
+
+  const { data: currentJobTeammates = [] } = useQuery({
+    queryKey: ['job-teammates', existingJob?.id],
+    queryFn: async () => {
+      if (!existingJob?.id) return [];
+      const { getJobTeammates } = await import('@/lib/teammateStorage');
+      return await getJobTeammates(existingJob.id);
+    },
+    enabled: !!existingJob?.id
   });
 
   useEffect(() => {
@@ -631,6 +641,7 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
             <TeammateSelector
               selectedTeammates={selectedTeammates}
               onTeammatesChange={setSelectedTeammates}
+              currentJobTeammates={currentJobTeammates}
             />
           </form>
         </CardContent>

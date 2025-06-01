@@ -2,14 +2,13 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Calendar, Plus, RefreshCw } from 'lucide-react';
+import { Calendar, Plus, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
-import { useCompany } from './CompanySelector';
 
 interface Calendar {
   id: string;
@@ -23,57 +22,49 @@ interface CalendarSelectorProps {
   onCalendarSelect: (calendarId: string, calendarName: string) => void;
 }
 
-const CalendarSelector: React.FC<CalendarSelectorProps> = ({ 
-  selectedCalendarId, 
-  onCalendarSelect 
+const CalendarSelector: React.FC<CalendarSelectorProps> = ({
+  selectedCalendarId,
+  onCalendarSelect,
 }) => {
   const { user } = useAuth();
-  const { companies } = useCompany();
   const [calendars, setCalendars] = useState<Calendar[]>([]);
   const [loading, setLoading] = useState(false);
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [newCalendarName, setNewCalendarName] = useState('');
   const [creating, setCreating] = useState(false);
-
-  const company = companies[0];
-
-  useEffect(() => {
-    if (company && newCalendarName === '') {
-      setNewCalendarName(`${company.name} - Business Calendar`);
-    }
-  }, [company, newCalendarName]);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [newCalendarName, setNewCalendarName] = useState('');
 
   const fetchCalendars = async () => {
     if (!user) return;
-    
-    setLoading(true);
+
     try {
+      setLoading(true);
+      
+      // Get the current session to include authorization header
       const { data: { session } } = await supabase.auth.getSession();
+      
       if (!session) {
-        throw new Error('No active session');
+        toast.error('Please log in to access calendars');
+        return;
       }
 
       const { data, error } = await supabase.functions.invoke('list-google-calendars', {
         headers: {
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: {
-          userId: user.id
-        },
       });
 
-      if (error || !data) {
-        throw new Error('Failed to fetch calendars');
+      if (error) {
+        console.error('Error fetching calendars:', error);
+        toast.error(`Failed to fetch calendars: ${error.message}`);
+        return;
       }
 
-      if (!data.success) {
-        throw new Error(data.message || 'Failed to fetch calendars');
+      if (data && data.items) {
+        setCalendars(data.items);
+        console.log('Fetched calendars:', data.items.length);
       }
-
-      setCalendars(data.calendars || []);
-      console.log('Fetched calendars:', data.calendars);
     } catch (error) {
-      console.error('Error fetching calendars:', error);
+      console.error('Exception fetching calendars:', error);
       toast.error('Failed to fetch calendars');
     } finally {
       setLoading(false);
@@ -82,12 +73,16 @@ const CalendarSelector: React.FC<CalendarSelectorProps> = ({
 
   const createCalendar = async () => {
     if (!user || !newCalendarName.trim()) return;
-    
-    setCreating(true);
+
     try {
+      setCreating(true);
+      
+      // Get the current session to include authorization header
       const { data: { session } } = await supabase.auth.getSession();
+      
       if (!session) {
-        throw new Error('No active session');
+        toast.error('Please log in to create calendars');
+        return;
       }
 
       const { data, error } = await supabase.functions.invoke('create-google-calendar', {
@@ -95,146 +90,161 @@ const CalendarSelector: React.FC<CalendarSelectorProps> = ({
           Authorization: `Bearer ${session.access_token}`,
         },
         body: {
-          userId: user.id,
           calendarName: newCalendarName.trim(),
-          description: `Business calendar for ${company?.name || 'your business'}`
         },
       });
 
-      if (error || !data) {
-        throw new Error('Failed to create calendar');
+      if (error) {
+        console.error('Error creating calendar:', error);
+        toast.error(`Failed to create calendar: ${error.message}`);
+        return;
       }
 
-      if (!data.success) {
-        throw new Error(data.message || 'Failed to create calendar');
+      if (data) {
+        toast.success('Calendar created successfully!');
+        setNewCalendarName('');
+        setShowCreateForm(false);
+        
+        // Refresh the calendars list
+        await fetchCalendars();
+        
+        // Auto-select the newly created calendar
+        onCalendarSelect(data.id, data.summary);
       }
-
-      const newCalendar = data.calendar;
-      setCalendars(prev => [...prev, newCalendar]);
-      onCalendarSelect(newCalendar.id, newCalendar.summary);
-      setShowCreateDialog(false);
-      setNewCalendarName(company ? `${company.name} - Business Calendar` : '');
-      toast.success('Calendar created successfully!');
     } catch (error) {
-      console.error('Error creating calendar:', error);
+      console.error('Exception creating calendar:', error);
       toast.error('Failed to create calendar');
     } finally {
       setCreating(false);
     }
   };
 
-  const handleCalendarChange = (calendarId: string) => {
-    const calendar = calendars.find(cal => cal.id === calendarId);
-    if (calendar) {
-      onCalendarSelect(calendarId, calendar.summary);
-    }
-  };
+  useEffect(() => {
+    fetchCalendars();
+  }, [user]);
 
   const selectedCalendar = calendars.find(cal => cal.id === selectedCalendarId);
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <Label>Google Calendar</Label>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={fetchCalendars}
-          disabled={loading}
-          className="gap-2"
-        >
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
-      </div>
-      
-      <div className="flex gap-2">
-        <Select 
-          value={selectedCalendarId || ''} 
-          onValueChange={handleCalendarChange}
-          disabled={loading || calendars.length === 0}
-        >
-          <SelectTrigger className="flex-1">
-            <SelectValue placeholder={loading ? "Loading calendars..." : "Select a calendar"}>
-              {selectedCalendar ? selectedCalendar.summary : "Select a calendar"}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {calendars.map(calendar => (
-              <SelectItem key={calendar.id} value={calendar.id}>
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  <span>{calendar.summary}</span>
-                  {calendar.primary && <span className="text-xs bg-blue-100 text-blue-800 px-1 rounded">Primary</span>}
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        
-        <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="icon" disabled={loading}>
-              <Plus className="h-4 w-4" />
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create New Calendar</DialogTitle>
-              <DialogDescription>
-                Create a new Google Calendar for your business events.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div>
-                <Label htmlFor="calendar-name">Calendar Name</Label>
-                <Input
-                  id="calendar-name"
-                  value={newCalendarName}
-                  onChange={(e) => setNewCalendarName(e.target.value)}
-                  placeholder="Enter calendar name"
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
-                Cancel
-              </Button>
-              <Button 
-                onClick={createCalendar} 
-                disabled={creating || !newCalendarName.trim()}
-                className="gap-2"
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <Calendar className="h-5 w-5 text-primary" />
+          <CardTitle className="text-lg">Select Calendar</CardTitle>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {loading ? (
+          <div className="flex items-center justify-center py-4">
+            <Loader2 className="h-6 w-6 animate-spin" />
+            <span className="ml-2">Loading calendars...</span>
+          </div>
+        ) : (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="calendar-select">Choose Calendar</Label>
+              <Select
+                value={selectedCalendarId || ''}
+                onValueChange={(value) => {
+                  const calendar = calendars.find(cal => cal.id === value);
+                  if (calendar) {
+                    onCalendarSelect(calendar.id, calendar.summary);
+                  }
+                }}
               >
-                {creating ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  <>
-                    <Plus className="h-4 w-4" />
-                    Create Calendar
-                  </>
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-      
-      {selectedCalendar && (
-        <div className="text-sm text-muted-foreground">
-          Selected: <span className="font-medium">{selectedCalendar.summary}</span>
-          {selectedCalendar.primary && <span className="ml-2 text-blue-600">(Primary)</span>}
-        </div>
-      )}
-      
-      {calendars.length === 0 && !loading && (
-        <div className="text-sm text-muted-foreground">
-          No calendars found. Click "Create New Calendar" to get started.
-        </div>
-      )}
-    </div>
+                <SelectTrigger id="calendar-select">
+                  <SelectValue placeholder="Select a calendar..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {calendars.map((calendar) => (
+                    <SelectItem key={calendar.id} value={calendar.id}>
+                      <div className="flex items-center gap-2">
+                        <span>{calendar.summary}</span>
+                        {calendar.primary && (
+                          <span className="text-xs text-muted-foreground">(Primary)</span>
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {selectedCalendar && (
+              <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+                <p className="text-sm text-green-800">
+                  <strong>Selected:</strong> {selectedCalendar.summary}
+                  {selectedCalendar.description && (
+                    <span className="block text-green-600 mt-1">
+                      {selectedCalendar.description}
+                    </span>
+                  )}
+                </p>
+              </div>
+            )}
+
+            <div className="border-t pt-4">
+              {!showCreateForm ? (
+                <Button
+                  variant="outline"
+                  onClick={() => setShowCreateForm(true)}
+                  className="w-full"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create New Calendar
+                </Button>
+              ) : (
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="new-calendar-name">Calendar Name</Label>
+                    <Input
+                      id="new-calendar-name"
+                      value={newCalendarName}
+                      onChange={(e) => setNewCalendarName(e.target.value)}
+                      placeholder="Enter calendar name..."
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && newCalendarName.trim()) {
+                          createCalendar();
+                        }
+                      }}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={createCalendar}
+                      disabled={!newCalendarName.trim() || creating}
+                      className="flex-1"
+                    >
+                      {creating ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Creating...
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Create
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setShowCreateForm(false);
+                        setNewCalendarName('');
+                      }}
+                      disabled={creating}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 

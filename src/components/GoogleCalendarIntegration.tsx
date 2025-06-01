@@ -184,7 +184,18 @@ const GoogleCalendarIntegration: React.FC = () => {
         timestamp: new Date().getTime()
       });
       
+      // Get the current session to include authorization header
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        toast.error('Please log in to connect Google Calendar');
+        return;
+      }
+      
       const { data, error } = await supabase.functions.invoke('create-google-calendar-auth-url', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: {
           redirectUrl: appRedirectUrl,
           state: stateParam

@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Calendar, LogOut, AlertTriangle, CheckCircle2, Bug, Copy, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
+import CalendarSelector from './CalendarSelector';
 
 interface CalendarIntegration {
   id: string;
@@ -16,6 +17,9 @@ interface CalendarIntegration {
   refresh_token: string | null;
   token_type: string | null;
   expires_at: string | null;
+  calendar_id?: string | null;
+  calendar_name?: string | null;
+  company_id?: string | null;
 }
 
 const GoogleCalendarIntegration: React.FC = () => {
@@ -27,6 +31,7 @@ const GoogleCalendarIntegration: React.FC = () => {
   const [debugInfo, setDebugInfo] = useState<any>(null);
   const [apiCallsHistory, setApiCallsHistory] = useState<any[]>([]);
   const [initialCheckComplete, setInitialCheckComplete] = useState(false);
+  const [updatingCalendar, setUpdatingCalendar] = useState(false);
 
   const origin = window.location.origin;
   const appRedirectUrl = `${origin}/settings`;
@@ -99,7 +104,9 @@ const GoogleCalendarIntegration: React.FC = () => {
               hasAccessToken: Boolean(data.access_token),
               hasRefreshToken: Boolean(data.refresh_token),
               tokenExpiry: data.expires_at,
-              userId: data.user_id
+              userId: data.user_id,
+              calendarId: data.calendar_id,
+              calendarName: data.calendar_name
             });
           } else {
             console.log("User does not have Google Calendar integration");
@@ -122,6 +129,41 @@ const GoogleCalendarIntegration: React.FC = () => {
 
     fetchIntegration();
   }, [user]);
+
+  const handleCalendarSelect = async (calendarId: string, calendarName: string) => {
+    if (!user || !integration) return;
+    
+    setUpdatingCalendar(true);
+    try {
+      console.log('Updating calendar selection:', { calendarId, calendarName });
+      
+      const { error } = await supabase
+        .from('user_integrations')
+        .update({
+          calendar_id: calendarId,
+          calendar_name: calendarName,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', integration.id);
+      
+      if (error) {
+        throw error;
+      }
+      
+      setIntegration(prev => prev ? {
+        ...prev,
+        calendar_id: calendarId,
+        calendar_name: calendarName
+      } : null);
+      
+      toast.success('Calendar selection updated successfully!');
+    } catch (error) {
+      console.error('Error updating calendar selection:', error);
+      toast.error('Failed to update calendar selection');
+    } finally {
+      setUpdatingCalendar(false);
+    }
+  };
 
   const initiateGoogleAuth = async () => {
     if (!clientId || !user) {
@@ -203,7 +245,6 @@ const GoogleCalendarIntegration: React.FC = () => {
         } catch (e) {
           console.error('Error revoking token:', e);
           addToApiHistory('revoke-token-error', { error: e });
-          // Continue anyway to remove from DB
         }
       }
       
@@ -255,7 +296,8 @@ const GoogleCalendarIntegration: React.FC = () => {
       addToApiHistory('test-integration-start', { 
         userId: user.id,
         event: testEvent,
-        hasIntegration: Boolean(integration)
+        hasIntegration: Boolean(integration),
+        calendarId: integration.calendar_id
       });
       
       const { data, error } = await supabase.functions.invoke('add-to-calendar', {
@@ -396,19 +438,34 @@ const GoogleCalendarIntegration: React.FC = () => {
         )}
         
         {clientId && integration ? (
-          <Alert className="bg-green-50 border-green-200">
-            <CheckCircle2 className="h-4 w-4 text-green-600" />
-            <AlertTitle className="text-green-800">Connected</AlertTitle>
-            <AlertDescription className="text-green-700">
-              Your account is connected to Google Calendar. 
-              Event management is enabled.
-              {isAdmin && (
-                <div className="text-xs mt-2 text-green-600">
-                  User ID: <code className="bg-green-100 px-1">{integration.user_id}</code>
-                </div>
-              )}
-            </AlertDescription>
-          </Alert>
+          <div className="space-y-4">
+            <Alert className="bg-green-50 border-green-200">
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+              <AlertTitle className="text-green-800">Connected</AlertTitle>
+              <AlertDescription className="text-green-700">
+                Your account is connected to Google Calendar. 
+                {integration.calendar_name ? (
+                  <div className="mt-2">
+                    Currently using: <span className="font-medium">{integration.calendar_name}</span>
+                  </div>
+                ) : (
+                  <div className="mt-2 text-yellow-700">
+                    Please select a calendar below to start creating events.
+                  </div>
+                )}
+                {isAdmin && (
+                  <div className="text-xs mt-2 text-green-600">
+                    User ID: <code className="bg-green-100 px-1">{integration.user_id}</code>
+                  </div>
+                )}
+              </AlertDescription>
+            </Alert>
+            
+            <CalendarSelector
+              selectedCalendarId={integration.calendar_id || undefined}
+              onCalendarSelect={handleCalendarSelect}
+            />
+          </div>
         ) : clientId && (
           <Alert variant="warning" className="bg-yellow-50 border-yellow-200">
             <AlertTriangle className="h-4 w-4 text-yellow-600" />
@@ -441,7 +498,7 @@ const GoogleCalendarIntegration: React.FC = () => {
             <Button 
               variant="destructive" 
               onClick={disconnectGoogleCalendar} 
-              disabled={loading}
+              disabled={loading || updatingCalendar}
               className="flex items-center gap-2"
             >
               <LogOut className="h-4 w-4" />
@@ -451,7 +508,7 @@ const GoogleCalendarIntegration: React.FC = () => {
               <Button 
                 variant="secondary" 
                 onClick={testCalendarIntegration} 
-                disabled={loading}
+                disabled={loading || updatingCalendar || !integration.calendar_id}
                 className="flex items-center gap-2"
               >
                 <Calendar className="h-4 w-4" />

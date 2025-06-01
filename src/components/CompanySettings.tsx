@@ -311,7 +311,7 @@ const CompanySettings = () => {
   if (companies.length === 0 && !isAddingNew) {
     return (
       <div className="text-center p-8">
-        <p className="mb-4">No companies found. Please create your first company.</p>
+        <p className="mb-4">No company found. Please create your company.</p>
         <Button onClick={handleAddNew}>Create Company</Button>
       </div>
     );
@@ -319,37 +319,21 @@ const CompanySettings = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div className="flex-1 max-w-md">
-          <Label htmlFor="company-select">Select Company</Label>
-          <div className="flex gap-2 mt-1">
-            <Select 
-              value={selectedCompanyId || ''} 
-              onValueChange={handleCompanySelect}
-              disabled={isAddingNew || companies.length === 0}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select a company" />
-              </SelectTrigger>
-              <SelectContent>
-                {companies.map(company => (
-                  <SelectItem key={company.id} value={company.id}>
-                    {company.name} {company.is_default && "(Default)"}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button 
-              variant="outline" 
-              size="icon" 
-              onClick={handleAddNew}
-              title="Add New Company"
-            >
-              <PlusCircle className="h-4 w-4" />
-            </Button>
+      {/* Only show company selector and add button if there are companies and we're not adding new */}
+      {companies.length > 0 && !isAddingNew && (
+        <div className="flex justify-between items-center">
+          <div className="flex-1 max-w-md">
+            <Label htmlFor="company-display">Your Company</Label>
+            <div className="mt-1">
+              {/* Simple display instead of dropdown for single company */}
+              <div className="flex items-center justify-between p-3 border rounded-md bg-muted/30">
+                <span className="font-medium">{companies[0].name}</span>
+                {/* Hide add button when user already has a company */}
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="space-y-4">
         <div>
@@ -510,31 +494,10 @@ const CompanySettings = () => {
             </p>
           </div>
         </div>
-        
-        <div className="flex items-center space-x-2">
-          <input
-            type="checkbox"
-            id="default-company"
-            checked={isDefault}
-            onChange={(e) => setIsDefault(e.target.checked)}
-            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-          />
-          <Label htmlFor="default-company">Set as default company</Label>
-        </div>
       </div>
 
       <div className="flex justify-between pt-4">
-        {!isAddingNew && selectedCompanyId && (
-          <Button 
-            variant="destructive" 
-            onClick={handleDeleteCompany}
-            disabled={companies.length <= 1}
-          >
-            <Trash2 className="h-4 w-4 mr-2" />
-            Delete Company
-          </Button>
-        )}
-        <div className={!isAddingNew && selectedCompanyId ? '' : 'ml-auto'}>
+        <div className="ml-auto">
           <Button onClick={handleSave} disabled={isLoading || uploadingLogo}>
             <Check className="h-4 w-4 mr-2" />
             {isAddingNew ? 'Create Company' : 'Update Company'}

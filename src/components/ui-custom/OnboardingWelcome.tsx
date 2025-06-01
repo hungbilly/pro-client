@@ -127,7 +127,7 @@ const OnboardingWelcome = () => {
             <span className="text-sm text-muted-foreground">Need help? Check out our <a href="#" className="text-primary hover:underline">quick start guide</a> or <a href="#" className="text-primary hover:underline">video tutorials</a>.</span>
           </div>
           <div className="text-sm text-muted-foreground">
-            <span>Please refresh the page if you don't see your new company after adding it.</span>
+            <span>Please refresh the page after creating your company.</span>
           </div>
         </div>
       </div>

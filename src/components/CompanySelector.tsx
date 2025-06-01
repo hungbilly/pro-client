@@ -46,17 +46,43 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({
   };
 
   if (loading) {
-    return <div className="text-sm text-muted-foreground">Loading companies...</div>;
+    return <div className="text-sm text-muted-foreground">Loading company...</div>;
   }
 
   if (companies.length === 0) {
     return (
       <div className={cn("text-sm", className)}>
-        No companies found. Please add a company in Settings.
+        No company found. Please add a company in Settings.
       </div>
     );
   }
 
+  // Single company - show simple display instead of dropdown
+  if (companies.length === 1) {
+    return (
+      <div className={className}>
+        {showLabel && (
+          <div className="flex items-center gap-1 mb-1 text-sm font-medium text-white">
+            <Building className="h-4 w-4" />
+            <span>Current Company</span>
+          </div>
+        )}
+        <div className="flex items-center">
+          {!showLabel && (
+            <Building className="h-4 w-4 text-slate-400 mr-2" />
+          )}
+          <span className={`text-slate-300 mr-2 ${!showLabel ? '' : 'hidden'}`}>
+            Current Company:
+          </span>
+          <div className="text-white font-medium">
+            {selectedCompany?.name || companies[0].name}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Multiple companies - show dropdown (for future use)
   return (
     <div className={className}>
       {showLabel && (

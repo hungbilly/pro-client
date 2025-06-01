@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
@@ -127,37 +126,7 @@ serve(async (req) => {
       supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     }
 
-    // Get the calendar ID from the job record if jobId is provided
-    let targetCalendarId = 'primary';
-    let targetCalendarName = 'Primary Calendar';
-    
-    if (jobId) {
-      console.log(`Fetching calendar_id for job: ${jobId}`);
-      const { data: jobRecord, error: jobError } = await supabase
-        .from('jobs')
-        .select('calendar_id')
-        .eq('id', jobId)
-        .single();
-        
-      if (!jobError && jobRecord?.calendar_id) {
-        targetCalendarId = jobRecord.calendar_id;
-        targetCalendarName = `Calendar ${jobRecord.calendar_id}`;
-        console.log(`Found stored calendar ID for job: ${targetCalendarId}`);
-      } else {
-        console.log(`No stored calendar ID found for job ${jobId}, falling back to user's current selection`);
-        // Fall back to user's current calendar selection
-        try {
-          const accessTokenData = await getAccessTokenForUser(userId, authHeader);
-          if (accessTokenData.calendarId) {
-            targetCalendarId = accessTokenData.calendarId;
-            targetCalendarName = accessTokenData.calendarName || 'Selected Calendar';
-          }
-        } catch (error) {
-          console.log('Failed to get user calendar selection, using primary:', error);
-        }
-      }
-    }
-
+    // Get access token and user's current calendar settings
     let accessTokenData;
     try {
       accessTokenData = await getAccessTokenForUser(userId, authHeader);
@@ -170,9 +139,32 @@ serve(async (req) => {
     }
     
     const { accessToken } = accessTokenData;
+
+    // Determine which calendar to use - prioritize job's stored calendar_id
+    let targetCalendarId = accessTokenData.calendarId || 'primary';
+    let targetCalendarName = accessTokenData.calendarName || 'Primary Calendar';
+    let calendarSource = 'from user selection';
+    
+    if (jobId) {
+      console.log(`Fetching calendar_id for job: ${jobId}`);
+      const { data: jobRecord, error: jobError } = await supabase
+        .from('jobs')
+        .select('calendar_id')
+        .eq('id', jobId)
+        .single();
+        
+      if (!jobError && jobRecord?.calendar_id) {
+        targetCalendarId = jobRecord.calendar_id;
+        targetCalendarName = `Calendar ${jobRecord.calendar_id}`;
+        calendarSource = 'from job record';
+        console.log(`Found stored calendar ID for job: ${targetCalendarId}`);
+      } else {
+        console.log(`No stored calendar ID found for job ${jobId}, using user's current selection: ${targetCalendarId}`);
+      }
+    }
     
     console.log(`Using calendar: ${targetCalendarId} (${targetCalendarName})`);
-    console.log(`Calendar source: ${jobId ? 'from job record or fallback' : 'from user selection'}`);
+    console.log(`Calendar source: ${calendarSource}`);
     
     const eventData = testMode && testData ? testData.event : jobData;
     console.log('Using event data:', JSON.stringify(eventData));

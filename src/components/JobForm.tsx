@@ -18,7 +18,7 @@ import { useCompany } from './CompanySelector';
 import { Checkbox } from '@/components/ui/checkbox';
 import JobWarningDialog from './JobWarningDialog';
 import { AddToCalendarDialog } from './AddToCalendarDialog';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import TeammateSelector from './teammates/TeammateSelector';
@@ -35,6 +35,7 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
   const { clientId: clientIdParam } = useParams<{ clientId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   const [client, setClient] = useState<Client | null>(null);
   const [title, setTitle] = useState(existingJob?.title || '');
@@ -368,6 +369,9 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
               await inviteTeammatesToJob(existingJob.id, selectedTeammates, timezoneToUse);
               toast.success('Teammates invited successfully');
             }
+
+            // Invalidate the job teammates query to refresh the data
+            queryClient.invalidateQueries({ queryKey: ['job-teammates', existingJob.id] });
           } catch (error) {
             console.error('Error handling teammates:', error);
             toast.error('Failed to add teammates');
@@ -412,6 +416,9 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
             console.log('Inviting teammates to new job:', savedJob.id, selectedTeammates);
             await inviteTeammatesToJob(savedJob.id, selectedTeammates, timezoneToUse);
             toast.success('Job created and teammates invited successfully!');
+            
+            // Invalidate the job teammates query for the new job
+            queryClient.invalidateQueries({ queryKey: ['job-teammates', savedJob.id] });
             
             // Navigate directly since calendar event was created by invite function
             if (onSuccess) {

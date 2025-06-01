@@ -93,13 +93,15 @@ export const getJobTeammates = async (jobId: string): Promise<JobTeammate[]> => 
 export const inviteTeammatesToJob = async (
   jobId: string, 
   teammates: Array<{ id?: string; name: string; email: string }>,
-  timeZone?: string
+  timeZone?: string,
+  createCalendarEvent: boolean = true
 ): Promise<any> => {
   const { data, error } = await supabase.functions.invoke('invite-teammate-to-job', {
     body: {
       jobId,
       teammates,
-      timeZone
+      timeZone,
+      createCalendarEvent
     }
   });
 

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Client, Job } from '@/types';
@@ -195,6 +194,47 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
     return null;
   };
 
+  const addTeammatesToExistingCalendarEvent = async (job: Job, newTeammates: Array<{ id?: string; name: string; email: string }>) => {
+    if (!user || !job.calendarEventId) return;
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        console.error('No active session for calendar update');
+        return;
+      }
+      
+      const { data, error } = await supabase.functions.invoke('add-teammates-to-calendar-event', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: {
+          eventId: job.calendarEventId,
+          teammates: newTeammates,
+          jobId: job.id,
+          userId: user.id,
+          timeZone: timezoneToUse
+        }
+      });
+      
+      if (error) {
+        console.error('Error adding teammates to calendar event:', error);
+        throw error;
+      }
+      
+      if (data.success) {
+        toast.success('Teammates added to calendar event');
+        return true;
+      } else {
+        throw new Error(data.message || 'Failed to add teammates to calendar event');
+      }
+    } catch (error) {
+      console.error('Error in addTeammatesToExistingCalendarEvent:', error);
+      throw error;
+    }
+  };
+
   const processJobSubmission = async () => {
     if (!client) {
       toast.error('Client is required.');
@@ -309,15 +349,28 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
           }
         }
 
-        // Handle teammates for existing job - invite them if any are selected
+        // Handle teammates for existing job
         if (selectedTeammates.length > 0 && formattedDate) {
           try {
-            console.log('Inviting teammates to existing job:', existingJob.id, selectedTeammates);
-            await inviteTeammatesToJob(existingJob.id, selectedTeammates, timezoneToUse);
-            toast.success('Teammates invited successfully');
+            console.log('Processing teammates for existing job:', existingJob.id, selectedTeammates);
+            
+            // If job has existing calendar event, add teammates to it
+            if (existingJob.calendarEventId && hasCalendarIntegration) {
+              console.log('Adding teammates to existing calendar event:', existingJob.calendarEventId);
+              await addTeammatesToExistingCalendarEvent(updatedJob, selectedTeammates);
+              
+              // Create job teammate records
+              await inviteTeammatesToJob(existingJob.id, selectedTeammates, timezoneToUse, false); // false = don't create new event
+              toast.success('Teammates added to job and calendar event');
+            } else {
+              // No existing calendar event, create new one with teammates
+              console.log('No existing calendar event, creating new one with teammates');
+              await inviteTeammatesToJob(existingJob.id, selectedTeammates, timezoneToUse);
+              toast.success('Teammates invited successfully');
+            }
           } catch (error) {
-            console.error('Error inviting teammates:', error);
-            toast.error('Failed to invite teammates');
+            console.error('Error handling teammates:', error);
+            toast.error('Failed to add teammates');
           }
         }
         
@@ -356,6 +409,7 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
         // Handle teammates for new job - this will create the calendar event with invites
         if (selectedTeammates.length > 0 && formattedDate) {
           try {
+            console.log('Inviting teammates to new job:', savedJob.id, selectedTeammates);
             await inviteTeammatesToJob(savedJob.id, selectedTeammates, timezoneToUse);
             toast.success('Job created and teammates invited successfully!');
             

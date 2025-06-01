@@ -95,10 +95,14 @@ serve(async (req) => {
     const authHeader = req.headers.get('Authorization');
     const { eventId, teammates, jobId, userId } = await req.json();
     
-    console.log(`Adding teammates to calendar event: ${eventId}`);
-    console.log(`New teammates to add:`, teammates);
+    console.log(`🔄 ADD-TEAMMATES-TO-CALENDAR-EVENT: Starting process`);
+    console.log(`📅 Event ID: ${eventId}`);
+    console.log(`👥 Teammates to add:`, teammates);
+    console.log(`🔧 Job ID: ${jobId}`);
+    console.log(`👤 User ID: ${userId}`);
     
     if (!eventId || !teammates || !userId) {
+      console.log(`❌ Missing required parameters`);
       return new Response(
         JSON.stringify({ error: 'Missing required parameters' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -108,11 +112,14 @@ serve(async (req) => {
     const supabaseClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     // Get access token
+    console.log(`🔑 Getting access token for user: ${userId}`);
     const { accessToken, calendarId } = await getAccessTokenForUser(userId, authHeader);
     
     // Get current event to preserve existing attendees
     const targetCalendarId = calendarId || 'primary';
+    console.log(`📅 Target calendar ID: ${targetCalendarId}`);
     
+    console.log(`📖 Fetching existing calendar event: ${eventId}`);
     const getEventResponse = await fetch(
       `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCalendarId)}/events/${eventId}`,
       {
@@ -125,31 +132,32 @@ serve(async (req) => {
     
     if (!getEventResponse.ok) {
       const errorText = await getEventResponse.text();
-      console.error('Failed to fetch existing calendar event:', errorText);
+      console.error('❌ Failed to fetch existing calendar event:', errorText);
       throw new Error('Failed to fetch existing calendar event');
     }
     
     const existingEvent = await getEventResponse.json();
-    console.log('Existing event attendees:', existingEvent.attendees || []);
+    console.log('📊 Existing event attendees:', existingEvent.attendees || []);
     
     // Get the emails of teammates that should be added
     const newTeammateEmails = teammates.map(teammate => teammate.email);
-    console.log('New teammate emails to add:', newTeammateEmails);
+    console.log('📧 New teammate emails to add:', newTeammateEmails);
     
     // Preserve existing attendees and only add truly new ones
     const existingAttendees = existingEvent.attendees || [];
     const existingEmails = existingAttendees.map(attendee => attendee.email);
+    console.log('📧 Existing attendee emails:', existingEmails);
     
     // Filter out teammates that are already attendees
     const newAttendees = teammates
       .filter(teammate => !existingEmails.includes(teammate.email))
       .map(teammate => ({ email: teammate.email }));
     
-    console.log('Filtered new attendees to add:', newAttendees);
+    console.log('✅ Filtered new attendees to add:', newAttendees);
     
     // Only proceed if there are actually new attendees to add
     if (newAttendees.length === 0) {
-      console.log('No new attendees to add - all teammates are already in the event');
+      console.log('ℹ️ No new attendees to add - all teammates are already in the event');
       return new Response(
         JSON.stringify({ 
           success: true, 
@@ -164,9 +172,10 @@ serve(async (req) => {
     // Combine existing and new attendees
     const allAttendees = [...existingAttendees, ...newAttendees];
     
-    console.log('Final attendees list for update:', allAttendees);
+    console.log('📝 Final attendees list for update (count: ' + allAttendees.length + '):', allAttendees);
     
     // Update the calendar event with new attendees
+    console.log(`🔄 Updating Google Calendar event with new attendees`);
     const updateEventResponse = await fetch(
       `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCalendarId)}/events/${eventId}`,
       {
@@ -184,12 +193,13 @@ serve(async (req) => {
     
     if (!updateEventResponse.ok) {
       const errorData = await updateEventResponse.text();
-      console.error('Failed to update calendar event:', errorData);
+      console.error('❌ Failed to update calendar event:', errorData);
       throw new Error('Failed to update calendar event');
     }
     
     const updatedEvent = await updateEventResponse.json();
-    console.log('Successfully updated calendar event with new attendees');
+    console.log('✅ Successfully updated calendar event with new attendees');
+    console.log('📊 Updated event attendee count:', updatedEvent.attendees?.length || 0);
     
     return new Response(
       JSON.stringify({ 
@@ -203,7 +213,7 @@ serve(async (req) => {
     );
     
   } catch (error) {
-    console.error('Error in add-teammates-to-calendar-event function:', error);
+    console.error('❌ Error in add-teammates-to-calendar-event function:', error);
     return new Response(
       JSON.stringify({ 
         error: 'Internal server error', 

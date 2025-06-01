@@ -355,19 +355,21 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
           try {
             console.log('Processing teammates for existing job:', existingJob.id, selectedTeammates);
             
+            // Create job teammate records first
+            await inviteTeammatesToJob(existingJob.id, selectedTeammates, timezoneToUse, false); // false = don't create new event
+            
             // If job has existing calendar event, add teammates to it
             if (existingJob.calendarEventId && hasCalendarIntegration) {
               console.log('Adding teammates to existing calendar event:', existingJob.calendarEventId);
               await addTeammatesToExistingCalendarEvent(updatedJob, selectedTeammates);
-              
-              // Create job teammate records
-              await inviteTeammatesToJob(existingJob.id, selectedTeammates, timezoneToUse, false); // false = don't create new event
               toast.success('Teammates added to job and calendar event');
-            } else {
+            } else if (hasCalendarIntegration && formattedDate) {
               // No existing calendar event, create new one with teammates
               console.log('No existing calendar event, creating new one with teammates');
-              await inviteTeammatesToJob(existingJob.id, selectedTeammates, timezoneToUse);
-              toast.success('Teammates invited successfully');
+              await inviteTeammatesToJob(existingJob.id, selectedTeammates, timezoneToUse, true); // true = create calendar event
+              toast.success('Calendar event created with teammates');
+            } else {
+              toast.success('Teammates added to job');
             }
 
             // Invalidate the job teammates query to refresh the data

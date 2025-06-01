@@ -96,7 +96,7 @@ serve(async (req) => {
     const { eventId, teammates, jobId, userId } = await req.json();
     
     console.log(`Adding teammates to calendar event: ${eventId}`);
-    console.log(`Teammates to add:`, teammates);
+    console.log(`New teammates to add:`, teammates);
     
     if (!eventId || !teammates || !userId) {
       return new Response(
@@ -124,25 +124,47 @@ serve(async (req) => {
     );
     
     if (!getEventResponse.ok) {
+      const errorText = await getEventResponse.text();
+      console.error('Failed to fetch existing calendar event:', errorText);
       throw new Error('Failed to fetch existing calendar event');
     }
     
     const existingEvent = await getEventResponse.json();
     console.log('Existing event attendees:', existingEvent.attendees || []);
     
-    // Combine existing attendees with new teammates
+    // Get the emails of teammates that should be added
+    const newTeammateEmails = teammates.map(teammate => teammate.email);
+    console.log('New teammate emails to add:', newTeammateEmails);
+    
+    // Preserve existing attendees and only add truly new ones
     const existingAttendees = existingEvent.attendees || [];
-    const newAttendees = teammates.map(teammate => ({ email: teammate.email }));
+    const existingEmails = existingAttendees.map(attendee => attendee.email);
     
-    // Filter out duplicates based on email
-    const allAttendees = [...existingAttendees];
-    newAttendees.forEach(newAttendee => {
-      if (!existingAttendees.some(existing => existing.email === newAttendee.email)) {
-        allAttendees.push(newAttendee);
-      }
-    });
+    // Filter out teammates that are already attendees
+    const newAttendees = teammates
+      .filter(teammate => !existingEmails.includes(teammate.email))
+      .map(teammate => ({ email: teammate.email }));
     
-    console.log('Updated attendees list:', allAttendees);
+    console.log('Filtered new attendees to add:', newAttendees);
+    
+    // Only proceed if there are actually new attendees to add
+    if (newAttendees.length === 0) {
+      console.log('No new attendees to add - all teammates are already in the event');
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: 'All teammates are already in the calendar event',
+          eventId: eventId,
+          attendeesCount: existingAttendees.length
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    // Combine existing and new attendees
+    const allAttendees = [...existingAttendees, ...newAttendees];
+    
+    console.log('Final attendees list for update:', allAttendees);
     
     // Update the calendar event with new attendees
     const updateEventResponse = await fetch(
@@ -174,7 +196,8 @@ serve(async (req) => {
         success: true, 
         message: 'Teammates added to calendar event',
         eventId: updatedEvent.id,
-        attendeesCount: allAttendees.length
+        attendeesCount: allAttendees.length,
+        newAttendeesAdded: newAttendees.length
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

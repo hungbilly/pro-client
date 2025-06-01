@@ -700,6 +700,7 @@ export type Database = {
       jobs: {
         Row: {
           calendar_event_id: string | null
+          calendar_id: string | null
           client_id: string
           company_id: string | null
           created_at: string
@@ -717,6 +718,7 @@ export type Database = {
         }
         Insert: {
           calendar_event_id?: string | null
+          calendar_id?: string | null
           client_id: string
           company_id?: string | null
           created_at?: string
@@ -734,6 +736,7 @@ export type Database = {
         }
         Update: {
           calendar_event_id?: string | null
+          calendar_id?: string | null
           client_id?: string
           company_id?: string | null
           created_at?: string

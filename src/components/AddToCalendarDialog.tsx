@@ -13,8 +13,8 @@ interface AddToCalendarDialogProps {
   onClose: () => void;
   job: Job | null;
   client: Client | null;
-  onSuccess?: (calendarEventId: string | null) => void; // Callback to update the job with the event ID
-  onError?: (error: Error) => void; // Callback to handle errors
+  onSuccess?: (calendarEventId: string | null) => void;
+  onError?: (error: Error) => void;
 }
 
 export const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({ 
@@ -187,7 +187,7 @@ export const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({
         },
         body: {
           eventId: job.calendarEventId,
-          jobId: job.id,
+          jobId: job.id, // Pass the job ID so the function can get the stored calendar ID
           userId: userId
         }
       });

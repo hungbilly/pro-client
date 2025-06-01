@@ -117,6 +117,7 @@ export const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({
         body: {
           eventId: job.calendarEventId,
           userId: session.user.id,
+          jobId: job.id, // Pass the job ID so the function can get the stored calendar ID
           timeZone: timeZoneToUse,
           jobData: {
             title: job.title,

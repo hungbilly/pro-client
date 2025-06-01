@@ -307,15 +307,19 @@ serve(async (req) => {
         supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
       }
       
+      // Store both the calendar event ID and the calendar ID used
       const { error: updateError } = await supabase
         .from('jobs')
-        .update({ calendar_event_id: calendarData.id })
+        .update({ 
+          calendar_event_id: calendarData.id,
+          calendar_id: targetCalendarId // Store which calendar was used
+        })
         .eq('id', jobId);
       
       if (updateError) {
         console.error('Error updating job with calendar event ID:', updateError);
       } else {
-        console.log('Successfully updated job with calendar event ID');
+        console.log('Successfully updated job with calendar event ID and calendar ID');
       }
     }
     

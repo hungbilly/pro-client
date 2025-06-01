@@ -241,7 +241,7 @@ serve(async (req) => {
       );
     }
     
-    let userId = tokenUserId; // Start with the user ID from the token if available
+    let userId = tokenUserId;
     let requestData;
     
     try {
@@ -327,13 +327,35 @@ serve(async (req) => {
     console.log(`Using user ID: ${userId}`);
     console.log(`Attempting to delete calendar event with ID: ${requestData.eventId}`);
 
+    // Get the calendar ID from the job record if jobId is provided
+    let jobCalendarId = null;
+    if (requestData.jobId) {
+      try {
+        const { data: jobRecord, error: jobError } = await adminClient
+          .from('jobs')
+          .select('calendar_id')
+          .eq('id', requestData.jobId)
+          .single();
+          
+        if (!jobError && jobRecord?.calendar_id) {
+          jobCalendarId = jobRecord.calendar_id;
+          console.log(`Found stored calendar ID for job: ${jobCalendarId}`);
+        } else {
+          console.log('No stored calendar ID found for job, will use current user selection');
+        }
+      } catch (jobError) {
+        console.error('Error fetching job calendar ID:', jobError);
+      }
+    }
+
     let accessTokenData;
     try {
       accessTokenData = await getAccessTokenAndCalendarId(userId, adminClient);
       console.log('Successfully acquired access token and calendar info:', {
         hasAccessToken: Boolean(accessTokenData.accessToken),
         calendarId: accessTokenData.calendarId,
-        calendarName: accessTokenData.calendarName
+        calendarName: accessTokenData.calendarName,
+        jobCalendarId: jobCalendarId
       });
     } catch (tokenError) {
       console.error('Failed to get access token:', tokenError);
@@ -344,9 +366,14 @@ serve(async (req) => {
     }
     
     const { accessToken, calendarId, calendarName } = accessTokenData;
-    const targetCalendarId = calendarId || 'primary';
     
-    console.log(`Calling Google Calendar API to delete event: ${requestData.eventId} from calendar: ${targetCalendarId} (${calendarName})`);
+    // Use the calendar ID from the job record if available, otherwise use current selection
+    const targetCalendarId = jobCalendarId || calendarId || 'primary';
+    const targetCalendarName = jobCalendarId ? `Calendar ${jobCalendarId}` : (calendarName || 'Primary Calendar');
+    
+    console.log(`Calling Google Calendar API to delete event: ${requestData.eventId} from calendar: ${targetCalendarId} (${targetCalendarName})`);
+    console.log(`Calendar source: ${jobCalendarId ? 'from job record' : 'from user selection'}`);
+    
     const calendarResponse = await fetch(
       `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCalendarId)}/events/${requestData.eventId}`,
       {
@@ -402,7 +429,7 @@ serve(async (req) => {
         success: true, 
         message: 'Event deleted from calendar',
         calendarUsed: targetCalendarId,
-        calendarName: calendarName
+        calendarName: targetCalendarName
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

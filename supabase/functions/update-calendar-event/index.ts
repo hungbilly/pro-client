@@ -94,7 +94,7 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get('Authorization');
     const requestData = await req.json();
-    const { eventId, userId, jobData, testMode, testData, timeZone } = requestData;
+    const { eventId, userId, jobData, testMode, testData, timeZone, jobId } = requestData;
     
     console.log('Full request payload:', JSON.stringify(requestData, null, 2));
     console.log(`Attempting to update event: ${eventId} for user: ${userId}`);
@@ -113,6 +113,34 @@ serve(async (req) => {
       );
     }
 
+    // Get the calendar ID from the job record if jobId is provided
+    let jobCalendarId = null;
+    if (jobId) {
+      let supabase;
+      if (authHeader) {
+        supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+          global: {
+            headers: {
+              Authorization: authHeader,
+            }
+          }
+        });
+      } else {
+        supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      }
+      
+      const { data: jobRecord, error: jobError } = await supabase
+        .from('jobs')
+        .select('calendar_id')
+        .eq('id', jobId)
+        .single();
+        
+      if (!jobError && jobRecord?.calendar_id) {
+        jobCalendarId = jobRecord.calendar_id;
+        console.log(`Found stored calendar ID for job: ${jobCalendarId}`);
+      }
+    }
+
     let accessTokenData;
     try {
       accessTokenData = await getAccessTokenForUser(userId, authHeader);
@@ -125,9 +153,13 @@ serve(async (req) => {
     }
     
     const { accessToken, calendarId, calendarName } = accessTokenData;
-    const targetCalendarId = calendarId || 'primary';
     
-    console.log(`Using calendar: ${targetCalendarId} (${calendarName || 'Primary Calendar'})`);
+    // Use the calendar ID from the job record if available, otherwise use current selection
+    const targetCalendarId = jobCalendarId || calendarId || 'primary';
+    const targetCalendarName = jobCalendarId ? `Calendar ${jobCalendarId}` : (calendarName || 'Primary Calendar');
+    
+    console.log(`Using calendar: ${targetCalendarId} (${targetCalendarName})`);
+    console.log(`Calendar source: ${jobCalendarId ? 'from job record' : 'from user selection'}`);
     
     const eventData = testMode && testData ? testData.event : jobData;
     console.log('Using event data:', JSON.stringify(eventData));
@@ -274,7 +306,7 @@ serve(async (req) => {
         message: 'Event updated in calendar',
         eventId: calendarData.id,
         calendarUsed: targetCalendarId,
-        calendarName: calendarName || 'Primary Calendar',
+        calendarName: targetCalendarName,
         eventTimezone: calendarData.start?.timeZone || 'Not specified'
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

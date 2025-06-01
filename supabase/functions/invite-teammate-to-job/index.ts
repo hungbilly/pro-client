@@ -41,22 +41,14 @@ const refreshAccessToken = async (refreshToken: string): Promise<{ access_token:
 const formatToRFC3339 = (date: string, time: string, timezone: string): string => {
   console.log(`formatToRFC3339 inputs: { date: "${date}", time: "${time}", timezone: "${timezone}" }`)
   
+  // Create the datetime string in the specified timezone format
   const datetimeString = `${date}T${time}:00`
   console.log(`Initial datetime string: ${datetimeString}`)
   
-  const tempDate = new Date(datetimeString)
-  console.log(`Temp date object: ${tempDate.toISOString()}`)
-  
-  const offsetMinutes = tempDate.getTimezoneOffset()
-  const offsetHours = Math.floor(Math.abs(offsetMinutes) / 60)
-  const offsetMins = Math.abs(offsetMinutes) % 60
-  const offsetSign = offsetMinutes <= 0 ? '+' : '-'
-  const offset = `${offsetSign}${offsetHours.toString().padStart(2, '0')}:${offsetMins.toString().padStart(2, '0')}`
-  
-  console.log(`Calculated offset: ${offset}`)
-  
-  const rfc3339 = `${datetimeString}${offset}`
-  console.log(`Final RFC3339 datetime: ${rfc3339}`)
+  // For Google Calendar API, we need to format it properly with timezone
+  // Use the timezone directly in the format that Google Calendar expects
+  const rfc3339 = `${datetimeString}`
+  console.log(`Final RFC3339 datetime for timezone ${timezone}: ${rfc3339}`)
   
   return rfc3339
 }
@@ -295,18 +287,24 @@ serve(async (req) => {
         location: job.location || '',
         attendees: attendees,
         start: {
-          dateTime: startDateTime
+          dateTime: startDateTime,
+          timeZone: eventTimezone
         },
         end: {
-          dateTime: endDateTime
+          dateTime: endDateTime,
+          timeZone: eventTimezone
         }
       }
 
       console.log(`Complete event data being sent to Google Calendar: ${JSON.stringify(eventData, null, 2)}`)
 
       try {
+        // Use the user's selected calendar from integration, or primary as fallback
+        const targetCalendarId = integration.calendar_id || 'primary'
+        console.log(`Creating event in calendar: ${targetCalendarId}`)
+
         const calendarResponse = await fetch(
-          'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+          `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCalendarId)}/events`,
           {
             method: 'POST',
             headers: {
@@ -352,10 +350,13 @@ serve(async (req) => {
           }
         }
 
-        // Also update the job record with the calendar event ID
+        // Also update the job record with the calendar event ID and store which calendar was used
         await supabaseClient
           .from('jobs')
-          .update({ calendar_event_id: eventId })
+          .update({ 
+            calendar_event_id: eventId,
+            calendar_id: targetCalendarId 
+          })
           .eq('id', jobId)
 
       } catch (calendarError) {

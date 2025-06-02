@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getClient, getClientInvoices, deleteClient, getClientJobs } from '@/lib/storage';
@@ -78,7 +79,7 @@ const ClientDetail = () => {
   if (isLoading) {
     return (
       <PageTransition>
-        <Card className="w-full max-w-4xl mx-auto">
+        <Card className="w-full max-w-6xl mx-auto">
           <CardContent className="pt-6">
             <div className="text-center p-8">Loading client data...</div>
           </CardContent>
@@ -90,7 +91,7 @@ const ClientDetail = () => {
   if (!client) {
     return (
       <PageTransition>
-        <Card className="w-full max-w-4xl mx-auto">
+        <Card className="w-full max-w-6xl mx-auto">
           <CardContent className="pt-6">
             <div className="text-center p-8">Client not found.</div>
           </CardContent>
@@ -101,14 +102,17 @@ const ClientDetail = () => {
 
   return (
     <PageTransition>
-      <Card className="w-full max-w-4xl mx-auto">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-2xl font-bold">{client.name}</CardTitle>
-          <div className={`flex gap-2 ${isMobile ? 'flex-wrap' : 'space-x-2'}`}>
+      <Card className="w-full max-w-6xl mx-auto">
+        <CardHeader className="space-y-4">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-2xl font-bold">{client.name}</CardTitle>
             <Button variant="outline" size="sm" onClick={() => navigate('/')}>
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Clients
             </Button>
+          </div>
+          
+          <div className={`flex gap-2 ${isMobile ? 'flex-wrap' : 'space-x-2'}`}>
             <Button size="sm" asChild>
               <Link to={`/client/${client.id}/edit`}>
                 <UserCog className="h-4 w-4 mr-2" />

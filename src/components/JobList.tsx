@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Job, Client } from '@/types';
@@ -9,6 +10,7 @@ import { BriefcaseBusiness, CalendarDays, MapPin, Plus, Clock } from 'lucide-rea
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { deleteJob } from '@/lib/storage';
 import { toast } from 'sonner';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface JobListProps {
   jobs: Job[];
@@ -43,6 +45,7 @@ const formatTimeDisplay = (job: Job) => {
 
 const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   
   const sortedJobs = [...jobs].sort((a, b) => {
     if (!a.date) return 1;
@@ -91,21 +94,21 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
     console.log('Rendering job card for job:', job.id);
     
     return (
-      <div key={job.id} className="group relative">
+      <div key={job.id} className="group relative w-full">
         <div 
-          className="block transition-all duration-200 hover:shadow-soft rounded-lg cursor-pointer"
+          className="block transition-all duration-200 hover:shadow-soft rounded-lg cursor-pointer w-full"
           onClick={() => handleJobCardClick(job.id)}
         >
-          <Card className="overflow-hidden h-full border-transparent hover:border-border transition-all duration-200">
+          <Card className="overflow-hidden h-full border-transparent hover:border-border transition-all duration-200 w-full">
             <CardHeader className="pb-3">
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle className="text-base">{job.title}</CardTitle>
+              <div className="flex justify-between items-start gap-2">
+                <div className="flex-1 min-w-0">
+                  <CardTitle className="text-base truncate">{job.title}</CardTitle>
                   <CardDescription className="text-xs mt-1">
                     {job.createdAt && `Created: ${new Date(job.createdAt).toLocaleDateString()}`}
                   </CardDescription>
                 </div>
-                <Badge className={getStatusColor(job.status)}>
+                <Badge className={`${getStatusColor(job.status)} flex-shrink-0`}>
                   {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
                 </Badge>
               </div>
@@ -116,28 +119,28 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
               )}
               <div className="space-y-2">
                 {job.date && (
-                  <div className="flex justify-between items-center">
-                    <div className="text-sm text-muted-foreground">Date:</div>
-                    <div className="text-sm font-medium">
-                      <div className="flex items-center">
-                        <CalendarDays className="h-3 w-3 mr-1 text-muted-foreground" />
-                        {new Date(job.date).toLocaleDateString()}
+                  <div className="flex justify-between items-start gap-2">
+                    <div className="text-sm text-muted-foreground flex-shrink-0">Date:</div>
+                    <div className="text-sm font-medium text-right flex-1 min-w-0">
+                      <div className="flex items-center justify-end">
+                        <CalendarDays className="h-3 w-3 mr-1 text-muted-foreground flex-shrink-0" />
+                        <span className="truncate">{new Date(job.date).toLocaleDateString()}</span>
                       </div>
                       {(job.startTime || job.isFullDay) && (
                         <div className="flex items-center mt-1 justify-end">
-                          <Clock className="h-3 w-3 mr-1 text-muted-foreground" />
-                          <span className="text-muted-foreground">{formatTimeDisplay(job)}</span>
+                          <Clock className="h-3 w-3 mr-1 text-muted-foreground flex-shrink-0" />
+                          <span className="text-muted-foreground truncate">{formatTimeDisplay(job)}</span>
                         </div>
                       )}
                     </div>
                   </div>
                 )}
                 {job.location && (
-                  <div className="flex justify-between items-center">
-                    <div className="text-sm text-muted-foreground">Location:</div>
-                    <div className="text-sm font-medium flex items-center">
-                      <MapPin className="h-3 w-3 mr-1 text-muted-foreground" />
-                      {job.location}
+                  <div className="flex justify-between items-center gap-2">
+                    <div className="text-sm text-muted-foreground flex-shrink-0">Location:</div>
+                    <div className="text-sm font-medium flex items-center flex-1 min-w-0 justify-end">
+                      <MapPin className="h-3 w-3 mr-1 text-muted-foreground flex-shrink-0" />
+                      <span className="truncate">{job.location}</span>
                     </div>
                   </div>
                 )}
@@ -150,14 +153,14 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
   };
 
   const renderJobSection = (title: string, icon: React.ReactNode, jobList: Job[], emptyMessage: string) => (
-    <div className="space-y-3">
+    <div className="space-y-4 w-full">
       <div className="flex items-center gap-2">
         {icon}
         <h3 className="text-lg font-medium">{title}</h3>
       </div>
       
       {jobList.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
           {jobList.map(renderJobCard)}
         </div>
       ) : (
@@ -167,10 +170,10 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
   );
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-semibold">Jobs</h2>
-        <Button asChild>
+    <div className="space-y-8 w-full max-w-full overflow-hidden">
+      <div className={`flex ${isMobile ? 'flex-col gap-3' : 'flex-row'} items-start justify-between w-full`}>
+        <h2 className="text-2xl font-semibold flex-shrink-0">Jobs</h2>
+        <Button asChild className={isMobile ? 'w-full' : 'flex-shrink-0'}>
           <Link to={`/client/${client.id}/job/create`}>
             <Plus className="h-4 w-4 mr-2" />
             Create Job
@@ -179,7 +182,7 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
       </div>
       
       {sortedJobs.length === 0 ? (
-        <Card>
+        <Card className="w-full">
           <CardContent className="flex flex-col items-center justify-center py-8 text-center">
             <BriefcaseBusiness className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-medium mb-2">No Jobs Yet</h3>
@@ -195,7 +198,7 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-10">
+        <div className="space-y-10 w-full">
           {activeJobs.length > 0 && (
             renderJobSection(
               "Active Jobs", 

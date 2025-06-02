@@ -1,7 +1,8 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building2, FileText, Settings as SettingsIcon, Package, Users, Calendar } from 'lucide-react';
+import { Building2, FileText, Settings as SettingsIcon, Package, Users, Calendar, Sparkles, Zap, Crown, Gift, Receipt, FileContract, Percent } from 'lucide-react';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import CompanySettings from '@/components/CompanySettings';
 import InvoiceTemplateSettings from '@/components/InvoiceTemplateSettings';
@@ -28,32 +29,32 @@ const Settings = () => {
           <CardContent>
             <Tabs defaultValue="company" className="w-full">
               <TabsList className="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-1 h-auto p-1 bg-muted">
-                <TabsTrigger value="company" className="flex items-center gap-2 justify-center px-2 py-2 text-xs sm:text-sm min-h-[3rem] whitespace-normal text-center leading-tight">
+                <TabsTrigger value="company" className="flex items-center gap-2 justify-center px-2 py-2 text-xs sm:text-sm min-h-[3rem] whitespace-normal text-center leading-tight bg-gradient-to-br from-blue-500 to-blue-600 data-[state=active]:from-blue-600 data-[state=active]:to-blue-700 text-white border-0 hover:from-blue-400 hover:to-blue-500 transition-all duration-200">
                   <Building2 className="h-4 w-4 flex-shrink-0" />
                   <span>Company</span>
                 </TabsTrigger>
-                <TabsTrigger value="calendar" className="flex items-center gap-2 justify-center px-2 py-2 text-xs sm:text-sm min-h-[3rem] whitespace-normal text-center leading-tight">
-                  <Calendar className="h-4 w-4 flex-shrink-0" />
+                <TabsTrigger value="calendar" className="flex items-center gap-2 justify-center px-2 py-2 text-xs sm:text-sm min-h-[3rem] whitespace-normal text-center leading-tight bg-gradient-to-br from-green-500 to-green-600 data-[state=active]:from-green-600 data-[state=active]:to-green-700 text-white border-0 hover:from-green-400 hover:to-green-500 transition-all duration-200">
+                  <Sparkles className="h-4 w-4 flex-shrink-0" />
                   <span>Calendar</span>
                 </TabsTrigger>
-                <TabsTrigger value="teammates" className="flex items-center gap-2 justify-center px-2 py-2 text-xs sm:text-sm min-h-[3rem] whitespace-normal text-center leading-tight">
-                  <Users className="h-4 w-4 flex-shrink-0" />
+                <TabsTrigger value="teammates" className="flex items-center gap-2 justify-center px-2 py-2 text-xs sm:text-sm min-h-[3rem] whitespace-normal text-center leading-tight bg-gradient-to-br from-purple-500 to-purple-600 data-[state=active]:from-purple-600 data-[state=active]:to-purple-700 text-white border-0 hover:from-purple-400 hover:to-purple-500 transition-all duration-200">
+                  <Crown className="h-4 w-4 flex-shrink-0" />
                   <span>Team</span>
                 </TabsTrigger>
-                <TabsTrigger value="packages" className="flex items-center gap-2 justify-center px-2 py-2 text-xs sm:text-sm min-h-[3rem] whitespace-normal text-center leading-tight">
-                  <Package className="h-4 w-4 flex-shrink-0" />
+                <TabsTrigger value="packages" className="flex items-center gap-2 justify-center px-2 py-2 text-xs sm:text-sm min-h-[3rem] whitespace-normal text-center leading-tight bg-gradient-to-br from-orange-500 to-orange-600 data-[state=active]:from-orange-600 data-[state=active]:to-orange-700 text-white border-0 hover:from-orange-400 hover:to-orange-500 transition-all duration-200">
+                  <Gift className="h-4 w-4 flex-shrink-0" />
                   <span>Packages</span>
                 </TabsTrigger>
-                <TabsTrigger value="invoices" className="flex items-center gap-2 justify-center px-2 py-2 text-xs sm:text-sm min-h-[3rem] whitespace-normal text-center leading-tight">
-                  <FileText className="h-4 w-4 flex-shrink-0" />
+                <TabsTrigger value="invoices" className="flex items-center gap-2 justify-center px-2 py-2 text-xs sm:text-sm min-h-[3rem] whitespace-normal text-center leading-tight bg-gradient-to-br from-cyan-500 to-cyan-600 data-[state=active]:from-cyan-600 data-[state=active]:to-cyan-700 text-white border-0 hover:from-cyan-400 hover:to-cyan-500 transition-all duration-200">
+                  <Receipt className="h-4 w-4 flex-shrink-0" />
                   <span>Invoice Templates</span>
                 </TabsTrigger>
-                <TabsTrigger value="contracts" className="flex items-center gap-2 justify-center px-2 py-2 text-xs sm:text-sm min-h-[3rem] whitespace-normal text-center leading-tight">
-                  <FileText className="h-4 w-4 flex-shrink-0" />
+                <TabsTrigger value="contracts" className="flex items-center gap-2 justify-center px-2 py-2 text-xs sm:text-sm min-h-[3rem] whitespace-normal text-center leading-tight bg-gradient-to-br from-indigo-500 to-indigo-600 data-[state=active]:from-indigo-600 data-[state=active]:to-indigo-700 text-white border-0 hover:from-indigo-400 hover:to-indigo-500 transition-all duration-200">
+                  <FileContract className="h-4 w-4 flex-shrink-0" />
                   <span>Contract Templates</span>
                 </TabsTrigger>
-                <TabsTrigger value="discounts" className="flex items-center gap-2 justify-center px-2 py-2 text-xs sm:text-sm min-h-[3rem] whitespace-normal text-center leading-tight">
-                  <FileText className="h-4 w-4 flex-shrink-0" />
+                <TabsTrigger value="discounts" className="flex items-center gap-2 justify-center px-2 py-2 text-xs sm:text-sm min-h-[3rem] whitespace-normal text-center leading-tight bg-gradient-to-br from-rose-500 to-rose-600 data-[state=active]:from-rose-600 data-[state=active]:to-rose-700 text-white border-0 hover:from-rose-400 hover:to-rose-500 transition-all duration-200">
+                  <Percent className="h-4 w-4 flex-shrink-0" />
                   <span>Discount Templates</span>
                 </TabsTrigger>
               </TabsList>

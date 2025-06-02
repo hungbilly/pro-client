@@ -27,34 +27,34 @@ const Settings = () => {
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="company" className="w-full">
-              <TabsList className="w-full flex flex-wrap h-auto p-1 bg-muted">
-                <TabsTrigger value="company" className="flex items-center gap-2 flex-1 min-w-0 sm:min-w-[120px] justify-center px-2 py-2 text-xs sm:text-sm">
+              <TabsList className="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-1 h-auto p-1 bg-muted">
+                <TabsTrigger value="company" className="flex items-center gap-2 justify-center px-2 py-2 text-xs sm:text-sm min-h-[3rem] whitespace-normal text-center leading-tight">
                   <Building2 className="h-4 w-4 flex-shrink-0" />
-                  <span className="truncate">Company</span>
+                  <span>Company</span>
                 </TabsTrigger>
-                <TabsTrigger value="calendar" className="flex items-center gap-2 flex-1 min-w-0 sm:min-w-[120px] justify-center px-2 py-2 text-xs sm:text-sm">
+                <TabsTrigger value="calendar" className="flex items-center gap-2 justify-center px-2 py-2 text-xs sm:text-sm min-h-[3rem] whitespace-normal text-center leading-tight">
                   <Calendar className="h-4 w-4 flex-shrink-0" />
-                  <span className="truncate">Calendar</span>
+                  <span>Calendar</span>
                 </TabsTrigger>
-                <TabsTrigger value="teammates" className="flex items-center gap-2 flex-1 min-w-0 sm:min-w-[120px] justify-center px-2 py-2 text-xs sm:text-sm">
+                <TabsTrigger value="teammates" className="flex items-center gap-2 justify-center px-2 py-2 text-xs sm:text-sm min-h-[3rem] whitespace-normal text-center leading-tight">
                   <Users className="h-4 w-4 flex-shrink-0" />
-                  <span className="truncate">Team</span>
+                  <span>Team</span>
                 </TabsTrigger>
-                <TabsTrigger value="packages" className="flex items-center gap-2 flex-1 min-w-0 sm:min-w-[120px] justify-center px-2 py-2 text-xs sm:text-sm">
+                <TabsTrigger value="packages" className="flex items-center gap-2 justify-center px-2 py-2 text-xs sm:text-sm min-h-[3rem] whitespace-normal text-center leading-tight">
                   <Package className="h-4 w-4 flex-shrink-0" />
-                  <span className="truncate">Packages</span>
+                  <span>Packages</span>
                 </TabsTrigger>
-                <TabsTrigger value="invoices" className="flex items-center gap-2 flex-1 min-w-0 sm:min-w-[120px] justify-center px-2 py-2 text-xs sm:text-sm">
+                <TabsTrigger value="invoices" className="flex items-center gap-2 justify-center px-2 py-2 text-xs sm:text-sm min-h-[3rem] whitespace-normal text-center leading-tight">
                   <FileText className="h-4 w-4 flex-shrink-0" />
-                  <span className="truncate">Invoice Templates</span>
+                  <span>Invoice Templates</span>
                 </TabsTrigger>
-                <TabsTrigger value="contracts" className="flex items-center gap-2 flex-1 min-w-0 sm:min-w-[120px] justify-center px-2 py-2 text-xs sm:text-sm">
+                <TabsTrigger value="contracts" className="flex items-center gap-2 justify-center px-2 py-2 text-xs sm:text-sm min-h-[3rem] whitespace-normal text-center leading-tight">
                   <FileText className="h-4 w-4 flex-shrink-0" />
-                  <span className="truncate">Contract Templates</span>
+                  <span>Contract Templates</span>
                 </TabsTrigger>
-                <TabsTrigger value="discounts" className="flex items-center gap-2 flex-1 min-w-0 sm:min-w-[120px] justify-center px-2 py-2 text-xs sm:text-sm">
+                <TabsTrigger value="discounts" className="flex items-center gap-2 justify-center px-2 py-2 text-xs sm:text-sm min-h-[3rem] whitespace-normal text-center leading-tight">
                   <FileText className="h-4 w-4 flex-shrink-0" />
-                  <span className="truncate">Discount Templates</span>
+                  <span>Discount Templates</span>
                 </TabsTrigger>
               </TabsList>
               

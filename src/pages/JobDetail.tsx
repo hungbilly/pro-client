@@ -149,18 +149,18 @@ const JobDetail = () => {
       <div className="container mx-auto py-8 space-y-6">
         <Card className="w-full max-w-4xl mx-auto">
           <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-            <div className="flex-1 space-y-3 min-w-0">
-              {/* Job Title */}
-              <CardTitle className="text-xl md:text-2xl font-bold break-words">{job.title}</CardTitle>
+            <div className="flex-1 space-y-4 min-w-0">
+              {/* Job Title - More prominent */}
+              <CardTitle className="text-2xl md:text-3xl font-bold break-words">{job.title}</CardTitle>
               
-              {/* Client Information - Wider container */}
+              {/* Client Information - Smaller and less prominent */}
               <div className="flex items-center gap-3 min-w-0">
-                <Avatar className="h-8 w-8 bg-purple-100 flex-shrink-0">
-                  <AvatarFallback className="text-purple-700 text-sm">
+                <Avatar className="h-6 w-6 bg-purple-100 flex-shrink-0">
+                  <AvatarFallback className="text-purple-700 text-xs">
                     {getClientInitials(client.name)}
                   </AvatarFallback>
                 </Avatar>
-                <Link to={`/client/${client.id}`} className="text-base font-semibold text-purple-900 hover:underline break-words min-w-0 flex-1">
+                <Link to={`/client/${client.id}`} className="text-sm font-medium text-purple-700 hover:underline break-words min-w-0 flex-1">
                   {client.name}
                 </Link>
               </div>
@@ -213,88 +213,81 @@ const JobDetail = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="md:col-span-1 bg-slate-50 p-4 rounded-lg border border-slate-200">
-                  <h3 className="text-md font-medium flex items-center gap-2 mb-3">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    Client Information
-                  </h3>
-                  
-                  <div className="space-y-3">
-                    <div>
-                      <div className="text-sm font-medium text-muted-foreground">Name</div>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span>{client.name}</span>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <div className="text-sm font-medium text-muted-foreground">Email</div>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-                        <a href={`mailto:${client.email}`} className="hover:underline">
-                          {client.email}
-                        </a>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <div className="text-sm font-medium text-muted-foreground">Phone</div>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-                        <a href={`tel:${client.phone}`} className="hover:underline">
-                          {client.phone}
-                        </a>
-                      </div>
-                    </div>
-                    
-                    {client.address && <div>
-                        <div className="text-sm font-medium text-muted-foreground">Address</div>
-                        <div className="mt-0.5">
-                          {client.address}
-                        </div>
-                      </div>}
-                    
-                    {client.notes && <div>
-                        <div className="text-sm font-medium text-muted-foreground">Notes</div>
-                        <div className="mt-0.5 text-sm line-clamp-3">
-                          {client.notes}
-                        </div>
-                      </div>}
-                  </div>
-                </div>
+            <div className="grid gap-6">
+              {/* Job Details - Main focus */}
+              <div>
+                <h3 className="text-xl font-semibold mb-2">Job Details</h3>
+                <CardDescription className="mb-4">
+                  View and manage job information.
+                </CardDescription>
+                <Separator className="mb-4" />
                 
-                <div className="md:col-span-2">
-                  <h3 className="text-lg font-medium">Job Details</h3>
-                  <CardDescription>
-                    View and manage job information.
-                  </CardDescription>
-                  <Separator className="my-4" />
-                  
-                  {job.description && <div className="mb-4">
-                      <h4 className="font-semibold mb-1">Description</h4>
-                      <p className="text-sm">{job.description}</p>
+                {job.description && <div className="mb-4">
+                    <h4 className="font-semibold mb-2">Description</h4>
+                    <p className="text-sm text-muted-foreground">{job.description}</p>
+                  </div>}
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {job.date && <div className="flex items-center">
+                      <CalendarDays className="h-4 w-4 text-muted-foreground mr-2" />
+                      <div>
+                        <span>Date: {new Date(job.date).toLocaleDateString()}</span>
+                        {(job.startTime || job.isFullDay) && <div className="flex items-center text-sm text-muted-foreground mt-1">
+                            <Clock className="h-3.5 w-3.5 mr-1" />
+                            <span>{formatTimeDisplay(job)}</span>
+                          </div>}
+                      </div>
                     </div>}
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {job.date && <div className="flex items-center">
-                        <CalendarDays className="h-4 w-4 text-muted-foreground mr-2" />
-                        <div>
-                          <span>Date: {new Date(job.date).toLocaleDateString()}</span>
-                          {(job.startTime || job.isFullDay) && <div className="flex items-center text-sm text-muted-foreground mt-1">
-                              <Clock className="h-3.5 w-3.5 mr-1" />
-                              <span>{formatTimeDisplay(job)}</span>
-                            </div>}
-                        </div>
-                      </div>}
-                    
-                    {job.location && <div className="flex items-center">
-                        <MapPin className="h-4 w-4 text-muted-foreground mr-2" />
-                        <span>Location: {job.location}</span>
-                      </div>}
+                  {job.location && <div className="flex items-center">
+                      <MapPin className="h-4 w-4 text-muted-foreground mr-2" />
+                      <span>Location: {job.location}</span>
+                    </div>}
+                </div>
+              </div>
+
+              {/* Client Information - Smaller and less prominent */}
+              <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                <h3 className="text-md font-medium flex items-center gap-2 mb-3">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  Client Information
+                </h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <div className="text-xs font-medium text-muted-foreground mb-1">Name</div>
+                    <div className="flex items-center gap-1.5">
+                      <Building2 className="h-3 w-3 text-muted-foreground" />
+                      <span>{client.name}</span>
+                    </div>
                   </div>
+                  
+                  <div>
+                    <div className="text-xs font-medium text-muted-foreground mb-1">Email</div>
+                    <div className="flex items-center gap-1.5">
+                      <Mail className="h-3 w-3 text-muted-foreground" />
+                      <a href={`mailto:${client.email}`} className="hover:underline">
+                        {client.email}
+                      </a>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <div className="text-xs font-medium text-muted-foreground mb-1">Phone</div>
+                    <div className="flex items-center gap-1.5">
+                      <Phone className="h-3 w-3 text-muted-foreground" />
+                      <a href={`tel:${client.phone}`} className="hover:underline">
+                        {client.phone}
+                      </a>
+                    </div>
+                  </div>
+                  
+                  {client.address && <div>
+                      <div className="text-xs font-medium text-muted-foreground mb-1">Address</div>
+                      <div>
+                        {client.address}
+                      </div>
+                    </div>}
                 </div>
               </div>
             </div>

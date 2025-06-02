@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getJob, getClient, getJobInvoices, deleteJob } from '@/lib/storage';
@@ -163,36 +164,44 @@ const JobDetail = () => {
     <PageTransition>
       <div className="container mx-auto py-8 space-y-6">
         <Card className="w-full max-w-4xl mx-auto">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <div>
-              <CardTitle className="text-2xl font-bold">{job.title}</CardTitle>
-              <div className="flex items-center mt-2">
-                <div className="flex items-center">
-                  <Avatar className="h-6 w-6 mr-2 bg-purple-100">
-                    <AvatarFallback className="text-purple-700 text-xs">
+          <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+            <div className="flex-1 space-y-3">
+              {/* Job Title - Always on top */}
+              <CardTitle className="text-xl md:text-2xl font-bold break-words">{job.title}</CardTitle>
+              
+              {/* Client Information Row - Better mobile layout */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <Avatar className="h-8 w-8 bg-purple-100 flex-shrink-0">
+                    <AvatarFallback className="text-purple-700 text-sm">
                       {getClientInitials(client.name)}
                     </AvatarFallback>
                   </Avatar>
                   <Link 
                     to={`/client/${client.id}`} 
-                    className="text-base font-semibold text-purple-700 hover:underline"
+                    className="text-base font-semibold text-purple-700 hover:underline break-words"
                   >
                     {client.name}
                   </Link>
                 </div>
-                <Badge className={`ml-3 ${getStatusColor(job.status)}`}>
+                
+                {/* Status Badge - Separate line on mobile */}
+                <Badge className={`self-start sm:self-center ${getStatusColor(job.status)}`}>
                   {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
                 </Badge>
               </div>
             </div>
-            <div className="space-x-2">
+            
+            {/* Action Buttons - Responsive layout */}
+            <div className="flex flex-col sm:flex-row gap-2 ml-4">
               <Button variant="outline" size="sm" onClick={() => navigate(`/client/${client.id}`)}>
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Client
+                <span className="hidden sm:inline">Back to Client</span>
+                <span className="sm:hidden">Back</span>
               </Button>
               <Button 
                 variant="outline" 
-                size="icon" 
+                size="sm" 
                 asChild 
                 className="tooltip" 
                 title="Edit Job"
@@ -204,7 +213,7 @@ const JobDetail = () => {
               </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="destructive" size="icon" title="Delete Job">
+                  <Button variant="destructive" size="sm" title="Delete Job">
                     <Trash2 className="h-4 w-4" />
                     <span className="sr-only">Delete Job</span>
                   </Button>

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getJob, getClient, getJobInvoices, deleteJob } from '@/lib/storage';
@@ -16,48 +15,52 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import JobTeammatesList from '@/components/teammates/JobTeammatesList';
 import { getJobTeammates } from '@/lib/teammateStorage';
-
 const JobDetail = () => {
-  const { id } = useParams<{ id: string }>();
+  const {
+    id
+  } = useParams<{
+    id: string;
+  }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [job, setJob] = useState<Job | undefined>(undefined);
   const [client, setClient] = useState<Client | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
-
-  const { data: invoices = [], isLoading: isLoadingInvoices } = useQuery({
+  const {
+    data: invoices = [],
+    isLoading: isLoadingInvoices
+  } = useQuery({
     queryKey: ['job-invoices', id],
     queryFn: async () => {
       if (!id) return [];
       return await getJobInvoices(id);
     },
-    enabled: !!id,
+    enabled: !!id
   });
-
-  const { data: jobTeammates = [], isLoading: isLoadingTeammates } = useQuery({
+  const {
+    data: jobTeammates = [],
+    isLoading: isLoadingTeammates
+  } = useQuery({
     queryKey: ['job-teammates', id],
     queryFn: async () => {
       if (!id) return [];
       return await getJobTeammates(id);
     },
     enabled: !!id,
-    refetchInterval: 300000,
+    refetchInterval: 300000
   });
-
   useEffect(() => {
     if (!id) {
       toast.error('Job ID is missing.');
       navigate('/');
       return;
     }
-
     const fetchJobData = async () => {
       setIsLoading(true);
       try {
         const fetchedJob = await getJob(id);
         if (fetchedJob) {
           setJob(fetchedJob);
-          
           const fetchedClient = await getClient(fetchedJob.clientId);
           if (fetchedClient) {
             setClient(fetchedClient);
@@ -75,10 +78,8 @@ const JobDetail = () => {
         setIsLoading(false);
       }
     };
-
     fetchJobData();
   }, [id, navigate]);
-
   const handleDeleteJob = async () => {
     try {
       if (id && job) {
@@ -93,7 +94,6 @@ const JobDetail = () => {
       toast.error('Failed to delete job.');
     }
   };
-
   const getStatusColor = (status: Job['status']) => {
     switch (status) {
       case 'active':
@@ -106,35 +106,25 @@ const JobDetail = () => {
         return 'bg-gray-100 text-gray-800';
     }
   };
-
   const getClientInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(part => part[0])
-      .join('')
-      .toUpperCase()
-      .substring(0, 2);
+    return name.split(' ').map(part => part[0]).join('').toUpperCase().substring(0, 2);
   };
-
   const formatTimeDisplay = (job: Job) => {
     if (job.isFullDay) {
       return "Full Day";
     }
-    
     if (job.startTime && job.endTime) {
       return `${job.startTime} - ${job.endTime}`;
     }
-    
     return null;
   };
-
   const handleTeammateStatusRefreshed = () => {
-    queryClient.invalidateQueries({ queryKey: ['job-teammates', id] });
+    queryClient.invalidateQueries({
+      queryKey: ['job-teammates', id]
+    });
   };
-
   if (isLoading) {
-    return (
-      <PageTransition>
+    return <PageTransition>
         <div className="container mx-auto py-8">
           <Card className="w-full max-w-4xl mx-auto">
             <CardContent className="pt-6">
@@ -142,13 +132,10 @@ const JobDetail = () => {
             </CardContent>
           </Card>
         </div>
-      </PageTransition>
-    );
+      </PageTransition>;
   }
-
   if (!job || !client) {
-    return (
-      <PageTransition>
+    return <PageTransition>
         <div className="container mx-auto py-8">
           <Card className="w-full max-w-4xl mx-auto">
             <CardContent className="pt-6">
@@ -156,12 +143,9 @@ const JobDetail = () => {
             </CardContent>
           </Card>
         </div>
-      </PageTransition>
-    );
+      </PageTransition>;
   }
-
-  return (
-    <PageTransition>
+  return <PageTransition>
       <div className="container mx-auto py-8 space-y-6">
         <Card className="w-full max-w-4xl mx-auto">
           <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
@@ -176,10 +160,7 @@ const JobDetail = () => {
                     {getClientInitials(client.name)}
                   </AvatarFallback>
                 </Avatar>
-                <Link 
-                  to={`/client/${client.id}`} 
-                  className="text-base font-semibold text-purple-700 hover:underline break-words min-w-0 flex-1"
-                >
+                <Link to={`/client/${client.id}`} className="text-base font-semibold text-purple-900 hover:underline break-words min-w-0 flex-1">
                   {client.name}
                 </Link>
               </div>
@@ -193,13 +174,7 @@ const JobDetail = () => {
               
               {/* Action Buttons */}
               <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  size="icon" 
-                  asChild 
-                  className="h-8 w-8 rounded-full"
-                  title="Edit Job"
-                >
+                <Button variant="outline" size="icon" asChild className="h-8 w-8 rounded-full" title="Edit Job">
                   <Link to={`/job/${job.id}/edit`}>
                     <FileEdit className="h-4 w-4" />
                     <span className="sr-only">Edit Job</span>
@@ -207,12 +182,7 @@ const JobDetail = () => {
                 </Button>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button 
-                      variant="destructive" 
-                      size="icon" 
-                      className="h-8 w-8 rounded-full"
-                      title="Delete Job"
-                    >
+                    <Button variant="destructive" size="icon" className="h-8 w-8 rounded-full" title="Delete Job">
                       <Trash2 className="h-4 w-4" />
                       <span className="sr-only">Delete Job</span>
                     </Button>
@@ -280,23 +250,19 @@ const JobDetail = () => {
                       </div>
                     </div>
                     
-                    {client.address && (
-                      <div>
+                    {client.address && <div>
                         <div className="text-sm font-medium text-muted-foreground">Address</div>
                         <div className="mt-0.5">
                           {client.address}
                         </div>
-                      </div>
-                    )}
+                      </div>}
                     
-                    {client.notes && (
-                      <div>
+                    {client.notes && <div>
                         <div className="text-sm font-medium text-muted-foreground">Notes</div>
                         <div className="mt-0.5 text-sm line-clamp-3">
                           {client.notes}
                         </div>
-                      </div>
-                    )}
+                      </div>}
                   </div>
                 </div>
                 
@@ -307,35 +273,27 @@ const JobDetail = () => {
                   </CardDescription>
                   <Separator className="my-4" />
                   
-                  {job.description && (
-                    <div className="mb-4">
+                  {job.description && <div className="mb-4">
                       <h4 className="font-semibold mb-1">Description</h4>
                       <p className="text-sm">{job.description}</p>
-                    </div>
-                  )}
+                    </div>}
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {job.date && (
-                      <div className="flex items-center">
+                    {job.date && <div className="flex items-center">
                         <CalendarDays className="h-4 w-4 text-muted-foreground mr-2" />
                         <div>
                           <span>Date: {new Date(job.date).toLocaleDateString()}</span>
-                          {(job.startTime || job.isFullDay) && (
-                            <div className="flex items-center text-sm text-muted-foreground mt-1">
+                          {(job.startTime || job.isFullDay) && <div className="flex items-center text-sm text-muted-foreground mt-1">
                               <Clock className="h-3.5 w-3.5 mr-1" />
                               <span>{formatTimeDisplay(job)}</span>
-                            </div>
-                          )}
+                            </div>}
                         </div>
-                      </div>
-                    )}
+                      </div>}
                     
-                    {job.location && (
-                      <div className="flex items-center">
+                    {job.location && <div className="flex items-center">
                         <MapPin className="h-4 w-4 text-muted-foreground mr-2" />
                         <span>Location: {job.location}</span>
-                      </div>
-                    )}
+                      </div>}
                   </div>
                 </div>
               </div>
@@ -344,20 +302,14 @@ const JobDetail = () => {
           <CardFooter>
             <CardDescription>
               Created on {new Date(job.createdAt).toLocaleDateString()}
-              {job.updatedAt && job.updatedAt !== job.createdAt && 
-                ` • Last updated on ${new Date(job.updatedAt).toLocaleDateString()}`
-              }
+              {job.updatedAt && job.updatedAt !== job.createdAt && ` • Last updated on ${new Date(job.updatedAt).toLocaleDateString()}`}
             </CardDescription>
           </CardFooter>
         </Card>
 
         {/* Job Teammates Section */}
         <div className="w-full max-w-4xl mx-auto">
-          <JobTeammatesList
-            jobId={job.id}
-            teammates={jobTeammates}
-            onTeammateRemoved={handleTeammateStatusRefreshed}
-          />
+          <JobTeammatesList jobId={job.id} teammates={jobTeammates} onTeammateRemoved={handleTeammateStatusRefreshed} />
         </div>
 
         {/* Invoices Section */}
@@ -374,8 +326,7 @@ const JobDetail = () => {
             </div>
           </CardHeader>
           <CardContent>
-            {invoices.length === 0 ? (
-              <div className="bg-muted/50 rounded-lg p-6 text-center">
+            {invoices.length === 0 ? <div className="bg-muted/50 rounded-lg p-6 text-center">
                 <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
                 <p className="text-muted-foreground">No invoices have been created for this job yet.</p>
                 <Button className="mt-4" asChild>
@@ -383,15 +334,10 @@ const JobDetail = () => {
                     Create First Invoice
                   </Link>
                 </Button>
-              </div>
-            ) : (
-              <InvoiceList invoices={invoices} client={client} showCreateButton={false} />
-            )}
+              </div> : <InvoiceList invoices={invoices} client={client} showCreateButton={false} />}
           </CardContent>
         </Card>
       </div>
-    </PageTransition>
-  );
+    </PageTransition>;
 };
-
 export default JobDetail;

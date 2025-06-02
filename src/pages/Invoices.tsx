@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { getInvoices, deleteInvoice } from '@/lib/storage';
+import { getInvoices } from '@/lib/storage';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import PageTransition from '@/components/ui-custom/PageTransition';
@@ -17,7 +18,6 @@ import { sortInvoices, filterInvoices } from '@/utils/invoiceUtils';
 // Import the new components
 import InvoicesEmptyState from '@/components/invoices/InvoicesEmptyState';
 import InvoicesTable from '@/components/invoices/InvoicesTable';
-import DeleteInvoiceDialog from '@/components/invoices/DeleteInvoiceDialog';
 import InvoicesToolbar from '@/components/invoices/InvoicesToolbar';
 import CreateInvoiceModal from '@/components/ui-custom/CreateInvoiceModal';
 import { SortConfig } from '@/components/invoices/InvoicesTable';
@@ -27,7 +27,6 @@ const Invoices = () => {
   const selectedCompanyId = selectedCompany?.id;
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [invoiceToDelete, setInvoiceToDelete] = useState<string | null>(null);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const queryClient = useQueryClient();
@@ -169,31 +168,6 @@ const Invoices = () => {
     setIsCreateModalOpen(false);
   };
 
-  // Delete invoice handlers
-  const handleDeleteInvoice = async () => {
-    if (!invoiceToDelete) return;
-
-    try {
-      await deleteInvoice(invoiceToDelete);
-      setLocalInvoices(prev => prev.filter(invoice => invoice.id !== invoiceToDelete));
-      toast.success("Invoice deleted successfully");
-      queryClient.invalidateQueries({ queryKey: ['invoices', selectedCompanyId] });
-      setInvoiceToDelete(null);
-    } catch (error) {
-      console.error('Error deleting invoice:', error);
-      toast.error("Failed to delete invoice");
-    }
-  };
-
-  const confirmDeleteInvoice = (e: React.MouseEvent, invoiceId: string) => {
-    e.stopPropagation();
-    setInvoiceToDelete(invoiceId);
-  };
-
-  const handleInvoiceDeleted = (invoiceId: string) => {
-    setLocalInvoices(prev => prev.filter(invoice => invoice.id !== invoiceId));
-  };
-
   // Sorting handler
   const handleSort = (key: string) => {
     setSortConfig(prevConfig => {
@@ -267,11 +241,6 @@ const Invoices = () => {
 
   return (
     <PageTransition>
-      <DeleteInvoiceDialog 
-        invoiceId={invoiceToDelete}
-        invoiceNumber={invoiceToDelete ? localInvoices.find(inv => inv.id === invoiceToDelete)?.number || '' : ''}
-      />
-
       <ExportDialog
         isOpen={isExportDialogOpen}
         onClose={handleExportClose}

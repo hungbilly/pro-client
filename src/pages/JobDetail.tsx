@@ -169,68 +169,77 @@ const JobDetail = () => {
               {/* Job Title - Always on top */}
               <CardTitle className="text-xl md:text-2xl font-bold break-words">{job.title}</CardTitle>
               
-              {/* Client Information Row - Better mobile layout */}
-              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <Avatar className="h-8 w-8 bg-purple-100 flex-shrink-0">
-                    <AvatarFallback className="text-purple-700 text-sm">
-                      {getClientInitials(client.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <Link 
-                    to={`/client/${client.id}`} 
-                    className="text-base font-semibold text-purple-700 hover:underline break-words"
-                  >
-                    {client.name}
-                  </Link>
-                </div>
-                
-                {/* Status Badge - Separate line on mobile */}
-                <Badge className={`self-start sm:self-center ${getStatusColor(job.status)}`}>
+              {/* Client Information */}
+              <div className="flex items-center gap-2">
+                <Avatar className="h-8 w-8 bg-purple-100 flex-shrink-0">
+                  <AvatarFallback className="text-purple-700 text-sm">
+                    {getClientInitials(client.name)}
+                  </AvatarFallback>
+                </Avatar>
+                <Link 
+                  to={`/client/${client.id}`} 
+                  className="text-base font-semibold text-purple-700 hover:underline break-words"
+                >
+                  {client.name}
+                </Link>
+              </div>
+              
+              {/* Status Badge and Action Buttons */}
+              <div className="flex flex-col gap-3">
+                <Badge className={`self-start ${getStatusColor(job.status)}`}>
                   {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
                 </Badge>
+                
+                {/* Circular Action Buttons */}
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    asChild 
+                    className="h-8 w-8 rounded-full"
+                    title="Edit Job"
+                  >
+                    <Link to={`/job/${job.id}/edit`}>
+                      <FileEdit className="h-4 w-4" />
+                      <span className="sr-only">Edit Job</span>
+                    </Link>
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button 
+                        variant="destructive" 
+                        size="icon" 
+                        className="h-8 w-8 rounded-full"
+                        title="Delete Job"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        <span className="sr-only">Delete Job</span>
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This action cannot be undone. All data associated with this job will be permanently deleted.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteJob}>Continue</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               </div>
             </div>
             
-            {/* Action Buttons - Responsive layout */}
-            <div className="flex flex-col sm:flex-row gap-2 ml-4">
+            {/* Back Button - Top Right */}
+            <div className="ml-4">
               <Button variant="outline" size="sm" onClick={() => navigate(`/client/${client.id}`)}>
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 <span className="hidden sm:inline">Back to Client</span>
                 <span className="sm:hidden">Back</span>
               </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                asChild 
-                className="tooltip" 
-                title="Edit Job"
-              >
-                <Link to={`/job/${job.id}/edit`}>
-                  <FileEdit className="h-4 w-4" />
-                  <span className="sr-only">Edit Job</span>
-                </Link>
-              </Button>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="destructive" size="sm" title="Delete Job">
-                    <Trash2 className="h-4 w-4" />
-                    <span className="sr-only">Delete Job</span>
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This action cannot be undone. All data associated with this job will be permanently deleted.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDeleteJob}>Continue</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
             </div>
           </CardHeader>
           <CardContent>

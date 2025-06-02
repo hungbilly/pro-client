@@ -144,7 +144,7 @@ const TeammateSelector: React.FC<TeammateSelectorProps> = ({
           <Users className="h-5 w-5" />
           Assign Teammates
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="break-words">
           Select teammates to add to this job. Already assigned teammates are marked with a checkmark.
         </CardDescription>
       </CardHeader>
@@ -158,11 +158,13 @@ const TeammateSelector: React.FC<TeammateSelectorProps> = ({
                 <Badge
                   key={jobTeammate.id}
                   variant="default"
-                  className="flex items-center gap-1"
+                  className="flex items-center gap-1 max-w-full"
                 >
-                  <CheckCircle className="h-3 w-3" />
-                  {jobTeammate.teammate_name || jobTeammate.teammate_email}
-                  <span className="text-xs">({jobTeammate.invitation_status})</span>
+                  <CheckCircle className="h-3 w-3 flex-shrink-0" />
+                  <span className="truncate min-w-0 text-xs sm:text-sm">
+                    {jobTeammate.teammate_name || jobTeammate.teammate_email}
+                  </span>
+                  <span className="text-xs whitespace-nowrap">({jobTeammate.invitation_status})</span>
                 </Badge>
               ))}
             </div>
@@ -172,21 +174,23 @@ const TeammateSelector: React.FC<TeammateSelectorProps> = ({
         {/* Selected Teammates (new additions) */}
         {selectedTeammates.length > 0 && (
           <div>
-            <Label className="text-sm font-medium">New Teammates to Add ({selectedTeammates.length})</Label>
+            <Label className="text-sm font-medium break-words">New Teammates to Add ({selectedTeammates.length})</Label>
             <div className="flex flex-wrap gap-2 mt-2">
               {selectedTeammates.map((teammate) => (
                 <Badge
                   key={teammate.email}
                   variant={teammate.isNew ? "secondary" : "default"}
-                  className="flex items-center gap-1 pr-1"
+                  className="flex items-center gap-1 pr-1 max-w-full min-w-0"
                 >
-                  <User className="h-3 w-3" />
-                  {teammate.name}
-                  {teammate.isNew && <span className="text-xs">(new)</span>}
+                  <User className="h-3 w-3 flex-shrink-0" />
+                  <span className="truncate min-w-0 text-xs sm:text-sm">
+                    {teammate.name}
+                  </span>
+                  {teammate.isNew && <span className="text-xs whitespace-nowrap">(new)</span>}
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-4 w-4 p-0 hover:bg-destructive hover:text-destructive-foreground"
+                    className="h-4 w-4 p-0 hover:bg-destructive hover:text-destructive-foreground flex-shrink-0"
                     onClick={() => handleRemoveSelected(teammate.email)}
                   >
                     <X className="h-3 w-3" />
@@ -211,7 +215,7 @@ const TeammateSelector: React.FC<TeammateSelectorProps> = ({
                 return (
                   <div
                     key={teammate.id}
-                    className={`flex items-center gap-3 p-2 border rounded-lg ${
+                    className={`flex items-start gap-3 p-2 border rounded-lg ${
                       isAlreadyAssigned ? 'bg-green-50 border-green-200' : 'bg-muted/50'
                     }`}
                   >
@@ -222,35 +226,38 @@ const TeammateSelector: React.FC<TeammateSelectorProps> = ({
                         handleTeammateToggle(teammate, checked as boolean)
                       }
                       disabled={isAlreadyAssigned}
+                      className="mt-1 flex-shrink-0"
                     />
                     
-                    <Avatar className="h-8 w-8">
+                    <Avatar className="h-8 w-8 flex-shrink-0">
                       <AvatarFallback className="bg-primary/10 text-primary text-xs">
                         {getInitials(teammate.name)}
                       </AvatarFallback>
                     </Avatar>
                     
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <div className="font-medium text-sm">{teammate.name}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                        <div className="font-medium text-sm truncate">{teammate.name}</div>
                         {isAlreadyAssigned && (
-                          <CheckCircle className="h-4 w-4 text-green-600" />
+                          <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
                         )}
                       </div>
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Mail className="h-3 w-3" />
-                        {teammate.email}
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                        <Mail className="h-3 w-3 flex-shrink-0" />
+                        <span className="truncate">{teammate.email}</span>
                       </div>
-                      {teammate.role && (
-                        <Badge variant="outline" className="text-xs mt-1">
-                          {teammate.role}
-                        </Badge>
-                      )}
-                      {isAlreadyAssigned && (
-                        <Badge variant="secondary" className="text-xs mt-1">
-                          Already assigned
-                        </Badge>
-                      )}
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {teammate.role && (
+                          <Badge variant="outline" className="text-xs">
+                            {teammate.role}
+                          </Badge>
+                        )}
+                        {isAlreadyAssigned && (
+                          <Badge variant="secondary" className="text-xs">
+                            Already assigned
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
@@ -258,7 +265,7 @@ const TeammateSelector: React.FC<TeammateSelectorProps> = ({
             </div>
           </div>
         ) : (
-          <p className="text-center text-muted-foreground py-4">
+          <p className="text-center text-muted-foreground py-4 break-words">
             No teammates found. Add some teammates in Settings first, or add a new one below.
           </p>
         )}
@@ -291,7 +298,7 @@ const TeammateSelector: React.FC<TeammateSelectorProps> = ({
                   onChange={(e) => setNewTeammate({ ...newTeammate, email: e.target.value })}
                 />
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <Button
                   type="button"
                   size="sm"
@@ -308,6 +315,7 @@ const TeammateSelector: React.FC<TeammateSelectorProps> = ({
                     setShowAddNew(false);
                     setNewTeammate({ name: '', email: '' });
                   }}
+                  className="flex-1 sm:flex-initial"
                 >
                   Cancel
                 </Button>

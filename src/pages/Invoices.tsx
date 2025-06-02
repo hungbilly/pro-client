@@ -269,6 +269,7 @@ const Invoices = () => {
     <PageTransition>
       <DeleteInvoiceDialog 
         invoiceId={invoiceToDelete}
+        invoiceNumber={invoiceToDelete ? localInvoices.find(inv => inv.id === invoiceToDelete)?.number || '' : ''}
       />
 
       <ExportDialog

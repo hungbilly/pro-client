@@ -13,16 +13,27 @@ import {
 
 interface DeleteClientDialogProps {
   clientId: string | null;
+  clientName?: string;
   onClose: () => void;
   onConfirm: () => void;
 }
 
-const DeleteClientDialog: React.FC<DeleteClientDialogProps> = ({ clientId, onClose, onConfirm }) => {
+const DeleteClientDialog: React.FC<DeleteClientDialogProps> = ({ 
+  clientId, 
+  clientName, 
+  onClose, 
+  onConfirm 
+}) => {
   return (
     <AlertDialog open={!!clientId} onOpenChange={(open) => !open && onClose()}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Are you sure you want to delete this client?</AlertDialogTitle>
+          <AlertDialogTitle>
+            {clientName 
+              ? `Are you sure you want to delete ${clientName}?`
+              : "Are you sure you want to delete this client?"
+            }
+          </AlertDialogTitle>
           <AlertDialogDescription>
             This action cannot be undone. This will permanently delete the client
             and all associated data from our servers.

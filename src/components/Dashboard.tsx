@@ -256,6 +256,9 @@ const Dashboard: React.FC = () => {
       </div>;
   }
 
+  // Get the client name for the delete dialog
+  const clientToDeleteName = clientToDelete ? clients.find(c => c.id === clientToDelete)?.name : undefined;
+
   return (
     <div className={`min-h-screen ${isMobile ? 'mobile-scrollable' : ''}`}>
       <AnimatedBackground 
@@ -264,6 +267,7 @@ const Dashboard: React.FC = () => {
       >
         <DeleteClientDialog 
           clientId={clientToDelete}
+          clientName={clientToDeleteName}
           onClose={cancelDeleteClient}
           onConfirm={handleDeleteClient}
         />

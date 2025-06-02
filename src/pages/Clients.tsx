@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -127,6 +126,9 @@ const ClientsTable = () => {
     }
   };
 
+  // Get the client name for the delete dialog
+  const clientToDeleteName = clientToDelete ? clients.find(c => c.id === clientToDelete)?.name : undefined;
+
   // Filter clients based on search query and date range
   const filteredClients = clients.filter(client => {
     // Text search filter
@@ -213,7 +215,12 @@ const ClientsTable = () => {
       <AlertDialog open={!!clientToDelete} onOpenChange={(open) => !open && !isDeleting && setClientToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure you want to delete this client?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {clientToDeleteName 
+                ? `Are you sure you want to delete ${clientToDeleteName}?`
+                : "Are you sure you want to delete this client?"
+              }
+            </AlertDialogTitle>
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete the client
               and all associated data from our servers.

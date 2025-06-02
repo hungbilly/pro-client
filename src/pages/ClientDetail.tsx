@@ -123,7 +123,9 @@ const ClientDetail = () => {
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogTitle>
+                    Are you sure you want to delete {client?.name}?
+                  </AlertDialogTitle>
                   <AlertDialogDescription>
                     This action cannot be undone. All data associated with this client will be permanently deleted.
                   </AlertDialogDescription>

@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Users, Calendar, Mail, Phone, X, Clock, CheckCircle, XCircle, AlertCircle, RefreshCw } from 'lucide-react';
+import { Users, Calendar, Mail, Phone, X, Clock, CheckCircle, XCircle, AlertCircle, RefreshCw, Loader2 } from 'lucide-react';
 import { JobTeammate } from '@/types/teammate';
 import { removeTeammateFromJob } from '@/lib/teammateStorage';
 import { toast } from 'sonner';
@@ -23,6 +23,7 @@ const JobTeammatesList: React.FC<JobTeammatesListProps> = ({
 }) => {
   const queryClient = useQueryClient();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [removingTeammates, setRemovingTeammates] = useState<Set<string>>(new Set());
 
   // Auto-refresh every 2 minutes if there are pending invitations
   useEffect(() => {
@@ -39,15 +40,33 @@ const JobTeammatesList: React.FC<JobTeammatesListProps> = ({
     return () => clearInterval(interval);
   }, [teammates, jobId]);
 
-  const handleRemoveTeammate = async (jobTeammateId: string) => {
+  const handleRemoveTeammate = async (jobTeammateId: string, teammateName?: string, teammateEmail?: string) => {
+    setRemovingTeammates(prev => new Set(prev).add(jobTeammateId));
+    
     try {
+      const teammateToRemove = teammates.find(t => t.id === jobTeammateId);
+      const displayName = teammateToRemove?.teammate_name || teammateToRemove?.teammate_email || 'teammate';
+      
+      if (teammateToRemove?.calendar_event_id) {
+        toast.loading(`Removing ${displayName} from job and calendar...`);
+      } else {
+        toast.loading(`Removing ${displayName} from job...`);
+      }
+
       await removeTeammateFromJob(jobTeammateId);
-      toast.success('Teammate removed from job');
+      
+      toast.success(`${displayName} removed successfully`);
       queryClient.invalidateQueries({ queryKey: ['job-teammates', jobId] });
       onTeammateRemoved?.();
     } catch (error) {
       console.error('Error removing teammate:', error);
       toast.error('Failed to remove teammate');
+    } finally {
+      setRemovingTeammates(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(jobTeammateId);
+        return newSet;
+      });
     }
   };
 
@@ -169,76 +188,89 @@ const JobTeammatesList: React.FC<JobTeammatesListProps> = ({
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
-          {teammates.map((jobTeammate) => (
-            <div
-              key={jobTeammate.id}
-              className="flex items-center justify-between p-3 border rounded-lg bg-muted/50"
-            >
-              <div className="flex items-center gap-3">
-                <Avatar className="h-10 w-10">
-                  <AvatarFallback className="bg-primary/10 text-primary">
-                    {getInitials(jobTeammate.teammate_name || jobTeammate.teammate_email)}
-                  </AvatarFallback>
-                </Avatar>
-                
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-medium">
-                      {jobTeammate.teammate_name || jobTeammate.teammate_email}
-                    </h4>
-                    <div className="flex items-center gap-1">
-                      {getStatusIcon(jobTeammate.invitation_status)}
-                      <Badge className={getStatusColor(jobTeammate.invitation_status)}>
-                        {jobTeammate.invitation_status}
-                      </Badge>
-                    </div>
-                  </div>
-                  
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-1 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Mail className="h-3 w-3" />
-                      <span className="break-all">{jobTeammate.teammate_email}</span>
-                    </div>
-                    
-                    {jobTeammate.teammates?.phone && (
-                      <div className="flex items-center gap-1">
-                        <Phone className="h-3 w-3" />
-                        {jobTeammate.teammates.phone}
-                      </div>
-                    )}
-                    
-                    {jobTeammate.calendar_event_id && (
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        <span>Calendar invited</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {jobTeammate.teammates?.role && (
-                    <Badge variant="outline" className="mt-2 text-xs">
-                      {jobTeammate.teammates.role}
-                    </Badge>
-                  )}
-                  
-                  {jobTeammate.responded_at && (
-                    <div className="text-xs text-muted-foreground mt-1">
-                      Responded: {new Date(jobTeammate.responded_at).toLocaleDateString()}
-                    </div>
-                  )}
-                </div>
-              </div>
-              
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleRemoveTeammate(jobTeammate.id)}
-                className="text-destructive hover:text-destructive"
+          {teammates.map((jobTeammate) => {
+            const isRemoving = removingTeammates.has(jobTeammate.id);
+            
+            return (
+              <div
+                key={jobTeammate.id}
+                className="flex items-center justify-between p-3 border rounded-lg bg-muted/50"
               >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          ))}
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-10 w-10">
+                    <AvatarFallback className="bg-primary/10 text-primary">
+                      {getInitials(jobTeammate.teammate_name || jobTeammate.teammate_email)}
+                    </AvatarFallback>
+                  </Avatar>
+                  
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-medium">
+                        {jobTeammate.teammate_name || jobTeammate.teammate_email}
+                      </h4>
+                      <div className="flex items-center gap-1">
+                        {getStatusIcon(jobTeammate.invitation_status)}
+                        <Badge className={getStatusColor(jobTeammate.invitation_status)}>
+                          {jobTeammate.invitation_status}
+                        </Badge>
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-1 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Mail className="h-3 w-3" />
+                        <span className="break-all">{jobTeammate.teammate_email}</span>
+                      </div>
+                      
+                      {jobTeammate.teammates?.phone && (
+                        <div className="flex items-center gap-1">
+                          <Phone className="h-3 w-3" />
+                          {jobTeammate.teammates.phone}
+                        </div>
+                      )}
+                      
+                      {jobTeammate.calendar_event_id && (
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          <span>Calendar invited</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {jobTeammate.teammates?.role && (
+                      <Badge variant="outline" className="mt-2 text-xs">
+                        {jobTeammate.teammates.role}
+                      </Badge>
+                    )}
+                    
+                    {jobTeammate.responded_at && (
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Responded: {new Date(jobTeammate.responded_at).toLocaleDateString()}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleRemoveTeammate(
+                    jobTeammate.id,
+                    jobTeammate.teammate_name,
+                    jobTeammate.teammate_email
+                  )}
+                  disabled={isRemoving}
+                  className="text-destructive hover:text-destructive"
+                >
+                  {isRemoving ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <X className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            );
+          })}
         </div>
         
         {hasCalendarInvites && (

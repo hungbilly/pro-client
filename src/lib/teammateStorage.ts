@@ -114,6 +114,52 @@ export const inviteTeammatesToJob = async (
 };
 
 export const removeTeammateFromJob = async (jobTeammateId: string): Promise<void> => {
+  // First, get the teammate record to check if they have a calendar event
+  const { data: jobTeammate, error: fetchError } = await supabase
+    .from('job_teammates')
+    .select('calendar_event_id, teammate_email')
+    .eq('id', jobTeammateId)
+    .single();
+
+  if (fetchError) {
+    console.error('Error fetching job teammate:', fetchError);
+    throw fetchError;
+  }
+
+  // If the teammate has a calendar event, try to remove them from it
+  if (jobTeammate?.calendar_event_id && jobTeammate?.teammate_email) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.warn('No active session found, skipping calendar removal');
+      } else {
+        console.log(`Attempting to remove ${jobTeammate.teammate_email} from calendar event ${jobTeammate.calendar_event_id}`);
+        
+        const { data, error: calendarError } = await supabase.functions.invoke('remove-teammate-from-calendar', {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: {
+            jobTeammateId,
+            calendarEventId: jobTeammate.calendar_event_id,
+            teammateEmail: jobTeammate.teammate_email
+          }
+        });
+
+        if (calendarError) {
+          console.error('Error removing teammate from calendar:', calendarError);
+          // Don't throw here - we still want to remove from database even if calendar removal fails
+        } else if (data?.success) {
+          console.log('Successfully removed teammate from calendar event');
+        }
+      }
+    } catch (calendarError) {
+      console.error('Error during calendar removal:', calendarError);
+      // Don't throw here - we still want to remove from database even if calendar removal fails
+    }
+  }
+
+  // Remove the teammate from the database
   const { error } = await supabase
     .from('job_teammates')
     .delete()

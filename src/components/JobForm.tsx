@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Client, Job } from '@/types';
@@ -246,6 +247,35 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
     }
   };
 
+  const createJobTeammateRecords = async (jobId: string, teammates: Array<{ id?: string; name: string; email: string }>) => {
+    console.log('📝 [FRONTEND] Creating job teammate records only (no calendar event)');
+    
+    try {
+      for (const teammate of teammates) {
+        const { error } = await supabase
+          .from('job_teammates')
+          .insert({
+            job_id: jobId,
+            teammate_id: teammate.id,
+            teammate_name: teammate.name,
+            teammate_email: teammate.email,
+            invitation_status: 'pending'
+          });
+          
+        if (error) {
+          console.error('❌ [FRONTEND] Error creating job teammate record:', error);
+          throw error;
+        }
+      }
+      
+      console.log('✅ [FRONTEND] Successfully created job teammate records');
+      return true;
+    } catch (error) {
+      console.error('❌ [FRONTEND] Error in createJobTeammateRecords:', error);
+      throw error;
+    }
+  };
+
   const processJobSubmission = async () => {
     if (!client) {
       toast.error('Client is required.');
@@ -315,7 +345,7 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
         await updateJob(updatedJob);
         console.log('✅ [FRONTEND] Job updated successfully');
 
-        // Handle teammates for existing job
+        // Handle teammates for existing job - FIXED LOGIC HERE
         if (selectedTeammates.length > 0 && formattedDate) {
           console.log('👥 [FRONTEND] === PROCESSING TEAMMATES FOR EXISTING JOB ===');
           console.log('👥 [FRONTEND] Has calendar integration:', hasCalendarIntegration);
@@ -324,7 +354,7 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
           try {
             // Step 1: Always create job teammate records in database first
             console.log('📝 [FRONTEND] Step 1: Creating job teammate records in database');
-            await inviteTeammatesToJob(existingJob.id, selectedTeammates, timezoneToUse, false);
+            await createJobTeammateRecords(existingJob.id, selectedTeammates);
             console.log('✅ [FRONTEND] Job teammate records created successfully');
             
             // Step 2: If there's an existing calendar event and calendar integration, add teammates to it
@@ -334,18 +364,10 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
               console.log('✅ [FRONTEND] Teammates added to existing calendar event successfully');
               toast.success('Teammates added to job and calendar event');
             } else if (hasCalendarIntegration && !existingJob.calendarEventId) {
-              console.log('📅 [FRONTEND] Step 2: Creating new calendar event with teammates');
-              // No existing calendar event, create new one with teammates
-              const eventId = await addToCalendar(updatedJob);
-              if (eventId) {
-                // Now add teammates to the newly created event
-                updatedJob.calendarEventId = eventId;
-                await updateJob(updatedJob);
-                await addTeammatesToExistingCalendarEvent(updatedJob, selectedTeammates);
-                toast.success('Calendar event created with teammates');
-              } else {
-                toast.success('Teammates added to job (calendar event creation failed)');
-              }
+              console.log('📅 [FRONTEND] Step 2: Creating new calendar event with teammates for job without calendar event');
+              // Only call invite function if there's no existing calendar event
+              await inviteTeammatesToJob(existingJob.id, selectedTeammates, timezoneToUse, true);
+              toast.success('Calendar event created with teammates');
             } else {
               console.log('📝 [FRONTEND] Step 2: No calendar integration - teammates added to database only');
               toast.success('Teammates added to job');

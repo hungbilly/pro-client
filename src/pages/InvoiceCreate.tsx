@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
@@ -544,15 +543,12 @@ const InvoiceCreate = () => {
         )}
 
         <InvoiceForm 
-          invoice={invoice}
-          clientId={clientId || job?.clientId}
-          jobId={jobId}
-          invoiceId={invoiceId}
+          propInvoice={invoice}
+          propClientId={clientId || job?.clientId}
+          propJobId={jobId}
+          propInvoiceId={invoiceId}
           isEditView={isEditView}
-          contractTemplates={contractTemplates}
-          checkDuplicateInvoiceNumber={checkDuplicateInvoiceNumber}
-          onInvoiceDeleted={handleInvoiceDeleted}
-          currency={currency}
+          hasContractTemplates={contractTemplates.length > 0}
         />
       </div>
     </PageTransition>

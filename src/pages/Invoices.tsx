@@ -269,8 +269,6 @@ const Invoices = () => {
     <PageTransition>
       <DeleteInvoiceDialog 
         invoiceId={invoiceToDelete}
-        onClose={() => setInvoiceToDelete(null)}
-        onConfirm={handleDeleteInvoice}
       />
 
       <ExportDialog

@@ -13,9 +13,9 @@ import { format } from 'date-fns';
 import { Client, Invoice, InvoiceItem, Job, PaymentSchedule, ContractStatus, InvoiceStatus, PaymentStatus } from '@/types';
 import { getClient, getClients, saveInvoice, updateInvoice, getJob, getClientJobs } from '@/lib/storage';
 import { toast } from 'sonner';
-import { useCompany } from '@/context/CompanyContext';
+import { useCompanyContext } from '@/context/CompanyContext';
 import { useAuth } from '@/context/AuthContext';
-import DatePicker from '@/components/ui/date-picker';
+import { DatePicker } from '@/components/ui/date-picker';
 import RichTextEditor from '@/components/RichTextEditor';
 import SaveAsTemplateDialog from '@/components/SaveAsTemplateDialog';
 import InvoiceTemplateSettings from '@/components/InvoiceTemplateSettings';
@@ -44,12 +44,13 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   hasContractTemplates
 }) => {
   const navigate = useNavigate();
-  const { company } = useCompany();
+  const { selectedCompany } = useCompanyContext();
   const { user } = useAuth();
 
   const [invoice, setInvoice] = useState<Invoice>({
+    id: '',
     clientId: '',
-    companyId: company?.id || '',
+    companyId: selectedCompany?.id || '',
     jobId: '',
     number: '',
     date: format(new Date(), 'yyyy-MM-dd'),
@@ -62,7 +63,8 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     shootingDate: format(new Date(), 'yyyy-MM-dd'),
     items: [],
     paymentSchedules: [],
-    pdfUrl: ''
+    pdfUrl: '',
+    viewLink: ''
   });
   const [clients, setClients] = useState<Client[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -86,7 +88,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
           setInvoice(prev => ({ ...prev, jobId: propJobId }));
         }
 
-        const fetchedClients = await getClients(company?.id);
+        const fetchedClients = await getClients(selectedCompany?.id);
         setClients(fetchedClients);
 
         if (propClientId) {
@@ -103,7 +105,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     };
 
     fetchData();
-  }, [propInvoice, propClientId, propJobId, company?.id]);
+  }, [propInvoice, propClientId, propJobId, selectedCompany?.id]);
 
   useEffect(() => {
     if (invoice.clientId) {
@@ -142,12 +144,12 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     try {
       if (propInvoiceId) {
         // If it's an existing invoice, update it
-        const updatedInvoice = { ...invoice, id: propInvoiceId, companyId: company?.id || '' };
+        const updatedInvoice = { ...invoice, id: propInvoiceId, companyId: selectedCompany?.id || '' };
         await updateInvoice(updatedInvoice);
         toast.success('Invoice updated successfully.');
       } else {
         // If it's a new invoice, save it
-        const newInvoice = { ...invoice, companyId: company?.id || '' };
+        const newInvoice = { ...invoice, companyId: selectedCompany?.id || '' };
         await saveInvoice(newInvoice);
         toast.success('Invoice saved successfully.');
       }
@@ -299,28 +301,25 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
               <div>
                 <Label htmlFor="date">Invoice Date</Label>
                 <DatePicker
-                  id="date"
-                  name="date"
-                  date={invoice.date ? new Date(invoice.date) : undefined}
-                  onDateChange={(date) => handleDateChange('date', date)}
+                  mode="single"
+                  selected={invoice.date ? new Date(invoice.date) : undefined}
+                  onSelect={(date) => handleDateChange('date', date)}
                 />
               </div>
               <div>
                 <Label htmlFor="dueDate">Due Date</Label>
                 <DatePicker
-                  id="dueDate"
-                  name="dueDate"
-                  date={invoice.dueDate ? new Date(invoice.dueDate) : undefined}
-                  onDateChange={(date) => handleDateChange('dueDate', date)}
+                  mode="single"
+                  selected={invoice.dueDate ? new Date(invoice.dueDate) : undefined}
+                  onSelect={(date) => handleDateChange('dueDate', date)}
                 />
               </div>
               <div>
                 <Label htmlFor="shootingDate">Shooting Date</Label>
                 <DatePicker
-                  id="shootingDate"
-                  name="shootingDate"
-                  date={invoice.shootingDate ? new Date(invoice.shootingDate) : undefined}
-                  onDateChange={(date) => handleDateChange('shootingDate', date)}
+                  mode="single"
+                  selected={invoice.shootingDate ? new Date(invoice.shootingDate) : undefined}
+                  onSelect={(date) => handleDateChange('shootingDate', date)}
                 />
               </div>
             </div>
@@ -380,6 +379,13 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                 <RichTextEditor value={invoice.contractTerms} onChange={handleContractTermsChange} />
               </div>
             )}
+
+            <div className="flex gap-2 pt-4">
+              <Button onClick={handleSaveInvoice} disabled={isSaving}>
+                <Save className="h-4 w-4 mr-2" />
+                {isSaving ? 'Saving...' : 'Save Invoice'}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

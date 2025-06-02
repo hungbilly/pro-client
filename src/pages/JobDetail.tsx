@@ -223,7 +223,7 @@ const JobDetail = () => {
                   
                   <div className="space-y-3">
                     <div>
-                      <div className="text-sm font-medium text-muted-foreground">Company</div>
+                      <div className="text-sm font-medium text-muted-foreground">Name</div>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
                         <span>{client.name}</span>

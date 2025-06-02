@@ -12,6 +12,7 @@ import { ArrowLeft, Trash2, UserCog } from 'lucide-react';
 import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import AddClientButton from '@/components/ui-custom/AddClientButton';
+import AddJobButton from '@/components/ui-custom/AddJobButton';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const ClientDetail = () => {
@@ -111,7 +112,10 @@ const ClientDetail = () => {
               Back to Clients
             </Button>
             {isMobile && (
-              <AddClientButton size="sm" variant="outline" />
+              <>
+                <AddClientButton size="sm" variant="outline" />
+                <AddJobButton clientId={client.id} size="sm" variant="outline" />
+              </>
             )}
             <Button size="sm" asChild>
               <Link to={`/client/${client.id}/edit`}>

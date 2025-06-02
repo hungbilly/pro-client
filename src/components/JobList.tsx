@@ -94,12 +94,12 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
     console.log('Rendering job card for job:', job.id);
     
     return (
-      <div key={job.id} className="group relative w-full">
+      <div key={job.id} className="group relative">
         <div 
-          className="block transition-all duration-200 hover:shadow-soft rounded-lg cursor-pointer w-full"
+          className="block transition-all duration-200 hover:shadow-soft rounded-lg cursor-pointer"
           onClick={() => handleJobCardClick(job.id)}
         >
-          <Card className="overflow-hidden h-full border-transparent hover:border-border transition-all duration-200 w-full">
+          <Card className="overflow-hidden h-full border-transparent hover:border-border transition-all duration-200">
             <CardHeader className="pb-3">
               <div className="flex justify-between items-start gap-2">
                 <div className="flex-1 min-w-0">
@@ -153,14 +153,14 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
   };
 
   const renderJobSection = (title: string, icon: React.ReactNode, jobList: Job[], emptyMessage: string) => (
-    <div className="space-y-4 w-full">
+    <div className="space-y-4">
       <div className="flex items-center gap-2">
         {icon}
         <h3 className="text-lg font-medium">{title}</h3>
       </div>
       
       {jobList.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {jobList.map(renderJobCard)}
         </div>
       ) : (
@@ -170,10 +170,10 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
   );
 
   return (
-    <div className="space-y-8 w-full max-w-full overflow-hidden">
-      <div className={`flex ${isMobile ? 'flex-col gap-3' : 'flex-row'} items-start justify-between w-full`}>
-        <h2 className="text-2xl font-semibold flex-shrink-0">Jobs</h2>
-        <Button asChild className={isMobile ? 'w-full' : 'flex-shrink-0'}>
+    <div className="space-y-8 max-w-full">
+      <div className="space-y-4">
+        <h2 className="text-2xl font-semibold">Jobs</h2>
+        <Button asChild className="w-fit">
           <Link to={`/client/${client.id}/job/create`}>
             <Plus className="h-4 w-4 mr-2" />
             Create Job
@@ -182,7 +182,7 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
       </div>
       
       {sortedJobs.length === 0 ? (
-        <Card className="w-full">
+        <Card>
           <CardContent className="flex flex-col items-center justify-center py-8 text-center">
             <BriefcaseBusiness className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-medium mb-2">No Jobs Yet</h3>
@@ -198,7 +198,7 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-10 w-full">
+        <div className="space-y-10">
           {activeJobs.length > 0 && (
             renderJobSection(
               "Active Jobs", 

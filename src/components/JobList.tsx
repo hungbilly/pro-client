@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { BriefcaseBusiness, CalendarDays, MapPin, Plus, Clock } from 'lucide-react';
+import { BriefcaseBusiness, CalendarDays, MapPin, Plus, Clock, ChevronRight } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { deleteJob } from '@/lib/storage';
 import { toast } from 'sonner';
@@ -90,64 +90,51 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
     navigate(`/job/${jobId}`);
   };
 
-  const renderJobCard = (job: Job) => {
-    console.log('Rendering job card for job:', job.id);
+  const renderJobListItem = (job: Job) => {
+    console.log('Rendering job list item for job:', job.id);
     
     return (
-      <div key={job.id} className="group relative">
-        <div 
-          className="block transition-all duration-200 hover:shadow-soft rounded-lg cursor-pointer"
-          onClick={() => handleJobCardClick(job.id)}
-        >
-          <Card className="overflow-hidden h-full border-transparent hover:border-border transition-all duration-200">
-            <CardHeader className="pb-3">
-              <div className="flex justify-between items-start gap-2">
-                <div className="flex-1 min-w-0">
-                  <CardTitle className="text-base truncate">{job.title}</CardTitle>
-                  <CardDescription className="text-xs mt-1">
-                    {job.createdAt && `Created: ${new Date(job.createdAt).toLocaleDateString()}`}
-                  </CardDescription>
-                </div>
-                <Badge className={`${getStatusColor(job.status)} flex-shrink-0`}>
-                  {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="pb-6 relative">
-              {job.description && (
-                <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{job.description}</p>
-              )}
-              <div className="space-y-2">
-                {job.date && (
-                  <div className="flex justify-between items-start gap-2">
-                    <div className="text-sm text-muted-foreground flex-shrink-0">Date:</div>
-                    <div className="text-sm font-medium text-right flex-1 min-w-0">
-                      <div className="flex items-center justify-end">
-                        <CalendarDays className="h-3 w-3 mr-1 text-muted-foreground flex-shrink-0" />
-                        <span className="truncate">{new Date(job.date).toLocaleDateString()}</span>
-                      </div>
-                      {(job.startTime || job.isFullDay) && (
-                        <div className="flex items-center mt-1 justify-end">
-                          <Clock className="h-3 w-3 mr-1 text-muted-foreground flex-shrink-0" />
-                          <span className="text-muted-foreground truncate">{formatTimeDisplay(job)}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-                {job.location && (
-                  <div className="flex justify-between items-center gap-2">
-                    <div className="text-sm text-muted-foreground flex-shrink-0">Location:</div>
-                    <div className="text-sm font-medium flex items-center flex-1 min-w-0 justify-end">
-                      <MapPin className="h-3 w-3 mr-1 text-muted-foreground flex-shrink-0" />
-                      <span className="truncate">{job.location}</span>
-                    </div>
-                  </div>
+      <div 
+        key={job.id} 
+        className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+        onClick={() => handleJobCardClick(job.id)}
+      >
+        <div className="flex-1 min-w-0 space-y-1">
+          <div className="flex items-center gap-2">
+            <h4 className="font-medium truncate">{job.title}</h4>
+            <Badge className={`${getStatusColor(job.status)} flex-shrink-0`}>
+              {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
+            </Badge>
+          </div>
+          
+          {job.description && (
+            <p className="text-sm text-muted-foreground line-clamp-1">{job.description}</p>
+          )}
+          
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            {job.date && (
+              <div className="flex items-center gap-1">
+                <CalendarDays className="h-3 w-3" />
+                <span>{new Date(job.date).toLocaleDateString()}</span>
+                {(job.startTime || job.isFullDay) && (
+                  <>
+                    <Clock className="h-3 w-3 ml-2" />
+                    <span>{formatTimeDisplay(job)}</span>
+                  </>
                 )}
               </div>
-            </CardContent>
-          </Card>
+            )}
+            
+            {job.location && (
+              <div className="flex items-center gap-1">
+                <MapPin className="h-3 w-3" />
+                <span className="truncate">{job.location}</span>
+              </div>
+            )}
+          </div>
         </div>
+        
+        <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0 ml-2" />
       </div>
     );
   };
@@ -160,8 +147,8 @@ const JobList: React.FC<JobListProps> = ({ jobs, client, onJobDelete }) => {
       </div>
       
       {jobList.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {jobList.map(renderJobCard)}
+        <div className="space-y-2">
+          {jobList.map(renderJobListItem)}
         </div>
       ) : (
         <p className="text-sm text-muted-foreground py-4">{emptyMessage}</p>

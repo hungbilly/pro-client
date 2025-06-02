@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -145,16 +144,14 @@ const JobTeammatesList: React.FC<JobTeammatesListProps> = ({
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Assigned Teammates ({teammates.length})
-            </CardTitle>
-            <CardDescription>
-              Team members invited to this job and their response status
-            </CardDescription>
-          </div>
+        <div>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Assigned Teammates ({teammates.length})
+          </CardTitle>
+          <CardDescription>
+            Team members invited to this job and their response status
+          </CardDescription>
           
           {hasCalendarInvites && (
             <Button
@@ -162,7 +159,7 @@ const JobTeammatesList: React.FC<JobTeammatesListProps> = ({
               size="sm"
               onClick={() => handleRefreshStatus()}
               disabled={isRefreshing}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 mt-3"
             >
               <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
               {isRefreshing ? 'Checking...' : 'Refresh Status'}
@@ -197,10 +194,10 @@ const JobTeammatesList: React.FC<JobTeammatesListProps> = ({
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-1 text-sm text-muted-foreground">
                     <div className="flex items-center gap-1">
                       <Mail className="h-3 w-3" />
-                      {jobTeammate.teammate_email}
+                      <span className="break-all">{jobTeammate.teammate_email}</span>
                     </div>
                     
                     {jobTeammate.teammates?.phone && (
@@ -213,7 +210,7 @@ const JobTeammatesList: React.FC<JobTeammatesListProps> = ({
                     {jobTeammate.calendar_event_id && (
                       <div className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
-                        Calendar invited
+                        <span>Calendar invited</span>
                       </div>
                     )}
                   </div>

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getClient, getClientInvoices, deleteClient, getClientJobs } from '@/lib/storage';
@@ -12,6 +11,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { ArrowLeft, Trash2, UserCog } from 'lucide-react';
 import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
+import AddClientButton from '@/components/ui-custom/AddClientButton';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const ClientDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -20,6 +21,7 @@ const ClientDetail = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (!id) {
@@ -103,11 +105,14 @@ const ClientDetail = () => {
       <Card className="w-full max-w-4xl mx-auto">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-2xl font-bold">{client.name}</CardTitle>
-          <div className="space-x-2">
+          <div className={`flex gap-2 ${isMobile ? 'flex-wrap' : 'space-x-2'}`}>
             <Button variant="outline" size="sm" onClick={() => navigate('/')}>
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Clients
             </Button>
+            {isMobile && (
+              <AddClientButton size="sm" variant="outline" />
+            )}
             <Button size="sm" asChild>
               <Link to={`/client/${client.id}/edit`}>
                 <UserCog className="h-4 w-4 mr-2" />

@@ -99,10 +99,10 @@ Deno.serve(async (req) => {
       let shouldUpdateToken = false;
 
       // Function to try calendar operation with token refresh if needed
-      const tryCalendarOperation = async (token: string) => {
-        console.log('📅 Fetching current calendar event details...');
+      const tryCalendarOperation = async (token: string, eventId: string) => {
+        console.log(`📅 Fetching calendar event details for ID: ${eventId}`);
         const getEventResponse = await fetch(
-          `https://www.googleapis.com/calendar/v3/calendars/primary/events/${calendarEventId}`,
+          `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`,
           {
             headers: {
               'Authorization': `Bearer ${token}`,
@@ -115,10 +115,55 @@ Deno.serve(async (req) => {
         return getEventResponse;
       };
 
-      let getEventResponse = await tryCalendarOperation(accessToken);
+      // Try different event ID formats
+      const eventIdsToTry = [
+        calendarEventId,
+        // Try URL-encoded version
+        encodeURIComponent(calendarEventId),
+        // Try URL-decoded version
+        decodeURIComponent(calendarEventId),
+        // Try with _R suffix (recurring events)
+        calendarEventId + '_R',
+        // Try base64 decode if it looks encoded
+        (() => {
+          try {
+            return atob(calendarEventId);
+          } catch {
+            return null;
+          }
+        })()
+      ].filter(Boolean);
+
+      console.log('🔍 Trying different event ID formats:', eventIdsToTry);
+
+      let getEventResponse: Response | null = null;
+      let workingEventId = calendarEventId;
+
+      // Try each event ID format
+      for (const eventIdToTry of eventIdsToTry) {
+        console.log(`🔍 Trying event ID: ${eventIdToTry}`);
+        const response = await tryCalendarOperation(accessToken, eventIdToTry);
+        
+        if (response.status === 200) {
+          console.log(`✅ Found event with ID: ${eventIdToTry}`);
+          getEventResponse = response;
+          workingEventId = eventIdToTry;
+          break;
+        } else if (response.status === 404) {
+          console.log(`❌ Event not found with ID: ${eventIdToTry}`);
+        } else if (response.status === 401) {
+          console.log(`🔄 Need to refresh token for ID: ${eventIdToTry}`);
+          // We'll handle token refresh below
+          getEventResponse = response;
+          workingEventId = eventIdToTry;
+          break;
+        } else {
+          console.log(`⚠️ Unexpected response status ${response.status} for ID: ${eventIdToTry}`);
+        }
+      }
 
       // Handle token refresh if needed
-      if (getEventResponse.status === 401) {
+      if (getEventResponse && getEventResponse.status === 401) {
         console.log('🔄 Access token expired, attempting to refresh...');
         
         const refreshResponse = await fetch('https://oauth2.googleapis.com/token', {
@@ -141,8 +186,8 @@ Deno.serve(async (req) => {
           shouldUpdateToken = true;
           
           // Retry the request with new token
-          console.log('🔄 Retrying event fetch with new token...');
-          getEventResponse = await tryCalendarOperation(accessToken);
+          console.log(`🔄 Retrying event fetch with new token for ID: ${workingEventId}`);
+          getEventResponse = await tryCalendarOperation(accessToken, workingEventId);
         } else {
           console.warn('⚠️ Failed to refresh Google access token, skipping calendar removal');
           return new Response(
@@ -170,14 +215,40 @@ Deno.serve(async (req) => {
         console.log('✅ Updated stored access token');
       }
 
-      if (getEventResponse.status === 404) {
-        console.log(`ℹ️ Calendar event ${calendarEventId} not found, it may have already been deleted`);
+      if (!getEventResponse || getEventResponse.status === 404) {
+        console.log(`ℹ️ Calendar event not found with any of the tried IDs. Original ID: ${calendarEventId}`);
+        
+        // List recent events to help debug
+        console.log('🔍 Listing recent calendar events to help debug...');
+        try {
+          const listResponse = await fetch(
+            'https://www.googleapis.com/calendar/v3/calendars/primary/events?maxResults=10&orderBy=updated',
+            {
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+              },
+            }
+          );
+          
+          if (listResponse.ok) {
+            const listData = await listResponse.json();
+            console.log('📋 Recent events:');
+            listData.items?.forEach((event: any, index: number) => {
+              console.log(`${index + 1}. ID: ${event.id}, Summary: ${event.summary}, Created: ${event.created}`);
+            });
+          }
+        } catch (error) {
+          console.log('⚠️ Could not list recent events:', error);
+        }
+        
         return new Response(
           JSON.stringify({ 
             success: true, 
             message: `Teammate ${teammateEmail} removed from job`,
             calendarRemoved: false,
-            reason: 'Calendar event not found'
+            reason: 'Calendar event not found with any tried ID formats',
+            triedIds: eventIdsToTry
           }),
           { 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -229,7 +300,8 @@ Deno.serve(async (req) => {
             success: true, 
             message: `Teammate ${teammateEmail} was not found in calendar event attendees`,
             calendarRemoved: false,
-            reason: 'Attendee not found in event'
+            reason: 'Attendee not found in event',
+            eventId: workingEventId
           }),
           { 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -255,7 +327,7 @@ Deno.serve(async (req) => {
       
       console.log('📤 Sending update request to Google Calendar...');
       const updateResponse = await fetch(
-        `https://www.googleapis.com/calendar/v3/calendars/primary/events/${calendarEventId}`,
+        `https://www.googleapis.com/calendar/v3/calendars/primary/events/${workingEventId}`,
         {
           method: 'PUT',
           headers: {
@@ -284,12 +356,13 @@ Deno.serve(async (req) => {
           }
         );
       } else {
-        console.log(`✅ Successfully removed ${teammateEmail} from calendar event ${calendarEventId}`);
+        console.log(`✅ Successfully removed ${teammateEmail} from calendar event ${workingEventId}`);
         return new Response(
           JSON.stringify({ 
             success: true, 
             message: `Teammate ${teammateEmail} removed from job and calendar`,
-            calendarRemoved: true
+            calendarRemoved: true,
+            eventId: workingEventId
           }),
           { 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },

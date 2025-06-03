@@ -116,11 +116,16 @@ export const inviteTeammatesToJob = async (
 export const removeTeammateFromJob = async (jobTeammateId: string): Promise<void> => {
   console.log('🚀 removeTeammateFromJob called with ID:', jobTeammateId);
   
-  // First, get the teammate record to check if they have a calendar event
-  console.log('🔍 Fetching job teammate record...');
-  const { data: jobTeammate, error: fetchError } = await supabase
+  // First, get the teammate record AND the job's calendar event ID
+  console.log('🔍 Fetching job teammate record with job details...');
+  const { data: jobTeammateData, error: fetchError } = await supabase
     .from('job_teammates')
-    .select('calendar_event_id, teammate_email')
+    .select(`
+      calendar_event_id,
+      teammate_email,
+      job_id,
+      jobs!inner(calendar_event_id)
+    `)
     .eq('id', jobTeammateId)
     .single();
 
@@ -129,14 +134,22 @@ export const removeTeammateFromJob = async (jobTeammateId: string): Promise<void
     throw fetchError;
   }
 
-  console.log('📋 Job teammate data:', {
-    hasCalendarEvent: !!jobTeammate?.calendar_event_id,
-    email: jobTeammate?.teammate_email,
-    calendarEventId: jobTeammate?.calendar_event_id
+  // Get the correct calendar event ID from the jobs table
+  const jobCalendarEventId = jobTeammateData?.jobs?.calendar_event_id;
+  const teammateCalendarEventId = jobTeammateData?.calendar_event_id;
+  
+  console.log('📋 Calendar event IDs comparison:', {
+    fromJobsTable: jobCalendarEventId,
+    fromJobTeammatesTable: teammateCalendarEventId,
+    email: jobTeammateData?.teammate_email,
+    jobId: jobTeammateData?.job_id
   });
 
+  // Use the job's calendar event ID as primary source
+  const calendarEventIdToUse = jobCalendarEventId || teammateCalendarEventId;
+
   // Check if user has Google Calendar integration before attempting calendar removal
-  if (jobTeammate?.calendar_event_id && jobTeammate?.teammate_email) {
+  if (calendarEventIdToUse && jobTeammateData?.teammate_email) {
     try {
       console.log('🔐 Getting current session...');
       const { data: { session } } = await supabase.auth.getSession();
@@ -158,12 +171,13 @@ export const removeTeammateFromJob = async (jobTeammateId: string): Promise<void
           console.log('ℹ️ User needs to connect Google Calendar in Settings to remove teammates from calendar events');
         } else {
           console.log('✅ Google Calendar integration found, proceeding with calendar removal');
-          console.log(`🗑️ Attempting to remove ${jobTeammate.teammate_email} from calendar event ${jobTeammate.calendar_event_id}`);
+          console.log(`🗑️ Attempting to remove ${jobTeammateData.teammate_email} from calendar event ${calendarEventIdToUse}`);
+          console.log(`📊 Using event ID from: ${jobCalendarEventId ? 'jobs table (correct)' : 'job_teammates table (fallback)'}`);
           
           const requestBody = {
             jobTeammateId,
-            calendarEventId: jobTeammate.calendar_event_id,
-            teammateEmail: jobTeammate.teammate_email
+            calendarEventId: calendarEventIdToUse,
+            teammateEmail: jobTeammateData.teammate_email
           };
           
           console.log('📤 Calling edge function with body:', requestBody);
@@ -184,7 +198,7 @@ export const removeTeammateFromJob = async (jobTeammateId: string): Promise<void
             if (data.calendarRemoved) {
               console.log('✅ Successfully removed teammate from calendar event');
             } else {
-              console.log('ℹ️ Teammate removed from database, but calendar removal was skipped (no Google tokens)');
+              console.log(`ℹ️ Teammate removed from database, calendar removal skipped: ${data.reason}`);
             }
           } else {
             console.warn('⚠️ Unexpected response from calendar removal:', data);

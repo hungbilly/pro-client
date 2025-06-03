@@ -40,14 +40,15 @@ Deno.serve(async (req) => {
 
     console.log(`Removing teammate ${teammateEmail} from calendar event ${calendarEventId}`);
 
-    // Get user's Google access token
-    const { data: tokens, error: tokenError } = await supabase
-      .from('user_google_tokens')
+    // Get user's Google access token from user_integrations table
+    const { data: integration, error: tokenError } = await supabase
+      .from('user_integrations')
       .select('access_token, refresh_token')
       .eq('user_id', user.id)
+      .eq('provider', 'google_calendar')
       .single();
 
-    if (tokenError || !tokens) {
+    if (tokenError || !integration) {
       console.error('No Google tokens found for user:', tokenError);
       throw new Error('Google Calendar access not available. Please reconnect your Google account.');
     }
@@ -57,7 +58,7 @@ Deno.serve(async (req) => {
       `https://www.googleapis.com/calendar/v3/calendars/primary/events/${calendarEventId}`,
       {
         headers: {
-          'Authorization': `Bearer ${tokens.access_token}`,
+          'Authorization': `Bearer ${integration.access_token}`,
           'Content-Type': 'application/json',
         },
       }
@@ -72,7 +73,7 @@ Deno.serve(async (req) => {
           body: new URLSearchParams({
             client_id: Deno.env.get('GOOGLE_CLIENT_ID')!,
             client_secret: Deno.env.get('GOOGLE_CLIENT_SECRET')!,
-            refresh_token: tokens.refresh_token,
+            refresh_token: integration.refresh_token,
             grant_type: 'refresh_token',
           }),
         });
@@ -82,9 +83,10 @@ Deno.serve(async (req) => {
           
           // Update stored tokens
           await supabase
-            .from('user_google_tokens')
+            .from('user_integrations')
             .update({ access_token: refreshData.access_token })
-            .eq('user_id', user.id);
+            .eq('user_id', user.id)
+            .eq('provider', 'google_calendar');
 
           // Retry the request with new token
           const retryResponse = await fetch(
@@ -148,7 +150,7 @@ Deno.serve(async (req) => {
         {
           method: 'PUT',
           headers: {
-            'Authorization': `Bearer ${tokens.access_token}`,
+            'Authorization': `Bearer ${integration.access_token}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({

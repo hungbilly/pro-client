@@ -72,175 +72,167 @@ Deno.serve(async (req) => {
       .from('user_integrations')
       .select('access_token, refresh_token')
       .eq('user_id', user.id)
-      .eq('provider', 'google')
+      .eq('provider', 'google_calendar')
       .single();
 
     console.log('🔍 Token query result:', { hasTokens: !!tokens, tokenError });
 
     if (tokenError || !tokens) {
-      console.error('❌ No Google tokens found for user:', tokenError);
-      throw new Error('Google Calendar access not available. Please reconnect your Google account.');
-    }
-
-    console.log('✅ Google tokens found for user');
-
-    // First, get the current event to see all attendees
-    console.log('📅 Fetching current calendar event details...');
-    const getEventResponse = await fetch(
-      `https://www.googleapis.com/calendar/v3/calendars/primary/events/${calendarEventId}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${tokens.access_token}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    console.log('📅 Get event response status:', getEventResponse.status);
-
-    if (!getEventResponse.ok) {
-      if (getEventResponse.status === 401) {
-        console.log('🔄 Access token expired, attempting to refresh...');
-        
-        // Try to refresh the token
-        const refreshResponse = await fetch('https://oauth2.googleapis.com/token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams({
-            client_id: Deno.env.get('GOOGLE_CLIENT_ID')!,
-            client_secret: Deno.env.get('GOOGLE_CLIENT_SECRET')!,
-            refresh_token: tokens.refresh_token,
-            grant_type: 'refresh_token',
-          }),
-        });
-
-        console.log('🔄 Refresh token response status:', refreshResponse.status);
-
-        if (refreshResponse.ok) {
-          const refreshData = await refreshResponse.json();
-          console.log('✅ Token refreshed successfully');
-          
-          // Update stored tokens
-          await supabase
-            .from('user_integrations')
-            .update({ access_token: refreshData.access_token })
-            .eq('user_id', user.id)
-            .eq('provider', 'google');
-
-          console.log('✅ Updated stored access token');
-
-          // Retry the request with new token
-          console.log('🔄 Retrying event fetch with new token...');
-          const retryResponse = await fetch(
-            `https://www.googleapis.com/calendar/v3/calendars/primary/events/${calendarEventId}`,
-            {
-              headers: {
-                'Authorization': `Bearer ${refreshData.access_token}`,
-                'Content-Type': 'application/json',
-              },
-            }
-          );
-
-          console.log('🔄 Retry response status:', retryResponse.status);
-
-          if (!retryResponse.ok) {
-            const error = `Failed to get calendar event after token refresh: ${retryResponse.status}`;
-            console.error('❌', error);
-            throw new Error(error);
-          }
-
-          const eventData = await retryResponse.json();
-          console.log('📅 Event data retrieved, current attendees count:', eventData.attendees?.length || 0);
-          
-          const updatedAttendees = (eventData.attendees || []).filter(
-            (attendee: any) => attendee.email.toLowerCase() !== teammateEmail.toLowerCase()
-          );
-
-          console.log('👥 Attendees after filtering:', updatedAttendees.length);
-
-          // Update the event with the new attendees list
-          console.log('📝 Updating calendar event with new attendees list...');
-          const updateResponse = await fetch(
-            `https://www.googleapis.com/calendar/v3/calendars/primary/events/${calendarEventId}`,
-            {
-              method: 'PUT',
-              headers: {
-                'Authorization': `Bearer ${refreshData.access_token}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                ...eventData,
-                attendees: updatedAttendees,
-              }),
-            }
-          );
-
-          console.log('📝 Update response status:', updateResponse.status);
-
-          if (!updateResponse.ok) {
-            const error = `Failed to update calendar event: ${updateResponse.status}`;
-            console.error('❌', error);
-            throw new Error(error);
-          }
-
-          console.log(`✅ Successfully removed ${teammateEmail} from calendar event ${calendarEventId}`);
-        } else {
-          const error = 'Failed to refresh Google access token';
-          console.error('❌', error);
-          throw new Error(error);
-        }
-      } else if (getEventResponse.status === 404) {
-        console.log(`⚠️ Calendar event ${calendarEventId} not found, it may have already been deleted`);
-      } else {
-        const error = `Failed to get calendar event: ${getEventResponse.status}`;
-        console.error('❌', error);
-        throw new Error(error);
-      }
+      console.warn('⚠️ No Google tokens found for user:', tokenError);
+      // Instead of throwing an error, we'll skip calendar removal but still remove from database
+      console.log('ℹ️ Skipping Google Calendar removal due to missing tokens, will only remove from database');
     } else {
-      // Token is valid, proceed with removing the attendee
-      console.log('✅ Token is valid, proceeding with attendee removal');
-      const eventData = await getEventResponse.json();
-      console.log('📅 Event data retrieved, current attendees count:', eventData.attendees?.length || 0);
-      
-      const updatedAttendees = (eventData.attendees || []).filter(
-        (attendee: any) => attendee.email.toLowerCase() !== teammateEmail.toLowerCase()
-      );
+      console.log('✅ Google tokens found for user, proceeding with calendar removal');
 
-      console.log('👥 Attendees after filtering:', updatedAttendees.length);
-
-      // Update the event with the new attendees list
-      console.log('📝 Updating calendar event with new attendees list...');
-      const updateResponse = await fetch(
+      // First, get the current event to see all attendees
+      console.log('📅 Fetching current calendar event details...');
+      const getEventResponse = await fetch(
         `https://www.googleapis.com/calendar/v3/calendars/primary/events/${calendarEventId}`,
         {
-          method: 'PUT',
           headers: {
             'Authorization': `Bearer ${tokens.access_token}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            ...eventData,
-            attendees: updatedAttendees,
-          }),
         }
       );
 
-      console.log('📝 Update response status:', updateResponse.status);
+      console.log('📅 Get event response status:', getEventResponse.status);
 
-      if (!updateResponse.ok) {
-        const error = `Failed to update calendar event: ${updateResponse.status}`;
-        console.error('❌', error);
-        throw new Error(error);
+      if (!getEventResponse.ok) {
+        if (getEventResponse.status === 401) {
+          console.log('🔄 Access token expired, attempting to refresh...');
+          
+          // Try to refresh the token
+          const refreshResponse = await fetch('https://oauth2.googleapis.com/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+              client_id: Deno.env.get('GOOGLE_CLIENT_ID')!,
+              client_secret: Deno.env.get('GOOGLE_CLIENT_SECRET')!,
+              refresh_token: tokens.refresh_token,
+              grant_type: 'refresh_token',
+            }),
+          });
+
+          console.log('🔄 Refresh token response status:', refreshResponse.status);
+
+          if (refreshResponse.ok) {
+            const refreshData = await refreshResponse.json();
+            console.log('✅ Token refreshed successfully');
+            
+            // Update stored tokens
+            await supabase
+              .from('user_integrations')
+              .update({ access_token: refreshData.access_token })
+              .eq('user_id', user.id)
+              .eq('provider', 'google_calendar');
+
+            console.log('✅ Updated stored access token');
+
+            // Retry the request with new token
+            console.log('🔄 Retrying event fetch with new token...');
+            const retryResponse = await fetch(
+              `https://www.googleapis.com/calendar/v3/calendars/primary/events/${calendarEventId}`,
+              {
+                headers: {
+                  'Authorization': `Bearer ${refreshData.access_token}`,
+                  'Content-Type': 'application/json',
+                },
+              }
+            );
+
+            console.log('🔄 Retry response status:', retryResponse.status);
+
+            if (!retryResponse.ok) {
+              console.warn('⚠️ Failed to get calendar event after token refresh, skipping calendar removal');
+            } else {
+              const eventData = await retryResponse.json();
+              console.log('📅 Event data retrieved, current attendees count:', eventData.attendees?.length || 0);
+              
+              const updatedAttendees = (eventData.attendees || []).filter(
+                (attendee: any) => attendee.email.toLowerCase() !== teammateEmail.toLowerCase()
+              );
+
+              console.log('👥 Attendees after filtering:', updatedAttendees.length);
+
+              // Update the event with the new attendees list
+              console.log('📝 Updating calendar event with new attendees list...');
+              const updateResponse = await fetch(
+                `https://www.googleapis.com/calendar/v3/calendars/primary/events/${calendarEventId}`,
+                {
+                  method: 'PUT',
+                  headers: {
+                    'Authorization': `Bearer ${refreshData.access_token}`,
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    ...eventData,
+                    attendees: updatedAttendees,
+                  }),
+                }
+              );
+
+              console.log('📝 Update response status:', updateResponse.status);
+
+              if (!updateResponse.ok) {
+                console.warn('⚠️ Failed to update calendar event, but continuing with database removal');
+              } else {
+                console.log(`✅ Successfully removed ${teammateEmail} from calendar event ${calendarEventId}`);
+              }
+            }
+          } else {
+            console.warn('⚠️ Failed to refresh Google access token, skipping calendar removal');
+          }
+        } else if (getEventResponse.status === 404) {
+          console.log(`ℹ️ Calendar event ${calendarEventId} not found, it may have already been deleted`);
+        } else {
+          console.warn(`⚠️ Failed to get calendar event (${getEventResponse.status}), skipping calendar removal`);
+        }
+      } else {
+        // Token is valid, proceed with removing the attendee
+        console.log('✅ Token is valid, proceeding with attendee removal');
+        const eventData = await getEventResponse.json();
+        console.log('📅 Event data retrieved, current attendees count:', eventData.attendees?.length || 0);
+        
+        const updatedAttendees = (eventData.attendees || []).filter(
+          (attendee: any) => attendee.email.toLowerCase() !== teammateEmail.toLowerCase()
+        );
+
+        console.log('👥 Attendees after filtering:', updatedAttendees.length);
+
+        // Update the event with the new attendees list
+        console.log('📝 Updating calendar event with new attendees list...');
+        const updateResponse = await fetch(
+          `https://www.googleapis.com/calendar/v3/calendars/primary/events/${calendarEventId}`,
+          {
+            method: 'PUT',
+            headers: {
+              'Authorization': `Bearer ${tokens.access_token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              ...eventData,
+              attendees: updatedAttendees,
+            }),
+          }
+        );
+
+        console.log('📝 Update response status:', updateResponse.status);
+
+        if (!updateResponse.ok) {
+          console.warn('⚠️ Failed to update calendar event, but continuing with database removal');
+        } else {
+          console.log(`✅ Successfully removed ${teammateEmail} from calendar event ${calendarEventId}`);
+        }
       }
-
-      console.log(`✅ Successfully removed ${teammateEmail} from calendar event ${calendarEventId}`);
     }
 
     console.log('🎉 Function completed successfully');
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: `Teammate ${teammateEmail} removed from calendar event` 
+        message: `Teammate ${teammateEmail} removed from job`,
+        calendarRemoved: !!tokens
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

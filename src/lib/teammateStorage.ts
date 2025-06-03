@@ -135,7 +135,7 @@ export const removeTeammateFromJob = async (jobTeammateId: string): Promise<void
     calendarEventId: jobTeammate?.calendar_event_id
   });
 
-  // If the teammate has a calendar event, try to remove them from it
+  // Check if user has Google Calendar integration before attempting calendar removal
   if (jobTeammate?.calendar_event_id && jobTeammate?.teammate_email) {
     try {
       console.log('🔐 Getting current session...');
@@ -143,33 +143,52 @@ export const removeTeammateFromJob = async (jobTeammateId: string): Promise<void
       if (!session) {
         console.warn('⚠️ No active session found, skipping calendar removal');
       } else {
-        console.log('✅ Active session found, proceeding with calendar removal');
-        console.log(`🗑️ Attempting to remove ${jobTeammate.teammate_email} from calendar event ${jobTeammate.calendar_event_id}`);
+        console.log('✅ Active session found, checking Google Calendar integration...');
         
-        const requestBody = {
-          jobTeammateId,
-          calendarEventId: jobTeammate.calendar_event_id,
-          teammateEmail: jobTeammate.teammate_email
-        };
-        
-        console.log('📤 Calling edge function with body:', requestBody);
-        
-        const { data, error: calendarError } = await supabase.functions.invoke('remove-teammate-from-calendar', {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: requestBody
-        });
+        // Check if user has Google Calendar integration
+        const { data: integration, error: integrationError } = await supabase
+          .from('user_integrations')
+          .select('access_token')
+          .eq('user_id', session.user.id)
+          .eq('provider', 'google_calendar')
+          .single();
 
-        console.log('📥 Edge function response:', { data, error: calendarError });
-
-        if (calendarError) {
-          console.error('❌ Error removing teammate from calendar:', calendarError);
-          // Don't throw here - we still want to remove from database even if calendar removal fails
-        } else if (data?.success) {
-          console.log('✅ Successfully removed teammate from calendar event');
+        if (integrationError || !integration) {
+          console.warn('⚠️ No Google Calendar integration found, skipping calendar removal');
+          console.log('ℹ️ User needs to connect Google Calendar in Settings to remove teammates from calendar events');
         } else {
-          console.warn('⚠️ Unexpected response from calendar removal:', data);
+          console.log('✅ Google Calendar integration found, proceeding with calendar removal');
+          console.log(`🗑️ Attempting to remove ${jobTeammate.teammate_email} from calendar event ${jobTeammate.calendar_event_id}`);
+          
+          const requestBody = {
+            jobTeammateId,
+            calendarEventId: jobTeammate.calendar_event_id,
+            teammateEmail: jobTeammate.teammate_email
+          };
+          
+          console.log('📤 Calling edge function with body:', requestBody);
+          
+          const { data, error: calendarError } = await supabase.functions.invoke('remove-teammate-from-calendar', {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: requestBody
+          });
+
+          console.log('📥 Edge function response:', { data, error: calendarError });
+
+          if (calendarError) {
+            console.error('❌ Error removing teammate from calendar:', calendarError);
+            // Don't throw here - we still want to remove from database even if calendar removal fails
+          } else if (data?.success) {
+            if (data.calendarRemoved) {
+              console.log('✅ Successfully removed teammate from calendar event');
+            } else {
+              console.log('ℹ️ Teammate removed from database, but calendar removal was skipped (no Google tokens)');
+            }
+          } else {
+            console.warn('⚠️ Unexpected response from calendar removal:', data);
+          }
         }
       }
     } catch (calendarError) {

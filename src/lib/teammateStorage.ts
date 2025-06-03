@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Teammate, JobTeammate } from '@/types/teammate';
 
@@ -129,34 +128,30 @@ export const removeTeammateFromJob = async (jobTeammateId: string): Promise<void
   // If the teammate has a calendar event, try to remove them from it
   if (jobTeammate?.calendar_event_id && jobTeammate?.teammate_email) {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        console.warn('No active session found, skipping calendar removal');
-      } else {
-        console.log(`Attempting to remove ${jobTeammate.teammate_email} from calendar event ${jobTeammate.calendar_event_id}`);
-        
-        const { data, error: calendarError } = await supabase.functions.invoke('remove-teammate-from-calendar', {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: {
-            jobTeammateId,
-            calendarEventId: jobTeammate.calendar_event_id,
-            teammateEmail: jobTeammate.teammate_email
-          }
-        });
-
-        if (calendarError) {
-          console.error('Error removing teammate from calendar:', calendarError);
-          // Don't throw here - we still want to remove from database even if calendar removal fails
-        } else if (data?.success) {
-          console.log('Successfully removed teammate from calendar event');
+      console.log(`Attempting to remove ${jobTeammate.teammate_email} from calendar event ${jobTeammate.calendar_event_id}`);
+      
+      const { data, error: calendarError } = await supabase.functions.invoke('remove-teammate-from-calendar', {
+        body: {
+          jobTeammateId,
+          calendarEventId: jobTeammate.calendar_event_id,
+          teammateEmail: jobTeammate.teammate_email
         }
+      });
+
+      if (calendarError) {
+        console.error('Error removing teammate from calendar:', calendarError);
+        // Don't throw here - we still want to remove from database even if calendar removal fails
+      } else if (data?.success) {
+        console.log('Successfully removed teammate from calendar event');
+      } else {
+        console.warn('Calendar removal may have failed:', data);
       }
     } catch (calendarError) {
       console.error('Error during calendar removal:', calendarError);
       // Don't throw here - we still want to remove from database even if calendar removal fails
     }
+  } else {
+    console.log('No calendar event associated with this teammate, skipping calendar removal');
   }
 
   // Remove the teammate from the database
@@ -169,4 +164,6 @@ export const removeTeammateFromJob = async (jobTeammateId: string): Promise<void
     console.error('Error removing teammate from job:', error);
     throw error;
   }
+
+  console.log('Successfully removed teammate from job');
 };

@@ -114,7 +114,10 @@ export const inviteTeammatesToJob = async (
 };
 
 export const removeTeammateFromJob = async (jobTeammateId: string): Promise<void> => {
+  console.log('🚀 removeTeammateFromJob called with ID:', jobTeammateId);
+  
   // First, get the teammate record to check if they have a calendar event
+  console.log('🔍 Fetching job teammate record...');
   const { data: jobTeammate, error: fetchError } = await supabase
     .from('job_teammates')
     .select('calendar_event_id, teammate_email')
@@ -122,51 +125,72 @@ export const removeTeammateFromJob = async (jobTeammateId: string): Promise<void
     .single();
 
   if (fetchError) {
-    console.error('Error fetching job teammate:', fetchError);
+    console.error('❌ Error fetching job teammate:', fetchError);
     throw fetchError;
   }
+
+  console.log('📋 Job teammate data:', {
+    hasCalendarEvent: !!jobTeammate?.calendar_event_id,
+    email: jobTeammate?.teammate_email,
+    calendarEventId: jobTeammate?.calendar_event_id
+  });
 
   // If the teammate has a calendar event, try to remove them from it
   if (jobTeammate?.calendar_event_id && jobTeammate?.teammate_email) {
     try {
+      console.log('🔐 Getting current session...');
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        console.warn('No active session found, skipping calendar removal');
+        console.warn('⚠️ No active session found, skipping calendar removal');
       } else {
-        console.log(`Attempting to remove ${jobTeammate.teammate_email} from calendar event ${jobTeammate.calendar_event_id}`);
+        console.log('✅ Active session found, proceeding with calendar removal');
+        console.log(`🗑️ Attempting to remove ${jobTeammate.teammate_email} from calendar event ${jobTeammate.calendar_event_id}`);
+        
+        const requestBody = {
+          jobTeammateId,
+          calendarEventId: jobTeammate.calendar_event_id,
+          teammateEmail: jobTeammate.teammate_email
+        };
+        
+        console.log('📤 Calling edge function with body:', requestBody);
         
         const { data, error: calendarError } = await supabase.functions.invoke('remove-teammate-from-calendar', {
           headers: {
             Authorization: `Bearer ${session.access_token}`,
           },
-          body: {
-            jobTeammateId,
-            calendarEventId: jobTeammate.calendar_event_id,
-            teammateEmail: jobTeammate.teammate_email
-          }
+          body: requestBody
         });
 
+        console.log('📥 Edge function response:', { data, error: calendarError });
+
         if (calendarError) {
-          console.error('Error removing teammate from calendar:', calendarError);
+          console.error('❌ Error removing teammate from calendar:', calendarError);
           // Don't throw here - we still want to remove from database even if calendar removal fails
         } else if (data?.success) {
-          console.log('Successfully removed teammate from calendar event');
+          console.log('✅ Successfully removed teammate from calendar event');
+        } else {
+          console.warn('⚠️ Unexpected response from calendar removal:', data);
         }
       }
     } catch (calendarError) {
-      console.error('Error during calendar removal:', calendarError);
+      console.error('💥 Error during calendar removal:', calendarError);
       // Don't throw here - we still want to remove from database even if calendar removal fails
     }
+  } else {
+    console.log('ℹ️ No calendar event associated with this teammate, skipping calendar removal');
   }
 
   // Remove the teammate from the database
+  console.log('🗑️ Removing teammate from database...');
   const { error } = await supabase
     .from('job_teammates')
     .delete()
     .eq('id', jobTeammateId);
 
   if (error) {
-    console.error('Error removing teammate from job:', error);
+    console.error('❌ Error removing teammate from job:', error);
     throw error;
   }
+
+  console.log('✅ Successfully removed teammate from database');
 };

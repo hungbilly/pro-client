@@ -65,20 +65,25 @@ Deno.serve(async (req) => {
     console.log('👤 User authenticated:', user.id);
     console.log(`🗑️ Removing teammate ${teammateEmail} from calendar event ${calendarEventId}`);
 
-    // Get user's Google access token from user_integrations table
-    console.log('🔍 Fetching Google tokens from user_integrations...');
-    const { data: tokens, error: tokenError } = await supabase
+    // Get user's Google access token and calendar ID from user_integrations table
+    console.log('🔍 Fetching Google tokens and calendar ID from user_integrations...');
+    const { data: integration, error: tokenError } = await supabase
       .from('user_integrations')
-      .select('access_token, refresh_token')
+      .select('access_token, refresh_token, calendar_id')
       .eq('user_id', user.id)
       .eq('provider', 'google_calendar')
       .single();
 
-    console.log('🔍 Token query result:', { hasTokens: !!tokens, tokenError });
+    console.log('🔍 Integration query result:', { 
+      hasIntegration: !!integration, 
+      hasCalendarId: !!integration?.calendar_id,
+      calendarId: integration?.calendar_id,
+      tokenError 
+    });
 
-    if (tokenError || !tokens) {
-      console.warn('⚠️ No Google tokens found for user:', tokenError);
-      console.log('ℹ️ Skipping Google Calendar removal due to missing tokens, will only remove from database');
+    if (tokenError || !integration) {
+      console.warn('⚠️ No Google integration found for user:', tokenError);
+      console.log('ℹ️ Skipping Google Calendar removal due to missing integration, will only remove from database');
       
       return new Response(
         JSON.stringify({ 
@@ -93,16 +98,20 @@ Deno.serve(async (req) => {
         }
       );
     } else {
-      console.log('✅ Google tokens found for user, proceeding with calendar removal');
+      console.log('✅ Google integration found for user, proceeding with calendar removal');
 
-      let accessToken = tokens.access_token;
+      // Determine which calendar to use - same logic as invite function
+      const targetCalendarId = integration.calendar_id || 'primary';
+      console.log('📅 Using calendar ID:', targetCalendarId);
+
+      let accessToken = integration.access_token;
       let shouldUpdateToken = false;
 
       // Function to try calendar operation with token refresh if needed
       const tryCalendarOperation = async (token: string, eventId: string) => {
-        console.log(`📅 Fetching calendar event details for ID: ${eventId}`);
+        console.log(`📅 Fetching calendar event details for ID: ${eventId} from calendar: ${targetCalendarId}`);
         const getEventResponse = await fetch(
-          `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`,
+          `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCalendarId)}/events/${eventId}`,
           {
             headers: {
               'Authorization': `Bearer ${token}`,
@@ -172,7 +181,7 @@ Deno.serve(async (req) => {
           body: new URLSearchParams({
             client_id: Deno.env.get('GOOGLE_CLIENT_ID')!,
             client_secret: Deno.env.get('GOOGLE_CLIENT_SECRET')!,
-            refresh_token: tokens.refresh_token,
+            refresh_token: integration.refresh_token,
             grant_type: 'refresh_token',
           }),
         });
@@ -222,7 +231,7 @@ Deno.serve(async (req) => {
         console.log('🔍 Listing recent calendar events to help debug...');
         try {
           const listResponse = await fetch(
-            'https://www.googleapis.com/calendar/v3/calendars/primary/events?maxResults=10&orderBy=updated',
+            `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCalendarId)}/events?maxResults=10&orderBy=updated`,
             {
               headers: {
                 'Authorization': `Bearer ${accessToken}`,
@@ -327,7 +336,7 @@ Deno.serve(async (req) => {
       
       console.log('📤 Sending update request to Google Calendar...');
       const updateResponse = await fetch(
-        `https://www.googleapis.com/calendar/v3/calendars/primary/events/${workingEventId}`,
+        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCalendarId)}/events/${workingEventId}`,
         {
           method: 'PUT',
           headers: {
@@ -356,13 +365,14 @@ Deno.serve(async (req) => {
           }
         );
       } else {
-        console.log(`✅ Successfully removed ${teammateEmail} from calendar event ${workingEventId}`);
+        console.log(`✅ Successfully removed ${teammateEmail} from calendar event ${workingEventId} in calendar ${targetCalendarId}`);
         return new Response(
           JSON.stringify({ 
             success: true, 
             message: `Teammate ${teammateEmail} removed from job and calendar`,
             calendarRemoved: true,
-            eventId: workingEventId
+            eventId: workingEventId,
+            calendarId: targetCalendarId
           }),
           { 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },

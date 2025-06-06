@@ -1,8 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Users, Calendar, Mail, Phone, X, Clock, CheckCircle, XCircle, AlertCircle, RefreshCw, Loader2 } from 'lucide-react';
 import { JobTeammate } from '@/types/teammate';
 import { removeTeammateFromJob } from '@/lib/teammateStorage';
@@ -190,6 +192,7 @@ const JobTeammatesList: React.FC<JobTeammatesListProps> = ({
         <div className="space-y-3">
           {teammates.map((jobTeammate) => {
             const isRemoving = removingTeammates.has(jobTeammate.id);
+            const displayName = jobTeammate.teammate_name || jobTeammate.teammate_email;
             
             return (
               <div
@@ -206,7 +209,7 @@ const JobTeammatesList: React.FC<JobTeammatesListProps> = ({
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <h4 className="font-medium">
-                        {jobTeammate.teammate_name || jobTeammate.teammate_email}
+                        {displayName}
                       </h4>
                       <div className="flex items-center gap-1">
                         {getStatusIcon(jobTeammate.invitation_status)}
@@ -251,23 +254,49 @@ const JobTeammatesList: React.FC<JobTeammatesListProps> = ({
                   </div>
                 </div>
                 
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleRemoveTeammate(
-                    jobTeammate.id,
-                    jobTeammate.teammate_name,
-                    jobTeammate.teammate_email
-                  )}
-                  disabled={isRemoving}
-                  className="text-destructive hover:text-destructive"
-                >
-                  {isRemoving ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <X className="h-4 w-4" />
-                  )}
-                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={isRemoving}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      {isRemoving ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <X className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Remove Teammate</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to remove <strong>{displayName}</strong> from this job?
+                        {jobTeammate.calendar_event_id && (
+                          <span className="block mt-2 text-orange-600">
+                            This will also remove them from the calendar event.
+                          </span>
+                        )}
+                        <span className="block mt-2">This action cannot be undone.</span>
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => handleRemoveTeammate(
+                          jobTeammate.id,
+                          jobTeammate.teammate_name,
+                          jobTeammate.teammate_email
+                        )}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Remove Teammate
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             );
           })}

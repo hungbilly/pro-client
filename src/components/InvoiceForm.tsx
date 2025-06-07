@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -66,8 +67,8 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     pdfUrl: '',
     viewLink: ''
   });
-  const [clients, setClients] = useState<Client[]>([]);
-  const [jobs, setJobs] = useState<Job[]>([]);
+  const [client, setClient] = useState<Client | null>(null);
+  const [job, setJob] = useState<Job | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
@@ -82,18 +83,34 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
       try {
         if (propInvoice) {
           setInvoice(propInvoice);
-        } else if (propClientId) {
-          setInvoice(prev => ({ ...prev, clientId: propClientId }));
-        } else if (propJobId) {
-          setInvoice(prev => ({ ...prev, jobId: propJobId }));
-        }
-
-        const fetchedClients = await getClients(selectedCompany?.id);
-        setClients(fetchedClients);
-
-        if (propClientId) {
-          const fetchedJobs = await getClientJobs(propClientId);
-          setJobs(fetchedJobs);
+          // Fetch client and job data for the existing invoice
+          if (propInvoice.clientId) {
+            const clientData = await getClient(propInvoice.clientId);
+            setClient(clientData);
+          }
+          if (propInvoice.jobId) {
+            const jobData = await getJob(propInvoice.jobId);
+            setJob(jobData);
+          }
+        } else {
+          // For new invoices, set data from props
+          if (propJobId) {
+            const jobData = await getJob(propJobId);
+            setJob(jobData);
+            if (jobData?.clientId) {
+              const clientData = await getClient(jobData.clientId);
+              setClient(clientData);
+              setInvoice(prev => ({ 
+                ...prev, 
+                jobId: propJobId, 
+                clientId: jobData.clientId 
+              }));
+            }
+          } else if (propClientId) {
+            const clientData = await getClient(propClientId);
+            setClient(clientData);
+            setInvoice(prev => ({ ...prev, clientId: propClientId }));
+          }
         }
 
       } catch (error) {
@@ -106,22 +123,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
     fetchData();
   }, [propInvoice, propClientId, propJobId, selectedCompany?.id]);
-
-  useEffect(() => {
-    if (invoice.clientId) {
-      const fetchJobs = async () => {
-        try {
-          const fetchedJobs = await getClientJobs(invoice.clientId);
-          setJobs(fetchedJobs);
-        } catch (error) {
-          console.error('Error fetching jobs:', error);
-          toast.error('Failed to load jobs.');
-        }
-      };
-
-      fetchJobs();
-    }
-  }, [invoice.clientId]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -202,30 +203,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     setInvoice(prev => ({ ...prev, contractTerms: value }));
   };
 
-  const getClientName = useCallback(() => {
-    const selectedClient = clients.find(client => client.id === invoice.clientId);
-    return selectedClient ? selectedClient.name : 'Select a client';
-  }, [clients, invoice.clientId]);
-
-  const getJobTitle = useCallback(() => {
-    const selectedJob = jobs.find(job => job.id === invoice.jobId);
-    return selectedJob ? selectedJob.title : 'Select a job';
-  }, [jobs, invoice.jobId]);
-
-  const clientOptions = useMemo(() => {
-    return clients.map(client => ({
-      value: client.id,
-      label: client.name,
-    }));
-  }, [clients]);
-
-  const jobOptions = useMemo(() => {
-    return jobs.map(job => ({
-      value: job.id,
-      label: job.title,
-    }));
-  }, [jobs]);
-
   return (
     <PageTransition>
       <Card className="w-full max-w-6xl mx-auto">
@@ -254,38 +231,29 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
         </CardHeader>
         <CardContent>
           <div className="grid gap-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="clientId">Client</Label>
-                <Select onValueChange={(value) => handleSelectChange('clientId', value)}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder={getClientName()} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {clientOptions.map((client) => (
-                      <SelectItem key={client.value} value={client.value}>
-                        {client.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            {/* Client Information Display (Read-only) */}
+            {client && (
+              <div className="p-4 bg-muted rounded-lg">
+                <Label className="text-base font-medium">Client</Label>
+                <div className="mt-2">
+                  <p className="font-medium">{client.name}</p>
+                  <p className="text-sm text-muted-foreground">{client.email}</p>
+                </div>
               </div>
-              <div>
-                <Label htmlFor="jobId">Job</Label>
-                <Select onValueChange={(value) => handleSelectChange('jobId', value)}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder={getJobTitle()} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {jobOptions.map((job) => (
-                      <SelectItem key={job.value} value={job.value}>
-                        {job.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            )}
+
+            {/* Job Information Display (Read-only) */}
+            {job && (
+              <div className="p-4 bg-muted rounded-lg">
+                <Label className="text-base font-medium">Job</Label>
+                <div className="mt-2">
+                  <p className="font-medium">{job.title}</p>
+                  {job.description && (
+                    <p className="text-sm text-muted-foreground">{job.description}</p>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>

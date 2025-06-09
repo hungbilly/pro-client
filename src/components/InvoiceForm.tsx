@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -26,6 +25,7 @@ import DiscountSelector from '@/components/DiscountSelector';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import InvoiceShareDialog from '@/components/invoice/InvoiceShareDialog';
 import DeleteInvoiceDialog from '@/components/invoices/DeleteInvoiceDialog';
+import PaymentScheduleManager from '@/components/invoice/PaymentScheduleManager';
 
 interface InvoiceFormProps {
   propInvoice?: Invoice;
@@ -203,6 +203,10 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     setInvoice(prev => ({ ...prev, contractTerms: value }));
   };
 
+  const handlePaymentSchedulesUpdate = (schedules: PaymentSchedule[]) => {
+    setInvoice(prev => ({ ...prev, paymentSchedules: schedules }));
+  };
+
   return (
     <PageTransition>
       <Card className="w-full max-w-6xl mx-auto">
@@ -230,7 +234,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4">
+          <div className="grid gap-6">
             {/* Client Information Display (Read-only) */}
             {client && (
               <div className="p-4 bg-muted rounded-lg">
@@ -302,6 +306,13 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                 onChange={handleInputChange}
               />
             </div>
+
+            {/* Payment Schedule Manager */}
+            <PaymentScheduleManager
+              paymentSchedules={invoice.paymentSchedules || []}
+              invoiceAmount={invoice.amount}
+              onUpdateSchedules={handlePaymentSchedulesUpdate}
+            />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>

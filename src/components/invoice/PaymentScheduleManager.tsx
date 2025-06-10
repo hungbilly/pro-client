@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -217,7 +216,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
         {paymentSchedules.length > 0 && (
           <div className="space-y-3">
             {paymentSchedules.map((schedule) => (
-              <div key={schedule.id} className="flex items-center gap-3 p-3 border rounded-lg">
+              <div key={schedule.id} className="flex items-center gap-4 p-3 border rounded-lg">
                 <div className="w-28 flex-shrink-0">
                   <span className="font-medium text-sm">{schedule.description}</span>
                 </div>
@@ -308,7 +307,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
         {/* Add New Payment Schedule */}
         <div className="space-y-3 p-4 border rounded-lg bg-muted/50">
           <Label className="text-sm font-medium">Add Payment Schedule</Label>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <div className="w-40 flex-shrink-0">
               <DatePicker
                 mode="single"

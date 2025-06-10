@@ -25,8 +25,6 @@ import DiscountSelector from '@/components/DiscountSelector';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import InvoiceShareDialog from '@/components/invoice/InvoiceShareDialog';
 import DeleteInvoiceDialog from '@/components/invoices/DeleteInvoiceDialog';
-import PaymentScheduleManager from '@/components/invoice/PaymentScheduleManager';
-import { generateInvoiceNumber } from '@/utils/invoiceNumberGenerator';
 
 interface InvoiceFormProps {
   propInvoice?: Invoice;
@@ -68,8 +66,8 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     pdfUrl: '',
     viewLink: ''
   });
-  const [client, setClient] = useState<Client | null>(null);
-  const [job, setJob] = useState<Job | null>(null);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
@@ -84,40 +82,18 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
       try {
         if (propInvoice) {
           setInvoice(propInvoice);
-          // Fetch client and job data for the existing invoice
-          if (propInvoice.clientId) {
-            const clientData = await getClient(propInvoice.clientId);
-            setClient(clientData);
-          }
-          if (propInvoice.jobId) {
-            const jobData = await getJob(propInvoice.jobId);
-            setJob(jobData);
-          }
-        } else {
-          // For new invoices, generate invoice number and set data from props
-          const invoiceNumber = await generateInvoiceNumber();
-          
-          if (propJobId) {
-            const jobData = await getJob(propJobId);
-            setJob(jobData);
-            if (jobData?.clientId) {
-              const clientData = await getClient(jobData.clientId);
-              setClient(clientData);
-              setInvoice(prev => ({ 
-                ...prev, 
-                jobId: propJobId, 
-                clientId: jobData.clientId,
-                number: invoiceNumber
-              }));
-            }
-          } else if (propClientId) {
-            const clientData = await getClient(propClientId);
-            setClient(clientData);
-            setInvoice(prev => ({ ...prev, clientId: propClientId, number: invoiceNumber }));
-          } else {
-            // Even if no client or job, set the generated invoice number
-            setInvoice(prev => ({ ...prev, number: invoiceNumber }));
-          }
+        } else if (propClientId) {
+          setInvoice(prev => ({ ...prev, clientId: propClientId }));
+        } else if (propJobId) {
+          setInvoice(prev => ({ ...prev, jobId: propJobId }));
+        }
+
+        const fetchedClients = await getClients(selectedCompany?.id);
+        setClients(fetchedClients);
+
+        if (propClientId) {
+          const fetchedJobs = await getClientJobs(propClientId);
+          setJobs(fetchedJobs);
         }
 
       } catch (error) {
@@ -130,6 +106,22 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
     fetchData();
   }, [propInvoice, propClientId, propJobId, selectedCompany?.id]);
+
+  useEffect(() => {
+    if (invoice.clientId) {
+      const fetchJobs = async () => {
+        try {
+          const fetchedJobs = await getClientJobs(invoice.clientId);
+          setJobs(fetchedJobs);
+        } catch (error) {
+          console.error('Error fetching jobs:', error);
+          toast.error('Failed to load jobs.');
+        }
+      };
+
+      fetchJobs();
+    }
+  }, [invoice.clientId]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -145,20 +137,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
       const formattedDate = format(date, 'yyyy-MM-dd');
       setInvoice(prev => ({ ...prev, [name]: formattedDate }));
     }
-  };
-
-  const handleItemsSelect = (items: InvoiceItem[]) => {
-    setSelectedItems(items);
-    const updatedItems = [...invoice.items.filter(item => !item.id?.startsWith('template-')), ...items];
-    const totalAmount = updatedItems.reduce((sum, item) => sum + (item.amount || 0), 0);
-    setInvoice(prev => ({ ...prev, items: updatedItems, amount: totalAmount }));
-  };
-
-  const handleDiscountsSelect = (discounts: InvoiceItem[]) => {
-    setSelectedDiscounts(discounts);
-    const updatedItems = [...invoice.items.filter(item => !item.id?.startsWith('template-discount-')), ...discounts];
-    const totalAmount = updatedItems.reduce((sum, item) => sum + (item.amount || 0), 0);
-    setInvoice(prev => ({ ...prev, items: updatedItems, amount: totalAmount }));
   };
 
   const handleSaveInvoice = async () => {
@@ -224,13 +202,29 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     setInvoice(prev => ({ ...prev, contractTerms: value }));
   };
 
-  const handlePaymentSchedulesUpdate = (schedules: PaymentSchedule[]) => {
-    setInvoice(prev => ({ ...prev, paymentSchedules: schedules }));
-  };
+  const getClientName = useCallback(() => {
+    const selectedClient = clients.find(client => client.id === invoice.clientId);
+    return selectedClient ? selectedClient.name : 'Select a client';
+  }, [clients, invoice.clientId]);
 
-  const subtotal = invoice.items
-    .filter(item => !item.id?.startsWith('template-discount-'))
-    .reduce((sum, item) => sum + (item.amount || 0), 0);
+  const getJobTitle = useCallback(() => {
+    const selectedJob = jobs.find(job => job.id === invoice.jobId);
+    return selectedJob ? selectedJob.title : 'Select a job';
+  }, [jobs, invoice.jobId]);
+
+  const clientOptions = useMemo(() => {
+    return clients.map(client => ({
+      value: client.id,
+      label: client.name,
+    }));
+  }, [clients]);
+
+  const jobOptions = useMemo(() => {
+    return jobs.map(job => ({
+      value: job.id,
+      label: job.title,
+    }));
+  }, [jobs]);
 
   return (
     <PageTransition>
@@ -259,30 +253,39 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-6">
-            {/* Client Information Display (Read-only) */}
-            {client && (
-              <div className="p-4 bg-muted rounded-lg">
-                <Label className="text-base font-medium">Client</Label>
-                <div className="mt-2">
-                  <p className="font-medium">{client.name}</p>
-                  <p className="text-sm text-muted-foreground">{client.email}</p>
-                </div>
+          <div className="grid gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="clientId">Client</Label>
+                <Select onValueChange={(value) => handleSelectChange('clientId', value)}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder={getClientName()} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clientOptions.map((client) => (
+                      <SelectItem key={client.value} value={client.value}>
+                        {client.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            )}
-
-            {/* Job Information Display (Read-only) */}
-            {job && (
-              <div className="p-4 bg-muted rounded-lg">
-                <Label className="text-base font-medium">Job</Label>
-                <div className="mt-2">
-                  <p className="font-medium">{job.title}</p>
-                  {job.description && (
-                    <p className="text-sm text-muted-foreground">{job.description}</p>
-                  )}
-                </div>
+              <div>
+                <Label htmlFor="jobId">Job</Label>
+                <Select onValueChange={(value) => handleSelectChange('jobId', value)}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder={getJobTitle()} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {jobOptions.map((job) => (
+                      <SelectItem key={job.value} value={job.value}>
+                        {job.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            )}
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -293,7 +296,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                   name="number"
                   value={invoice.number}
                   onChange={handleInputChange}
-                  placeholder="Auto-generated"
                 />
               </div>
               <div>
@@ -322,47 +324,8 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
               </div>
             </div>
 
-            {/* Package/Product Selector */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Package className="h-5 w-5" />
-                  Products & Services
-                </CardTitle>
-                <CardDescription>
-                  Select packages and services to include in this invoice
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <PackageSelector
-                  onPackageSelect={handleItemsSelect}
-                  variant="default"
-                />
-              </CardContent>
-            </Card>
-
-            {/* Discount Selector */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Percent className="h-5 w-5" />
-                  Discounts
-                </CardTitle>
-                <CardDescription>
-                  Apply discounts to this invoice
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <DiscountSelector
-                  onDiscountSelect={handleDiscountsSelect}
-                  variant="page"
-                  subtotal={subtotal}
-                />
-              </CardContent>
-            </Card>
-
             <div>
-              <Label htmlFor="amount">Total Amount</Label>
+              <Label htmlFor="amount">Amount</Label>
               <Input
                 type="number"
                 id="amount"
@@ -371,13 +334,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                 onChange={handleInputChange}
               />
             </div>
-
-            {/* Payment Schedule Manager */}
-            <PaymentScheduleManager
-              paymentSchedules={invoice.paymentSchedules || []}
-              invoiceAmount={invoice.amount}
-              onUpdateSchedules={handlePaymentSchedulesUpdate}
-            />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>

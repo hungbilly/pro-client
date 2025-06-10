@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -26,6 +27,7 @@ import PageTransition from '@/components/ui-custom/PageTransition';
 import InvoiceShareDialog from '@/components/invoice/InvoiceShareDialog';
 import DeleteInvoiceDialog from '@/components/invoices/DeleteInvoiceDialog';
 import PaymentScheduleManager from '@/components/invoice/PaymentScheduleManager';
+import { generateInvoiceNumber } from '@/utils/invoiceNumberGenerator';
 
 interface InvoiceFormProps {
   propInvoice?: Invoice;
@@ -93,7 +95,9 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
             setJob(jobData);
           }
         } else {
-          // For new invoices, set data from props
+          // For new invoices, generate invoice number and set data from props
+          const invoiceNumber = await generateInvoiceNumber();
+          
           if (propJobId) {
             const jobData = await getJob(propJobId);
             setJob(jobData);
@@ -103,13 +107,17 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
               setInvoice(prev => ({ 
                 ...prev, 
                 jobId: propJobId, 
-                clientId: jobData.clientId 
+                clientId: jobData.clientId,
+                number: invoiceNumber
               }));
             }
           } else if (propClientId) {
             const clientData = await getClient(propClientId);
             setClient(clientData);
-            setInvoice(prev => ({ ...prev, clientId: propClientId }));
+            setInvoice(prev => ({ ...prev, clientId: propClientId, number: invoiceNumber }));
+          } else {
+            // Even if no client or job, set the generated invoice number
+            setInvoice(prev => ({ ...prev, number: invoiceNumber }));
           }
         }
 
@@ -268,6 +276,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                   name="number"
                   value={invoice.number}
                   onChange={handleInputChange}
+                  placeholder="Auto-generated"
                 />
               </div>
               <div>

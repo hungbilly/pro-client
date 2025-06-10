@@ -74,22 +74,11 @@ export class ComponentBackup {
   }
 }
 
-// Decorator for automatic backup on component changes
-export function withAutoBackup(componentName: string) {
-  return function<T extends { new(...args: any[]): {} }>(constructor: T) {
-    return class extends constructor {
-      componentDidUpdate() {
-        // Schedule backup when component updates
-        ComponentBackup.scheduleBackup(
-          componentName,
-          this.toString() || `// Component: ${componentName}`
-        );
-        
-        // Call original componentDidUpdate if it exists
-        if (super.componentDidUpdate) {
-          super.componentDidUpdate();
-        }
-      }
-    };
+// Hook for functional components instead of decorator
+export function useComponentBackup(componentName: string, content: string) {
+  const createBackup = () => {
+    ComponentBackup.scheduleBackup(componentName, content);
   };
+
+  return { createBackup };
 }

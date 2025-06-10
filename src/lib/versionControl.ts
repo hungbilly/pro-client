@@ -1,6 +1,4 @@
 
-import { supabase } from '@/integrations/supabase/client';
-
 export interface ComponentVersion {
   id: string;
   componentName: string;
@@ -58,14 +56,13 @@ class VersionControlManager {
 
     // Store in memory
     const existing = this.backupStorage.get(componentName) || [];
+    // Mark all existing versions as inactive
+    existing.forEach(v => v.isActive = false);
     existing.push(backup);
     this.backupStorage.set(componentName, existing);
 
     // Store in localStorage for persistence
     this.saveToLocalStorage();
-
-    // Store in database if user is authenticated
-    await this.saveToDatabase(backup);
 
     return backup.id;
   }
@@ -87,7 +84,6 @@ class VersionControlManager {
       version.isActive = true;
       
       this.saveToLocalStorage();
-      await this.updateActiveVersionInDatabase(componentName, versionId);
       
       return version;
     }
@@ -114,7 +110,6 @@ class VersionControlManager {
     }
 
     localStorage.setItem('app_feature_flags', JSON.stringify(flags));
-    await this.saveFeatureFlagToDatabase(flag);
   }
 
   getFeatureFlags(): FeatureFlag[] {
@@ -176,8 +171,7 @@ class VersionControlManager {
   }
 
   private async getCurrentUser(): Promise<string> {
-    const { data: { user } } = await supabase.auth.getUser();
-    return user?.email || 'anonymous';
+    return 'admin';
   }
 
   private saveToLocalStorage(): void {
@@ -190,67 +184,6 @@ class VersionControlManager {
     if (stored) {
       const data = JSON.parse(stored);
       this.backupStorage = new Map(Object.entries(data));
-    }
-  }
-
-  private async saveToDatabase(version: ComponentVersion): Promise<void> {
-    try {
-      const { error } = await supabase
-        .from('component_versions')
-        .insert({
-          id: version.id,
-          component_name: version.componentName,
-          version: version.version,
-          content: version.content,
-          metadata: version.metadata,
-          created_at: version.createdAt,
-          is_active: version.isActive,
-        });
-
-      if (error) {
-        console.warn('Failed to save to database:', error);
-      }
-    } catch (error) {
-      console.warn('Database not available, using local storage only');
-    }
-  }
-
-  private async updateActiveVersionInDatabase(componentName: string, versionId: string): Promise<void> {
-    try {
-      // Deactivate all versions for this component
-      await supabase
-        .from('component_versions')
-        .update({ is_active: false })
-        .eq('component_name', componentName);
-
-      // Activate the selected version
-      await supabase
-        .from('component_versions')
-        .update({ is_active: true })
-        .eq('id', versionId);
-    } catch (error) {
-      console.warn('Failed to update database:', error);
-    }
-  }
-
-  private async saveFeatureFlagToDatabase(flag: FeatureFlag): Promise<void> {
-    try {
-      const { error } = await supabase
-        .from('feature_flags')
-        .upsert({
-          id: flag.id,
-          name: flag.name,
-          enabled: flag.enabled,
-          description: flag.description,
-          component_version_id: flag.componentVersionId,
-          rollout_percentage: flag.rolloutPercentage,
-        });
-
-      if (error) {
-        console.warn('Failed to save feature flag to database:', error);
-      }
-    } catch (error) {
-      console.warn('Database not available, using local storage only');
     }
   }
 

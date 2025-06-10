@@ -113,9 +113,11 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
         
         // Sync percentage and amount
         if (field === 'percentage') {
-          updated.amount = (invoiceAmount * value) / 100;
+          const numValue = Number(value);
+          updated.amount = (invoiceAmount * numValue) / 100;
         } else if (field === 'amount') {
-          updated.percentage = invoiceAmount > 0 ? (value / invoiceAmount) * 100 : 0;
+          const numValue = Number(value);
+          updated.percentage = invoiceAmount > 0 ? (numValue / invoiceAmount) * 100 : 0;
         }
         
         return updated;
@@ -131,12 +133,14 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
     }
   };
 
-  const handleNewSchedulePercentageChange = (percentage: number) => {
+  const handleNewSchedulePercentageChange = (value: string) => {
+    const percentage = Number(value) || 0;
     const amount = (invoiceAmount * percentage) / 100;
     setNewSchedule(prev => ({ ...prev, percentage, amount }));
   };
 
-  const handleNewScheduleAmountChange = (amount: number) => {
+  const handleNewScheduleAmountChange = (value: string) => {
+    const amount = Number(value) || 0;
     const percentage = invoiceAmount > 0 ? (amount / invoiceAmount) * 100 : 0;
     setNewSchedule(prev => ({ ...prev, amount, percentage }));
   };
@@ -189,8 +193,8 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
                   <div className="relative">
                     <Input
                       type="number"
-                      value={schedule.percentage?.toFixed(2) || 0}
-                      onChange={(e) => updatePaymentSchedule(schedule.id, 'percentage', parseFloat(e.target.value) || 0)}
+                      value={schedule.percentage || 0}
+                      onChange={(e) => updatePaymentSchedule(schedule.id, 'percentage', Number(e.target.value) || 0)}
                       placeholder="0"
                       min="0"
                       max="100"
@@ -204,8 +208,8 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
                   <div className="relative">
                     <Input
                       type="number"
-                      value={schedule.amount?.toFixed(2) || 0}
-                      onChange={(e) => updatePaymentSchedule(schedule.id, 'amount', parseFloat(e.target.value) || 0)}
+                      value={schedule.amount || 0}
+                      onChange={(e) => updatePaymentSchedule(schedule.id, 'amount', Number(e.target.value) || 0)}
                       placeholder="0"
                       min="0"
                       step="0.01"
@@ -280,7 +284,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
               <Input
                 type="number"
                 value={newSchedule.percentage || ''}
-                onChange={(e) => handleNewSchedulePercentageChange(parseFloat(e.target.value) || 0)}
+                onChange={(e) => handleNewSchedulePercentageChange(e.target.value)}
                 placeholder="Percentage"
                 min="0"
                 max="100"
@@ -293,7 +297,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
               <Input
                 type="number"
                 value={newSchedule.amount || ''}
-                onChange={(e) => handleNewScheduleAmountChange(parseFloat(e.target.value) || 0)}
+                onChange={(e) => handleNewScheduleAmountChange(e.target.value)}
                 placeholder="Amount"
                 min="0"
                 step="0.01"

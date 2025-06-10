@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -76,21 +75,55 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
     }
 
     const totalCurrentPercentage = paymentSchedules.reduce((sum, schedule) => sum + (schedule.percentage || 0), 0);
+    
+    // If adding this would exceed 100%, adjust the previous payment schedule
     if (totalCurrentPercentage + percentage > 100) {
-      toast.error('Total percentage cannot exceed 100%');
-      return;
+      const excessPercentage = (totalCurrentPercentage + percentage) - 100;
+      
+      // Find the last payment schedule to deduct from
+      const updatedSchedules = [...paymentSchedules];
+      if (updatedSchedules.length > 0) {
+        const lastScheduleIndex = updatedSchedules.length - 1;
+        const lastSchedule = updatedSchedules[lastScheduleIndex];
+        
+        // Deduct the excess from the last payment schedule
+        const newPercentageForLast = Math.max(0, (lastSchedule.percentage || 0) - excessPercentage);
+        const newAmountForLast = (invoiceAmount * newPercentageForLast) / 100;
+        
+        updatedSchedules[lastScheduleIndex] = {
+          ...lastSchedule,
+          percentage: newPercentageForLast,
+          amount: newAmountForLast
+        };
+        
+        toast.success(`Adjusted previous payment by ${excessPercentage.toFixed(2)}% to accommodate new payment`);
+      }
+      
+      // Add the new schedule
+      const schedule: PaymentSchedule = {
+        id: generateId(),
+        description: newSchedule.description,
+        dueDate: newSchedule.dueDate,
+        percentage: percentage,
+        status: newSchedule.status as PaymentStatus,
+        amount: amount
+      };
+
+      onUpdateSchedules([...updatedSchedules, schedule]);
+    } else {
+      // Normal case - no adjustment needed
+      const schedule: PaymentSchedule = {
+        id: generateId(),
+        description: newSchedule.description,
+        dueDate: newSchedule.dueDate,
+        percentage: percentage,
+        status: newSchedule.status as PaymentStatus,
+        amount: amount
+      };
+
+      onUpdateSchedules([...paymentSchedules, schedule]);
     }
 
-    const schedule: PaymentSchedule = {
-      id: generateId(),
-      description: newSchedule.description,
-      dueDate: newSchedule.dueDate,
-      percentage: percentage,
-      status: newSchedule.status as PaymentStatus,
-      amount: amount
-    };
-
-    onUpdateSchedules([...paymentSchedules, schedule]);
     setNewSchedule({
       description: getNextPaymentDescription(),
       dueDate: format(new Date(), 'yyyy-MM-dd'),

@@ -29,6 +29,7 @@ import PaymentScheduleManager from '@/components/invoice/PaymentScheduleManager'
 import { generateInvoiceNumber } from '@/utils/invoiceNumberGenerator';
 import AddProductPackageDialog from '@/components/AddProductPackageDialog';
 import AddDiscountDialog from '@/components/AddDiscountDialog';
+import { supabase } from '@/integrations/supabase/client';
 
 interface InvoiceFormProps {
   propInvoice?: Invoice;
@@ -37,6 +38,13 @@ interface InvoiceFormProps {
   propInvoiceId?: string;
   isEditView?: boolean;
   hasContractTemplates?: boolean;
+}
+
+interface ContractTemplate {
+  id: string;
+  name: string;
+  content: string;
+  description?: string;
 }
 
 const InvoiceForm: React.FC<InvoiceFormProps> = ({
@@ -88,6 +96,11 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     rate: 0
   });
 
+  // New state for contract templates
+  const [contractTemplates, setContractTemplates] = useState<ContractTemplate[]>([]);
+  const [selectedContractTemplate, setSelectedContractTemplate] = useState<string>('');
+  const [loadingContractTemplates, setLoadingContractTemplates] = useState(false);
+
   // Helper function to ensure a number is valid
   const ensureValidNumber = (value: any): number => {
     const num = Number(value);
@@ -99,6 +112,35 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     const validAmount = ensureValidNumber(amount);
     return validAmount.toFixed(2);
   };
+
+  // Fetch contract templates
+  const fetchContractTemplates = async () => {
+    if (!selectedCompany) return;
+    
+    try {
+      setLoadingContractTemplates(true);
+      const { data, error } = await supabase
+        .from('contract_templates')
+        .select('id, name, content, description')
+        .eq('company_id', selectedCompany.id)
+        .order('name', { ascending: true });
+
+      if (error) throw error;
+      
+      setContractTemplates(data || []);
+    } catch (error) {
+      console.error('Error fetching contract templates:', error);
+      toast.error('Failed to load contract templates');
+    } finally {
+      setLoadingContractTemplates(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedCompany) {
+      fetchContractTemplates();
+    }
+  }, [selectedCompany]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -158,6 +200,21 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
     fetchData();
   }, [propInvoice, propClientId, propJobId, selectedCompany?.id]);
+
+  // Handle contract template selection
+  const handleContractTemplateSelect = (templateId: string) => {
+    if (templateId === 'manual') {
+      setSelectedContractTemplate('manual');
+      return;
+    }
+    
+    const template = contractTemplates.find(t => t.id === templateId);
+    if (template) {
+      setSelectedContractTemplate(templateId);
+      setInvoice(prev => ({ ...prev, contractTerms: template.content }));
+      toast.success(`Contract template "${template.name}" applied`);
+    }
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -603,9 +660,40 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
             </div>
 
             {hasContractTemplates && (
-              <div>
-                <Label htmlFor="contractTerms">Contract Terms</Label>
-                <RichTextEditor value={invoice.contractTerms} onChange={handleContractTermsChange} />
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="contractTemplate">Contract Template</Label>
+                  <Select 
+                    onValueChange={handleContractTemplateSelect}
+                    value={selectedContractTemplate}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Choose a contract template or type manually" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="manual">Type manually</SelectItem>
+                      {contractTemplates.map((template) => (
+                        <SelectItem key={template.id} value={template.id}>
+                          {template.name}
+                          {template.description && (
+                            <span className="text-muted-foreground ml-2">
+                              - {template.description}
+                            </span>
+                          )}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Label htmlFor="contractTerms">Contract Terms</Label>
+                  <RichTextEditor 
+                    value={invoice.contractTerms} 
+                    onChange={handleContractTermsChange}
+                    id="contract-terms-editor"
+                  />
+                </div>
               </div>
             )}
 

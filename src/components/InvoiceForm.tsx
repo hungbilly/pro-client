@@ -66,6 +66,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     jobId: '',
     number: '',
     date: format(new Date(), 'yyyy-MM-dd'),
+    dueDate: format(new Date(), 'yyyy-MM-dd'),
     amount: 0,
     status: 'draft',
     contractStatus: 'pending',

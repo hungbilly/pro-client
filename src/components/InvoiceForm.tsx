@@ -351,38 +351,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     }
   };
 
-  const handleStatusChange = async (status: InvoiceStatus) => {
-    try {
-      if (propInvoiceId) {
-        const updatedInvoice = { ...invoice, id: propInvoiceId, status: status };
-        await updateInvoice(updatedInvoice);
-        setInvoice(updatedInvoice);
-        toast.success('Invoice status updated successfully.');
-      } else {
-        toast.error('Cannot update status for unsaved invoice.');
-      }
-    } catch (error) {
-      console.error('Error updating invoice status:', error);
-      toast.error('Failed to update invoice status.');
-    }
-  };
-
-  const handleContractStatusChange = async (contractStatus: ContractStatus) => {
-    try {
-      if (propInvoiceId) {
-        const updatedInvoice = { ...invoice, id: propInvoiceId, contractStatus: contractStatus };
-        await updateInvoice(updatedInvoice);
-        setInvoice(updatedInvoice);
-        toast.success('Contract status updated successfully.');
-      } else {
-        toast.error('Cannot update contract status for unsaved invoice.');
-      }
-    } catch (error) {
-      console.error('Error updating contract status:', error);
-      toast.error('Failed to update contract status.');
-    }
-  };
-
   const handleNotesChange = (value: string) => {
     setInvoice(prev => ({ ...prev, notes: value }));
   };
@@ -730,39 +698,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
               invoiceAmount={ensureValidNumber(invoice.amount)}
               onUpdateSchedules={handlePaymentSchedulesUpdate}
             />
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="status">Status</Label>
-                <Select onValueChange={(value) => handleStatusChange(value as InvoiceStatus)}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder={invoice.status} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="draft">Draft</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="paid">Paid</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {hasContractTemplates && (
-                <div>
-                  <Label htmlFor="contractStatus">Contract Status</Label>
-                  <Select onValueChange={(value) => handleContractStatusChange(value as ContractStatus)}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder={invoice.contractStatus} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="accepted">Accepted</SelectItem>
-                      <SelectItem value="rejected">Rejected</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </div>
 
             <div>
               <Label htmlFor="notes">Notes</Label>

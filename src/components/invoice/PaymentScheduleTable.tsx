@@ -384,7 +384,7 @@ const PaymentScheduleTable = memo(({
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
-              <TableHead>
+              <TableHead className="w-[140px]">
                 <div className="flex items-center gap-2">
                   Description
                   <Tooltip>
@@ -397,7 +397,7 @@ const PaymentScheduleTable = memo(({
                   </Tooltip>
                 </div>
               </TableHead>
-              <TableHead>
+              <TableHead className="w-[140px]">
                 <div className="flex items-center gap-2">
                   Due Date
                   <Tooltip>
@@ -410,7 +410,7 @@ const PaymentScheduleTable = memo(({
                   </Tooltip>
                 </div>
               </TableHead>
-              <TableHead className="text-right">
+              <TableHead className="text-right w-[100px]">
                 <div className="flex items-center justify-end gap-2">
                   Percentage
                   <Tooltip>
@@ -423,7 +423,7 @@ const PaymentScheduleTable = memo(({
                   </Tooltip>
                 </div>
               </TableHead>
-              <TableHead className="text-right">
+              <TableHead className="text-right w-[120px]">
                 <div className="flex items-center justify-end gap-2">
                   Amount
                   <Tooltip>
@@ -436,7 +436,7 @@ const PaymentScheduleTable = memo(({
                   </Tooltip>
                 </div>
               </TableHead>
-              <TableHead>
+              <TableHead className="w-[100px]">
                 <div className="flex items-center gap-2">
                   Status
                   <Tooltip>
@@ -449,7 +449,7 @@ const PaymentScheduleTable = memo(({
                   </Tooltip>
                 </div>
               </TableHead>
-              <TableHead>
+              <TableHead className="w-[140px]">
                 <div className="flex items-center gap-2">
                   Payment Date
                   <Tooltip>
@@ -468,24 +468,24 @@ const PaymentScheduleTable = memo(({
           <TableBody>
             {paymentSchedules.map((schedule, index) => (
               <TableRow key={schedule.id}>
-                <TableCell>
+                <TableCell className="w-[140px]">
                   {renderDescriptionCell(schedule, index)}
                 </TableCell>
-                <TableCell>
+                <TableCell className="w-[140px]">
                   {schedule.dueDate && new Date(schedule.dueDate).toLocaleDateString()}
                 </TableCell>
-                <TableCell className="text-right">
+                <TableCell className="text-right w-[100px]">
                   {(schedule.percentage || 0).toFixed(2)}%
                 </TableCell>
-                <TableCell className="text-right font-medium">
+                <TableCell className="text-right font-medium w-[120px]">
                   {renderAmountCell(schedule)}
                 </TableCell>
-                <TableCell>
+                <TableCell className="w-[100px]">
                   <Badge className={paymentStatusColors[schedule.status] || paymentStatusColors.unpaid}>
                     {schedule.status.toUpperCase()}
                   </Badge>
                 </TableCell>
-                <TableCell>
+                <TableCell className="w-[140px]">
                   {schedule.status === 'paid' ? (
                     <div className="flex items-center gap-2">
                       {schedule.paymentDate ? (

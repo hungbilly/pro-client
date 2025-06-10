@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -383,7 +384,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
               <CardContent className="space-y-4">
                 <DiscountSelector
                   onDiscountSelect={handleDiscountsSelect}
-                  variant="inline"
+                  variant="page"
                   subtotal={subtotal}
                 />
                 

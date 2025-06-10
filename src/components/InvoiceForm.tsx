@@ -28,6 +28,7 @@ import DeleteInvoiceDialog from '@/components/invoices/DeleteInvoiceDialog';
 import PaymentScheduleManager from '@/components/invoice/PaymentScheduleManager';
 import { generateInvoiceNumber } from '@/utils/invoiceNumberGenerator';
 import AddProductPackageDialog from '@/components/AddProductPackageDialog';
+import AddDiscountDialog from '@/components/AddDiscountDialog';
 
 interface InvoiceFormProps {
   propInvoice?: Invoice;
@@ -77,6 +78,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
   const [isContractTemplateDialogOpen, setIsContractTemplateDialogOpen] = useState(false);
   const [isAddProductDialogOpen, setIsAddProductDialogOpen] = useState(false);
+  const [isAddDiscountDialogOpen, setIsAddDiscountDialogOpen] = useState(false);
   const [selectedItems, setSelectedItems] = useState<InvoiceItem[]>([]);
   const [selectedDiscounts, setSelectedDiscounts] = useState<InvoiceItem[]>([]);
   const [manualItem, setManualItem] = useState({
@@ -282,12 +284,20 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     toast.success(`Added ${items.length} item(s) to invoice`);
   };
 
+  const handleAddDiscount = (discounts: InvoiceItem[]) => {
+    // Add new discounts to existing items
+    const newItems = [...invoice.items, ...discounts];
+    const totalAmount = newItems.reduce((sum, item) => sum + (item.amount || 0), 0);
+    setInvoice(prev => ({ ...prev, items: newItems, amount: totalAmount }));
+    toast.success(`Added ${discounts.length} discount(s) to invoice`);
+  };
+
   const subtotal = invoice.items
-    .filter(item => !item.id?.startsWith('template-discount-'))
+    .filter(item => !item.id?.startsWith('template-discount-') && !item.id?.startsWith('manual-discount-'))
     .reduce((sum, item) => sum + (item.amount || 0), 0);
 
-  const selectedProducts = invoice.items.filter(item => !item.id?.startsWith('template-discount-'));
-  const selectedDiscountItems = invoice.items.filter(item => item.id?.startsWith('template-discount-'));
+  const selectedProducts = invoice.items.filter(item => !item.id?.startsWith('template-discount-') && !item.id?.startsWith('manual-discount-'));
+  const selectedDiscountItems = invoice.items.filter(item => item.id?.startsWith('template-discount-') || item.id?.startsWith('manual-discount-'));
 
   return (
     <PageTransition>
@@ -449,11 +459,14 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <DiscountSelector
-                  onDiscountSelect={handleDiscountsSelect}
-                  variant="page"
-                  subtotal={subtotal}
-                />
+                <Button 
+                  onClick={() => setIsAddDiscountDialogOpen(true)}
+                  className="w-full"
+                  variant="outline"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Discount
+                </Button>
                 
                 {/* Selected Discounts Display */}
                 {selectedDiscountItems.length > 0 && (
@@ -461,15 +474,25 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                     <Label className="text-sm font-medium">Applied Discounts</Label>
                     <div className="mt-2 space-y-2">
                       {selectedDiscountItems.map((item, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <div key={item.id || index} className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg">
                           <div className="flex-1">
                             <div className="font-medium text-red-700">{item.name}</div>
                             {item.description && (
-                              <div className="text-sm text-red-600">{item.description}</div>
+                              <div className="text-sm text-red-600" dangerouslySetInnerHTML={{ __html: item.description }} />
                             )}
                           </div>
-                          <div className="text-right">
-                            <div className="font-medium text-red-700">-${Math.abs(item.amount).toFixed(2)}</div>
+                          <div className="flex items-center gap-2">
+                            <div className="text-right">
+                              <div className="font-medium text-red-700">-${Math.abs(item.amount).toFixed(2)}</div>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeItem(item.id || '')}
+                              className="text-red-500 hover:text-red-700"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </div>
                       ))}
@@ -581,6 +604,13 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
         open={isAddProductDialogOpen}
         onOpenChange={setIsAddProductDialogOpen}
         onAddItems={handleAddItems}
+      />
+
+      <AddDiscountDialog
+        open={isAddDiscountDialogOpen}
+        onOpenChange={setIsAddDiscountDialogOpen}
+        onAddDiscount={handleAddDiscount}
+        subtotal={subtotal}
       />
     </PageTransition>
   );

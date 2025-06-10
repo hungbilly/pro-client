@@ -232,6 +232,9 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     .filter(item => !item.id?.startsWith('template-discount-'))
     .reduce((sum, item) => sum + (item.amount || 0), 0);
 
+  const selectedProducts = invoice.items.filter(item => !item.id?.startsWith('template-discount-'));
+  const selectedDiscountItems = invoice.items.filter(item => item.id?.startsWith('template-discount-'));
+
   return (
     <PageTransition>
       <Card className="w-full max-w-6xl mx-auto">
@@ -333,11 +336,36 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                   Select packages and services to include in this invoice
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
                 <PackageSelector
                   onPackageSelect={handleItemsSelect}
                   variant="default"
                 />
+                
+                {/* Selected Products Display */}
+                {selectedProducts.length > 0 && (
+                  <div className="mt-4">
+                    <Label className="text-sm font-medium">Selected Products & Services</Label>
+                    <div className="mt-2 space-y-2">
+                      {selectedProducts.map((item, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                          <div className="flex-1">
+                            <div className="font-medium">{item.name || item.description}</div>
+                            {item.description && item.name && (
+                              <div className="text-sm text-muted-foreground">{item.description}</div>
+                            )}
+                            <div className="text-sm text-muted-foreground">
+                              Qty: {item.quantity} × ${item.rate.toFixed(2)}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-medium">${item.amount.toFixed(2)}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -352,14 +380,61 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                   Apply discounts to this invoice
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
                 <DiscountSelector
                   onDiscountSelect={handleDiscountsSelect}
-                  variant="page"
+                  variant="inline"
                   subtotal={subtotal}
                 />
+                
+                {/* Selected Discounts Display */}
+                {selectedDiscountItems.length > 0 && (
+                  <div className="mt-4">
+                    <Label className="text-sm font-medium">Applied Discounts</Label>
+                    <div className="mt-2 space-y-2">
+                      {selectedDiscountItems.map((item, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg">
+                          <div className="flex-1">
+                            <div className="font-medium text-red-700">{item.name || item.description}</div>
+                            {item.description && item.name && (
+                              <div className="text-sm text-red-600">{item.description}</div>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <div className="font-medium text-red-700">-${Math.abs(item.amount).toFixed(2)}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
+
+            {/* Invoice Summary */}
+            {(selectedProducts.length > 0 || selectedDiscountItems.length > 0) && (
+              <Card className="bg-muted/50">
+                <CardContent className="pt-6">
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm">Subtotal:</span>
+                      <span className="text-sm">${subtotal.toFixed(2)}</span>
+                    </div>
+                    {selectedDiscountItems.length > 0 && (
+                      <div className="flex justify-between items-center text-red-600">
+                        <span className="text-sm">Total Discounts:</span>
+                        <span className="text-sm">-${Math.abs(selectedDiscountItems.reduce((sum, item) => sum + item.amount, 0)).toFixed(2)}</span>
+                      </div>
+                    )}
+                    <Separator />
+                    <div className="flex justify-between items-center font-medium">
+                      <span>Total:</span>
+                      <span>${invoice.amount.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             <div>
               <Label htmlFor="amount">Total Amount</Label>

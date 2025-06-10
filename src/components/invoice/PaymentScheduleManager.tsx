@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -28,7 +29,29 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
     status: 'unpaid'
   });
 
+  // Initialize with default payment schedule if none exist
+  useEffect(() => {
+    if (paymentSchedules.length === 0) {
+      const defaultSchedule: PaymentSchedule = {
+        id: generateId(),
+        description: '1st payment',
+        dueDate: format(new Date(), 'yyyy-MM-dd'),
+        percentage: 100,
+        status: 'unpaid',
+        amount: invoiceAmount
+      };
+      onUpdateSchedules([defaultSchedule]);
+    }
+  }, [paymentSchedules.length, invoiceAmount, onUpdateSchedules]);
+
   const generateId = () => `payment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+  const getNextPaymentDescription = () => {
+    const count = paymentSchedules.length + 1;
+    const ordinals = ['1st', '2nd', '3rd'];
+    const ordinal = ordinals[count - 1] || `${count}th`;
+    return `${ordinal} payment`;
+  };
 
   const addPaymentSchedule = () => {
     if (!newSchedule.description || !newSchedule.dueDate || !newSchedule.percentage) {
@@ -58,7 +81,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
 
     onUpdateSchedules([...paymentSchedules, schedule]);
     setNewSchedule({
-      description: '',
+      description: getNextPaymentDescription(),
       dueDate: format(new Date(), 'yyyy-MM-dd'),
       percentage: 0,
       status: 'unpaid'
@@ -90,6 +113,14 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
       setNewSchedule(prev => ({ ...prev, [field]: format(date, 'yyyy-MM-dd') }));
     }
   };
+
+  // Set default description for new schedule when component mounts or schedules change
+  useEffect(() => {
+    setNewSchedule(prev => ({
+      ...prev,
+      description: getNextPaymentDescription()
+    }));
+  }, [paymentSchedules.length]);
 
   const totalPercentage = paymentSchedules.reduce((sum, schedule) => sum + (schedule.percentage || 0), 0);
   const isPercentageValid = Math.abs(totalPercentage - 100) < 0.01;
@@ -215,14 +246,6 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
             </Button>
           </div>
         </div>
-
-        {paymentSchedules.length === 0 && (
-          <div className="text-center py-8 text-muted-foreground">
-            <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />
-            <p>No payment schedules yet</p>
-            <p className="text-sm">Add payment schedules to break down the invoice amount</p>
-          </div>
-        )}
       </CardContent>
     </Card>
   );

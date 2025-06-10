@@ -248,7 +248,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
   const handleDiscountsSelect = (discounts: InvoiceItem[]) => {
     setSelectedDiscounts(discounts);
-    const updatedItems = [...invoice.items.filter(item => !item.id?.startsWith('template-discount-')), ...discounts];
+    const updatedItems = [...invoice.items.filter(item => !item.id?.startsWith('template-discount-') && !item.id?.startsWith('manual-discount-')), ...discounts];
     const totalAmount = ensureValidNumber(updatedItems.reduce((sum, item) => sum + ensureValidNumber(item.amount || 0), 0));
     setInvoice(prev => ({ ...prev, items: updatedItems, amount: totalAmount }));
   };
@@ -456,14 +456,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                   mode="single"
                   selected={invoice.date ? new Date(invoice.date) : undefined}
                   onSelect={(date) => handleDateChange('date', date)}
-                />
-              </div>
-              <div>
-                <Label htmlFor="dueDate">Due Date</Label>
-                <DatePicker
-                  mode="single"
-                  selected={invoice.dueDate ? new Date(invoice.dueDate) : undefined}
-                  onSelect={(date) => handleDateChange('dueDate', date)}
                 />
               </div>
               <div>

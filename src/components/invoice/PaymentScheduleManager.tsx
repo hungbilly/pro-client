@@ -22,7 +22,6 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
   onUpdateSchedules
 }) => {
   const [newSchedule, setNewSchedule] = useState<Partial<PaymentSchedule>>({
-    description: '',
     dueDate: format(new Date(), 'yyyy-MM-dd'),
     percentage: 0,
     amount: 0,
@@ -46,15 +45,19 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
 
   const generateId = () => `payment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
+  const getOrdinalNumber = (num: number): string => {
+    const suffix = ['th', 'st', 'nd', 'rd'];
+    const v = num % 100;
+    return num + (suffix[(v - 20) % 10] || suffix[v] || suffix[0]);
+  };
+
   const getNextPaymentDescription = () => {
     const count = paymentSchedules.length + 1;
-    const ordinals = ['1st', '2nd', '3rd'];
-    const ordinal = ordinals[count - 1] || `${count}th`;
-    return `${ordinal} payment`;
+    return `${getOrdinalNumber(count)} payment`;
   };
 
   const addPaymentSchedule = () => {
-    if (!newSchedule.description || !newSchedule.dueDate || (!newSchedule.percentage && !newSchedule.amount)) {
+    if (!newSchedule.dueDate || (!newSchedule.percentage && !newSchedule.amount)) {
       toast.error('Please fill in all fields');
       return;
     }
@@ -75,6 +78,9 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
     }
 
     const totalCurrentPercentage = paymentSchedules.reduce((sum, schedule) => sum + (schedule.percentage || 0), 0);
+    
+    // Auto-generate description
+    const description = getNextPaymentDescription();
     
     // If adding this would exceed 100%, adjust the previous payment schedule
     if (totalCurrentPercentage + percentage > 100) {
@@ -102,7 +108,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
       // Add the new schedule
       const schedule: PaymentSchedule = {
         id: generateId(),
-        description: newSchedule.description,
+        description: description,
         dueDate: newSchedule.dueDate,
         percentage: percentage,
         status: newSchedule.status as PaymentStatus,
@@ -114,7 +120,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
       // Normal case - no adjustment needed
       const schedule: PaymentSchedule = {
         id: generateId(),
-        description: newSchedule.description,
+        description: description,
         dueDate: newSchedule.dueDate,
         percentage: percentage,
         status: newSchedule.status as PaymentStatus,
@@ -125,7 +131,6 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
     }
 
     setNewSchedule({
-      description: getNextPaymentDescription(),
       dueDate: format(new Date(), 'yyyy-MM-dd'),
       percentage: 0,
       amount: 0,
@@ -135,7 +140,15 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
   };
 
   const removePaymentSchedule = (id: string) => {
-    onUpdateSchedules(paymentSchedules.filter(schedule => schedule.id !== id));
+    const updatedSchedules = paymentSchedules.filter(schedule => schedule.id !== id);
+    
+    // Regenerate descriptions for remaining schedules
+    const reorderedSchedules = updatedSchedules.map((schedule, index) => ({
+      ...schedule,
+      description: `${getOrdinalNumber(index + 1)} payment`
+    }));
+    
+    onUpdateSchedules(reorderedSchedules);
     toast.success('Payment schedule removed');
   };
 
@@ -205,11 +218,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
             {paymentSchedules.map((schedule) => (
               <div key={schedule.id} className="flex items-center gap-3 p-3 border rounded-lg">
                 <div className="flex-1">
-                  <Input
-                    value={schedule.description}
-                    onChange={(e) => updatePaymentSchedule(schedule.id, 'description', e.target.value)}
-                    placeholder="Payment description"
-                  />
+                  <span className="font-medium">{schedule.description}</span>
                 </div>
                 <div className="w-32">
                   <DatePicker
@@ -298,14 +307,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
         {/* Add New Payment Schedule */}
         <div className="space-y-3 p-4 border rounded-lg bg-muted/50">
           <Label className="text-sm font-medium">Add Payment Schedule</Label>
-          <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
-            <div>
-              <Input
-                value={newSchedule.description || ''}
-                onChange={(e) => setNewSchedule(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Payment description"
-              />
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
             <div>
               <DatePicker
                 mode="single"

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,6 +11,8 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import RlsStatusSection from '@/components/debug/RlsStatusSection';
 import UserSubscriptionsTable from '@/components/debug/UserSubscriptionsTable';
 import ProfilesTable from '@/components/debug/ProfilesTable';
+import { Link } from 'react-router-dom';
+import { GitBranch } from 'lucide-react';
 
 const Debug = () => {
   const { user, isAdmin } = useAuth();
@@ -43,9 +44,17 @@ const Debug = () => {
 
   return (
     <div className="container mx-auto py-8 px-4">
-      <div className="mb-8 flex items-center">
-        <ShieldAlert className="mr-3 h-10 w-10 text-purple-600" />
-        <h1 className="text-3xl font-bold">Admin Debug Dashboard</h1>
+      <div className="mb-8 flex items-center justify-between">
+        <div className="flex items-center">
+          <ShieldAlert className="mr-3 h-10 w-10 text-purple-600" />
+          <h1 className="text-3xl font-bold">Admin Debug Dashboard</h1>
+        </div>
+        <Button asChild variant="outline">
+          <Link to="/version-control">
+            <GitBranch className="h-4 w-4 mr-2" />
+            Version Control
+          </Link>
+        </Button>
       </div>
 
       <Alert className="mb-8">

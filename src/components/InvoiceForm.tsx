@@ -27,6 +27,7 @@ import InvoiceShareDialog from '@/components/invoice/InvoiceShareDialog';
 import DeleteInvoiceDialog from '@/components/invoices/DeleteInvoiceDialog';
 import PaymentScheduleManager from '@/components/invoice/PaymentScheduleManager';
 import { generateInvoiceNumber } from '@/utils/invoiceNumberGenerator';
+import AddProductPackageDialog from '@/components/AddProductPackageDialog';
 
 interface InvoiceFormProps {
   propInvoice?: Invoice;
@@ -75,6 +76,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
   const [isContractTemplateDialogOpen, setIsContractTemplateDialogOpen] = useState(false);
+  const [isAddProductDialogOpen, setIsAddProductDialogOpen] = useState(false);
   const [selectedItems, setSelectedItems] = useState<InvoiceItem[]>([]);
   const [selectedDiscounts, setSelectedDiscounts] = useState<InvoiceItem[]>([]);
   const [manualItem, setManualItem] = useState({
@@ -272,6 +274,14 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     setInvoice(prev => ({ ...prev, paymentSchedules: schedules }));
   };
 
+  const handleAddItems = (items: InvoiceItem[]) => {
+    // Add new items to existing items
+    const newItems = [...invoice.items, ...items];
+    const totalAmount = newItems.reduce((sum, item) => sum + (item.amount || 0), 0);
+    setInvoice(prev => ({ ...prev, items: newItems, amount: totalAmount }));
+    toast.success(`Added ${items.length} item(s) to invoice`);
+  };
+
   const subtotal = invoice.items
     .filter(item => !item.id?.startsWith('template-discount-'))
     .reduce((sum, item) => sum + (item.amount || 0), 0);
@@ -377,54 +387,18 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                   Products & Services
                 </CardTitle>
                 <CardDescription>
-                  Select packages and services to include in this invoice
+                  Add products and services to this invoice
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-sm font-medium mb-2 block">Select from existing packages</Label>
-                    <PackageSelector
-                      onPackageSelect={handlePackageSelect}
-                      variant="default"
-                    />
-                  </div>
-                  
-                  <div className="space-y-4">
-                    <Label className="text-sm font-medium">Add custom item</Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <Input
-                        placeholder="Item name"
-                        value={manualItem.name}
-                        onChange={(e) => setManualItem(prev => ({ ...prev, name: e.target.value }))}
-                      />
-                      <Input
-                        placeholder="Description (optional)"
-                        value={manualItem.description}
-                        onChange={(e) => setManualItem(prev => ({ ...prev, description: e.target.value }))}
-                      />
-                      <Input
-                        type="number"
-                        placeholder="Quantity"
-                        value={manualItem.quantity}
-                        onChange={(e) => setManualItem(prev => ({ ...prev, quantity: Number(e.target.value) || 1 }))}
-                        min="1"
-                      />
-                      <Input
-                        type="number"
-                        placeholder="Rate ($)"
-                        value={manualItem.rate}
-                        onChange={(e) => setManualItem(prev => ({ ...prev, rate: Number(e.target.value) || 0 }))}
-                        min="0"
-                        step="0.01"
-                      />
-                    </div>
-                    <Button onClick={addManualItem} className="w-full" variant="outline">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Custom Item
-                    </Button>
-                  </div>
-                </div>
+                <Button 
+                  onClick={() => setIsAddProductDialogOpen(true)}
+                  className="w-full"
+                  variant="outline"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Product/Package
+                </Button>
                 
                 {/* Selected Products Display */}
                 {selectedProducts.length > 0 && (
@@ -436,7 +410,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                           <div className="flex-1">
                             <div className="font-medium">{item.name}</div>
                             {item.description && (
-                              <div className="text-sm text-muted-foreground">{item.description}</div>
+                              <div className="text-sm text-muted-foreground" dangerouslySetInnerHTML={{ __html: item.description }} />
                             )}
                             <div className="text-sm text-muted-foreground">
                               Qty: {item.quantity} × ${item.rate.toFixed(2)}
@@ -602,6 +576,12 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
           </div>
         </CardContent>
       </Card>
+
+      <AddProductPackageDialog
+        open={isAddProductDialogOpen}
+        onOpenChange={setIsAddProductDialogOpen}
+        onAddItems={handleAddItems}
+      />
     </PageTransition>
   );
 };

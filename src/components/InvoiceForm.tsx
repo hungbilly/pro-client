@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -78,6 +77,12 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   const [isContractTemplateDialogOpen, setIsContractTemplateDialogOpen] = useState(false);
   const [selectedItems, setSelectedItems] = useState<InvoiceItem[]>([]);
   const [selectedDiscounts, setSelectedDiscounts] = useState<InvoiceItem[]>([]);
+  const [manualItem, setManualItem] = useState({
+    name: '',
+    description: '',
+    quantity: 1,
+    rate: 0
+  });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -148,11 +153,12 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     }
   };
 
-  const handleItemsSelect = (items: InvoiceItem[]) => {
-    setSelectedItems(items);
-    const updatedItems = [...invoice.items.filter(item => !item.id?.startsWith('template-')), ...items];
-    const totalAmount = updatedItems.reduce((sum, item) => sum + (item.amount || 0), 0);
-    setInvoice(prev => ({ ...prev, items: updatedItems, amount: totalAmount }));
+  const handlePackageSelect = (items: InvoiceItem[]) => {
+    // Add new packages to existing items
+    const newItems = [...invoice.items, ...items];
+    const totalAmount = newItems.reduce((sum, item) => sum + (item.amount || 0), 0);
+    setInvoice(prev => ({ ...prev, items: newItems, amount: totalAmount }));
+    toast.success(`Added ${items.length} item(s) to invoice`);
   };
 
   const handleDiscountsSelect = (discounts: InvoiceItem[]) => {
@@ -160,6 +166,43 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     const updatedItems = [...invoice.items.filter(item => !item.id?.startsWith('template-discount-')), ...discounts];
     const totalAmount = updatedItems.reduce((sum, item) => sum + (item.amount || 0), 0);
     setInvoice(prev => ({ ...prev, items: updatedItems, amount: totalAmount }));
+  };
+
+  const addManualItem = () => {
+    if (!manualItem.name || manualItem.rate <= 0) {
+      toast.error('Please enter item name and rate');
+      return;
+    }
+
+    const newItem: InvoiceItem = {
+      id: `manual-${Date.now()}`,
+      name: manualItem.name,
+      description: manualItem.description,
+      quantity: manualItem.quantity,
+      rate: manualItem.rate,
+      amount: manualItem.quantity * manualItem.rate
+    };
+
+    const newItems = [...invoice.items, newItem];
+    const totalAmount = newItems.reduce((sum, item) => sum + (item.amount || 0), 0);
+    setInvoice(prev => ({ ...prev, items: newItems, amount: totalAmount }));
+    
+    // Reset manual item form
+    setManualItem({
+      name: '',
+      description: '',
+      quantity: 1,
+      rate: 0
+    });
+    
+    toast.success('Manual item added to invoice');
+  };
+
+  const removeItem = (itemId: string) => {
+    const updatedItems = invoice.items.filter(item => item.id !== itemId);
+    const totalAmount = updatedItems.reduce((sum, item) => sum + (item.amount || 0), 0);
+    setInvoice(prev => ({ ...prev, items: updatedItems, amount: totalAmount }));
+    toast.success('Item removed from invoice');
   };
 
   const handleSaveInvoice = async () => {
@@ -338,29 +381,79 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <PackageSelector
-                  onPackageSelect={handleItemsSelect}
-                  variant="default"
-                />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm font-medium mb-2 block">Select from existing packages</Label>
+                    <PackageSelector
+                      onPackageSelect={handlePackageSelect}
+                      variant="default"
+                    />
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <Label className="text-sm font-medium">Add custom item</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        placeholder="Item name"
+                        value={manualItem.name}
+                        onChange={(e) => setManualItem(prev => ({ ...prev, name: e.target.value }))}
+                      />
+                      <Input
+                        placeholder="Description (optional)"
+                        value={manualItem.description}
+                        onChange={(e) => setManualItem(prev => ({ ...prev, description: e.target.value }))}
+                      />
+                      <Input
+                        type="number"
+                        placeholder="Quantity"
+                        value={manualItem.quantity}
+                        onChange={(e) => setManualItem(prev => ({ ...prev, quantity: Number(e.target.value) || 1 }))}
+                        min="1"
+                      />
+                      <Input
+                        type="number"
+                        placeholder="Rate ($)"
+                        value={manualItem.rate}
+                        onChange={(e) => setManualItem(prev => ({ ...prev, rate: Number(e.target.value) || 0 }))}
+                        min="0"
+                        step="0.01"
+                      />
+                    </div>
+                    <Button onClick={addManualItem} className="w-full" variant="outline">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Custom Item
+                    </Button>
+                  </div>
+                </div>
                 
                 {/* Selected Products Display */}
                 {selectedProducts.length > 0 && (
                   <div className="mt-4">
-                    <Label className="text-sm font-medium">Selected Products & Services</Label>
+                    <Label className="text-sm font-medium">Invoice Items</Label>
                     <div className="mt-2 space-y-2">
                       {selectedProducts.map((item, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                        <div key={item.id || index} className="flex items-center justify-between p-3 bg-muted rounded-lg">
                           <div className="flex-1">
-                            <div className="font-medium">{item.name || item.description}</div>
-                            {item.description && item.name && (
+                            <div className="font-medium">{item.name}</div>
+                            {item.description && (
                               <div className="text-sm text-muted-foreground">{item.description}</div>
                             )}
                             <div className="text-sm text-muted-foreground">
                               Qty: {item.quantity} × ${item.rate.toFixed(2)}
                             </div>
                           </div>
-                          <div className="text-right">
-                            <div className="font-medium">${item.amount.toFixed(2)}</div>
+                          <div className="flex items-center gap-2">
+                            <div className="text-right">
+                              <div className="font-medium">${item.amount.toFixed(2)}</div>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeItem(item.id || '')}
+                              className="text-red-500 hover:text-red-700"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </div>
                       ))}
@@ -396,8 +489,8 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                       {selectedDiscountItems.map((item, index) => (
                         <div key={index} className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg">
                           <div className="flex-1">
-                            <div className="font-medium text-red-700">{item.name || item.description}</div>
-                            {item.description && item.name && (
+                            <div className="font-medium text-red-700">{item.name}</div>
+                            {item.description && (
                               <div className="text-sm text-red-600">{item.description}</div>
                             )}
                           </div>

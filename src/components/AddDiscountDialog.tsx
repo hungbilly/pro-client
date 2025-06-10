@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import {
   Dialog,
@@ -7,6 +8,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { InvoiceItem } from '@/types';
 import DiscountSelector from './DiscountSelector';
 import { Button } from '@/components/ui/button';
@@ -27,7 +29,8 @@ const AddDiscountDialog: React.FC<AddDiscountDialogProps> = ({
   onAddDiscount,
   subtotal = 0,
 }) => {
-  const [manualAmount, setManualAmount] = useState<string>('');
+  const [discountType, setDiscountType] = useState<'percentage' | 'fixed'>('fixed');
+  const [discountValue, setDiscountValue] = useState<string>('');
   const [discountName, setDiscountName] = useState<string>('');
   const [discountDescription, setDiscountDescription] = useState<string>('');
 
@@ -36,29 +39,48 @@ const AddDiscountDialog: React.FC<AddDiscountDialogProps> = ({
     onOpenChange(false);
   };
 
+  const calculateDiscountAmount = () => {
+    const value = parseFloat(discountValue);
+    if (isNaN(value) || value <= 0) return 0;
+
+    if (discountType === 'percentage') {
+      return (subtotal * value) / 100;
+    } else {
+      return value;
+    }
+  };
+
   const handleManualDiscount = () => {
-    const numericAmount = parseFloat(manualAmount);
-    if (isNaN(numericAmount) || numericAmount <= 0) return;
+    const discountAmount = calculateDiscountAmount();
+    if (discountAmount <= 0) return;
 
     const discountItem: InvoiceItem = {
       id: `manual-discount-${Date.now()}`,
-      name: discountName || `$${numericAmount} Off`,
-      description: discountDescription || 'Manual fixed amount discount',
+      name: discountName || (discountType === 'percentage' ? `${discountValue}% Off` : `$${discountValue} Off`),
+      description: discountDescription || `Manual ${discountType} discount`,
       quantity: 1,
-      rate: -numericAmount,
-      amount: -numericAmount,
+      rate: -discountAmount,
+      amount: -discountAmount,
     };
 
     onAddDiscount([discountItem]);
     onOpenChange(false);
+    
+    // Reset form
+    setDiscountValue('');
+    setDiscountName('');
+    setDiscountDescription('');
+    setDiscountType('fixed');
   };
 
   const isManualDiscountValid = () => {
-    const numericAmount = parseFloat(manualAmount);
-    return !isNaN(numericAmount) && 
-           numericAmount > 0 && 
+    const value = parseFloat(discountValue);
+    return !isNaN(value) && 
+           value > 0 && 
            discountName.trim().length > 0;
   };
+
+  const previewAmount = calculateDiscountAmount();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -95,17 +117,45 @@ const AddDiscountDialog: React.FC<AddDiscountDialogProps> = ({
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label>Amount ($)</Label>
-                <Input
-                  type="number"
-                  value={manualAmount}
-                  onChange={(e) => setManualAmount(e.target.value)}
-                  placeholder="Enter discount amount"
-                  min="0"
-                  step="0.01"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Discount Type</Label>
+                  <Select value={discountType} onValueChange={(value) => setDiscountType(value as 'percentage' | 'fixed')}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="fixed">Fixed Amount ($)</SelectItem>
+                      <SelectItem value="percentage">Percentage (%)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>{discountType === 'percentage' ? 'Percentage (%)' : 'Amount ($)'}</Label>
+                  <Input
+                    type="number"
+                    value={discountValue}
+                    onChange={(e) => setDiscountValue(e.target.value)}
+                    placeholder={discountType === 'percentage' ? 'Enter percentage' : 'Enter amount'}
+                    min="0"
+                    max={discountType === 'percentage' ? "100" : undefined}
+                    step={discountType === 'percentage' ? "1" : "0.01"}
+                  />
+                </div>
               </div>
+
+              {previewAmount > 0 && (
+                <div className="p-3 bg-muted rounded-lg">
+                  <div className="text-sm text-muted-foreground">Discount Preview:</div>
+                  <div className="font-medium text-red-600">-${previewAmount.toFixed(2)}</div>
+                  {discountType === 'percentage' && (
+                    <div className="text-xs text-muted-foreground">
+                      {discountValue}% of ${subtotal.toFixed(2)} subtotal
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label>Description</Label>

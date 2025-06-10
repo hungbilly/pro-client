@@ -88,12 +88,29 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     rate: 0
   });
 
+  // Helper function to ensure a number is valid
+  const ensureValidNumber = (value: any): number => {
+    const num = Number(value);
+    return isNaN(num) ? 0 : num;
+  };
+
+  // Helper function to safely format currency
+  const formatCurrency = (amount: any): string => {
+    const validAmount = ensureValidNumber(amount);
+    return validAmount.toFixed(2);
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
         if (propInvoice) {
-          setInvoice(propInvoice);
+          // Ensure amount is a valid number
+          const safeInvoice = {
+            ...propInvoice,
+            amount: ensureValidNumber(propInvoice.amount)
+          };
+          setInvoice(safeInvoice);
           // Fetch client and job data for the existing invoice
           if (propInvoice.clientId) {
             const clientData = await getClient(propInvoice.clientId);
@@ -117,16 +134,17 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                 ...prev, 
                 jobId: propJobId, 
                 clientId: jobData.clientId,
-                number: invoiceNumber
+                number: invoiceNumber,
+                amount: 0
               }));
             }
           } else if (propClientId) {
             const clientData = await getClient(propClientId);
             setClient(clientData);
-            setInvoice(prev => ({ ...prev, clientId: propClientId, number: invoiceNumber }));
+            setInvoice(prev => ({ ...prev, clientId: propClientId, number: invoiceNumber, amount: 0 }));
           } else {
             // Even if no client or job, set the generated invoice number
-            setInvoice(prev => ({ ...prev, number: invoiceNumber }));
+            setInvoice(prev => ({ ...prev, number: invoiceNumber, amount: 0 }));
           }
         }
 
@@ -143,7 +161,13 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setInvoice(prev => ({ ...prev, [name]: value }));
+    if (name === 'amount') {
+      // Ensure amount is always a valid number
+      const numericValue = ensureValidNumber(value);
+      setInvoice(prev => ({ ...prev, [name]: numericValue }));
+    } else {
+      setInvoice(prev => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleSelectChange = (name: string, value: string) => {
@@ -160,7 +184,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   const handlePackageSelect = (items: InvoiceItem[]) => {
     // Add new packages to existing items
     const newItems = [...invoice.items, ...items];
-    const totalAmount = newItems.reduce((sum, item) => sum + (item.amount || 0), 0);
+    const totalAmount = ensureValidNumber(newItems.reduce((sum, item) => sum + ensureValidNumber(item.amount || 0), 0));
     setInvoice(prev => ({ ...prev, items: newItems, amount: totalAmount }));
     toast.success(`Added ${items.length} item(s) to invoice`);
   };
@@ -168,7 +192,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   const handleDiscountsSelect = (discounts: InvoiceItem[]) => {
     setSelectedDiscounts(discounts);
     const updatedItems = [...invoice.items.filter(item => !item.id?.startsWith('template-discount-')), ...discounts];
-    const totalAmount = updatedItems.reduce((sum, item) => sum + (item.amount || 0), 0);
+    const totalAmount = ensureValidNumber(updatedItems.reduce((sum, item) => sum + ensureValidNumber(item.amount || 0), 0));
     setInvoice(prev => ({ ...prev, items: updatedItems, amount: totalAmount }));
   };
 
@@ -188,7 +212,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     };
 
     const newItems = [...invoice.items, newItem];
-    const totalAmount = newItems.reduce((sum, item) => sum + (item.amount || 0), 0);
+    const totalAmount = ensureValidNumber(newItems.reduce((sum, item) => sum + ensureValidNumber(item.amount || 0), 0));
     setInvoice(prev => ({ ...prev, items: newItems, amount: totalAmount }));
     
     // Reset manual item form
@@ -204,7 +228,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
   const removeItem = (itemId: string) => {
     const updatedItems = invoice.items.filter(item => item.id !== itemId);
-    const totalAmount = updatedItems.reduce((sum, item) => sum + (item.amount || 0), 0);
+    const totalAmount = ensureValidNumber(updatedItems.reduce((sum, item) => sum + ensureValidNumber(item.amount || 0), 0));
     setInvoice(prev => ({ ...prev, items: updatedItems, amount: totalAmount }));
     toast.success('Item removed from invoice');
   };
@@ -212,15 +236,21 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   const handleSaveInvoice = async () => {
     setIsSaving(true);
     try {
+      // Ensure amount is valid before saving
+      const safeInvoice = {
+        ...invoice,
+        amount: ensureValidNumber(invoice.amount),
+        companyId: selectedCompany?.id || ''
+      };
+
       if (propInvoiceId) {
         // If it's an existing invoice, update it
-        const updatedInvoice = { ...invoice, id: propInvoiceId, companyId: selectedCompany?.id || '' };
+        const updatedInvoice = { ...safeInvoice, id: propInvoiceId };
         await updateInvoice(updatedInvoice);
         toast.success('Invoice updated successfully.');
       } else {
         // If it's a new invoice, save it
-        const newInvoice = { ...invoice, companyId: selectedCompany?.id || '' };
-        await saveInvoice(newInvoice);
+        await saveInvoice(safeInvoice);
         toast.success('Invoice saved successfully.');
       }
       navigate('/invoices');
@@ -279,7 +309,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   const handleAddItems = (items: InvoiceItem[]) => {
     // Add new items to existing items
     const newItems = [...invoice.items, ...items];
-    const totalAmount = newItems.reduce((sum, item) => sum + (item.amount || 0), 0);
+    const totalAmount = ensureValidNumber(newItems.reduce((sum, item) => sum + ensureValidNumber(item.amount || 0), 0));
     setInvoice(prev => ({ ...prev, items: newItems, amount: totalAmount }));
     toast.success(`Added ${items.length} item(s) to invoice`);
   };
@@ -287,14 +317,14 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   const handleAddDiscount = (discounts: InvoiceItem[]) => {
     // Add new discounts to existing items
     const newItems = [...invoice.items, ...discounts];
-    const totalAmount = newItems.reduce((sum, item) => sum + (item.amount || 0), 0);
+    const totalAmount = ensureValidNumber(newItems.reduce((sum, item) => sum + ensureValidNumber(item.amount || 0), 0));
     setInvoice(prev => ({ ...prev, items: newItems, amount: totalAmount }));
     toast.success(`Added ${discounts.length} discount(s) to invoice`);
   };
 
-  const subtotal = invoice.items
+  const subtotal = ensureValidNumber(invoice.items
     .filter(item => !item.id?.startsWith('template-discount-') && !item.id?.startsWith('manual-discount-'))
-    .reduce((sum, item) => sum + (item.amount || 0), 0);
+    .reduce((sum, item) => sum + ensureValidNumber(item.amount || 0), 0));
 
   const selectedProducts = invoice.items.filter(item => !item.id?.startsWith('template-discount-') && !item.id?.startsWith('manual-discount-'));
   const selectedDiscountItems = invoice.items.filter(item => item.id?.startsWith('template-discount-') || item.id?.startsWith('manual-discount-'));
@@ -423,12 +453,12 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                               <div className="text-sm text-muted-foreground" dangerouslySetInnerHTML={{ __html: item.description }} />
                             )}
                             <div className="text-sm text-muted-foreground">
-                              Qty: {item.quantity} × ${item.rate.toFixed(2)}
+                              Qty: {item.quantity} × ${formatCurrency(item.rate)}
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
                             <div className="text-right">
-                              <div className="font-medium">${item.amount.toFixed(2)}</div>
+                              <div className="font-medium">${formatCurrency(item.amount)}</div>
                             </div>
                             <Button
                               variant="ghost"
@@ -483,7 +513,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                           </div>
                           <div className="flex items-center gap-2">
                             <div className="text-right">
-                              <div className="font-medium text-red-700">-${Math.abs(item.amount).toFixed(2)}</div>
+                              <div className="font-medium text-red-700">-${formatCurrency(Math.abs(ensureValidNumber(item.amount)))}</div>
                             </div>
                             <Button
                               variant="ghost"
@@ -509,18 +539,18 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
                       <span className="text-sm">Subtotal:</span>
-                      <span className="text-sm">${subtotal.toFixed(2)}</span>
+                      <span className="text-sm">${formatCurrency(subtotal)}</span>
                     </div>
                     {selectedDiscountItems.length > 0 && (
                       <div className="flex justify-between items-center text-red-600">
                         <span className="text-sm">Total Discounts:</span>
-                        <span className="text-sm">-${Math.abs(selectedDiscountItems.reduce((sum, item) => sum + item.amount, 0)).toFixed(2)}</span>
+                        <span className="text-sm">-${formatCurrency(Math.abs(ensureValidNumber(selectedDiscountItems.reduce((sum, item) => sum + ensureValidNumber(item.amount), 0))))}</span>
                       </div>
                     )}
                     <Separator />
                     <div className="flex justify-between items-center font-medium">
                       <span>Total:</span>
-                      <span>${invoice.amount.toFixed(2)}</span>
+                      <span>${formatCurrency(invoice.amount)}</span>
                     </div>
                   </div>
                 </CardContent>
@@ -533,7 +563,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                 type="number"
                 id="amount"
                 name="amount"
-                value={invoice.amount}
+                value={ensureValidNumber(invoice.amount)}
                 onChange={handleInputChange}
               />
             </div>
@@ -541,7 +571,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
             {/* Payment Schedule Manager */}
             <PaymentScheduleManager
               paymentSchedules={invoice.paymentSchedules || []}
-              invoiceAmount={invoice.amount}
+              invoiceAmount={ensureValidNumber(invoice.amount)}
               onUpdateSchedules={handlePaymentSchedulesUpdate}
             />
 

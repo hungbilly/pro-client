@@ -698,37 +698,37 @@ const InvoiceView = () => {
             
             <CardContent className="pt-6">
               <Tabs defaultValue="invoice" className="w-full">
-                <TabsList className="w-full bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/50 dark:to-purple-950/50 border-2 border-blue-100 dark:border-blue-800">
+                <TabsList className="w-full bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-900/50 dark:to-slate-800/50 border border-slate-200 dark:border-slate-700">
                   <TabsTrigger 
                     value="invoice" 
-                    className="flex-1 relative bg-gradient-to-r from-blue-500 to-blue-600 text-white data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-blue-700 data-[state=active]:text-white data-[state=inactive]:bg-transparent data-[state=inactive]:text-blue-700 dark:data-[state=inactive]:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/20 transition-all duration-200 shadow-md data-[state=active]:shadow-lg"
+                    className="flex-1 relative data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-200 data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-400 dark:data-[state=active]:bg-blue-900/20 dark:data-[state=active]:text-blue-300 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-all duration-200 border border-transparent data-[state=active]:shadow-sm"
                   >
                     <div className="flex items-center gap-2">
                       <DollarSign className="h-4 w-4" />
                       <span className="font-medium">Invoice Details</span>
                       {invoice.status === 'accepted' ? (
-                        <CheckCircle className="h-4 w-4 text-green-200" />
+                        <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
                       ) : null}
                     </div>
                     {isClientView && ['draft', 'sent'].includes(invoice.status) && (
-                      <div className="absolute -top-2 -right-2 h-5 w-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold border-2 border-white animate-pulse">
+                      <div className="absolute -top-2 -right-2 h-5 w-5 bg-orange-500 rounded-full flex items-center justify-center text-white text-xs font-bold border-2 border-white animate-pulse">
                         1
                       </div>
                     )}
                   </TabsTrigger>
                   <TabsTrigger 
                     value="contract" 
-                    className="flex-1 relative bg-gradient-to-r from-purple-500 to-purple-600 text-white data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-700 data-[state=active]:text-white data-[state=inactive]:bg-transparent data-[state=inactive]:text-purple-700 dark:data-[state=inactive]:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/20 transition-all duration-200 shadow-md data-[state=active]:shadow-lg"
+                    className="flex-1 relative data-[state=active]:bg-purple-50 data-[state=active]:text-purple-700 data-[state=active]:border-purple-200 data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-400 dark:data-[state=active]:bg-purple-900/20 dark:data-[state=active]:text-purple-300 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-all duration-200 border border-transparent data-[state=active]:shadow-sm"
                   >
                     <div className="flex items-center gap-2">
                       <FileText className="h-4 w-4" />
                       <span className="font-medium">Contract Terms</span>
                       {invoice.contractStatus === 'accepted' ? (
-                        <CheckCircle className="h-4 w-4 text-green-200" />
+                        <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
                       ) : null}
                     </div>
                     {isClientView && invoice.contractTerms && invoice.contractStatus === 'pending' && (
-                      <div className="absolute -top-2 -right-2 h-5 w-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold border-2 border-white animate-pulse">
+                      <div className="absolute -top-2 -right-2 h-5 w-5 bg-orange-500 rounded-full flex items-center justify-center text-white text-xs font-bold border-2 border-white animate-pulse">
                         1
                       </div>
                     )}

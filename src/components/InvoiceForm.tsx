@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -148,6 +147,20 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     }
   };
 
+  const handleItemsSelect = (items: InvoiceItem[]) => {
+    setSelectedItems(items);
+    const updatedItems = [...invoice.items.filter(item => !item.id?.startsWith('template-')), ...items];
+    const totalAmount = updatedItems.reduce((sum, item) => sum + (item.amount || 0), 0);
+    setInvoice(prev => ({ ...prev, items: updatedItems, amount: totalAmount }));
+  };
+
+  const handleDiscountsSelect = (discounts: InvoiceItem[]) => {
+    setSelectedDiscounts(discounts);
+    const updatedItems = [...invoice.items.filter(item => !item.id?.startsWith('template-discount-')), ...discounts];
+    const totalAmount = updatedItems.reduce((sum, item) => sum + (item.amount || 0), 0);
+    setInvoice(prev => ({ ...prev, items: updatedItems, amount: totalAmount }));
+  };
+
   const handleSaveInvoice = async () => {
     setIsSaving(true);
     try {
@@ -214,6 +227,10 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   const handlePaymentSchedulesUpdate = (schedules: PaymentSchedule[]) => {
     setInvoice(prev => ({ ...prev, paymentSchedules: schedules }));
   };
+
+  const subtotal = invoice.items
+    .filter(item => !item.id?.startsWith('template-discount-'))
+    .reduce((sum, item) => sum + (item.amount || 0), 0);
 
   return (
     <PageTransition>
@@ -305,8 +322,47 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
               </div>
             </div>
 
+            {/* Package/Product Selector */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="h-5 w-5" />
+                  Products & Services
+                </CardTitle>
+                <CardDescription>
+                  Select packages and services to include in this invoice
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <PackageSelector
+                  onItemsSelect={handleItemsSelect}
+                  variant="page"
+                />
+              </CardContent>
+            </Card>
+
+            {/* Discount Selector */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Percent className="h-5 w-5" />
+                  Discounts
+                </CardTitle>
+                <CardDescription>
+                  Apply discounts to this invoice
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <DiscountSelector
+                  onDiscountSelect={handleDiscountsSelect}
+                  variant="page"
+                  subtotal={subtotal}
+                />
+              </CardContent>
+            </Card>
+
             <div>
-              <Label htmlFor="amount">Amount</Label>
+              <Label htmlFor="amount">Total Amount</Label>
               <Input
                 type="number"
                 id="amount"

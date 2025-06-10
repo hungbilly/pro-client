@@ -218,7 +218,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
           <div className="space-y-3">
             {paymentSchedules.map((schedule) => (
               <div key={schedule.id} className="flex items-center gap-3 p-3 border rounded-lg">
-                <div className="w-20 flex-shrink-0">
+                <div className="w-28 flex-shrink-0">
                   <span className="font-medium text-sm">{schedule.description}</span>
                 </div>
                 <div className="w-40 flex-shrink-0">

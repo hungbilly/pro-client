@@ -335,8 +335,8 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
               </CardHeader>
               <CardContent>
                 <PackageSelector
-                  onItemsSelect={handleItemsSelect}
-                  variant="page"
+                  onPackageSelect={handleItemsSelect}
+                  variant="default"
                 />
               </CardContent>
             </Card>

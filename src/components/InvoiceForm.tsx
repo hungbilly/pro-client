@@ -459,7 +459,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                 />
               </div>
               <div>
-                <Label htmlFor="shootingDate">Shooting Date</Label>
+                <Label htmlFor="shootingDate">Job Date</Label>
                 <DatePicker
                   mode="single"
                   selected={invoice.shootingDate ? new Date(invoice.shootingDate) : undefined}

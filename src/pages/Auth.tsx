@@ -198,36 +198,37 @@ const Auth = () => {
 
   return <PageTransition>
       <div className="min-h-screen relative overflow-hidden">
-        {/* Enhanced Glassmorphism Background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-400 via-purple-500 to-pink-500">
-          <div className="absolute inset-0 bg-gradient-to-tr from-cyan-400/30 via-blue-500/20 to-purple-600/40"></div>
-          <div className="absolute top-0 left-0 w-72 h-72 bg-white/10 rounded-full blur-3xl animate-pulse-soft"></div>
-          <div className="absolute top-1/2 right-0 w-96 h-96 bg-blue-300/20 rounded-full blur-3xl animate-float"></div>
-          <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-purple-400/15 rounded-full blur-3xl animate-pulse-soft"></div>
+        {/* Enhanced Glassmorphism Background with more vibrant gradients */}
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600">
+          <div className="absolute inset-0 bg-gradient-to-tr from-cyan-500/40 via-blue-600/30 to-purple-700/50"></div>
+          <div className="absolute top-0 left-0 w-96 h-96 bg-white/20 rounded-full blur-3xl animate-pulse-soft"></div>
+          <div className="absolute top-1/2 right-0 w-[32rem] h-[32rem] bg-blue-400/30 rounded-full blur-3xl animate-float"></div>
+          <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-purple-500/25 rounded-full blur-3xl animate-pulse-soft"></div>
+          <div className="absolute top-1/4 left-1/2 w-64 h-64 bg-pink-400/20 rounded-full blur-2xl animate-float"></div>
         </div>
 
         <div className="relative z-10 flex items-center justify-center min-h-screen">
           <div className="w-full max-w-7xl grid grid-cols-1 lg:grid-cols-2 gap-8 p-4 md:p-8">
             <div className="flex flex-col justify-center space-y-6 my-0">
               <div className="flex flex-col items-start">
-                <div className="glass-panel p-4 rounded-2xl mb-4">
+                <div className="glass-panel-enhanced p-4 rounded-2xl mb-4">
                   <img 
                     alt="ProClient Logo" 
                     src="/lovable-uploads/9fd4660b-36e4-4596-9ee9-60b3c52c8c69.png" 
                     className="h-19 object-contain" 
                   />
                 </div>
-                <p className="text-xl text-white/90 mb-6 backdrop-blur-sm bg-white/10 p-4 rounded-xl border border-white/20">
+                <p className="text-xl text-gray-800 font-medium mb-6 glass-panel-enhanced p-6 rounded-xl shadow-glass-lg">
                   Simply define your services and manage your clients. Track jobs, create professional invoices, and get paid faster.
                 </p>
               </div>
-              <h1 className="text-4xl md:text-5xl font-bold tracking-tight py-0 text-white drop-shadow-lg">
+              <h1 className="text-4xl md:text-5xl font-bold tracking-tight py-0 text-gray-900 drop-shadow-lg">
                 ProClient
-                <span className="text-white/90 bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent"> Management System</span>
+                <span className="text-gray-700 bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent"> Management System</span>
               </h1>
               <div className="flex flex-col space-y-4">
-                <div className="glass-panel p-6 rounded-2xl">
-                  <p className="text-lg text-white/95">
+                <div className="glass-panel-enhanced p-6 rounded-2xl shadow-glass-lg">
+                  <p className="text-lg text-gray-800 font-medium">
                     ✓ Easy client management
                     <br />
                     ✓ Professional invoicing
@@ -237,31 +238,31 @@ const Auth = () => {
                     ✓ Payment processing
                   </p>
                 </div>
-                <p className="text-sm text-white/80 italic backdrop-blur-sm bg-white/5 p-3 rounded-lg border border-white/10">No credit card is required for a 7-day trial. After that, your first registration with a credit card will grant you 30 days free!</p>
+                <p className="text-sm text-gray-700 italic glass-panel-subtle p-3 rounded-lg font-medium">No credit card is required for a 7-day trial. After that, your first registration with a credit card will grant you 30 days free!</p>
               </div>
             </div>
 
             <div className="space-y-8">
-              <Card className="w-full glass-card border-white/30 shadow-2xl">
+              <Card className="w-full glass-card-enhanced shadow-glass-2xl border-white/40">
                 <CardHeader className="space-y-1">
-                  <CardTitle className="text-2xl text-center text-white">
+                  <CardTitle className="text-2xl text-center text-gray-900 font-bold">
                     {isForgotPassword ? 'Reset Password' : isLogin ? 'Welcome Back' : 'Start Your Free Trial'}
                   </CardTitle>
-                  <CardDescription className="text-center text-white/80">
+                  <CardDescription className="text-center text-gray-700 font-medium">
                     {isForgotPassword ? 'Enter your email to receive password reset instructions' : isLogin ? 'Sign in to access your account' : 'Create your account and start managing clients today'}
                   </CardDescription>
                 </CardHeader>
                 
                 {errorMessage && <div className="px-6">
                     <Alert variant="destructive" className="glass-alert border-red-300/50 bg-red-500/20 backdrop-blur-md">
-                      <AlertDescription className="text-white">{errorMessage}</AlertDescription>
+                      <AlertDescription className="text-red-800 font-medium">{errorMessage}</AlertDescription>
                     </Alert>
                   </div>}
                 
                 <form onSubmit={handleAuth}>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="email" className="text-white/90">Email</Label>
+                      <Label htmlFor="email" className="text-gray-800 font-medium">Email</Label>
                       <Input 
                         id="email" 
                         type="email" 
@@ -269,47 +270,47 @@ const Auth = () => {
                         value={email} 
                         onChange={e => setEmail(e.target.value)} 
                         required 
-                        className="glass-input bg-white/10 border-white/30 text-white placeholder:text-white/60 backdrop-blur-md focus:bg-white/20 focus:border-white/50"
+                        className="glass-input-enhanced bg-white/30 border-white/50 text-gray-900 placeholder:text-gray-600 backdrop-blur-md focus:bg-white/40 focus:border-white/70 shadow-glass"
                       />
                     </div>
                     
                     {!isForgotPassword && <div className="space-y-2">
-                        <Label htmlFor="password" className="text-white/90">Password</Label>
+                        <Label htmlFor="password" className="text-gray-800 font-medium">Password</Label>
                         <Input 
                           id="password" 
                           type="password" 
                           value={password} 
                           onChange={e => setPassword(e.target.value)} 
                           required 
-                          className="glass-input bg-white/10 border-white/30 text-white placeholder:text-white/60 backdrop-blur-md focus:bg-white/20 focus:border-white/50"
+                          className="glass-input-enhanced bg-white/30 border-white/50 text-gray-900 placeholder:text-gray-600 backdrop-blur-md focus:bg-white/40 focus:border-white/70 shadow-glass"
                         />
                       </div>}
                     
                     {!isForgotPassword && !isLogin && (
                       <div className="space-y-2">
-                        <Label htmlFor="confirm-password" className="text-white/90">Confirm Password</Label>
+                        <Label htmlFor="confirm-password" className="text-gray-800 font-medium">Confirm Password</Label>
                         <Input 
                           id="confirm-password" 
                           type="password" 
                           value={confirmPassword} 
                           onChange={e => setConfirmPassword(e.target.value)} 
                           required 
-                          className="glass-input bg-white/10 border-white/30 text-white placeholder:text-white/60 backdrop-blur-md focus:bg-white/20 focus:border-white/50"
+                          className="glass-input-enhanced bg-white/30 border-white/50 text-gray-900 placeholder:text-gray-600 backdrop-blur-md focus:bg-white/40 focus:border-white/70 shadow-glass"
                         />
                       </div>
                     )}
                     
                     {!isForgotPassword && <>
                         <div className="flex items-center gap-4 py-2">
-                          <Separator className="flex-1 bg-white/30" />
-                          <span className="text-sm text-white/70">or</span>
-                          <Separator className="flex-1 bg-white/30" />
+                          <Separator className="flex-1 bg-gray-400/50" />
+                          <span className="text-sm text-gray-600 font-medium">or</span>
+                          <Separator className="flex-1 bg-gray-400/50" />
                         </div>
                         
                         <Button 
                           type="button" 
                           variant="outline" 
-                          className="w-full flex gap-2 items-center justify-center glass-button bg-white/10 border-white/30 text-white hover:bg-white/20 hover:border-white/50 backdrop-blur-md transition-all duration-300" 
+                          className="w-full flex gap-2 items-center justify-center glass-button-enhanced bg-white/25 border-white/50 text-gray-800 hover:bg-white/35 hover:border-white/70 backdrop-blur-md transition-all duration-300 shadow-glass font-medium" 
                           onClick={handleGoogleSignIn} 
                           disabled={loading}
                         >
@@ -326,7 +327,7 @@ const Auth = () => {
                   <CardFooter className="flex flex-col space-y-4">
                     <Button 
                       type="submit" 
-                      className="w-full glass-button-primary bg-white/20 hover:bg-white/30 text-white border border-white/40 backdrop-blur-md transition-all duration-300 hover:scale-105" 
+                      className="w-full glass-button-primary-enhanced bg-blue-600/80 hover:bg-blue-700/80 text-white border border-blue-400/50 backdrop-blur-md transition-all duration-300 hover:scale-105 shadow-glass-lg font-medium" 
                       disabled={loading}
                     >
                       {loading ? isForgotPassword ? 'Sending reset instructions...' : isLogin ? 'Signing in...' : 'Creating account...' : isForgotPassword ? 'Send reset instructions' : isLogin ? 'Sign in' : 'Start Free Trial'}
@@ -335,7 +336,7 @@ const Auth = () => {
                     {!isForgotPassword && <Button 
                       type="button" 
                       variant="link" 
-                      className="w-full text-white/90 hover:text-white hover:bg-white/10 backdrop-blur-sm rounded-lg transition-all duration-300" 
+                      className="w-full text-gray-700 hover:text-gray-900 hover:bg-white/20 backdrop-blur-sm rounded-lg transition-all duration-300 font-medium" 
                       onClick={() => {
                         if (isLogin) {
                           // Open the SignUpDialog instead of toggling isLogin
@@ -351,7 +352,7 @@ const Auth = () => {
                     <Button 
                       type="button" 
                       variant="link" 
-                      className="w-full text-sm text-white/80 hover:text-white hover:bg-white/10 backdrop-blur-sm rounded-lg transition-all duration-300" 
+                      className="w-full text-sm text-gray-600 hover:text-gray-800 hover:bg-white/20 backdrop-blur-sm rounded-lg transition-all duration-300 font-medium" 
                       onClick={() => {
                         setIsForgotPassword(!isForgotPassword);
                         setErrorMessage(null);
@@ -363,8 +364,8 @@ const Auth = () => {
                 </form>
               </Card>
 
-              <div className="glass-panel p-8 rounded-2xl border-white/20 flex items-center justify-center">
-                <p className="text-white/80 text-center">
+              <div className="glass-panel-enhanced p-8 rounded-2xl border-white/30 flex items-center justify-center shadow-glass-lg">
+                <p className="text-gray-700 text-center font-medium">
                   Tutorial video placeholder
                   <br />
                   <span className="text-sm">Coming soon</span>
@@ -384,3 +385,5 @@ const Auth = () => {
 };
 
 export default Auth;
+
+</edits_to_apply>

@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DatePicker } from '@/components/ui/date-picker';
-import { Trash2, Plus, Calendar, Percent } from 'lucide-react';
+import { Trash2, Plus, Calendar, Percent, DollarSign } from 'lucide-react';
 import { format } from 'date-fns';
 import { PaymentSchedule, PaymentStatus } from '@/types';
 import { toast } from 'sonner';
@@ -26,6 +26,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
     description: '',
     dueDate: format(new Date(), 'yyyy-MM-dd'),
     percentage: 0,
+    amount: 0,
     status: 'unpaid'
   });
 
@@ -54,18 +55,28 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
   };
 
   const addPaymentSchedule = () => {
-    if (!newSchedule.description || !newSchedule.dueDate || !newSchedule.percentage) {
+    if (!newSchedule.description || !newSchedule.dueDate || (!newSchedule.percentage && !newSchedule.amount)) {
       toast.error('Please fill in all fields');
       return;
     }
 
-    if (newSchedule.percentage <= 0 || newSchedule.percentage > 100) {
+    // Calculate percentage from amount or vice versa
+    let percentage = newSchedule.percentage || 0;
+    let amount = newSchedule.amount || 0;
+
+    if (amount > 0 && invoiceAmount > 0) {
+      percentage = (amount / invoiceAmount) * 100;
+    } else if (percentage > 0) {
+      amount = (invoiceAmount * percentage) / 100;
+    }
+
+    if (percentage <= 0 || percentage > 100) {
       toast.error('Percentage must be between 1 and 100');
       return;
     }
 
     const totalCurrentPercentage = paymentSchedules.reduce((sum, schedule) => sum + (schedule.percentage || 0), 0);
-    if (totalCurrentPercentage + newSchedule.percentage > 100) {
+    if (totalCurrentPercentage + percentage > 100) {
       toast.error('Total percentage cannot exceed 100%');
       return;
     }
@@ -74,9 +85,9 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
       id: generateId(),
       description: newSchedule.description,
       dueDate: newSchedule.dueDate,
-      percentage: newSchedule.percentage,
+      percentage: percentage,
       status: newSchedule.status as PaymentStatus,
-      amount: (invoiceAmount * newSchedule.percentage) / 100
+      amount: amount
     };
 
     onUpdateSchedules([...paymentSchedules, schedule]);
@@ -84,6 +95,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
       description: getNextPaymentDescription(),
       dueDate: format(new Date(), 'yyyy-MM-dd'),
       percentage: 0,
+      amount: 0,
       status: 'unpaid'
     });
     toast.success('Payment schedule added');
@@ -98,9 +110,14 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
     const updatedSchedules = paymentSchedules.map(schedule => {
       if (schedule.id === id) {
         const updated = { ...schedule, [field]: value };
+        
+        // Sync percentage and amount
         if (field === 'percentage') {
           updated.amount = (invoiceAmount * value) / 100;
+        } else if (field === 'amount') {
+          updated.percentage = invoiceAmount > 0 ? (value / invoiceAmount) * 100 : 0;
         }
+        
         return updated;
       }
       return schedule;
@@ -114,6 +131,16 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
     }
   };
 
+  const handleNewSchedulePercentageChange = (percentage: number) => {
+    const amount = (invoiceAmount * percentage) / 100;
+    setNewSchedule(prev => ({ ...prev, percentage, amount }));
+  };
+
+  const handleNewScheduleAmountChange = (amount: number) => {
+    const percentage = invoiceAmount > 0 ? (amount / invoiceAmount) * 100 : 0;
+    setNewSchedule(prev => ({ ...prev, amount, percentage }));
+  };
+
   // Set default description for new schedule when component mounts or schedules change
   useEffect(() => {
     setNewSchedule(prev => ({
@@ -123,6 +150,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
   }, [paymentSchedules.length]);
 
   const totalPercentage = paymentSchedules.reduce((sum, schedule) => sum + (schedule.percentage || 0), 0);
+  const totalAmount = paymentSchedules.reduce((sum, schedule) => sum + (schedule.amount || 0), 0);
   const isPercentageValid = Math.abs(totalPercentage - 100) < 0.01;
 
   return (
@@ -161,14 +189,29 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
                   <div className="relative">
                     <Input
                       type="number"
-                      value={schedule.percentage}
+                      value={schedule.percentage?.toFixed(2) || 0}
                       onChange={(e) => updatePaymentSchedule(schedule.id, 'percentage', parseFloat(e.target.value) || 0)}
                       placeholder="0"
                       min="0"
                       max="100"
+                      step="0.01"
                       className="pr-6"
                     />
                     <Percent className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  </div>
+                </div>
+                <div className="w-32">
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      value={schedule.amount?.toFixed(2) || 0}
+                      onChange={(e) => updatePaymentSchedule(schedule.id, 'amount', parseFloat(e.target.value) || 0)}
+                      placeholder="0"
+                      min="0"
+                      step="0.01"
+                      className="pr-6"
+                    />
+                    <DollarSign className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground" />
                   </div>
                 </div>
                 <div className="w-32">
@@ -198,9 +241,14 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
             ))}
             
             <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
-              <span className="text-sm font-medium">
-                Total: {totalPercentage.toFixed(2)}%
-              </span>
+              <div className="flex gap-4">
+                <span className="text-sm font-medium">
+                  Total: {totalPercentage.toFixed(2)}%
+                </span>
+                <span className="text-sm font-medium">
+                  Amount: ${totalAmount.toFixed(2)}
+                </span>
+              </div>
               {!isPercentageValid && (
                 <span className="text-sm text-red-500">
                   Must equal 100%
@@ -213,7 +261,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
         {/* Add New Payment Schedule */}
         <div className="space-y-3 p-4 border rounded-lg bg-muted/50">
           <Label className="text-sm font-medium">Add Payment Schedule</Label>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
             <div>
               <Input
                 value={newSchedule.description || ''}
@@ -232,13 +280,41 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
               <Input
                 type="number"
                 value={newSchedule.percentage || ''}
-                onChange={(e) => setNewSchedule(prev => ({ ...prev, percentage: parseFloat(e.target.value) || 0 }))}
+                onChange={(e) => handleNewSchedulePercentageChange(parseFloat(e.target.value) || 0)}
                 placeholder="Percentage"
                 min="0"
                 max="100"
+                step="0.01"
                 className="pr-6"
               />
               <Percent className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            </div>
+            <div className="relative">
+              <Input
+                type="number"
+                value={newSchedule.amount || ''}
+                onChange={(e) => handleNewScheduleAmountChange(parseFloat(e.target.value) || 0)}
+                placeholder="Amount"
+                min="0"
+                step="0.01"
+                className="pr-6"
+              />
+              <DollarSign className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            </div>
+            <div>
+              <Select
+                value={newSchedule.status || 'unpaid'}
+                onValueChange={(value) => setNewSchedule(prev => ({ ...prev, status: value as PaymentStatus }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unpaid">Unpaid</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="write-off">Write-off</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <Button onClick={addPaymentSchedule} className="w-full">
               <Plus className="h-4 w-4 mr-2" />

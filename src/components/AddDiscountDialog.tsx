@@ -9,18 +9,21 @@ import {
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { InvoiceItem } from '@/types';
 import DiscountSelector from './DiscountSelector';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { AlertTriangle } from 'lucide-react';
 
 interface AddDiscountDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onAddDiscount: (discount: any) => void;
   subtotal?: number;
+  hasExistingFixedDiscounts?: boolean;
 }
 
 const AddDiscountDialog: React.FC<AddDiscountDialogProps> = ({
@@ -28,6 +31,7 @@ const AddDiscountDialog: React.FC<AddDiscountDialogProps> = ({
   onOpenChange,
   onAddDiscount,
   subtotal = 0,
+  hasExistingFixedDiscounts = false,
 }) => {
   const [discountType, setDiscountType] = useState<'percentage' | 'fixed'>('fixed');
   const [discountValue, setDiscountValue] = useState<string>('');
@@ -157,6 +161,16 @@ const AddDiscountDialog: React.FC<AddDiscountDialogProps> = ({
                   />
                 </div>
               </div>
+
+              {/* Warning message for percentage discount with existing fixed discounts */}
+              {discountType === 'percentage' && hasExistingFixedDiscounts && (
+                <Alert variant="warning">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    Applying a percentage discount will remove all existing fixed discounts and apply the percentage to the total invoice amount.
+                  </AlertDescription>
+                </Alert>
+              )}
 
               {previewAmount > 0 && (
                 <div className="p-3 bg-muted rounded-lg">

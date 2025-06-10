@@ -449,6 +449,9 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   const selectedProducts = invoice.items.filter(item => !item.id?.startsWith('template-discount-') && !item.id?.startsWith('manual-discount-'));
   const selectedDiscountItems = invoice.items.filter(item => item.id?.startsWith('template-discount-') || item.id?.startsWith('manual-discount-'));
 
+  // Check if there are existing fixed discounts
+  const hasExistingFixedDiscounts = selectedDiscountItems.length > 0;
+
   // Recalculate amount whenever subtotal or discounts change
   React.useEffect(() => {
     const totalAmount = calculateTotalWithDiscount();
@@ -825,6 +828,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
         onOpenChange={setIsAddDiscountDialogOpen}
         onAddDiscount={handleAddDiscount}
         subtotal={subtotal}
+        hasExistingFixedDiscounts={hasExistingFixedDiscounts}
       />
     </PageTransition>
   );

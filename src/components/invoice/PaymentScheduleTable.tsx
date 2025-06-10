@@ -1,3 +1,4 @@
+
 import React, { memo, useState, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -8,7 +9,7 @@ import { format } from 'date-fns';
 import { PaymentSchedule, PaymentStatus } from '@/types';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon, Edit2, CircleDollarSign, AlertCircle, Trash2 } from 'lucide-react';
+import { CalendarIcon, Edit2, CircleDollarSign, AlertCircle, Trash2, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
@@ -16,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { formatCurrency } from '@/lib/utils';
 import { useCompanyContext } from '@/context/CompanyContext';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface PaymentScheduleTableProps {
   paymentSchedules: PaymentSchedule[];
@@ -365,179 +367,253 @@ const PaymentScheduleTable = memo(({
   };
 
   return (
-    <div className="border rounded-md overflow-hidden">
-      {!isPercentageValid && (
-        <Alert variant="destructive" className="mb-4">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription className="font-medium">
-            {totalPercentage > 100 
-              ? `The total percentage exceeds 100% by ${percentageDifference}%. Please adjust the percentages.`
-              : `The total percentage is ${percentageDifference}% below 100%. Please adjust the percentages to reach exactly 100%.`
-            }
-          </AlertDescription>
-        </Alert>
-      )}
-      
-      <Table>
-        <TableHeader>
-          <TableRow className="bg-muted/50">
-            <TableHead>Description</TableHead>
-            <TableHead>Due Date</TableHead>
-            <TableHead className="text-right">Percentage</TableHead>
-            <TableHead className="text-right">Amount</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Payment Date</TableHead>
-            {!isClientView && <TableHead className="w-24"></TableHead>}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {paymentSchedules.map((schedule, index) => (
-            <TableRow key={schedule.id}>
-              <TableCell>
-                {renderDescriptionCell(schedule, index)}
-              </TableCell>
-              <TableCell>
-                {schedule.dueDate && new Date(schedule.dueDate).toLocaleDateString()}
-              </TableCell>
-              <TableCell className="text-right">
-                {(schedule.percentage || 0).toFixed(2)}%
-              </TableCell>
-              <TableCell className="text-right font-medium">
-                {renderAmountCell(schedule)}
-              </TableCell>
-              <TableCell>
-                <Badge className={paymentStatusColors[schedule.status] || paymentStatusColors.unpaid}>
-                  {schedule.status.toUpperCase()}
-                </Badge>
-              </TableCell>
-              <TableCell>
-                {schedule.status === 'paid' ? (
-                  <div className="flex items-center gap-2">
-                    {schedule.paymentDate ? (
-                      <>
-                        <span>
-                          {format(new Date(schedule.paymentDate), 'MMM d, yyyy')}
-                        </span>
-                        {!isClientView && shouldEnableEditing && (
-                          <Popover open={editingDateId === schedule.id} onOpenChange={(open) => {
-                            if (open) setEditingDateId(schedule.id);
-                            else setEditingDateId(null);
-                          }}>
-                            <PopoverTrigger asChild>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="h-8 w-8"
-                                onClick={() => {
-                                  console.log('Edit date button clicked');
-                                  setEditingDateId(schedule.id);
-                                }}
-                              >
-                                <Edit2 className="h-4 w-4" />
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar
-                                mode="single"
-                                selected={schedule.paymentDate ? new Date(schedule.paymentDate) : undefined}
-                                onSelect={(date) => handleDateSelect(schedule.id, date)}
-                                initialFocus
-                              />
-                            </PopoverContent>
-                          </Popover>
-                        )}
-                      </>
-                    ) : (
-                      <span className="text-muted-foreground">Not set</span>
-                    )}
-                  </div>
-                ) : (
-                  <span className="text-muted-foreground">-</span>
-                )}
-              </TableCell>
-              {!isClientView && (
-                <TableCell>
-                  <div className="flex space-x-2">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          disabled={updatingPaymentId === schedule.id}
-                        >
-                          {updatingPaymentId === schedule.id ? 'Updating...' : 'Set Status'}
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {schedule.status !== 'paid' && (
-                          <DropdownMenuItem 
-                            onClick={() => onUpdateStatus(schedule.id, 'paid')}
-                            className="text-green-600"
-                          >
-                            Mark as Paid
-                          </DropdownMenuItem>
-                        )}
-                        {schedule.status !== 'unpaid' && (
-                          <DropdownMenuItem 
-                            onClick={() => onUpdateStatus(schedule.id, 'unpaid')}
-                          >
-                            Mark as Unpaid
-                          </DropdownMenuItem>
-                        )}
-                        {schedule.status !== 'write-off' && (
-                          <DropdownMenuItem 
-                            onClick={() => onUpdateStatus(schedule.id, 'write-off')}
-                            className="text-red-600"
-                          >
-                            Write Off
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                    {onRemovePaymentSchedule && shouldEnableEditing && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onRemovePaymentSchedule(schedule.id)}
-                        className="text-red-500 hover:text-red-700"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                </TableCell>
-              )}
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-      
-      <div className="p-4 border-t bg-gray-50">
-        <div className="flex justify-between">
-          <div>
-            <Badge 
-              variant={isPercentageValid ? "default" : "destructive"} 
-              className={isPercentageValid 
-                ? "bg-green-100 text-green-800" 
-                : "bg-red-100 text-red-800 font-medium"
+    <TooltipProvider>
+      <div className="border rounded-md overflow-hidden">
+        {!isPercentageValid && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="font-medium">
+              {totalPercentage > 100 
+                ? `The total percentage exceeds 100% by ${percentageDifference}%. Please adjust the percentages.`
+                : `The total percentage is ${percentageDifference}% below 100%. Please adjust the percentages to reach exactly 100%.`
               }
-            >
-              Total: {totalPercentage.toFixed(2)}%
-              {!isPercentageValid && (
-                <span className="ml-1">
-                  (Must be 100%)
-                </span>
-              )}
-            </Badge>
-          </div>
-          <div>
-            <Badge variant="outline" className="bg-blue-100 text-blue-800">
-              Total Amount: {trueFormatCurrency(amount)}
-            </Badge>
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/50">
+              <TableHead>
+                <div className="flex items-center gap-2">
+                  Description
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Info className="h-3 w-3 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Name or description for this payment installment</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              </TableHead>
+              <TableHead>
+                <div className="flex items-center gap-2">
+                  Due Date
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Info className="h-3 w-3 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>When this payment is expected to be received</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              </TableHead>
+              <TableHead className="text-right">
+                <div className="flex items-center justify-end gap-2">
+                  Percentage
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Info className="h-3 w-3 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Percentage of total invoice amount for this payment</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              </TableHead>
+              <TableHead className="text-right">
+                <div className="flex items-center justify-end gap-2">
+                  Amount
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Info className="h-3 w-3 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Dollar amount for this payment installment</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              </TableHead>
+              <TableHead>
+                <div className="flex items-center gap-2">
+                  Status
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Info className="h-3 w-3 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Current payment status: Paid, Unpaid, or Write-off</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              </TableHead>
+              <TableHead>
+                <div className="flex items-center gap-2">
+                  Payment Date
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Info className="h-3 w-3 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Actual date when payment was received (for paid items)</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              </TableHead>
+              {!isClientView && <TableHead className="w-24">Actions</TableHead>}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {paymentSchedules.map((schedule, index) => (
+              <TableRow key={schedule.id}>
+                <TableCell>
+                  {renderDescriptionCell(schedule, index)}
+                </TableCell>
+                <TableCell>
+                  {schedule.dueDate && new Date(schedule.dueDate).toLocaleDateString()}
+                </TableCell>
+                <TableCell className="text-right">
+                  {(schedule.percentage || 0).toFixed(2)}%
+                </TableCell>
+                <TableCell className="text-right font-medium">
+                  {renderAmountCell(schedule)}
+                </TableCell>
+                <TableCell>
+                  <Badge className={paymentStatusColors[schedule.status] || paymentStatusColors.unpaid}>
+                    {schedule.status.toUpperCase()}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  {schedule.status === 'paid' ? (
+                    <div className="flex items-center gap-2">
+                      {schedule.paymentDate ? (
+                        <>
+                          <span>
+                            {format(new Date(schedule.paymentDate), 'MMM d, yyyy')}
+                          </span>
+                          {!isClientView && shouldEnableEditing && (
+                            <Popover open={editingDateId === schedule.id} onOpenChange={(open) => {
+                              if (open) setEditingDateId(schedule.id);
+                              else setEditingDateId(null);
+                            }}>
+                              <PopoverTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-8 w-8"
+                                  onClick={() => {
+                                    console.log('Edit date button clicked');
+                                    setEditingDateId(schedule.id);
+                                  }}
+                                >
+                                  <Edit2 className="h-4 w-4" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                  mode="single"
+                                  selected={schedule.paymentDate ? new Date(schedule.paymentDate) : undefined}
+                                  onSelect={(date) => handleDateSelect(schedule.id, date)}
+                                  initialFocus
+                                />
+                              </PopoverContent>
+                            </Popover>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-muted-foreground">Not set</span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
+                </TableCell>
+                {!isClientView && (
+                  <TableCell>
+                    <div className="flex space-x-2">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            disabled={updatingPaymentId === schedule.id}
+                          >
+                            {updatingPaymentId === schedule.id ? 'Updating...' : 'Set Status'}
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {schedule.status !== 'paid' && (
+                            <DropdownMenuItem 
+                              onClick={() => onUpdateStatus(schedule.id, 'paid')}
+                              className="text-green-600"
+                            >
+                              Mark as Paid
+                            </DropdownMenuItem>
+                          )}
+                          {schedule.status !== 'unpaid' && (
+                            <DropdownMenuItem 
+                              onClick={() => onUpdateStatus(schedule.id, 'unpaid')}
+                            >
+                              Mark as Unpaid
+                            </DropdownMenuItem>
+                          )}
+                          {schedule.status !== 'write-off' && (
+                            <DropdownMenuItem 
+                              onClick={() => onUpdateStatus(schedule.id, 'write-off')}
+                              className="text-red-600"
+                            >
+                              Write Off
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      {onRemovePaymentSchedule && shouldEnableEditing && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onRemovePaymentSchedule(schedule.id)}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                )}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        
+        <div className="p-4 border-t bg-gray-50">
+          <div className="flex justify-between">
+            <div>
+              <Badge 
+                variant={isPercentageValid ? "default" : "destructive"} 
+                className={isPercentageValid 
+                  ? "bg-green-100 text-green-800" 
+                  : "bg-red-100 text-red-800 font-medium"
+                }
+              >
+                Total: {totalPercentage.toFixed(2)}%
+                {!isPercentageValid && (
+                  <span className="ml-1">
+                    (Must be 100%)
+                  </span>
+                )}
+              </Badge>
+            </div>
+            <div>
+              <Badge variant="outline" className="bg-blue-100 text-blue-800">
+                Total Amount: {trueFormatCurrency(amount)}
+              </Badge>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </TooltipProvider>
   );
 });
 

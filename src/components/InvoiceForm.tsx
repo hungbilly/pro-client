@@ -557,17 +557,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
               </Card>
             )}
 
-            <div>
-              <Label htmlFor="amount">Total Amount</Label>
-              <Input
-                type="number"
-                id="amount"
-                name="amount"
-                value={ensureValidNumber(invoice.amount)}
-                onChange={handleInputChange}
-              />
-            </div>
-
             {/* Payment Schedule Manager */}
             <PaymentScheduleManager
               paymentSchedules={invoice.paymentSchedules || []}

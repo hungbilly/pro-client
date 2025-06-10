@@ -51,19 +51,32 @@ const AddDiscountDialog: React.FC<AddDiscountDialogProps> = ({
   };
 
   const handleManualDiscount = () => {
-    const discountAmount = calculateDiscountAmount();
-    if (discountAmount <= 0) return;
+    const value = parseFloat(discountValue);
+    if (isNaN(value) || value <= 0) return;
 
-    const discountItem: InvoiceItem = {
-      id: `manual-discount-${Date.now()}`,
-      name: discountName || (discountType === 'percentage' ? `${discountValue}% Off` : `$${discountValue} Off`),
-      description: discountDescription || `Manual ${discountType} discount`,
-      quantity: 1,
-      rate: -discountAmount,
-      amount: -discountAmount,
-    };
+    if (discountType === 'percentage') {
+      // For percentage discounts, pass the percentage value and type
+      const discountData = {
+        type: 'percentage',
+        value: value,
+        name: discountName || `${discountValue}% Off`,
+        description: discountDescription || `${value}% discount applied to total`,
+      };
+      onAddDiscount(discountData);
+    } else {
+      // For fixed discounts, create a line item as before
+      const discountAmount = value;
+      const discountItem: InvoiceItem = {
+        id: `manual-discount-${Date.now()}`,
+        name: discountName || `$${discountValue} Off`,
+        description: discountDescription || `Manual fixed discount`,
+        quantity: 1,
+        rate: -discountAmount,
+        amount: -discountAmount,
+      };
+      onAddDiscount([discountItem]);
+    }
 
-    onAddDiscount([discountItem]);
     onOpenChange(false);
     
     // Reset form

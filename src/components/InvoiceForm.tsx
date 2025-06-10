@@ -66,7 +66,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     jobId: '',
     number: '',
     date: format(new Date(), 'yyyy-MM-dd'),
-    dueDate: format(new Date(), 'yyyy-MM-dd'),
     amount: 0,
     status: 'draft',
     contractStatus: 'pending',
@@ -100,6 +99,13 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   const [contractTemplates, setContractTemplates] = useState<ContractTemplate[]>([]);
   const [selectedContractTemplate, setSelectedContractTemplate] = useState<string>('');
   const [loadingContractTemplates, setLoadingContractTemplates] = useState(false);
+
+  // Add state for percentage discount
+  const [percentageDiscount, setPercentageDiscount] = useState<{
+    value: number;
+    name: string;
+    description: string;
+  } | null>(null);
 
   // Helper function to ensure a number is valid
   const ensureValidNumber = (value: any): number => {
@@ -241,7 +247,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   const handlePackageSelect = (items: InvoiceItem[]) => {
     // Add new packages to existing items
     const newItems = [...invoice.items, ...items];
-    const totalAmount = ensureValidNumber(newItems.reduce((sum, item) => sum + ensureValidNumber(item.amount || 0), 0));
+    const totalAmount = calculateTotalWithDiscount();
     setInvoice(prev => ({ ...prev, items: newItems, amount: totalAmount }));
     toast.success(`Added ${items.length} item(s) to invoice`);
   };
@@ -249,7 +255,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   const handleDiscountsSelect = (discounts: InvoiceItem[]) => {
     setSelectedDiscounts(discounts);
     const updatedItems = [...invoice.items.filter(item => !item.id?.startsWith('template-discount-') && !item.id?.startsWith('manual-discount-')), ...discounts];
-    const totalAmount = ensureValidNumber(updatedItems.reduce((sum, item) => sum + ensureValidNumber(item.amount || 0), 0));
+    const totalAmount = calculateTotalWithDiscount();
     setInvoice(prev => ({ ...prev, items: updatedItems, amount: totalAmount }));
   };
 
@@ -269,8 +275,11 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     };
 
     const newItems = [...invoice.items, newItem];
-    const totalAmount = ensureValidNumber(newItems.reduce((sum, item) => sum + ensureValidNumber(item.amount || 0), 0));
-    setInvoice(prev => ({ ...prev, items: newItems, amount: totalAmount }));
+    setInvoice(prev => ({ ...prev, items: newItems }));
+    
+    // Recalculate total with current discount
+    const totalAmount = calculateTotalWithDiscount();
+    setInvoice(prev => ({ ...prev, amount: totalAmount }));
     
     // Reset manual item form
     setManualItem({
@@ -285,9 +294,31 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
   const removeItem = (itemId: string) => {
     const updatedItems = invoice.items.filter(item => item.id !== itemId);
-    const totalAmount = ensureValidNumber(updatedItems.reduce((sum, item) => sum + ensureValidNumber(item.amount || 0), 0));
-    setInvoice(prev => ({ ...prev, items: updatedItems, amount: totalAmount }));
+    setInvoice(prev => ({ ...prev, items: updatedItems }));
+    
+    // Recalculate total with current discount
+    const totalAmount = calculateTotalWithDiscount();
+    setInvoice(prev => ({ ...prev, amount: totalAmount }));
     toast.success('Item removed from invoice');
+  };
+
+  const calculateTotalWithDiscount = () => {
+    const productTotal = ensureValidNumber(invoice.items
+      .filter(item => !item.id?.startsWith('template-discount-') && !item.id?.startsWith('manual-discount-'))
+      .reduce((sum, item) => sum + ensureValidNumber(item.amount || 0), 0));
+    
+    const fixedDiscounts = ensureValidNumber(invoice.items
+      .filter(item => item.id?.startsWith('template-discount-') || item.id?.startsWith('manual-discount-'))
+      .reduce((sum, item) => sum + ensureValidNumber(item.amount || 0), 0));
+    
+    if (percentageDiscount) {
+      // If there's a percentage discount, apply it to the product total only
+      const discountedTotal = productTotal * (1 - percentageDiscount.value / 100);
+      return discountedTotal;
+    } else {
+      // If no percentage discount, apply fixed discounts as line items
+      return productTotal + fixedDiscounts;
+    }
   };
 
   const handleSaveInvoice = async () => {
@@ -366,17 +397,48 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   const handleAddItems = (items: InvoiceItem[]) => {
     // Add new items to existing items
     const newItems = [...invoice.items, ...items];
-    const totalAmount = ensureValidNumber(newItems.reduce((sum, item) => sum + ensureValidNumber(item.amount || 0), 0));
-    setInvoice(prev => ({ ...prev, items: newItems, amount: totalAmount }));
+    setInvoice(prev => ({ ...prev, items: newItems }));
+    
+    // Recalculate total with current discount
+    const totalAmount = calculateTotalWithDiscount();
+    setInvoice(prev => ({ ...prev, amount: totalAmount }));
     toast.success(`Added ${items.length} item(s) to invoice`);
   };
 
-  const handleAddDiscount = (discounts: InvoiceItem[]) => {
-    // Add new discounts to existing items
-    const newItems = [...invoice.items, ...discounts];
-    const totalAmount = ensureValidNumber(newItems.reduce((sum, item) => sum + ensureValidNumber(item.amount || 0), 0));
-    setInvoice(prev => ({ ...prev, items: newItems, amount: totalAmount }));
-    toast.success(`Added ${discounts.length} discount(s) to invoice`);
+  const handleAddDiscount = (discountData: any) => {
+    if (discountData.type === 'percentage') {
+      // Handle percentage discount - remove all existing discounts and apply percentage
+      setPercentageDiscount({
+        value: discountData.value,
+        name: discountData.name,
+        description: discountData.description
+      });
+      
+      // Remove all existing discount line items
+      const itemsWithoutDiscounts = invoice.items.filter(item => 
+        !item.id?.startsWith('template-discount-') && !item.id?.startsWith('manual-discount-')
+      );
+      setInvoice(prev => ({ ...prev, items: itemsWithoutDiscounts }));
+      
+      // Recalculate total with percentage discount
+      const totalAmount = calculateTotalWithDiscount();
+      setInvoice(prev => ({ ...prev, amount: totalAmount }));
+      
+      toast.success(`Applied ${discountData.value}% discount to total invoice`);
+    } else {
+      // Handle fixed discount as line items (existing behavior)
+      // Remove percentage discount if applying fixed discount
+      if (percentageDiscount) {
+        setPercentageDiscount(null);
+      }
+      
+      const newItems = [...invoice.items, ...discountData];
+      setInvoice(prev => ({ ...prev, items: newItems }));
+      
+      const totalAmount = calculateTotalWithDiscount();
+      setInvoice(prev => ({ ...prev, amount: totalAmount }));
+      toast.success(`Added ${discountData.length} discount(s) to invoice`);
+    }
   };
 
   const subtotal = ensureValidNumber(invoice.items
@@ -385,6 +447,14 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
   const selectedProducts = invoice.items.filter(item => !item.id?.startsWith('template-discount-') && !item.id?.startsWith('manual-discount-'));
   const selectedDiscountItems = invoice.items.filter(item => item.id?.startsWith('template-discount-') || item.id?.startsWith('manual-discount-'));
+
+  // Recalculate amount whenever subtotal or discounts change
+  React.useEffect(() => {
+    const totalAmount = calculateTotalWithDiscount();
+    if (totalAmount !== invoice.amount) {
+      setInvoice(prev => ({ ...prev, amount: totalAmount }));
+    }
+  }, [subtotal, percentageDiscount, selectedDiscountItems.length]);
 
   return (
     <PageTransition>
@@ -547,10 +617,48 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                   Add Discount
                 </Button>
                 
-                {/* Selected Discounts Display */}
-                {selectedDiscountItems.length > 0 && (
+                {/* Percentage Discount Display */}
+                {percentageDiscount && (
                   <div className="mt-4">
-                    <Label className="text-sm font-medium">Applied Discounts</Label>
+                    <Label className="text-sm font-medium">Applied Percentage Discount</Label>
+                    <div className="mt-2">
+                      <div className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <div className="flex-1">
+                          <div className="font-medium text-red-700">{percentageDiscount.name}</div>
+                          <div className="text-sm text-red-600">{percentageDiscount.description}</div>
+                          <div className="text-sm text-red-600">
+                            {percentageDiscount.value}% off total invoice
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="text-right">
+                            <div className="font-medium text-red-700">
+                              -{percentageDiscount.value}%
+                            </div>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setPercentageDiscount(null);
+                              const totalAmount = calculateTotalWithDiscount();
+                              setInvoice(prev => ({ ...prev, amount: totalAmount }));
+                              toast.success('Percentage discount removed');
+                            }}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Selected Fixed Discounts Display */}
+                {selectedDiscountItems.length > 0 && !percentageDiscount && (
+                  <div className="mt-4">
+                    <Label className="text-sm font-medium">Applied Fixed Discounts</Label>
                     <div className="mt-2 space-y-2">
                       {selectedDiscountItems.map((item, index) => (
                         <div key={item.id || index} className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg">
@@ -582,7 +690,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
             </Card>
 
             {/* Invoice Summary */}
-            {(selectedProducts.length > 0 || selectedDiscountItems.length > 0) && (
+            {(selectedProducts.length > 0 || selectedDiscountItems.length > 0 || percentageDiscount) && (
               <Card className="bg-muted/50">
                 <CardContent className="pt-6">
                   <div className="space-y-2">
@@ -590,7 +698,13 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                       <span className="text-sm">Subtotal:</span>
                       <span className="text-sm">${formatCurrency(subtotal)}</span>
                     </div>
-                    {selectedDiscountItems.length > 0 && (
+                    {percentageDiscount && (
+                      <div className="flex justify-between items-center text-red-600">
+                        <span className="text-sm">Discount ({percentageDiscount.value}%):</span>
+                        <span className="text-sm">-${formatCurrency((subtotal * percentageDiscount.value) / 100)}</span>
+                      </div>
+                    )}
+                    {selectedDiscountItems.length > 0 && !percentageDiscount && (
                       <div className="flex justify-between items-center text-red-600">
                         <span className="text-sm">Total Discounts:</span>
                         <span className="text-sm">-${formatCurrency(Math.abs(ensureValidNumber(selectedDiscountItems.reduce((sum, item) => sum + ensureValidNumber(item.amount), 0))))}</span>

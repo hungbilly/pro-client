@@ -1,6 +1,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { versionControl, ComponentVersion } from '@/lib/versionControl';
+import React from 'react';
 
 export interface UseVersionControlOptions {
   componentName: string;
@@ -122,6 +123,6 @@ export const withVersionControl = <P extends object>(
       ...options,
     });
 
-    return <WrappedComponent {...props} {...versionControlProps} />;
+    return React.createElement(WrappedComponent, { ...props, ...versionControlProps });
   };
 };

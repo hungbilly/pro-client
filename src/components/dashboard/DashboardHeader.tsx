@@ -24,36 +24,38 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ hasCompanies }) => {
   }
 
   return (
-    <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
-      <h1 className="text-3xl font-bold mb-3 md:mb-0">Client Management</h1>
-      <div className="flex flex-wrap gap-2">
-        <Button 
-          variant="outline" 
-          onClick={() => navigate('/tutorial')}
-          className="text-blue-600 border-blue-200 hover:bg-blue-50"
-        >
-          <BookOpen className="mr-2 h-4 w-4" />
-          Tutorial
-        </Button>
-        
-        {isAdmin && (
+    <div className="glass-panel-enhanced backdrop-blur-xl bg-white/25 border-white/40 rounded-2xl p-6 mb-8 shadow-glass-lg">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+        <h1 className="text-3xl font-bold mb-3 md:mb-0 text-gray-900 drop-shadow-sm">Client Management</h1>
+        <div className="flex flex-wrap gap-2">
           <Button 
             variant="outline" 
-            onClick={() => navigate('/admin')}
-            className="text-purple-600 border-purple-200 hover:bg-purple-50"
+            onClick={() => navigate('/tutorial')}
+            className="glass-button-enhanced bg-white/30 border-white/50 text-blue-800 hover:bg-white/40 hover:border-white/70 backdrop-blur-md font-medium shadow-glass"
           >
-            <Shield className="mr-2 h-4 w-4" />
-            Admin
+            <BookOpen className="mr-2 h-4 w-4" />
+            Tutorial
           </Button>
-        )}
-        <Button 
-          variant="outline" 
-          onClick={() => navigate('/subscription')}
-          className="hidden md:flex"
-        >
-          View Pricing
-        </Button>
-        <AddClientButton />
+          
+          {isAdmin && (
+            <Button 
+              variant="outline" 
+              onClick={() => navigate('/admin')}
+              className="glass-button-enhanced bg-white/30 border-white/50 text-purple-800 hover:bg-white/40 hover:border-white/70 backdrop-blur-md font-medium shadow-glass"
+            >
+              <Shield className="mr-2 h-4 w-4" />
+              Admin
+            </Button>
+          )}
+          <Button 
+            variant="outline" 
+            onClick={() => navigate('/subscription')}
+            className="hidden md:flex glass-button-enhanced bg-white/30 border-white/50 text-gray-800 hover:bg-white/40 hover:border-white/70 backdrop-blur-md font-medium shadow-glass"
+          >
+            View Pricing
+          </Button>
+          <AddClientButton />
+        </div>
       </div>
     </div>
   );

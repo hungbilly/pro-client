@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -76,8 +75,22 @@ const JobTeammatesList: React.FC<JobTeammatesListProps> = ({
     setIsRefreshing(true);
     
     try {
+      // Get the current session to ensure we have a valid auth token
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session) {
+        console.error('No valid session found:', sessionError);
+        if (!silent) {
+          toast.error('Authentication required. Please log in again.');
+        }
+        return;
+      }
+
       const { data, error } = await supabase.functions.invoke('check-calendar-responses', {
-        body: { jobId }
+        body: { jobId },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        }
       });
 
       if (error) {

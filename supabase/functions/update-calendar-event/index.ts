@@ -86,6 +86,37 @@ async function getAccessTokenForUser(userId: string, authHeader: string | null) 
   return { accessToken: data.access_token, calendarId: data.calendar_id, calendarName: data.calendar_name };
 }
 
+async function fetchExistingCalendarEvent(accessToken: string, calendarId: string, eventId: string) {
+  console.log(`🔍 Fetching existing event: ${eventId} from calendar: ${calendarId}`);
+  
+  try {
+    const response = await fetch(
+      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${eventId}`,
+      {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ Failed to fetch existing event: ${response.status} - ${errorText}`);
+      return null;
+    }
+
+    const existingEvent = await response.json();
+    console.log(`✅ Successfully fetched existing event with ${existingEvent.attendees?.length || 0} attendees`);
+    
+    return existingEvent;
+  } catch (error) {
+    console.error('❌ Error fetching existing calendar event:', error);
+    return null;
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -146,20 +177,22 @@ serve(async (req) => {
     let targetCalendarId = accessTokenData.calendarId || 'primary';
     let targetCalendarName = accessTokenData.calendarName || 'Primary Calendar';
     let calendarSource = 'from user current selection (default)';
+    let jobRecord = null;
     
     if (jobId) {
       console.log(`Fetching calendar_id for job: ${jobId}`);
-      const { data: jobRecord, error: jobError } = await supabase
+      const { data: job, error: jobError } = await supabase
         .from('jobs')
         .select('calendar_id')
         .eq('id', jobId)
         .single();
         
-      console.log(`Job record query result:`, { jobRecord, jobError });
+      console.log(`Job record query result:`, { job, jobError });
+      jobRecord = job;
         
-      if (!jobError && jobRecord?.calendar_id) {
-        targetCalendarId = jobRecord.calendar_id;
-        targetCalendarName = `Calendar ${jobRecord.calendar_id}`;
+      if (!jobError && job?.calendar_id) {
+        targetCalendarId = job.calendar_id;
+        targetCalendarName = `Calendar ${job.calendar_id}`;
         calendarSource = 'from job record (original calendar)';
         console.log(`✅ Found stored calendar ID for job: ${targetCalendarId}`);
       } else {
@@ -172,6 +205,9 @@ serve(async (req) => {
     
     console.log(`📅 Using calendar: ${targetCalendarId} (${targetCalendarName})`);
     console.log(`📝 Calendar source: ${calendarSource}`);
+
+    // Fetch the existing calendar event to preserve attendees
+    const existingEvent = await fetchExistingCalendarEvent(accessToken, targetCalendarId, eventId);
     
     const eventData = testMode && testData ? testData.event : jobData;
     console.log('Using event data:', JSON.stringify(eventData));
@@ -205,7 +241,11 @@ serve(async (req) => {
       enhancedDescription = eventData.description || '';
     }
     
-    if (eventData.is_full_day === true) {
+    // Check isFullDay from both sources - prioritize jobData from request if available
+    const isFullDayEvent = eventData.is_full_day ?? false;
+    console.log('Final isFullDay decision:', isFullDayEvent);
+    
+    if (isFullDayEvent === true) {
       event = {
         summary: eventData.title,
         location: eventData.location,
@@ -219,6 +259,7 @@ serve(async (req) => {
       };
       console.log('Created all-day event object for update:', JSON.stringify(event));
     } else {
+      // Use times from request jobData if available, otherwise fall back to eventData defaults
       const startTime = eventData.start_time || eventData.startTime || '09:00:00';
       const endTime = eventData.end_time || eventData.endTime || '17:00:00';
       
@@ -243,6 +284,15 @@ serve(async (req) => {
       };
       
       console.log('Created timed event object for update with timezone:', JSON.stringify(event));
+    }
+
+    // PRESERVE ATTENDEES: Add existing attendees to the event update
+    if (existingEvent && existingEvent.attendees && existingEvent.attendees.length > 0) {
+      event.attendees = existingEvent.attendees;
+      console.log(`✅ Preserved ${existingEvent.attendees.length} attendees in event update:`, 
+        existingEvent.attendees.map((att: any) => att.email));
+    } else {
+      console.log('ℹ️ No existing attendees found to preserve');
     }
     
     console.log("Using access token:", accessToken ? "Token present" : "No token");
@@ -304,6 +354,13 @@ serve(async (req) => {
       calendarData = JSON.parse(responseText);
       console.log('✅ Successfully updated event:', calendarData.id);
       console.log('Event time zone in response:', calendarData.start?.timeZone || 'Not specified');
+      
+      // Log attendees status after update
+      if (calendarData.attendees && calendarData.attendees.length > 0) {
+        console.log(`✅ Event updated with ${calendarData.attendees.length} attendees preserved`);
+      } else {
+        console.log('ℹ️ Updated event has no attendees');
+      }
     } catch (e) {
       console.error('Failed to parse response as JSON:', e);
       return new Response(
@@ -318,11 +375,12 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: 'Event updated in calendar',
+        message: 'Event updated in calendar with attendees preserved',
         eventId: calendarData.id,
         calendarUsed: targetCalendarId,
         calendarName: targetCalendarName,
-        eventTimezone: calendarData.start?.timeZone || 'Not specified'
+        eventTimezone: calendarData.start?.timeZone || 'Not specified',
+        attendeesCount: calendarData.attendees?.length || 0
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

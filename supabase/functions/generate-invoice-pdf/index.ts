@@ -899,11 +899,113 @@ function stripHtml(html: string): string {
   return text.trim();
 }
 
+// Improved Chinese character handling with better mappings
+function processChineseText(text: string): string {
+  if (!text) return '';
+  
+  // Enhanced Chinese character mapping for financial/business terms
+  const chineseMap: Record<string, string> = {
+    // FPS/Payment related
+    '轉': 'FPS',
+    '數': '',
+    '快': 'Transfer',
+    '轉數快': 'FPS Transfer',
+    
+    // Banking terms
+    '銀': 'Bank',
+    '行': '',
+    '銀行': 'Bank',
+    '帳': 'Account',
+    '戶': '',
+    '帳戶': 'Account',
+    '名': 'Name',
+    '稱': '',
+    '名稱': 'Name',
+    
+    // Company terms
+    '公': 'Company',
+    '司': '',
+    '公司': 'Company',
+    '有': 'Limited',
+    '限': '',
+    '有限': 'Limited',
+    '有限公司': 'Limited Company',
+    
+    // Contact info
+    '電': 'Email',
+    '郵': '',
+    '電郵': 'Email',
+    '地': 'Address',
+    '址': '',
+    '地址': 'Address',
+    '電話': 'Phone',
+    
+    // Location terms
+    '觀塘': 'Kwun Tong',
+    '香港': 'Hong Kong',
+    '九龍': 'Kowloon',
+    '新界': 'New Territories',
+    
+    // Common business terms
+    '服務': 'Service',
+    '收費': 'Fee',
+    '付款': 'Payment',
+    '方法': 'Method',
+    '資料': 'Information',
+    '詳情': 'Details'
+  };
+  
+  // First, try to replace complete phrases
+  let processedText = text;
+  Object.entries(chineseMap).forEach(([chinese, english]) => {
+    if (chinese.length > 1) { // Multi-character phrases first
+      processedText = processedText.replace(new RegExp(chinese, 'g'), english);
+    }
+  });
+  
+  // Then replace individual characters
+  Object.entries(chineseMap).forEach(([chinese, english]) => {
+    if (chinese.length === 1) { // Single characters
+      processedText = processedText.replace(new RegExp(chinese, 'g'), english);
+    }
+  });
+  
+  // Clean up any remaining problematic characters
+  processedText = processedText.replace(/[\u4e00-\u9fff]/g, (char) => {
+    // If we haven't mapped this character, use a placeholder
+    return `[${char}]`;
+  });
+  
+  // Clean up multiple spaces and format nicely
+  processedText = processedText.replace(/\s+/g, ' ').trim();
+  
+  return processedText;
+}
+
+// Enhanced text rendering function with Chinese support
+function addTextWithChineseSupport(doc: any, text: string, x: number, y: number, options?: any): void {
+  if (!text) return;
+  
+  try {
+    // Process Chinese characters
+    const processedText = processChineseText(text);
+    
+    // Try to render the processed text
+    doc.text(processedText, x, y, options);
+  } catch (error) {
+    console.warn('Error rendering text, using ASCII fallback:', error);
+    // Ultimate fallback - remove all non-ASCII characters
+    const asciiText = text.replace(/[^\x00-\x7F]/g, '?');
+    doc.text(asciiText, x, y, options);
+  }
+}
+
 function addWrappedText(doc: any, text: string, x: number, y: number, maxWidth: number, lineHeight: number = 7, pageHeight: number, margin: number): number {
   if (!text) return y;
   
   const cleanText = stripHtml(text);
-  const lines = doc.splitTextToSize(cleanText, maxWidth);
+  const processedText = processChineseText(cleanText);
+  const lines = doc.splitTextToSize(processedText, maxWidth);
   
   for (let i = 0; i < lines.length; i++) {
     if (y + lineHeight > pageHeight - margin) {
@@ -911,7 +1013,16 @@ function addWrappedText(doc: any, text: string, x: number, y: number, maxWidth: 
       y = margin;
       log.debug('Added new page in addWrappedText, new y position:', y);
     }
-    doc.text(lines[i], x, y);
+    
+    try {
+      doc.text(lines[i], x, y);
+    } catch (e) {
+      log.warn('Error rendering text line, using fallback:', e);
+      // Fallback for any remaining problematic characters
+      const fallbackLine = lines[i].replace(/[^\x00-\x7F]/g, '?');
+      doc.text(fallbackLine, x, y);
+    }
+    
     y += lineHeight;
   }
   
@@ -1037,70 +1148,8 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       compress: true, // Enable compression
     });
     
-    // Set font to support unicode characters better
+    // Use Helvetica as the base font (supports basic Latin characters)
     doc.setFont('helvetica');
-    
-    // Helper function to handle Chinese text by converting to unicode escape sequences
-    const addTextWithChineseSupport = (text: string, x: number, y: number, options?: any) => {
-      if (!text) return;
-      
-      // Check if text contains Chinese characters
-      const containsChinese = /[\u4e00-\u9fff]/.test(text);
-      
-      if (containsChinese) {
-        // Split text into parts: Chinese and non-Chinese
-        const parts = text.split(/(\s+)/);
-        let currentX = x;
-        
-        parts.forEach(part => {
-          if (part.trim()) {
-            const isChinesePart = /[\u4e00-\u9fff]/.test(part);
-            
-            if (isChinesePart) {
-              // For Chinese characters, try to use a fallback representation
-              // Convert Chinese characters to their unicode representation or use transliteration
-              const fallbackText = part.replace(/[\u4e00-\u9fff]/g, (char) => {
-                // Common Chinese character mappings for business terms
-                const chineseMap: Record<string, string> = {
-                  '轉': 'FPS',
-                  '數': '',
-                  '快': 'Transfer',
-                  '銀': 'Bank',
-                  '行': '',
-                  '帳': 'Account',
-                  '戶': '',
-                  '名': 'Name',
-                  '稱': '',
-                  '公': 'Company',
-                  '司': '',
-                  '有': 'Limited',
-                  '限': '',
-                };
-                
-                return chineseMap[char] || `[${char.charCodeAt(0).toString(16)}]`;
-              });
-              
-              try {
-                doc.text(fallbackText || part, currentX, y, options);
-                currentX += doc.getTextWidth(fallbackText || part) + 2;
-              } catch (e) {
-                // Ultimate fallback - replace with description
-                const description = part.includes('轉數快') ? 'FPS Transfer' : 'Chinese Text';
-                doc.text(description, currentX, y, options);
-                currentX += doc.getTextWidth(description) + 2;
-              }
-            } else {
-              // Regular text without Chinese characters
-              doc.text(part, currentX, y, options);
-              currentX += doc.getTextWidth(part) + 2;
-            }
-          }
-        });
-      } else {
-        // Regular text without Chinese characters
-        doc.text(text, x, y, options);
-      }
-    };
     
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
@@ -1121,8 +1170,8 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
         const generatedText = `Generated on ${new Date().toLocaleDateString()}`;
         const statusText = `${invoiceData.status === 'accepted' ? 'Invoice accepted' : 'Invoice not accepted'} | ${invoiceData.contractStatus === 'accepted' ? 'Contract terms accepted' : 'Contract terms not accepted'}`;
         log.debug(`Footer for page ${i}:`, { generatedText, statusText });
-        addTextWithChineseSupport(generatedText, margin, pageHeight - 10);
-        addTextWithChineseSupport(statusText, pageWidth - margin, pageHeight - 10, { align: 'right' });
+        addTextWithChineseSupport(doc, generatedText, margin, pageHeight - 10);
+        addTextWithChineseSupport(doc, statusText, pageWidth - margin, pageHeight - 10, { align: 'right' });
       }
     };
 
@@ -1137,27 +1186,24 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       try {
         const logoData = await processLogoForPDF(invoiceData.company.logoUrl);
         
-        // Use calculated dimensions to maintain aspect ratio
         const logoWidth = logoData.width;
         const logoHeight = logoData.height;
         const logoX = margin + (rightColumnX - margin - logoWidth) / 4;
       
-        // Add image with JPEG compression for smaller size
         doc.addImage(logoData.data, 'JPEG', logoX, y, logoWidth, logoHeight, undefined, 'MEDIUM');
         log.debug('Optimized logo added to PDF successfully');
         leftColumnY += logoHeight + 10;
       } catch (logoError) {
         log.error('Error adding optimized logo:', logoError);
-        // Fallback to company name
         doc.setFontSize(24);
         doc.setFont('helvetica', 'bold');
-        addTextWithChineseSupport(invoiceData.company.name.toUpperCase(), margin, leftColumnY + 15);
+        addTextWithChineseSupport(doc, invoiceData.company.name.toUpperCase(), margin, leftColumnY + 15);
         leftColumnY += 20;
       }
     } else {
       doc.setFontSize(24);
       doc.setFont('helvetica', 'bold');
-      addTextWithChineseSupport(invoiceData.company.name.toUpperCase(), margin, leftColumnY + 15);
+      addTextWithChineseSupport(doc, invoiceData.company.name.toUpperCase(), margin, leftColumnY + 15);
       leftColumnY += 20;
     }
 
@@ -1165,31 +1211,31 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(100, 100, 100);
-    addTextWithChineseSupport('FROM', margin, leftColumnY);
+    addTextWithChineseSupport(doc, 'FROM', margin, leftColumnY);
     leftColumnY += 7;
 
     doc.setFontSize(14);
     doc.setTextColor(0, 0, 0);
-    addTextWithChineseSupport(invoiceData.company.name, margin, leftColumnY);
+    addTextWithChineseSupport(doc, invoiceData.company.name, margin, leftColumnY);
     leftColumnY += 7;
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     
     if (invoiceData.company.email) {
-      addTextWithChineseSupport(invoiceData.company.email, margin, leftColumnY);
+      addTextWithChineseSupport(doc, invoiceData.company.email, margin, leftColumnY);
       leftColumnY += 6;
     }
     
     if (invoiceData.company.phone) {
-      addTextWithChineseSupport(invoiceData.company.phone, margin, leftColumnY);
+      addTextWithChineseSupport(doc, invoiceData.company.phone, margin, leftColumnY);
       leftColumnY += 6;
     }
     
     if (invoiceData.company.address) {
       const addressLines = invoiceData.company.address.split('\n');
       const flattenedAddress = addressLines.join(' ');
-      addTextWithChineseSupport(flattenedAddress, margin, leftColumnY);
+      addTextWithChineseSupport(doc, flattenedAddress, margin, leftColumnY);
       leftColumnY += 10;
     }
 
@@ -1197,28 +1243,28 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(100, 100, 100);
-    addTextWithChineseSupport('INVOICE FOR', rightColumnX, rightColumnY);
+    addTextWithChineseSupport(doc, 'INVOICE FOR', rightColumnX, rightColumnY);
     rightColumnY += 7;
 
     if (invoiceData.job && invoiceData.job.title) {
       doc.setFontSize(14);
       doc.setTextColor(0, 0, 0);
-      addTextWithChineseSupport(invoiceData.job.title, rightColumnX, rightColumnY);
+      addTextWithChineseSupport(doc, invoiceData.job.title, rightColumnX, rightColumnY);
       rightColumnY += 7;
     }
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    addTextWithChineseSupport(`Client: ${invoiceData.client.name}`, rightColumnX, rightColumnY);
+    addTextWithChineseSupport(doc, `Client: ${invoiceData.client.name}`, rightColumnX, rightColumnY);
     rightColumnY += 6;
     
     if (invoiceData.client.email) {
-      addTextWithChineseSupport(invoiceData.client.email, rightColumnX, rightColumnY);
+      addTextWithChineseSupport(doc, invoiceData.client.email, rightColumnX, rightColumnY);
       rightColumnY += 6;
     }
     
     if (invoiceData.client.phone) {
-      addTextWithChineseSupport(invoiceData.client.phone, rightColumnX, rightColumnY);
+      addTextWithChineseSupport(doc, invoiceData.client.phone, rightColumnX, rightColumnY);
       rightColumnY += 6;
     }
 
@@ -1227,13 +1273,13 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(100, 100, 100);
-      addTextWithChineseSupport('JOB DATE', rightColumnX, rightColumnY);
+      addTextWithChineseSupport(doc, 'JOB DATE', rightColumnX, rightColumnY);
       rightColumnY += 7;
     
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(0, 0, 0);
-      addTextWithChineseSupport(invoiceData.job.date, rightColumnX, rightColumnY);
+      addTextWithChineseSupport(doc, invoiceData.job.date, rightColumnX, rightColumnY);
     }
 
     y = Math.max(leftColumnY + 10, rightColumnY + 10);
@@ -1246,7 +1292,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
     // Invoice Number and Details
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    addTextWithChineseSupport(`INVOICE #${invoiceData.number}`, margin, y);
+    addTextWithChineseSupport(doc, `INVOICE #${invoiceData.number}`, margin, y);
     y += 7;
     
     doc.setFontSize(10);
@@ -1281,7 +1327,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       log.debug('Rendering INVOICE ITEMS section');
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
-      addTextWithChineseSupport('INVOICE ITEMS', margin, y);
+      addTextWithChineseSupport(doc, 'INVOICE ITEMS', margin, y);
       
       y += 5;
       
@@ -1295,8 +1341,8 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       
       const tableData = invoiceData.items.map(item => {
         const row = {
-          name: item.name || 'Product/Service',
-          description: stripHtml(item.description || ''),
+          name: processChineseText(item.name || 'Product/Service'),
+          description: processChineseText(stripHtml(item.description || '')),
           quantity: item.quantity.toString(),
           rate: `$${item.rate.toFixed(2)}`,
           amount: `$${item.amount.toFixed(2)}`
@@ -1346,8 +1392,8 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
       log.debug('Total amount:', invoiceData.amount);
-      addTextWithChineseSupport('TOTAL:', pageWidth - margin - 35, y);
-      addTextWithChineseSupport(`$${invoiceData.amount.toFixed(2)}`, pageWidth - margin, y, { align: 'right' });
+      addTextWithChineseSupport(doc, 'TOTAL:', pageWidth - margin - 35, y);
+      addTextWithChineseSupport(doc, `$${invoiceData.amount.toFixed(2)}`, pageWidth - margin, y, { align: 'right' });
       
       y += 15;
     } else {
@@ -1365,7 +1411,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       log.debug('Rendering PAYMENT SCHEDULE section');
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
-      addTextWithChineseSupport('PAYMENT SCHEDULE', margin, y);
+      addTextWithChineseSupport(doc, 'PAYMENT SCHEDULE', margin, y);
       
       y += 8;
       
@@ -1381,7 +1427,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       
       const paymentData = invoiceData.paymentSchedules.map(schedule => {
         const row = {
-          description: schedule.description || '',
+          description: processChineseText(schedule.description || ''),
           dueDate: new Date(schedule.dueDate).toLocaleDateString(),
           percentage: schedule.percentage ? `${schedule.percentage}%` : 'N/A',
           amount: `$${schedule.amount.toFixed(2)}`,
@@ -1432,7 +1478,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       log.debug('No payment schedules to render');
     }
     
-    // Payment Methods - Add new section for payment methods with Chinese support
+    // Payment Methods - Enhanced with Chinese support
     if (invoiceData.company.payment_methods) {
       if (y > pageHeight - 70) {
         doc.addPage();
@@ -1443,7 +1489,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       log.debug('Rendering PAYMENT METHODS section');
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
-      addTextWithChineseSupport('PAYMENT METHODS', margin, y);
+      addTextWithChineseSupport(doc, 'PAYMENT METHODS', margin, y);
       
       y += 8;
       
@@ -1451,7 +1497,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       doc.setFont('helvetica', 'normal');
       log.debug('Payment methods content:', invoiceData.company.payment_methods);
       
-      const paymentMethodsY = addWrappedTextWithChineseSupport(
+      const paymentMethodsY = addWrappedText(
         doc, 
         invoiceData.company.payment_methods, 
         margin, 
@@ -1478,7 +1524,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       log.debug('Rendering NOTES section');
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
-      addTextWithChineseSupport('NOTES', margin, y);
+      addTextWithChineseSupport(doc, 'NOTES', margin, y);
       
       y += 8;
       
@@ -1486,7 +1532,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       doc.setFont('helvetica', 'normal');
       log.debug('Notes content:', invoiceData.notes);
       
-      const notesY = addWrappedTextWithChineseSupport(doc, invoiceData.notes, margin, y, contentWidth, 5, pageHeight, margin);
+      const notesY = addWrappedText(doc, invoiceData.notes, margin, y, contentWidth, 5, pageHeight, margin);
       y = notesY + 15;
       log.debug('Notes section drawn, new y position:', y);
     } else {
@@ -1508,7 +1554,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
-      addTextWithChineseSupport('CONTRACT TERMS', margin, y);
+      addTextWithChineseSupport(doc, 'CONTRACT TERMS', margin, y);
       
       y += 10;
       
@@ -1533,11 +1579,11 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
         
         if (isHeading) {
           doc.setFont('helvetica', 'bold');
-          addWrappedTextWithChineseSupport(doc, trimmedParagraph, margin, y, contentWidth, 5, pageHeight, margin);
+          addWrappedText(doc, trimmedParagraph, margin, y, contentWidth, 5, pageHeight, margin);
           y += 7;
         } else {
           doc.setFont('helvetica', 'normal');
-          const paragraphY = addWrappedTextWithChineseSupport(doc, trimmedParagraph, margin, y, contentWidth, 5, pageHeight, margin);
+          const paragraphY = addWrappedText(doc, trimmedParagraph, margin, y, contentWidth, 5, pageHeight, margin);
           y = paragraphY + 5;
         }
       });
@@ -1565,61 +1611,4 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
     log.error('Error generating PDF:', err);
     throw new Error('Failed to generate PDF: ' + (err as Error).message);
   }
-}
-
-function addWrappedTextWithChineseSupport(doc: any, text: string, x: number, y: number, maxWidth: number, lineHeight: number = 7, pageHeight: number, margin: number): number {
-  if (!text) return y;
-  
-  const cleanText = stripHtml(text);
-  
-  // Handle Chinese text by converting problematic characters
-  const processChineseText = (inputText: string): string => {
-    return inputText.replace(/[\u4e00-\u9fff]/g, (char) => {
-      // Common Chinese character mappings for business/payment terms
-      const chineseMap: Record<string, string> = {
-        '轉': 'FPS',
-        '數': '',
-        '快': 'Transfer',
-        '銀': 'Bank',
-        '行': '',
-        '帳': 'Account',
-        '戶': '',
-        '名': 'Name',
-        '稱': '',
-        '公': 'Company',
-        '司': '',
-        '有': 'Limited',
-        '限': '',
-        '電': 'Email',
-        '郵': '',
-        '地': 'Address',
-        '址': '',
-      };
-      
-      return chineseMap[char] || `[${char}]`;
-    });
-  };
-  
-  const processedText = processChineseText(cleanText);
-  const lines = doc.splitTextToSize(processedText, maxWidth);
-  
-  for (let i = 0; i < lines.length; i++) {
-    if (y + lineHeight > pageHeight - margin) {
-      doc.addPage();
-      y = margin;
-      log.debug('Added new page in addWrappedTextWithChineseSupport, new y position:', y);
-    }
-    
-    try {
-      doc.text(lines[i], x, y);
-    } catch (e) {
-      // Final fallback for any remaining problematic characters
-      const fallbackLine = lines[i].replace(/[^\x00-\x7F]/g, '?');
-      doc.text(fallbackLine, x, y);
-    }
-    
-    y += lineHeight;
-  }
-  
-  return y;
 }

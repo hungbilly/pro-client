@@ -124,12 +124,15 @@ serve(async (req) => {
 
   try {
     const authHeader = req.headers.get('Authorization');
+    console.log('🔍 Received Authorization header:', authHeader ? `${authHeader.substring(0, 20)}...` : 'MISSING');
+    
     const requestData = await req.json();
     const { jobId } = requestData;
     
     console.log(`🔄 CHECK-CALENDAR-RESPONSES: Starting for job ${jobId}`);
     
     if (!jobId) {
+      console.error('❌ Missing jobId parameter');
       return new Response(
         JSON.stringify({ error: 'Missing required parameter: jobId' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -139,10 +142,29 @@ serve(async (req) => {
     if (!authHeader) {
       console.error('❌ No authorization header provided');
       return new Response(
-        JSON.stringify({ error: 'Authentication required' }),
+        JSON.stringify({ error: 'Authentication required - no authorization header' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    if (!authHeader.startsWith('Bearer ')) {
+      console.error('❌ Invalid authorization header format');
+      return new Response(
+        JSON.stringify({ error: 'Invalid authorization header format' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    if (!token || token.length < 10) {
+      console.error('❌ Invalid or empty token');
+      return new Response(
+        JSON.stringify({ error: 'Invalid token format' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('✅ Authorization header validation passed');
 
     // Create supabase client with auth header
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -153,8 +175,13 @@ serve(async (req) => {
       }
     });
     
+    console.log('📋 Testing supabase auth with provided token...');
+    
     // Get the authenticated user
     const { data: { user }, error: userError } = await supabase.auth.getUser();
+    console.log('User auth result:', user ? `User ID: ${user.id}` : 'No user');
+    console.log('User auth error:', userError);
+    
     if (userError || !user) {
       console.error('❌ Authentication failed:', userError?.message);
       return new Response(

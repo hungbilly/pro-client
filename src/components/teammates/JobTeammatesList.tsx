@@ -72,31 +72,73 @@ const JobTeammatesList: React.FC<JobTeammatesListProps> = ({
   };
 
   const handleRefreshStatus = async (silent = false) => {
+    console.log('🔄 Starting handleRefreshStatus...');
     setIsRefreshing(true);
     
     try {
       // Get the current session to ensure we have a valid auth token
+      console.log('📋 Getting current session...');
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
-      if (sessionError || !session) {
-        console.error('No valid session found:', sessionError);
+      console.log('Session data:', session ? 'Session found' : 'No session');
+      console.log('Session error:', sessionError);
+      
+      if (sessionError) {
+        console.error('❌ Session error:', sessionError);
+        if (!silent) {
+          toast.error(`Session error: ${sessionError.message}`);
+        }
+        return;
+      }
+      
+      if (!session) {
+        console.error('❌ No session found');
         if (!silent) {
           toast.error('Authentication required. Please log in again.');
         }
         return;
       }
 
+      if (!session.access_token) {
+        console.error('❌ No access token in session');
+        if (!silent) {
+          toast.error('Invalid session. Please log in again.');
+        }
+        return;
+      }
+
+      console.log('✅ Valid session found, access token present');
+      console.log('📤 Calling check-calendar-responses function...');
+      
+      // Test the token with getUser first
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      console.log('User validation:', userData?.user ? 'Valid user' : 'No user');
+      console.log('User error:', userError);
+      
+      if (userError || !userData?.user) {
+        console.error('❌ User validation failed:', userError);
+        if (!silent) {
+          toast.error('Authentication validation failed. Please log in again.');
+        }
+        return;
+      }
+
+      const authHeader = `Bearer ${session.access_token}`;
+      console.log('Authorization header format:', authHeader.substring(0, 20) + '...');
+
       const { data, error } = await supabase.functions.invoke('check-calendar-responses', {
         body: { jobId },
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: authHeader,
         }
       });
 
+      console.log('Function response:', { data, error });
+
       if (error) {
-        console.error('Error checking calendar responses:', error);
+        console.error('❌ Function call error:', error);
         if (!silent) {
-          toast.error('Failed to refresh teammate status');
+          toast.error(`Failed to refresh status: ${error.message}`);
         }
         return;
       }
@@ -114,7 +156,7 @@ const JobTeammatesList: React.FC<JobTeammatesListProps> = ({
         }
       }
     } catch (error) {
-      console.error('Error refreshing status:', error);
+      console.error('❌ Unexpected error in handleRefreshStatus:', error);
       if (!silent) {
         toast.error('Failed to refresh teammate status');
       }

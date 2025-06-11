@@ -15,9 +15,9 @@ interface Invoice {
   status: string;
   notes?: string;
   contract_terms?: string;
+  contract_status?: string;
   view_link?: string;
   shooting_date?: string;
-  contract_status?: string;
   pdf_url?: string;
   invoice_items?: InvoiceItem[];
   payment_schedules?: PaymentSchedule[];
@@ -161,6 +161,41 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Helper to load and register the Chinese font
+async function loadChineseFont(doc: any) {
+  try {
+    // Use Google Fonts CDN for Noto Sans SC (Simplified Chinese)
+    const fontUrl = 'https://fonts.gstatic.com/s/notosanssc/v36/k3kCo84MPvpLmixcA63oeAL7Iq1tz8kLgTKcCJ-P3Q.woff2';
+    
+    log.info('Attempting to load Chinese font from:', fontUrl);
+    const fontResponse = await fetch(fontUrl);
+    
+    if (!fontResponse.ok) {
+      throw new Error(`Failed to fetch font: ${fontResponse.status} ${fontResponse.statusText}`);
+    }
+    
+    const fontArrayBuffer = await fontResponse.arrayBuffer();
+    const fontBytes = new Uint8Array(fontArrayBuffer);
+
+    // Convert to base64 for jsPDF
+    const base64String = btoa(String.fromCharCode.apply(null, Array.from(fontBytes)));
+
+    // Add font to jsPDF's virtual file system
+    doc.addFileToVFS('NotoSansSC-Regular.ttf', base64String);
+    doc.addFont('NotoSansSC-Regular.ttf', 'NotoSansSC', 'normal');
+
+    // Set as default font
+    doc.setFont('NotoSansSC');
+    log.info('Chinese font loaded and set successfully');
+    return true;
+  } catch (error) {
+    log.error('Error loading Chinese font:', error);
+    // Fallback to Helvetica if font loading fails
+    doc.setFont('helvetica');
+    return false;
+  }
+}
 
 serve(async (req) => {
   const headers = {
@@ -899,113 +934,11 @@ function stripHtml(html: string): string {
   return text.trim();
 }
 
-// Improved Chinese character handling with better mappings
-function processChineseText(text: string): string {
-  if (!text) return '';
-  
-  // Enhanced Chinese character mapping for financial/business terms
-  const chineseMap: Record<string, string> = {
-    // FPS/Payment related
-    '轉': 'FPS',
-    '數': '',
-    '快': 'Transfer',
-    '轉數快': 'FPS Transfer',
-    
-    // Banking terms
-    '銀': 'Bank',
-    '行': '',
-    '銀行': 'Bank',
-    '帳': 'Account',
-    '戶': '',
-    '帳戶': 'Account',
-    '名': 'Name',
-    '稱': '',
-    '名稱': 'Name',
-    
-    // Company terms
-    '公': 'Company',
-    '司': '',
-    '公司': 'Company',
-    '有': 'Limited',
-    '限': '',
-    '有限': 'Limited',
-    '有限公司': 'Limited Company',
-    
-    // Contact info
-    '電': 'Email',
-    '郵': '',
-    '電郵': 'Email',
-    '地': 'Address',
-    '址': '',
-    '地址': 'Address',
-    '電話': 'Phone',
-    
-    // Location terms
-    '觀塘': 'Kwun Tong',
-    '香港': 'Hong Kong',
-    '九龍': 'Kowloon',
-    '新界': 'New Territories',
-    
-    // Common business terms
-    '服務': 'Service',
-    '收費': 'Fee',
-    '付款': 'Payment',
-    '方法': 'Method',
-    '資料': 'Information',
-    '詳情': 'Details'
-  };
-  
-  // First, try to replace complete phrases
-  let processedText = text;
-  Object.entries(chineseMap).forEach(([chinese, english]) => {
-    if (chinese.length > 1) { // Multi-character phrases first
-      processedText = processedText.replace(new RegExp(chinese, 'g'), english);
-    }
-  });
-  
-  // Then replace individual characters
-  Object.entries(chineseMap).forEach(([chinese, english]) => {
-    if (chinese.length === 1) { // Single characters
-      processedText = processedText.replace(new RegExp(chinese, 'g'), english);
-    }
-  });
-  
-  // Clean up any remaining problematic characters
-  processedText = processedText.replace(/[\u4e00-\u9fff]/g, (char) => {
-    // If we haven't mapped this character, use a placeholder
-    return `[${char}]`;
-  });
-  
-  // Clean up multiple spaces and format nicely
-  processedText = processedText.replace(/\s+/g, ' ').trim();
-  
-  return processedText;
-}
-
-// Enhanced text rendering function with Chinese support
-function addTextWithChineseSupport(doc: any, text: string, x: number, y: number, options?: any): void {
-  if (!text) return;
-  
-  try {
-    // Process Chinese characters
-    const processedText = processChineseText(text);
-    
-    // Try to render the processed text
-    doc.text(processedText, x, y, options);
-  } catch (error) {
-    console.warn('Error rendering text, using ASCII fallback:', error);
-    // Ultimate fallback - remove all non-ASCII characters
-    const asciiText = text.replace(/[^\x00-\x7F]/g, '?');
-    doc.text(asciiText, x, y, options);
-  }
-}
-
 function addWrappedText(doc: any, text: string, x: number, y: number, maxWidth: number, lineHeight: number = 7, pageHeight: number, margin: number): number {
   if (!text) return y;
   
   const cleanText = stripHtml(text);
-  const processedText = processChineseText(cleanText);
-  const lines = doc.splitTextToSize(processedText, maxWidth);
+  const lines = doc.splitTextToSize(cleanText, maxWidth);
   
   for (let i = 0; i < lines.length; i++) {
     if (y + lineHeight > pageHeight - margin) {
@@ -1148,8 +1081,8 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       compress: true, // Enable compression
     });
     
-    // Use Helvetica as the base font (supports basic Latin characters)
-    doc.setFont('helvetica');
+    // Load Chinese font
+    const fontLoaded = await loadChineseFont(doc);
     
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
@@ -1170,8 +1103,8 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
         const generatedText = `Generated on ${new Date().toLocaleDateString()}`;
         const statusText = `${invoiceData.status === 'accepted' ? 'Invoice accepted' : 'Invoice not accepted'} | ${invoiceData.contractStatus === 'accepted' ? 'Contract terms accepted' : 'Contract terms not accepted'}`;
         log.debug(`Footer for page ${i}:`, { generatedText, statusText });
-        addTextWithChineseSupport(doc, generatedText, margin, pageHeight - 10);
-        addTextWithChineseSupport(doc, statusText, pageWidth - margin, pageHeight - 10, { align: 'right' });
+        doc.text(generatedText, margin, pageHeight - 10);
+        doc.text(statusText, pageWidth - margin, pageHeight - 10, { align: 'right' });
       }
     };
 
@@ -1196,90 +1129,90 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       } catch (logoError) {
         log.error('Error adding optimized logo:', logoError);
         doc.setFontSize(24);
-        doc.setFont('helvetica', 'bold');
-        addTextWithChineseSupport(doc, invoiceData.company.name.toUpperCase(), margin, leftColumnY + 15);
+        doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'normal');
+        doc.text(invoiceData.company.name.toUpperCase(), margin, leftColumnY + 15);
         leftColumnY += 20;
       }
     } else {
       doc.setFontSize(24);
-      doc.setFont('helvetica', 'bold');
-      addTextWithChineseSupport(doc, invoiceData.company.name.toUpperCase(), margin, leftColumnY + 15);
+      doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'normal');
+      doc.text(invoiceData.company.name.toUpperCase(), margin, leftColumnY + 15);
       leftColumnY += 20;
     }
 
     // Company details below logo
     doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
+    doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'bold');
     doc.setTextColor(100, 100, 100);
-    addTextWithChineseSupport(doc, 'FROM', margin, leftColumnY);
+    doc.text('FROM', margin, leftColumnY);
     leftColumnY += 7;
 
     doc.setFontSize(14);
     doc.setTextColor(0, 0, 0);
-    addTextWithChineseSupport(doc, invoiceData.company.name, margin, leftColumnY);
+    doc.text(invoiceData.company.name, margin, leftColumnY);
     leftColumnY += 7;
 
     doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
+    doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'normal');
     
     if (invoiceData.company.email) {
-      addTextWithChineseSupport(doc, invoiceData.company.email, margin, leftColumnY);
+      doc.text(invoiceData.company.email, margin, leftColumnY);
       leftColumnY += 6;
     }
     
     if (invoiceData.company.phone) {
-      addTextWithChineseSupport(doc, invoiceData.company.phone, margin, leftColumnY);
+      doc.text(invoiceData.company.phone, margin, leftColumnY);
       leftColumnY += 6;
     }
     
     if (invoiceData.company.address) {
       const addressLines = invoiceData.company.address.split('\n');
       const flattenedAddress = addressLines.join(' ');
-      addTextWithChineseSupport(doc, flattenedAddress, margin, leftColumnY);
+      doc.text(flattenedAddress, margin, leftColumnY);
       leftColumnY += 10;
     }
 
     // Client Information
     doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
+    doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'bold');
     doc.setTextColor(100, 100, 100);
-    addTextWithChineseSupport(doc, 'INVOICE FOR', rightColumnX, rightColumnY);
+    doc.text('INVOICE FOR', rightColumnX, rightColumnY);
     rightColumnY += 7;
 
     if (invoiceData.job && invoiceData.job.title) {
       doc.setFontSize(14);
       doc.setTextColor(0, 0, 0);
-      addTextWithChineseSupport(doc, invoiceData.job.title, rightColumnX, rightColumnY);
+      doc.text(invoiceData.job.title, rightColumnX, rightColumnY);
       rightColumnY += 7;
     }
 
     doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    addTextWithChineseSupport(doc, `Client: ${invoiceData.client.name}`, rightColumnX, rightColumnY);
+    doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'normal');
+    doc.text(`Client: ${invoiceData.client.name}`, rightColumnX, rightColumnY);
     rightColumnY += 6;
     
     if (invoiceData.client.email) {
-      addTextWithChineseSupport(doc, invoiceData.client.email, rightColumnX, rightColumnY);
+      doc.text(invoiceData.client.email, rightColumnX, rightColumnY);
       rightColumnY += 6;
     }
     
     if (invoiceData.client.phone) {
-      addTextWithChineseSupport(doc, invoiceData.client.phone, rightColumnX, rightColumnY);
+      doc.text(invoiceData.client.phone, rightColumnX, rightColumnY);
       rightColumnY += 6;
     }
 
     if (invoiceData.job && invoiceData.job.date) {
       rightColumnY += 4;
       doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
+      doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'bold');
       doc.setTextColor(100, 100, 100);
-      addTextWithChineseSupport(doc, 'JOB DATE', rightColumnX, rightColumnY);
+      doc.text('JOB DATE', rightColumnX, rightColumnY);
       rightColumnY += 7;
     
       doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
+      doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'normal');
       doc.setTextColor(0, 0, 0);
-      addTextWithChineseSupport(doc, invoiceData.job.date, rightColumnX, rightColumnY);
+      doc.text(invoiceData.job.date, rightColumnX, rightColumnY);
     }
 
     y = Math.max(leftColumnY + 10, rightColumnY + 10);
@@ -1291,12 +1224,12 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
 
     // Invoice Number and Details
     doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    addTextWithChineseSupport(doc, `INVOICE #${invoiceData.number}`, margin, y);
+    doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'bold');
+    doc.text(`INVOICE #${invoiceData.number}`, margin, y);
     y += 7;
     
     doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
+    doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'normal');
     
     const invoiceDetailsTable = [
       ['Invoice Date:', new Date(invoiceData.date).toLocaleDateString()],
@@ -1312,7 +1245,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       styles: {
         cellPadding: 1,
         fontSize: 10,
-        font: 'helvetica'
+        font: fontLoaded ? 'NotoSansSC' : 'helvetica'
       },
       columnStyles: {
         0: { cellWidth: 30, fontStyle: 'bold' },
@@ -1326,8 +1259,8 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
     if (invoiceData.items && invoiceData.items.length > 0) {
       log.debug('Rendering INVOICE ITEMS section');
       doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
-      addTextWithChineseSupport(doc, 'INVOICE ITEMS', margin, y);
+      doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'bold');
+      doc.text('INVOICE ITEMS', margin, y);
       
       y += 5;
       
@@ -1341,8 +1274,8 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       
       const tableData = invoiceData.items.map(item => {
         const row = {
-          name: processChineseText(item.name || 'Product/Service'),
-          description: processChineseText(stripHtml(item.description || '')),
+          name: item.name || 'Product/Service',
+          description: stripHtml(item.description || ''),
           quantity: item.quantity.toString(),
           rate: `$${item.rate.toFixed(2)}`,
           amount: `$${item.amount.toFixed(2)}`
@@ -1362,13 +1295,13 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
           fillColor: [240, 240, 240], 
           textColor: [50, 50, 50],
           fontStyle: 'bold',
-          font: 'helvetica'
+          font: fontLoaded ? 'NotoSansSC' : 'helvetica'
         },
         bodyStyles: { 
           fontSize: 9,
           lineColor: [220, 220, 220],
           lineWidth: 0.1,
-          font: 'helvetica'
+          font: fontLoaded ? 'NotoSansSC' : 'helvetica'
         },
         columnStyles: {
           0: { cellWidth: 35 },
@@ -1381,7 +1314,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
         styles: {
           overflow: 'linebreak',
           cellPadding: 3,
-          font: 'helvetica'
+          font: fontLoaded ? 'NotoSansSC' : 'helvetica'
         },
         didDrawPage: (data: any) => {
           y = data.cursor.y + 5;
@@ -1390,10 +1323,10 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       });
       
       doc.setFontSize(10);
-      doc.setFont('helvetica', 'bold');
+      doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'bold');
       log.debug('Total amount:', invoiceData.amount);
-      addTextWithChineseSupport(doc, 'TOTAL:', pageWidth - margin - 35, y);
-      addTextWithChineseSupport(doc, `$${invoiceData.amount.toFixed(2)}`, pageWidth - margin, y, { align: 'right' });
+      doc.text('TOTAL:', pageWidth - margin - 35, y);
+      doc.text(`$${invoiceData.amount.toFixed(2)}`, pageWidth - margin, y, { align: 'right' });
       
       y += 15;
     } else {
@@ -1410,8 +1343,8 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       
       log.debug('Rendering PAYMENT SCHEDULE section');
       doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
-      addTextWithChineseSupport(doc, 'PAYMENT SCHEDULE', margin, y);
+      doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'bold');
+      doc.text('PAYMENT SCHEDULE', margin, y);
       
       y += 8;
       
@@ -1427,7 +1360,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       
       const paymentData = invoiceData.paymentSchedules.map(schedule => {
         const row = {
-          description: processChineseText(schedule.description || ''),
+          description: schedule.description || '',
           dueDate: new Date(schedule.dueDate).toLocaleDateString(),
           percentage: schedule.percentage ? `${schedule.percentage}%` : 'N/A',
           amount: `$${schedule.amount.toFixed(2)}`,
@@ -1448,13 +1381,13 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
           fillColor: [240, 240, 240], 
           textColor: [50, 50, 50],
           fontStyle: 'bold',
-          font: 'helvetica'
+          font: fontLoaded ? 'NotoSansSC' : 'helvetica'
         },
         bodyStyles: { 
           fontSize: 9,
           lineColor: [220, 220, 220],
           lineWidth: 0.1,
-          font: 'helvetica'
+          font: fontLoaded ? 'NotoSansSC' : 'helvetica'
         },
         columnStyles: {
           0: { cellWidth: 'auto' },
@@ -1467,7 +1400,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
         styles: {
           overflow: 'linebreak',
           cellPadding: 3,
-          font: 'helvetica'
+          font: fontLoaded ? 'NotoSansSC' : 'helvetica'
         },
         didDrawPage: (data: any) => {
           y = data.cursor.y + 10;
@@ -1488,13 +1421,13 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       
       log.debug('Rendering PAYMENT METHODS section');
       doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
-      addTextWithChineseSupport(doc, 'PAYMENT METHODS', margin, y);
+      doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'bold');
+      doc.text('PAYMENT METHODS', margin, y);
       
       y += 8;
       
       doc.setFontSize(9);
-      doc.setFont('helvetica', 'normal');
+      doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'normal');
       log.debug('Payment methods content:', invoiceData.company.payment_methods);
       
       const paymentMethodsY = addWrappedText(
@@ -1523,13 +1456,13 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       
       log.debug('Rendering NOTES section');
       doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
-      addTextWithChineseSupport(doc, 'NOTES', margin, y);
+      doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'bold');
+      doc.text('NOTES', margin, y);
       
       y += 8;
       
       doc.setFontSize(9);
-      doc.setFont('helvetica', 'normal');
+      doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'normal');
       log.debug('Notes content:', invoiceData.notes);
       
       const notesY = addWrappedText(doc, invoiceData.notes, margin, y, contentWidth, 5, pageHeight, margin);
@@ -1553,8 +1486,8 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       log.debug('Added new page for contract terms, new y position:', y);
       
       doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      addTextWithChineseSupport(doc, 'CONTRACT TERMS', margin, y);
+      doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'bold');
+      doc.text('CONTRACT TERMS', margin, y);
       
       y += 10;
       
@@ -1578,11 +1511,11 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
         });
         
         if (isHeading) {
-          doc.setFont('helvetica', 'bold');
+          doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'bold');
           addWrappedText(doc, trimmedParagraph, margin, y, contentWidth, 5, pageHeight, margin);
           y += 7;
         } else {
-          doc.setFont('helvetica', 'normal');
+          doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'normal');
           const paragraphY = addWrappedText(doc, trimmedParagraph, margin, y, contentWidth, 5, pageHeight, margin);
           y = paragraphY + 5;
         }

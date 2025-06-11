@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { Download, AlertTriangle, FileText, RefreshCw } from 'lucide-react';
+import { Download, AlertTriangle, FileText, RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getInvoiceByViewLink } from '@/lib/storage';
@@ -22,6 +21,7 @@ const InvoicePdfView = () => {
   const [downloadAttempts, setDownloadAttempts] = useState(0);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<any>(null);
+  const [downloadProgress, setDownloadProgress] = useState<string>('');
   const { viewLink } = useParams<{ viewLink: string }>();
   const navigate = useNavigate();
 
@@ -153,12 +153,14 @@ const InvoicePdfView = () => {
     setIsDownloading(true);
     setDownloadError(null);
     setDebugInfo(null);
-    toast.info('Preparing PDF for download...');
+    setDownloadProgress('Preparing PDF generation...');
     
     try {
       // Always force regenerate to ensure we get the latest PDF
       console.log('Generating new PDF via edge function');
       setDownloadAttempts(prev => prev + 1);
+      
+      setDownloadProgress('Generating PDF document...');
       
       // Add a timestamp to prevent caching issues
       const timestamp = new Date().getTime();
@@ -190,6 +192,8 @@ const InvoicePdfView = () => {
         throw new Error('No PDF URL returned from generation service');
       }
       
+      setDownloadProgress('Validating PDF...');
+      
       // Validate the generated PDF URL
       const validation = await validatePdfUrl(data.pdfUrl);
       console.log('New PDF validation result:', validation);
@@ -197,6 +201,8 @@ const InvoicePdfView = () => {
       if (!validation.isValid) {
         throw new Error(`Generated PDF validation failed: ${validation.error}`);
       }
+      
+      setDownloadProgress('Opening PDF...');
       
       // Update the invoice with the new PDF URL
       setInvoice(prev => prev ? { ...prev, pdfUrl: data.pdfUrl } : null);
@@ -206,11 +212,13 @@ const InvoicePdfView = () => {
       
       // Show success message
       toast.success('Invoice downloaded successfully');
+      setDownloadProgress('');
     } catch (err) {
       console.error('Error downloading invoice:', err);
       
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       setDownloadError(errorMessage);
+      setDownloadProgress('');
       
       toast.error('Failed to download invoice', {
         description: errorMessage
@@ -289,6 +297,17 @@ const InvoicePdfView = () => {
               </Badge>
             </div>
             
+            {/* Loading Progress Indicator */}
+            {isDownloading && downloadProgress && (
+              <Alert>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <AlertTitle>Generating Invoice PDF</AlertTitle>
+                <AlertDescription>
+                  {downloadProgress}
+                </AlertDescription>
+              </Alert>
+            )}
+            
             {downloadError && (
               <Alert variant="destructive">
                 <AlertTitle className="flex items-center gap-2">
@@ -313,7 +332,7 @@ const InvoicePdfView = () => {
                 disabled={isDownloading}
               >
                 {isDownloading 
-                  ? <><RefreshCw className="h-4 w-4 mr-2 animate-spin" /> Generating PDF...</>
+                  ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Generating PDF...</>
                   : <><Download className="h-4 w-4 mr-2" /> Download Invoice</>
                 }
               </Button>
@@ -322,6 +341,7 @@ const InvoicePdfView = () => {
                 onClick={handleCopyInvoiceLink}
                 variant="outline" 
                 className="w-full"
+                disabled={isDownloading}
               >
                 Copy Invoice Link
               </Button>

@@ -162,34 +162,42 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Helper to load and register the font (assumes font file is accessible)
+// Helper function to load and register the Chinese font
 async function loadChineseFont(doc: any) {
   try {
-    // Use a working font URL - Noto Sans SC from Google Fonts
-    const fontUrl = 'https://fonts.gstatic.com/s/notosanssc/v36/k3kCo84MPvpLmixcA63oeAL7Iq1tz8kLgTKcCJ-P3Q.woff2';
-    
+    // Use a TrueType (.ttf) font file for Noto Sans CJK SC
+    // Replace with a valid URL or local path to the .ttf file
+    const fontUrl = 'https://cdn.jsdelivr.net/npm/noto-sans-cjk@0.1.0/NotoSansCJKsc-Regular.ttf'; // Example CDN (replace with actual URL)
+    // For local testing: const fontPath = './fonts/NotoSansCJKsc-Regular.ttf';
     log.info('Attempting to load Chinese font from:', fontUrl);
-    const fontResponse = await fetch(fontUrl);
-    if (!fontResponse.ok) throw new Error(`Failed to fetch font: ${fontResponse.status}`);
-    
+    const fontResponse = await fetch(fontUrl, {
+      headers: {
+        'Accept': 'application/octet-stream'
+      }
+    });
+    if (!fontResponse.ok) {
+      throw new Error(`Failed to fetch font: ${fontResponse.status} ${fontUrl}`);
+    }
     const fontArrayBuffer = await fontResponse.arrayBuffer();
     const fontBytes = new Uint8Array(fontArrayBuffer);
 
-    // Convert to base64 for jsPDF
-    const base64String = btoa(String.fromCharCode.apply(null, Array.from(fontBytes)));
+    // Convert to base64 using Deno's standard library for reliability
+    const base64String = btoa(
+      String.fromCharCode.apply(null, Array.from(fontBytes))
+    );
 
     // Add font to jsPDF's virtual file system
     doc.addFileToVFS('NotoSansCJKsc-Regular.ttf', base64String);
     doc.addFont('NotoSansCJKsc-Regular.ttf', 'NotoSansCJKsc', 'normal');
-
+    
     // Set as default font
-    doc.setFont('NotoSansCJKsc');
+    doc.setFont('NotoSansCJKsc', 'normal');
     log.info('Chinese font loaded and set successfully');
     return true;
   } catch (error) {
     log.error('Error loading Chinese font:', error);
-    // Fallback to Helvetica if font loading fails
-    doc.setFont('helvetica');
+    // Fallback to Helvetica
+    doc.setFont('helvetica', 'normal');
     return false;
   }
 }
@@ -1063,27 +1071,30 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
     hasNotes: !!invoiceData.notes,
     hasContractTerms: !!invoiceData.contractTerms,
     contractTermsLength: invoiceData.contractTerms?.length || 0,
-    contractTermsPreview: invoiceData.contractTerms?.substring(0, 100),
+    contractTermsPreview: invoiceData.contractTerms?.slice(0, 100),
     companyLogoUrl: invoiceData.company.logoUrl,
-    hasPaymentMethods: !!invoiceData.company.payment_methods,
+    hasPaymentMethods: !!invoiceData.company.payment_methods
   });
-  
+
   try {
     // Create a new PDF document with optimized settings
     const doc = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
       format: 'a4',
-      compress: true, // Enable compression
+      compress: true
     });
-    
+
     // Load Chinese font
     const fontLoaded = await loadChineseFont(doc);
-    
+    if (!fontLoaded) {
+      log.warn('Chinese font not loaded, using Helvetica fallback. Chinese characters may not render correctly.');
+    }
+
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 15;
-    const contentWidth = pageWidth - (margin * 2);
+    const contentWidth = pageWidth - margin * 2;
     let y = margin;
 
     // Add page footer helper function
@@ -1097,6 +1108,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
         const generatedText = `Generated on ${new Date().toLocaleDateString()}`;
         const statusText = `${invoiceData.status === 'accepted' ? 'Invoice accepted' : 'Invoice not accepted'} | ${invoiceData.contractStatus === 'accepted' ? 'Contract terms accepted' : 'Contract terms not accepted'}`;
         log.debug(`Footer for page ${i}:`, { generatedText, statusText });
+        doc.setFont(fontLoaded ? 'NotoSansCJKsc' : 'helvetica', 'normal');
         doc.text(generatedText, margin, pageHeight - 10);
         doc.text(statusText, pageWidth - margin, pageHeight - 10, { align: 'right' });
       }
@@ -1112,11 +1124,9 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       log.debug('Adding optimized logo to PDF');
       try {
         const logoData = await processLogoForPDF(invoiceData.company.logoUrl);
-        
         const logoWidth = logoData.width;
         const logoHeight = logoData.height;
         const logoX = margin + (rightColumnX - margin - logoWidth) / 4;
-      
         doc.addImage(logoData.data, 'JPEG', logoX, y, logoWidth, logoHeight, undefined, 'MEDIUM');
         log.debug('Optimized logo added to PDF successfully');
         leftColumnY += logoHeight + 10;

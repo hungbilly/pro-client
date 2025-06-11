@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -337,12 +338,19 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
         const updatedInvoice = { ...safeInvoice, id: propInvoiceId };
         await updateInvoice(updatedInvoice);
         toast.success('Invoice updated successfully.');
+        // Navigate back to the invoice view page instead of invoice list
+        navigate(`/invoice/${propInvoiceId}`);
       } else {
         // If it's a new invoice, save it
-        await saveInvoice(safeInvoice);
+        const savedInvoice = await saveInvoice(safeInvoice);
         toast.success('Invoice saved successfully.');
+        // Navigate to the new invoice view page
+        if (savedInvoice?.id) {
+          navigate(`/invoice/${savedInvoice.id}`);
+        } else {
+          navigate('/invoices');
+        }
       }
-      navigate('/invoices');
     } catch (error) {
       console.error('Error saving invoice:', error);
       toast.error('Failed to save invoice.');

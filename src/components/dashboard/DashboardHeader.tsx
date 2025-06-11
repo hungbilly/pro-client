@@ -31,7 +31,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ hasCompanies }) => {
           <Button 
             variant="outline" 
             onClick={() => navigate('/tutorial')}
-            className="glass-button-enhanced bg-white/30 border-white/50 text-teal-800 hover:bg-white/40 hover:border-white/70 backdrop-blur-md font-medium shadow-glass"
+            className="glass-button-enhanced bg-white/30 border-white/50 text-slate-700 hover:bg-white/40 hover:border-white/70 backdrop-blur-md font-medium shadow-glass"
           >
             <BookOpen className="mr-2 h-4 w-4" />
             Tutorial
@@ -41,7 +41,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ hasCompanies }) => {
             <Button 
               variant="outline" 
               onClick={() => navigate('/admin')}
-              className="glass-button-enhanced bg-white/30 border-white/50 text-cyan-800 hover:bg-white/40 hover:border-white/70 backdrop-blur-md font-medium shadow-glass"
+              className="glass-button-enhanced bg-white/30 border-white/50 text-gray-700 hover:bg-white/40 hover:border-white/70 backdrop-blur-md font-medium shadow-glass"
             >
               <Shield className="mr-2 h-4 w-4" />
               Admin

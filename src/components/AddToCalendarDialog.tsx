@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -40,7 +39,7 @@ export const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({
       // Use job's timezone if available, otherwise use user's browser timezone
       const timeZoneToUse = job.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
       console.log(`Creating calendar event with timezone: ${timeZoneToUse}`);
-      console.log(`Job start time: ${job.startTime}, Job end time: ${job.endTime}`);
+      console.log(`Job start time: ${job.startTime}, Job end time: ${job.endTime}, Is full day: ${job.isFullDay}`);
       
       const { data, error } = await supabase.functions.invoke('add-to-calendar', {
         headers: {
@@ -51,14 +50,14 @@ export const AddToCalendarDialog: React.FC<AddToCalendarDialogProps> = ({
           clientId: client.id,
           userId: session.user.id,
           userTimeZone: timeZoneToUse,
-          // Explicitly include start and end times to ensure they're passed correctly
+          // Explicitly include start and end times only if not full day
           jobData: {
             title: job.title,
             description: job.description || '',
             date: job.date || '',
             location: job.location || '',
-            startTime: job.startTime || '09:00',
-            endTime: job.endTime || '17:00',
+            startTime: job.isFullDay ? undefined : (job.startTime || '09:00'),
+            endTime: job.isFullDay ? undefined : (job.endTime || '17:00'),
             isFullDay: job.isFullDay || false,
             timezone: timeZoneToUse
           }

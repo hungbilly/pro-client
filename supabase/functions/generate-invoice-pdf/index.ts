@@ -960,11 +960,51 @@ async function processLogoForPDF(logoUrl: string): Promise<{data: string, width:
     const base64Data = await blobToBase64(blob);
     log.debug('Logo converted to base64, length:', base64Data.length);
     
-    // Return optimized logo data with reasonable dimensions
+    // Calculate dimensions maintaining aspect ratio
+    const maxHeight = 40; // Maximum height constraint
+    const maxWidth = 120;  // Maximum width constraint
+    
+    // Create a temporary image to get original dimensions
+    const tempDoc = new jsPDF();
+    const imgProps = tempDoc.getImageProperties(base64Data);
+    const originalWidth = imgProps.width;
+    const originalHeight = imgProps.height;
+    const aspectRatio = originalWidth / originalHeight;
+    
+    log.debug('Original logo dimensions:', { width: originalWidth, height: originalHeight, aspectRatio });
+    
+    // Calculate final dimensions maintaining aspect ratio
+    let finalWidth, finalHeight;
+    
+    if (aspectRatio > 1) {
+      // Landscape logo - constrain by width
+      finalWidth = Math.min(maxWidth, originalWidth);
+      finalHeight = finalWidth / aspectRatio;
+      
+      // If height exceeds max, constrain by height instead
+      if (finalHeight > maxHeight) {
+        finalHeight = maxHeight;
+        finalWidth = finalHeight * aspectRatio;
+      }
+    } else {
+      // Portrait or square logo - constrain by height
+      finalHeight = Math.min(maxHeight, originalHeight);
+      finalWidth = finalHeight * aspectRatio;
+      
+      // If width exceeds max, constrain by width instead
+      if (finalWidth > maxWidth) {
+        finalWidth = maxWidth;
+        finalHeight = finalWidth / aspectRatio;
+      }
+    }
+    
+    log.debug('Calculated logo dimensions maintaining aspect ratio:', { width: finalWidth, height: finalHeight });
+    
+    // Return optimized logo data with proportional dimensions
     return {
       data: base64Data,
-      width: 120, // Fixed reasonable width
-      height: 40  // Fixed reasonable height
+      width: finalWidth,
+      height: finalHeight
     };
   } catch (error) {
     log.error('Error processing logo:', error);

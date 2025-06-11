@@ -191,6 +191,8 @@ serve(async (req) => {
     
     const timeZoneToUse = userTimeZone || eventData.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
     console.log('User timezone:', timeZoneToUse);
+    console.log('Event isFullDay from job data:', eventData.isFullDay);
+    console.log('Event isFullDay from request jobData:', requestData.jobData?.isFullDay);
     
     let event;
     let enhancedDescription = `Job: ${eventData.title}\n`;
@@ -199,7 +201,11 @@ serve(async (req) => {
     enhancedDescription += `${eventData.description || 'No description provided'}\n\n`;
     enhancedDescription += `Client Contact:\nEmail: ${clientData.email}\nPhone: ${clientData.phone}`;
     
-    if (eventData.isFullDay === true) {
+    // Check isFullDay from both sources - prioritize jobData from request if available
+    const isFullDayEvent = requestData.jobData?.isFullDay ?? eventData.isFullDay ?? false;
+    console.log('Final isFullDay decision:', isFullDayEvent);
+    
+    if (isFullDayEvent === true) {
       event = {
         summary: eventData.title,
         location: eventData.location,
@@ -213,8 +219,9 @@ serve(async (req) => {
       };
       console.log('Created all-day event object:', JSON.stringify(event));
     } else {
-      const startTime = eventData.startTime || '09:00:00';
-      const endTime = eventData.endTime || '17:00:00';
+      // Use times from request jobData if available, otherwise fall back to eventData
+      const startTime = requestData.jobData?.startTime || eventData.startTime || '09:00:00';
+      const endTime = requestData.jobData?.endTime || eventData.endTime || '17:00:00';
       
       const normalizedStartTime = startTime.length === 5 ? `${startTime}:00` : startTime;
       const normalizedEndTime = endTime.length === 5 ? `${endTime}:00` : endTime;

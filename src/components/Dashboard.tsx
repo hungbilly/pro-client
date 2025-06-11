@@ -260,110 +260,108 @@ const Dashboard: React.FC = () => {
   const clientToDeleteName = clientToDelete ? clients.find(c => c.id === clientToDelete)?.name : undefined;
 
   return (
-    <div className={`min-h-screen relative overflow-hidden ${isMobile ? 'mobile-scrollable' : ''}`}>
+    <div className={`relative ${isMobile ? 'mobile-scrollable' : ''}`}>
       {/* Soft muted Tiffany Blue Glassmorphism Background */}
-      <div className="fixed inset-0 bg-gradient-to-br from-slate-200 via-gray-200 to-teal-200">
-        <div className="absolute inset-0 bg-gradient-to-tr from-gray-100/40 via-slate-200/30 to-teal-100/40"></div>
+      <div className="fixed inset-0 bg-gradient-to-br from-slate-200 via-gray-200 to-teal-200/60 -z-10">
+        <div className="absolute inset-0 bg-gradient-to-tr from-gray-100/40 via-slate-200/30 to-teal-100/30"></div>
         <div className="absolute top-0 left-0 w-96 h-96 bg-white/20 rounded-full blur-3xl animate-pulse-soft"></div>
-        <div className="absolute top-1/3 right-0 w-[28rem] h-[28rem] bg-teal-100/25 rounded-full blur-3xl animate-float"></div>
+        <div className="absolute top-1/3 right-0 w-[28rem] h-[28rem] bg-teal-100/20 rounded-full blur-3xl animate-float"></div>
         <div className="absolute bottom-0 left-1/4 w-72 h-72 bg-gray-200/20 rounded-full blur-3xl animate-pulse-soft"></div>
         <div className="absolute top-1/2 left-1/2 w-56 h-56 bg-slate-100/20 rounded-full blur-2xl animate-float"></div>
       </div>
 
-      <div className="relative z-10">
-        <AnimatedBackground 
-          className="py-6" 
-          disableOverflowHidden={true}
-        >
-          <DeleteClientDialog 
-            clientId={clientToDelete}
-            clientName={clientToDeleteName}
-            onClose={cancelDeleteClient}
-            onConfirm={handleDeleteClient}
-          />
+      <AnimatedBackground 
+        className="py-6" 
+        disableOverflowHidden={true}
+      >
+        <DeleteClientDialog 
+          clientId={clientToDelete}
+          clientName={clientToDeleteName}
+          onClose={cancelDeleteClient}
+          onConfirm={handleDeleteClient}
+        />
 
-          <div className="container px-4 mx-auto">
-            <DashboardHeader hasCompanies={companies.length > 0} />
-            
-            {companies.length > 0 && (
-              <>
-                <DashboardAnalytics 
-                  invoices={invoices} 
-                  jobs={jobs} 
-                  expenses={expenses} 
-                />
-
-                <Card className="glass-card-enhanced shadow-glass-2xl border-white/30 backdrop-blur-xl bg-white/20">
-                  <CardHeader className="pb-4">
-                    <CardTitle className="text-gray-900 font-bold">Manage Your Business</CardTitle>
-                    <CardDescription className="text-gray-700 font-medium">View and manage clients, jobs, and invoices</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Tabs defaultValue="clients" className="w-full">
-                      <TabsList className="grid w-full grid-cols-3 mb-6 glass-panel-enhanced bg-white/20 border-white/30 backdrop-blur-md">
-                        <TabsTrigger 
-                          value="clients" 
-                          className="flex items-center gap-2 text-slate-700 hover:bg-white/30 data-[state=active]:bg-white/40 data-[state=active]:text-slate-800 transition-all duration-300 font-medium backdrop-blur-sm"
-                        >
-                          <Users size={16} />
-                          <span>Clients</span>
-                        </TabsTrigger>
-                        <TabsTrigger 
-                          value="jobs" 
-                          className="flex items-center gap-2 text-gray-700 hover:bg-white/30 data-[state=active]:bg-white/40 data-[state=active]:text-gray-800 transition-all duration-300 font-medium backdrop-blur-sm"
-                        >
-                          <Briefcase size={16} />
-                          <span>Jobs</span>
-                        </TabsTrigger>
-                        <TabsTrigger 
-                          value="invoices" 
-                          className="flex items-center gap-2 text-slate-600 hover:bg-white/30 data-[state=active]:bg-white/40 data-[state=active]:text-slate-800 transition-all duration-300 font-medium backdrop-blur-sm"
-                        >
-                          <FileText size={16} />
-                          <span>Invoices</span>
-                        </TabsTrigger>
-                      </TabsList>
-                      
-                      <TabsContent value="clients">
-                        <ClientsTabContent 
-                          clients={clients}
-                          onDeleteClient={confirmDeleteClient}
-                        />
-                      </TabsContent>
-                      
-                      <TabsContent value="jobs">
-                        <JobsTabContent 
-                          jobs={jobs}
-                          clients={clients}
-                          getStatusColor={getStatusColor}
-                        />
-                      </TabsContent>
-                      
-                      <TabsContent value="invoices">
-                        <InvoicesTabContent 
-                          invoices={localInvoices}
-                          clients={clients}
-                          jobs={jobs}
-                          jobDates={jobDates}
-                          getStatusColor={getStatusColor}
-                          getJobDateDisplay={getJobDateDisplay}
-                          onOpenCreateInvoiceModal={handleOpenCreateInvoiceModal}
-                        />
-                      </TabsContent>
-                    </Tabs>
-                  </CardContent>
-                </Card>
-              </>
-            )}
-          </div>
+        <div className="container px-4 mx-auto">
+          <DashboardHeader hasCompanies={companies.length > 0} />
           
-          {/* Create Invoice Modal */}
-          <CreateInvoiceModal 
-            isOpen={isCreateInvoiceModalOpen} 
-            onClose={handleCloseCreateInvoiceModal} 
-          />
-        </AnimatedBackground>
-      </div>
+          {companies.length > 0 && (
+            <>
+              <DashboardAnalytics 
+                invoices={invoices} 
+                jobs={jobs} 
+                expenses={expenses} 
+              />
+
+              <Card className="glass-card-enhanced shadow-glass-2xl border-white/30 backdrop-blur-xl bg-white/20">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-gray-900 font-bold">Manage Your Business</CardTitle>
+                  <CardDescription className="text-gray-700 font-medium">View and manage clients, jobs, and invoices</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Tabs defaultValue="clients" className="w-full">
+                    <TabsList className="grid w-full grid-cols-3 mb-6 glass-panel-enhanced bg-white/20 border-white/30 backdrop-blur-md">
+                      <TabsTrigger 
+                        value="clients" 
+                        className="flex items-center gap-2 text-slate-700 hover:bg-white/30 data-[state=active]:bg-white/40 data-[state=active]:text-slate-800 transition-all duration-300 font-medium backdrop-blur-sm"
+                      >
+                        <Users size={16} />
+                        <span>Clients</span>
+                      </TabsTrigger>
+                      <TabsTrigger 
+                        value="jobs" 
+                        className="flex items-center gap-2 text-gray-700 hover:bg-white/30 data-[state=active]:bg-white/40 data-[state=active]:text-gray-800 transition-all duration-300 font-medium backdrop-blur-sm"
+                      >
+                        <Briefcase size={16} />
+                        <span>Jobs</span>
+                      </TabsTrigger>
+                      <TabsTrigger 
+                        value="invoices" 
+                        className="flex items-center gap-2 text-slate-600 hover:bg-white/30 data-[state=active]:bg-white/40 data-[state=active]:text-slate-800 transition-all duration-300 font-medium backdrop-blur-sm"
+                      >
+                        <FileText size={16} />
+                        <span>Invoices</span>
+                      </TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="clients">
+                      <ClientsTabContent 
+                        clients={clients}
+                        onDeleteClient={confirmDeleteClient}
+                      />
+                    </TabsContent>
+                    
+                    <TabsContent value="jobs">
+                      <JobsTabContent 
+                        jobs={jobs}
+                        clients={clients}
+                        getStatusColor={getStatusColor}
+                      />
+                    </TabsContent>
+                    
+                    <TabsContent value="invoices">
+                      <InvoicesTabContent 
+                        invoices={localInvoices}
+                        clients={clients}
+                        jobs={jobs}
+                        jobDates={jobDates}
+                        getStatusColor={getStatusColor}
+                        getJobDateDisplay={getJobDateDisplay}
+                        onOpenCreateInvoiceModal={handleOpenCreateInvoiceModal}
+                      />
+                    </TabsContent>
+                  </Tabs>
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </div>
+        
+        {/* Create Invoice Modal */}
+        <CreateInvoiceModal 
+          isOpen={isCreateInvoiceModalOpen} 
+          onClose={handleCloseCreateInvoiceModal} 
+        />
+      </AnimatedBackground>
     </div>
   );
 };

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Download, AlertTriangle, FileText, RefreshCw, Loader2 } from 'lucide-react';
@@ -157,8 +156,10 @@ const InvoicePdfView = () => {
     setDownloadProgress('Preparing PDF generation...');
     
     try {
-      // Always force regenerate to ensure we get the latest PDF
-      console.log('Generating new PDF via edge function');
+      console.log('=== STARTING PDF GENERATION PROCESS ===');
+      console.log('Invoice ID:', invoice.id);
+      console.log('Invoice Number:', invoice.number);
+      
       setDownloadAttempts(prev => prev + 1);
       
       setDownloadProgress('Generating PDF document...');
@@ -166,35 +167,85 @@ const InvoicePdfView = () => {
       // Add a timestamp to prevent caching issues
       const timestamp = new Date().getTime();
       
-      const { data, error } = await supabase.functions.invoke('generate-invoice-pdf', {
-        body: { 
-          invoiceId: invoice.id,
-          forceRegenerate: true,  // Always force regeneration
-          debugMode: true, // Always enable debug mode for better troubleshooting
-          skipSizeValidation: true, // Skip backend size validation
-          clientInfo: {
-            userAgent: navigator.userAgent,
-            timestamp: timestamp
-          }
+      const requestPayload = { 
+        invoiceId: invoice.id,
+        forceRegenerate: true,
+        debugMode: true,
+        allowLargeFiles: true, // New parameter to explicitly allow large files
+        clientInfo: {
+          userAgent: navigator.userAgent,
+          timestamp: timestamp,
+          attemptNumber: downloadAttempts + 1
         }
+      };
+      
+      console.log('=== SENDING REQUEST TO EDGE FUNCTION ===');
+      console.log('Request payload:', requestPayload);
+      
+      const { data, error } = await supabase.functions.invoke('generate-invoice-pdf', {
+        body: requestPayload
       });
       
-      console.log("PDF generation response:", data);
+      console.log('=== EDGE FUNCTION RESPONSE ===');
+      console.log("Raw response data:", data);
+      console.log("Raw response error:", error);
+      
+      // Save debug info if available
+      if (data?.debugInfo) {
+        console.log('=== DEBUG INFO FROM EDGE FUNCTION ===');
+        console.log(data.debugInfo);
+        setDebugInfo(data.debugInfo);
+      }
       
       if (error) {
+        console.log('=== HANDLING ERROR FROM EDGE FUNCTION ===');
+        console.log('Error object:', error);
+        console.log('Error message:', error.message);
+        
         // Check if it's the "suspiciously large" error and handle it gracefully
         if (error.message?.includes('suspiciously large') || error.message?.includes('too large')) {
-          console.log('PDF generated but flagged as large, attempting to retrieve anyway...');
+          console.log('=== DETECTED LARGE FILE ERROR, ATTEMPTING WORKAROUND ===');
           
-          // Try to get the PDF URL from the current invoice data
-          if (invoice.pdfUrl) {
-            setDownloadProgress('Validating existing PDF...');
-            const validation = await validatePdfUrl(invoice.pdfUrl);
+          // Check if we got a PDF URL despite the error
+          if (data?.pdfUrl) {
+            console.log('=== PDF URL AVAILABLE DESPITE ERROR ===');
+            console.log('PDF URL:', data.pdfUrl);
+            
+            setDownloadProgress('Validating generated PDF...');
+            const validation = await validatePdfUrl(data.pdfUrl);
+            console.log('PDF validation result:', validation);
             
             if (validation.isValid) {
+              console.log('=== PDF VALIDATION PASSED, OPENING PDF ===');
               setDownloadProgress('Opening PDF...');
+              
+              // Update the invoice with the new PDF URL
+              setInvoice(prev => prev ? { ...prev, pdfUrl: data.pdfUrl } : null);
+              
+              window.open(data.pdfUrl, '_blank');
+              toast.success('Invoice downloaded successfully (large file)');
+              setDownloadProgress('');
+              return;
+            } else {
+              console.log('=== PDF VALIDATION FAILED ===');
+              console.log('Validation error:', validation.error);
+            }
+          }
+          
+          // Try to get the PDF URL from the current invoice data as fallback
+          if (invoice.pdfUrl) {
+            console.log('=== TRYING EXISTING PDF URL AS FALLBACK ===');
+            console.log('Existing PDF URL:', invoice.pdfUrl);
+            
+            setDownloadProgress('Checking existing PDF...');
+            const validation = await validatePdfUrl(invoice.pdfUrl);
+            console.log('Existing PDF validation result:', validation);
+            
+            if (validation.isValid) {
+              console.log('=== EXISTING PDF IS VALID, OPENING ===');
+              setDownloadProgress('Opening existing PDF...');
               window.open(invoice.pdfUrl, '_blank');
-              toast.success('Invoice downloaded successfully');
+              toast.success('Opened existing invoice PDF');
               setDownloadProgress('');
               return;
             }
@@ -204,24 +255,25 @@ const InvoicePdfView = () => {
         throw new Error(`Failed to generate PDF: ${error.message}`);
       }
       
-      // Save debug info if available
-      if (data?.debugInfo) {
-        setDebugInfo(data.debugInfo);
-      }
-      
       if (!data?.pdfUrl) {
+        console.log('=== NO PDF URL IN RESPONSE ===');
         throw new Error('No PDF URL returned from generation service');
       }
+      
+      console.log('=== PDF GENERATION SUCCESSFUL ===');
+      console.log('Generated PDF URL:', data.pdfUrl);
       
       setDownloadProgress('Validating PDF...');
       
       // Validate the generated PDF URL
       const validation = await validatePdfUrl(data.pdfUrl);
-      console.log('New PDF validation result:', validation);
+      console.log('=== FINAL PDF VALIDATION ===');
+      console.log('Validation result:', validation);
       
       if (!validation.isValid) {
         // If validation fails but we have a URL, try to open it anyway
-        console.warn('PDF validation failed but attempting to open:', validation.error);
+        console.warn('=== PDF VALIDATION FAILED BUT ATTEMPTING TO OPEN ANYWAY ===');
+        console.warn('Validation error:', validation.error);
         setDownloadProgress('Opening PDF (validation warning)...');
         window.open(data.pdfUrl, '_blank');
         toast.success('Invoice downloaded (large file warning)');
@@ -235,13 +287,16 @@ const InvoicePdfView = () => {
       setInvoice(prev => prev ? { ...prev, pdfUrl: data.pdfUrl } : null);
       
       // Open the PDF in a new tab
+      console.log('=== OPENING VALIDATED PDF ===');
       window.open(data.pdfUrl, '_blank');
       
       // Show success message
       toast.success('Invoice downloaded successfully');
       setDownloadProgress('');
     } catch (err) {
-      console.error('Error downloading invoice:', err);
+      console.error('=== FINAL ERROR IN PDF GENERATION ===');
+      console.error('Error object:', err);
+      console.error('Error stack:', err instanceof Error ? err.stack : 'No stack trace');
       
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       setDownloadError(errorMessage);
@@ -348,6 +403,9 @@ const InvoicePdfView = () => {
                       Attempts: {downloadAttempts}
                     </p>
                   )}
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Check the browser console for detailed debugging information.
+                  </p>
                 </AlertDescription>
               </Alert>
             )}

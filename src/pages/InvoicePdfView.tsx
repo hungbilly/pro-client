@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Download, AlertTriangle, FileText, RefreshCw, Loader2 } from 'lucide-react';
@@ -123,13 +124,13 @@ const InvoicePdfView = () => {
         };
       }
       
-      // Check if it's suspiciously large (> 5MB)
-      if (size > 5000000) {
+      // Increased size limit to 15MB for invoices with extensive content like contract terms
+      if (size > 15000000) {
         return {
           isValid: false,
           contentType,
           contentLength,
-          error: `PDF is suspiciously large: ${(size / 1024 / 1024).toFixed(2)} MB`
+          error: `PDF is too large: ${(size / 1024 / 1024).toFixed(2)} MB (max 15MB)`
         };
       }
       

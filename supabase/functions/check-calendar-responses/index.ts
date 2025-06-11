@@ -10,22 +10,10 @@ const corsHeaders = {
 const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID');
 const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
-const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 
-async function getAccessTokenForUser(userId: string, authHeader: string | null) {
-  let supabase;
-  if (authHeader) {
-    supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: {
-        headers: {
-          Authorization: authHeader,
-        }
-      }
-    });
-  } else {
-    supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-  }
+async function getAccessTokenForUser(userId: string) {
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
   const { data, error } = await supabase
     .from('user_integrations')
@@ -123,9 +111,6 @@ serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get('Authorization');
-    console.log('🔍 Received Authorization header:', authHeader ? `${authHeader.substring(0, 20)}...` : 'MISSING');
-    
     const requestData = await req.json();
     const { jobId } = requestData;
     
@@ -139,61 +124,37 @@ serve(async (req) => {
       );
     }
 
-    if (!authHeader) {
-      console.error('❌ No authorization header provided');
+    // Create supabase client with service role
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    
+    // Get job details and associated company/user
+    const { data: job, error: jobError } = await supabase
+      .from('jobs')
+      .select('*, companies(user_id)')
+      .eq('id', jobId)
+      .single();
+      
+    if (jobError || !job) {
+      console.error('❌ Job not found:', jobError);
       return new Response(
-        JSON.stringify({ error: 'Authentication required - no authorization header' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Job not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    if (!authHeader.startsWith('Bearer ')) {
-      console.error('❌ Invalid authorization header format');
+    if (!job.companies?.user_id) {
+      console.error('❌ No user associated with job');
       return new Response(
-        JSON.stringify({ error: 'Invalid authorization header format' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'No user associated with this job' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const token = authHeader.replace('Bearer ', '');
-    if (!token || token.length < 10) {
-      console.error('❌ Invalid or empty token');
-      return new Response(
-        JSON.stringify({ error: 'Invalid token format' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log('✅ Authorization header validation passed');
-
-    // Create supabase client with auth header
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: {
-        headers: {
-          Authorization: authHeader,
-        }
-      }
-    });
+    const userId = job.companies.user_id;
+    console.log(`👤 Found user: ${userId} for job: ${jobId}`);
     
-    console.log('📋 Testing supabase auth with provided token...');
-    
-    // Get the authenticated user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    console.log('User auth result:', user ? `User ID: ${user.id}` : 'No user');
-    console.log('User auth error:', userError);
-    
-    if (userError || !user) {
-      console.error('❌ Authentication failed:', userError?.message);
-      return new Response(
-        JSON.stringify({ error: 'Authentication failed', details: userError?.message }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-    
-    console.log(`👤 User authenticated: ${user.id}`);
-    
-    // Get access token
-    const { accessToken, calendarId } = await getAccessTokenForUser(user.id, authHeader);
+    // Get access token for the user
+    const { accessToken, calendarId } = await getAccessTokenForUser(userId);
     
     // Get all job teammates with calendar event IDs
     const { data: jobTeammates, error: teammatesError } = await supabase
@@ -211,28 +172,36 @@ serve(async (req) => {
     
     const results = [];
     
+    // Check if job has a calendar event
+    if (!job.calendar_event_id) {
+      console.log(`⚠️ No calendar event found for job ${jobId}`);
+      return new Response(
+        JSON.stringify({ 
+          success: true,
+          message: 'No calendar event associated with this job',
+          results: []
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const eventCalendarId = job.calendar_id || calendarId;
+    const event = await checkCalendarEventResponse(accessToken, eventCalendarId, job.calendar_event_id);
+    
+    if (!event || !event.attendees) {
+      console.log(`ℹ️ No attendees found for event ${job.calendar_event_id}`);
+      return new Response(
+        JSON.stringify({ 
+          success: true,
+          message: 'No attendees found for calendar event',
+          results: []
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     for (const teammate of jobTeammates || []) {
       console.log(`🔍 Checking responses for teammate: ${teammate.teammate_email}`);
-      
-      // First get the job's calendar event ID to check responses
-      const { data: job, error: jobError } = await supabase
-        .from('jobs')
-        .select('calendar_event_id, calendar_id')
-        .eq('id', jobId)
-        .single();
-        
-      if (jobError || !job?.calendar_event_id) {
-        console.log(`⚠️ No calendar event found for job ${jobId}`);
-        continue;
-      }
-      
-      const eventCalendarId = job.calendar_id || calendarId;
-      const event = await checkCalendarEventResponse(accessToken, eventCalendarId, job.calendar_event_id);
-      
-      if (!event || !event.attendees) {
-        console.log(`ℹ️ No attendees found for event ${job.calendar_event_id}`);
-        continue;
-      }
       
       // Find this teammate's response in the attendees list
       const attendee = event.attendees.find((att: any) => 

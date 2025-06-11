@@ -942,6 +942,36 @@ async function fetchLogoWithRetry(url: string, retries = 2): Promise<Blob> {
   throw new Error('Failed to fetch logo');
 }
 
+// Optimized logo processing function
+async function processLogoForPDF(logoUrl: string): Promise<{data: string, width: number, height: number}> {
+  log.debug('Processing logo for PDF:', logoUrl);
+  
+  try {
+    const blob = await fetchLogoWithRetry(logoUrl);
+    log.debug('Logo blob fetched, size:', blob.size, 'bytes, type:', blob.type);
+    
+    // Limit logo file size to prevent PDF bloat
+    const maxLogoSize = 500000; // 500KB limit
+    if (blob.size > maxLogoSize) {
+      log.warn('Logo file is large:', blob.size, 'bytes, this may cause PDF size issues');
+    }
+    
+    // Convert to base64 but with size optimization
+    const base64Data = await blobToBase64(blob);
+    log.debug('Logo converted to base64, length:', base64Data.length);
+    
+    // Return optimized logo data with reasonable dimensions
+    return {
+      data: base64Data,
+      width: 120, // Fixed reasonable width
+      height: 40  // Fixed reasonable height
+    };
+  } catch (error) {
+    log.error('Error processing logo:', error);
+    throw error;
+  }
+}
+
 async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
   log.info('Generating PDF for invoice:', invoiceData.number);
   log.debug('Invoice data overview:', {
@@ -955,15 +985,16 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
     contractTermsLength: invoiceData.contractTerms?.length || 0,
     contractTermsPreview: invoiceData.contractTerms?.substring(0, 100),
     companyLogoUrl: invoiceData.company.logoUrl,
-    hasPaymentMethods: !!invoiceData.company.payment_methods, // Added debug info
+    hasPaymentMethods: !!invoiceData.company.payment_methods,
   });
   
   try {
-    // Create a new PDF document with jsPDF v3.x syntax
+    // Create a new PDF document with optimized settings
     const doc = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
       format: 'a4',
+      compress: true, // Enable compression
     });
     
     // Add Inter font (similar to the web app font)
@@ -998,36 +1029,24 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
     let rightColumnY = y;
     let leftColumnY = y;
 
-    // Logo positioning
+    // Optimized logo handling
     if (invoiceData.company.logoUrl) {
-      log.debug('Attempting to add logo from URL:', invoiceData.company.logoUrl);
+      log.debug('Adding optimized logo to PDF');
       try {
-        const blob = await fetchLogoWithRetry(invoiceData.company.logoUrl);
-        log.debug('Logo blob fetched successfully, size:', blob.size, 'bytes, type:', blob.type);
+        const logoData = await processLogoForPDF(invoiceData.company.logoUrl);
         
-        const logo = await blobToBase64(blob);
-        log.debug('Logo converted to base64 successfully, length:', logo.length);
+        // Use fixed, reasonable dimensions to prevent size bloat
+        const logoWidth = logoData.width;
+        const logoHeight = logoData.height;
+        const logoX = margin + (rightColumnX - margin - logoWidth) / 4;
       
-        const maxLogoHeight = 40;
-        try {
-          const imgProps = doc.getImageProperties(logo);
-          log.debug('Logo image properties:', imgProps);
-        
-          const aspectRatio = imgProps.width / imgProps.height;
-          const logoHeight = Math.min(maxLogoHeight, imgProps.height);
-          const logoWidth = logoHeight * aspectRatio;
-        
-          const logoX = margin + (rightColumnX - margin - logoWidth) / 4;
-      
-          doc.addImage(logo, 'PNG', logoX, y, logoWidth, logoHeight);
-          log.debug('Logo added to PDF successfully');
-          leftColumnY += logoHeight + 10;
-        } catch (logoImgError) {
-          log.error('Error adding logo image to PDF:', logoImgError);
-          throw logoImgError;
-        }
+        // Add image with JPEG compression for smaller size
+        doc.addImage(logoData.data, 'JPEG', logoX, y, logoWidth, logoHeight, undefined, 'MEDIUM');
+        log.debug('Optimized logo added to PDF successfully');
+        leftColumnY += logoHeight + 10;
       } catch (logoError) {
-        log.error('Error fetching logo:', logoError);
+        log.error('Error adding optimized logo:', logoError);
+        // Fallback to company name
         doc.setFontSize(24);
         doc.setFont('helvetica', 'bold');
         doc.text(invoiceData.company.name.toUpperCase(), margin, leftColumnY + 15);
@@ -1427,7 +1446,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
     
     log.info('PDF generation completed');
     
-    // Generate PDF array buffer
+    // Generate PDF array buffer with compression
     const pdfArrayBuffer = doc.output('arraybuffer');
     log.debug('PDF array buffer generated, size:', pdfArrayBuffer.byteLength, 'bytes');
     

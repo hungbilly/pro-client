@@ -1,7 +1,9 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
+import { SubscriptionCache } from '@/utils/subscriptionCache';
 
 type SubscriptionStatus = 'active' | 'trialing' | 'canceled' | 'incomplete' | 'incomplete_expired' | 'past_due' | 'unpaid' | 'paused' | 'inactive' | null;
 
@@ -51,6 +53,9 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [hasCheckedSubscription, setHasCheckedSubscription] = useState<boolean>(false);
   const [isCancelling, setIsCancelling] = useState<boolean>(false);
   const [trialDaysConfig, setTrialDaysConfig] = useState<number>(90);
+  
+  // Prevent multiple simultaneous checks
+  const checkInProgress = useRef<boolean>(false);
 
   useEffect(() => {
     const loadConfig = async () => {
@@ -67,6 +72,34 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     loadConfig();
   }, []);
 
+  // Helper function to update state from subscription data
+  const updateSubscriptionState = useCallback((data: {
+    hasAccess: boolean;
+    subscription: Subscription | null;
+    isInTrialPeriod: boolean;
+    trialDaysLeft: number;
+    trialEndDate: string | null;
+  }) => {
+    setHasAccess(data.hasAccess);
+    setSubscription(data.subscription);
+    setIsInTrialPeriod(data.isInTrialPeriod);
+    setTrialDaysLeft(data.trialDaysLeft);
+    setTrialEndDate(data.trialEndDate);
+    setIsLoading(false);
+    setHasCheckedSubscription(true);
+
+    // Cache the subscription data
+    SubscriptionCache.set({
+      hasAccess: data.hasAccess,
+      subscription: data.subscription,
+      isInTrialPeriod: data.isInTrialPeriod,
+      trialDaysLeft: data.trialDaysLeft,
+      trialEndDate: data.trialEndDate,
+    });
+
+    console.log('Subscription state updated and cached:', data);
+  }, []);
+
   // Helper function to check if a trial has expired
   const checkTrialExpiration = (trialEndDateString: string | null) => {
     if (!trialEndDateString) return false;
@@ -77,16 +110,48 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   };
 
   const checkSubscription = useCallback(async () => {
+    // Check if we should skip this check
+    if (SubscriptionCache.shouldSkipCheck()) {
+      console.log('Skipping subscription check - too soon since last check');
+      return;
+    }
+
+    // Prevent multiple simultaneous checks
+    if (checkInProgress.current) {
+      console.log('Subscription check already in progress, skipping');
+      return;
+    }
+
+    // Check cache first
+    const cached = SubscriptionCache.get();
+    if (cached && !SubscriptionCache.isExpired()) {
+      console.log('Using cached subscription data');
+      updateSubscriptionState({
+        hasAccess: cached.hasAccess,
+        subscription: cached.subscription,
+        isInTrialPeriod: cached.isInTrialPeriod,
+        trialDaysLeft: cached.trialDaysLeft,
+        trialEndDate: cached.trialEndDate,
+      });
+      return;
+    }
+
     if (!user || !session) {
       console.log('No user or session, setting hasAccess to false');
-      setHasAccess(false);
-      setIsLoading(false);
-      setHasCheckedSubscription(true);
-      console.log('State after no user/session:', { hasAccess: false, isLoading: false, hasCheckedSubscription: true });
+      const data = {
+        hasAccess: false,
+        subscription: null,
+        isInTrialPeriod: false,
+        trialDaysLeft: 0,
+        trialEndDate: null,
+      };
+      updateSubscriptionState(data);
       return;
     }
 
     try {
+      checkInProgress.current = true;
+      SubscriptionCache.markCheckTime();
       setIsLoading(true);
       console.log('Checking subscription for user:', user.id);
       
@@ -132,19 +197,19 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
               } else {
                 console.log('Successfully updated expired subscription to inactive');
                 
-                // Update local state to reflect expired trial
-                setHasAccess(false);
-                setIsInTrialPeriod(false);
-                setTrialDaysLeft(0);
-                setSubscription({
-                  id: subscriptionData.stripe_subscription_id,
-                  status: 'inactive',
-                  currentPeriodEnd: subscriptionData.current_period_end,
-                  cancel_at: subscriptionData.cancel_at,
-                });
-                
-                setIsLoading(false);
-                setHasCheckedSubscription(true);
+                const data = {
+                  hasAccess: false,
+                  subscription: {
+                    id: subscriptionData.stripe_subscription_id,
+                    status: 'inactive' as SubscriptionStatus,
+                    currentPeriodEnd: subscriptionData.current_period_end,
+                    cancel_at: subscriptionData.cancel_at,
+                  },
+                  isInTrialPeriod: false,
+                  trialDaysLeft: 0,
+                  trialEndDate: subscriptionData.trial_end_date,
+                };
+                updateSubscriptionState(data);
                 return;
               }
             } catch (error) {
@@ -155,64 +220,53 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         
         if (['active', 'trialing'].includes(subscriptionData.status)) {
           console.log('Setting hasAccess to true for subscription:', subscriptionData);
-          setHasAccess(true);
-          setSubscription({
+          const subscription = {
             id: subscriptionData.stripe_subscription_id,
             status: subscriptionData.status as SubscriptionStatus,
             currentPeriodEnd: subscriptionData.current_period_end,
             cancel_at: subscriptionData.cancel_at,
-          });
+          };
           
           if (subscriptionData.status === 'active') {
-            setIsInTrialPeriod(false);
-            setTrialDaysLeft(0);
-            setTrialEndDate(null);
+            const data = {
+              hasAccess: true,
+              subscription,
+              isInTrialPeriod: false,
+              trialDaysLeft: 0,
+              trialEndDate: null,
+            };
+            updateSubscriptionState(data);
             console.log('Active subscription found, disabling trial period');
-            setIsLoading(false);
-            setHasCheckedSubscription(true);
             return;
           } else {
-            setIsInTrialPeriod(subscriptionData.status === 'trialing');
+            const trialDaysLeft = subscriptionData.trial_end_date ? 
+              Math.ceil((new Date(subscriptionData.trial_end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0;
             
-            if (subscriptionData.status === 'trialing' && subscriptionData.trial_end_date) {
-              const trialEnd = new Date(subscriptionData.trial_end_date);
-              const now = new Date();
-              const daysLeft = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-              setTrialDaysLeft(daysLeft > 0 ? daysLeft : 0);
-              setTrialEndDate(subscriptionData.trial_end_date);
-            }
+            const data = {
+              hasAccess: true,
+              subscription,
+              isInTrialPeriod: subscriptionData.status === 'trialing',
+              trialDaysLeft: trialDaysLeft > 0 ? trialDaysLeft : 0,
+              trialEndDate: subscriptionData.trial_end_date,
+            };
+            updateSubscriptionState(data);
+            return;
           }
-          
-          setIsLoading(false);
-          setHasCheckedSubscription(true);
-          
-          console.log('State after setting subscription from database:', {
-            hasAccess: true,
-            isLoading: false,
+        } else {
+          console.log(`Subscription found but status is ${subscriptionData.status}, setting hasAccess to false`);
+          const data = {
+            hasAccess: false,
             subscription: {
               id: subscriptionData.stripe_subscription_id,
-              status: subscriptionData.status,
+              status: subscriptionData.status as SubscriptionStatus,
               currentPeriodEnd: subscriptionData.current_period_end,
               cancel_at: subscriptionData.cancel_at,
             },
-            isInTrialPeriod: subscriptionData.status === 'trialing',
-            hasCheckedSubscription: true,
-          });
-          return;
-        } else {
-          console.log(`Subscription found but status is ${subscriptionData.status}, setting hasAccess to false`);
-          setHasAccess(false);
-          setSubscription({
-            id: subscriptionData.stripe_subscription_id,
-            status: subscriptionData.status as SubscriptionStatus,
-            currentPeriodEnd: subscriptionData.current_period_end,
-            cancel_at: subscriptionData.cancel_at,
-          });
-          setIsInTrialPeriod(false);
-          setTrialDaysLeft(0);
-          setTrialEndDate(null);
-          setIsLoading(false);
-          setHasCheckedSubscription(true);
+            isInTrialPeriod: false,
+            trialDaysLeft: 0,
+            trialEndDate: null,
+          };
+          updateSubscriptionState(data);
           return;
         }
       }
@@ -234,42 +288,22 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
         console.log('Subscription check result from edge function:', data);
         
-        setHasAccess(data.hasAccess);
-        
-        if (data.subscription) {
-          setSubscription({
+        const subscriptionData = {
+          hasAccess: data.hasAccess,
+          subscription: data.subscription ? {
             id: data.subscription.id,
             status: data.subscription.status as SubscriptionStatus,
             currentPeriodEnd: data.subscription.currentPeriodEnd,
             cancel_at: data.subscription.cancel_at
-          });
-          
-          if (data.subscription.status === 'active') {
-            setIsInTrialPeriod(false);
-            setTrialDaysLeft(0);
-            setTrialEndDate(null);
-            console.log('Active subscription found from edge function, disabling trial period');
-          } else {
-            setIsInTrialPeriod(data.isInTrialPeriod);
-            setTrialDaysLeft(data.trialDaysLeft);
-            setTrialEndDate(data.trialEndDate);
-          }
-        } else {
-          setSubscription(null);
-          setIsInTrialPeriod(data.isInTrialPeriod);
-          setTrialDaysLeft(data.trialDaysLeft);
-          setTrialEndDate(data.trialEndDate);
-        }
-        
-        console.log('State after edge function:', {
-          hasAccess: data.hasAccess,
-          isLoading: false,
-          subscription: data.subscription,
+          } : null,
           isInTrialPeriod: data.subscription && data.subscription.status === 'active' ? false : data.isInTrialPeriod,
           trialDaysLeft: data.subscription && data.subscription.status === 'active' ? 0 : data.trialDaysLeft,
           trialEndDate: data.subscription && data.subscription.status === 'active' ? null : data.trialEndDate,
-          hasCheckedSubscription: true,
-        });
+        };
+        
+        updateSubscriptionState(subscriptionData);
+        
+        console.log('State after edge function:', subscriptionData);
       } catch (error) {
         console.error('Error checking subscription with edge function:', error.message);
         handleTrialFallback();
@@ -278,17 +312,9 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       console.error('Error in checkSubscription:', error.message);
       handleTrialFallback();
     } finally {
-      setIsLoading(false);
-      setHasCheckedSubscription(true);
-      console.log('State in finally block:', { 
-        hasAccess, 
-        isLoading: false, 
-        hasCheckedSubscription: true,
-        isInTrialPeriod,
-        subscription
-      });
+      checkInProgress.current = false;
     }
-  }, [user, session, trialDaysConfig]);
+  }, [user, session, trialDaysConfig, updateSubscriptionState]);
 
   const handleTrialFallback = () => {
     if (!user) return;
@@ -305,21 +331,16 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     console.log('Trial end date:', trialEndDate.toISOString());
     console.log('Is in trial period:', isInTrialPeriod);
     
-    setHasAccess(isInTrialPeriod);
-    setIsInTrialPeriod(isInTrialPeriod);
-    setTrialDaysLeft(Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
-    setTrialEndDate(trialEndDate.toISOString());
-    setSubscription(null);
-    setHasCheckedSubscription(true);
-    console.log('State after trial fallback:', {
+    const data = {
       hasAccess: isInTrialPeriod,
-      isLoading: false,
+      subscription: null,
       isInTrialPeriod,
       trialDaysLeft: Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
       trialEndDate: trialEndDate.toISOString(),
-      subscription: null,
-      hasCheckedSubscription: true,
-    });
+    };
+    
+    updateSubscriptionState(data);
+    console.log('State after trial fallback:', data);
   };
 
   const cancelSubscription = async (): Promise<boolean> => {
@@ -348,6 +369,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       
       if (data.success) {
         toast.success('Subscription cancelled successfully');
+        // Clear cache and recheck
+        SubscriptionCache.clear();
         await checkSubscription();
         return true;
       } else {
@@ -363,9 +386,11 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
+  // Only check subscription when user changes and we haven't checked yet, or cache is expired
   useEffect(() => {
     console.log('useEffect triggered with user:', user?.id, 'hasCheckedSubscription:', hasCheckedSubscription);
-    if (user && !hasCheckedSubscription) {
+    
+    if (user && (!hasCheckedSubscription || SubscriptionCache.isExpired())) {
       console.log('User logged in, checking subscription');
       checkSubscription();
     } else if (!user) {
@@ -373,6 +398,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setHasAccess(false);
       setIsLoading(false);
       setHasCheckedSubscription(false);
+      SubscriptionCache.clear();
       console.log('State after logout:', { hasAccess: false, isLoading: false, hasCheckedSubscription: false });
     }
   }, [user, checkSubscription, hasCheckedSubscription]);
@@ -391,7 +417,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         },
         body: { 
           withTrial, 
-          productId: "prod_SGsTE3Gxgd0acM" // Updated product ID
+          productId: "prod_SGsTE3Gxgd0acM"
         },
       });
 
@@ -405,6 +431,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
       if (data.alreadySubscribed) {
         toast.info('You already have an active subscription');
+        // Clear cache and recheck
+        SubscriptionCache.clear();
         await checkSubscription();
         return null;
       }

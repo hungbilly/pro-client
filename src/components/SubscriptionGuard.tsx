@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Navigate, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useSubscription } from '@/context/SubscriptionContext';
 import { toast } from '@/components/ui/use-toast';
@@ -8,6 +8,7 @@ import { AlertCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
 import { format } from 'date-fns';
+import { SubscriptionCache } from '@/utils/subscriptionCache';
 
 interface SubscriptionGuardProps {
   children?: React.ReactNode;
@@ -29,24 +30,42 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
   
+  // Memoize the initial check logic to prevent unnecessary re-renders
+  const shouldCheckSubscription = useMemo(() => {
+    if (!session) return false;
+    if (isAdmin) return false; // Admins don't need subscription checks
+    
+    // Check if we have cached data that's still valid
+    const cached = SubscriptionCache.get();
+    if (cached && !SubscriptionCache.isExpired()) {
+      return false; // Use cached data, no need to check
+    }
+    
+    return true;
+  }, [session, isAdmin]);
+
   // Add effect to check subscription on mount or when session changes
   useEffect(() => {
+    if (!shouldCheckSubscription) {
+      setHasChecked(true);
+      return;
+    }
+    
     console.log('SubscriptionGuard: Checking subscription status...', 
       session ? `Session active for ${session.user.email}` : 'No active session');
     
     const verifySubscription = async () => {
-      await checkSubscription(); // Wait for the subscription check to complete
-      console.log('SubscriptionGuard: Subscription check completed');
-      setHasChecked(true);
+      try {
+        await checkSubscription();
+      } catch (error) {
+        console.error('SubscriptionGuard: Error checking subscription:', error);
+      } finally {
+        setHasChecked(true);
+      }
     };
 
-    if (session) {
-      verifySubscription();
-    } else {
-      // If no session, still mark as checked but we'll handle access denial later
-      setHasChecked(true);
-    }
-  }, [checkSubscription, session]);
+    verifySubscription();
+  }, [shouldCheckSubscription, checkSubscription, session]);
 
   // Add debug logging
   useEffect(() => {
@@ -117,6 +136,8 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children }) => {
   const handleRefreshStatus = async () => {
     setIsRefreshing(true);
     try {
+      // Clear cache to force a fresh check
+      SubscriptionCache.clear();
       await checkSubscription();
       toast({
         title: "Status Updated",

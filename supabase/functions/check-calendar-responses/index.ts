@@ -136,139 +136,146 @@ serve(async (req) => {
       );
     }
 
-    // Get the user ID from the auth header
-    let supabase;
-    if (authHeader) {
-      supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-        global: {
-          headers: {
-            Authorization: authHeader,
-          }
-        }
-      });
-      
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        throw new Error('Authentication failed');
-      }
-      
-      console.log(`👤 User authenticated: ${user.id}`);
-      
-      // Get access token
-      const { accessToken, calendarId } = await getAccessTokenForUser(user.id, authHeader);
-      
-      // Get all job teammates with calendar event IDs
-      const { data: jobTeammates, error: teammatesError } = await supabase
-        .from('job_teammates')
-        .select('*')
-        .eq('job_id', jobId)
-        .not('calendar_event_id', 'is', null);
-        
-      if (teammatesError) {
-        console.error('Error fetching job teammates:', teammatesError);
-        throw new Error('Failed to fetch job teammates');
-      }
-      
-      console.log(`📋 Found ${jobTeammates?.length || 0} teammates with calendar events`);
-      
-      const results = [];
-      
-      for (const teammate of jobTeammates || []) {
-        console.log(`🔍 Checking responses for teammate: ${teammate.teammate_email}`);
-        
-        // First get the job's calendar event ID to check responses
-        const { data: job, error: jobError } = await supabase
-          .from('jobs')
-          .select('calendar_event_id, calendar_id')
-          .eq('id', jobId)
-          .single();
-          
-        if (jobError || !job?.calendar_event_id) {
-          console.log(`⚠️ No calendar event found for job ${jobId}`);
-          continue;
-        }
-        
-        const eventCalendarId = job.calendar_id || calendarId;
-        const event = await checkCalendarEventResponse(accessToken, eventCalendarId, job.calendar_event_id);
-        
-        if (!event || !event.attendees) {
-          console.log(`ℹ️ No attendees found for event ${job.calendar_event_id}`);
-          continue;
-        }
-        
-        // Find this teammate's response in the attendees list
-        const attendee = event.attendees.find((att: any) => 
-          att.email.toLowerCase() === teammate.teammate_email.toLowerCase()
-        );
-        
-        if (!attendee) {
-          console.log(`⚠️ Teammate ${teammate.teammate_email} not found in attendees list`);
-          continue;
-        }
-        
-        console.log(`📧 ${teammate.teammate_email} response status: ${attendee.responseStatus}`);
-        
-        // Map Google Calendar response status to our status
-        let newStatus = teammate.invitation_status;
-        const oldStatus = teammate.invitation_status;
-        
-        if (attendee.responseStatus === 'accepted') {
-          newStatus = 'accepted';
-        } else if (attendee.responseStatus === 'declined') {
-          newStatus = 'declined';
-        } else if (attendee.responseStatus === 'needsAction') {
-          newStatus = 'sent'; // Still waiting for response
-        }
-        
-        // Update if status changed
-        if (newStatus !== oldStatus) {
-          console.log(`🔄 Updating ${teammate.teammate_email} status: ${oldStatus} → ${newStatus}`);
-          
-          const { error: updateError } = await supabase
-            .from('job_teammates')
-            .update({
-              invitation_status: newStatus,
-              responded_at: ['accepted', 'declined'].includes(newStatus) ? new Date().toISOString() : null
-            })
-            .eq('id', teammate.id);
-            
-          if (updateError) {
-            console.error(`❌ Failed to update teammate ${teammate.id}:`, updateError);
-          } else {
-            console.log(`✅ Updated teammate ${teammate.teammate_email} status`);
-          }
-          
-          results.push({
-            teammateId: teammate.id,
-            email: teammate.teammate_email,
-            oldStatus,
-            newStatus,
-            updated: true
-          });
-        } else {
-          results.push({
-            teammateId: teammate.id,
-            email: teammate.teammate_email,
-            status: newStatus,
-            updated: false
-          });
-        }
-      }
-      
-      console.log(`✅ Processed ${results.length} teammates`);
-      
+    if (!authHeader) {
+      console.error('❌ No authorization header provided');
       return new Response(
-        JSON.stringify({ 
-          success: true,
-          message: 'Calendar responses checked successfully',
-          results
-        }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Authentication required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Create supabase client with auth header
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: {
+        headers: {
+          Authorization: authHeader,
+        }
+      }
+    });
+    
+    // Get the authenticated user
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      console.error('❌ Authentication failed:', userError?.message);
+      return new Response(
+        JSON.stringify({ error: 'Authentication failed', details: userError?.message }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    console.log(`👤 User authenticated: ${user.id}`);
+    
+    // Get access token
+    const { accessToken, calendarId } = await getAccessTokenForUser(user.id, authHeader);
+    
+    // Get all job teammates with calendar event IDs
+    const { data: jobTeammates, error: teammatesError } = await supabase
+      .from('job_teammates')
+      .select('*')
+      .eq('job_id', jobId)
+      .not('calendar_event_id', 'is', null);
+      
+    if (teammatesError) {
+      console.error('Error fetching job teammates:', teammatesError);
+      throw new Error('Failed to fetch job teammates');
+    }
+    
+    console.log(`📋 Found ${jobTeammates?.length || 0} teammates with calendar events`);
+    
+    const results = [];
+    
+    for (const teammate of jobTeammates || []) {
+      console.log(`🔍 Checking responses for teammate: ${teammate.teammate_email}`);
+      
+      // First get the job's calendar event ID to check responses
+      const { data: job, error: jobError } = await supabase
+        .from('jobs')
+        .select('calendar_event_id, calendar_id')
+        .eq('id', jobId)
+        .single();
+        
+      if (jobError || !job?.calendar_event_id) {
+        console.log(`⚠️ No calendar event found for job ${jobId}`);
+        continue;
+      }
+      
+      const eventCalendarId = job.calendar_id || calendarId;
+      const event = await checkCalendarEventResponse(accessToken, eventCalendarId, job.calendar_event_id);
+      
+      if (!event || !event.attendees) {
+        console.log(`ℹ️ No attendees found for event ${job.calendar_event_id}`);
+        continue;
+      }
+      
+      // Find this teammate's response in the attendees list
+      const attendee = event.attendees.find((att: any) => 
+        att.email.toLowerCase() === teammate.teammate_email.toLowerCase()
       );
       
-    } else {
-      throw new Error('Authentication required');
+      if (!attendee) {
+        console.log(`⚠️ Teammate ${teammate.teammate_email} not found in attendees list`);
+        continue;
+      }
+      
+      console.log(`📧 ${teammate.teammate_email} response status: ${attendee.responseStatus}`);
+      
+      // Map Google Calendar response status to our status
+      let newStatus = teammate.invitation_status;
+      const oldStatus = teammate.invitation_status;
+      
+      if (attendee.responseStatus === 'accepted') {
+        newStatus = 'accepted';
+      } else if (attendee.responseStatus === 'declined') {
+        newStatus = 'declined';
+      } else if (attendee.responseStatus === 'needsAction') {
+        newStatus = 'sent'; // Still waiting for response
+      }
+      
+      // Update if status changed
+      if (newStatus !== oldStatus) {
+        console.log(`🔄 Updating ${teammate.teammate_email} status: ${oldStatus} → ${newStatus}`);
+        
+        const { error: updateError } = await supabase
+          .from('job_teammates')
+          .update({
+            invitation_status: newStatus,
+            responded_at: ['accepted', 'declined'].includes(newStatus) ? new Date().toISOString() : null
+          })
+          .eq('id', teammate.id);
+          
+        if (updateError) {
+          console.error(`❌ Failed to update teammate ${teammate.id}:`, updateError);
+        } else {
+          console.log(`✅ Updated teammate ${teammate.teammate_email} status`);
+        }
+        
+        results.push({
+          teammateId: teammate.id,
+          email: teammate.teammate_email,
+          oldStatus,
+          newStatus,
+          updated: true
+        });
+      } else {
+        results.push({
+          teammateId: teammate.id,
+          email: teammate.teammate_email,
+          status: newStatus,
+          updated: false
+        });
+      }
     }
+    
+    console.log(`✅ Processed ${results.length} teammates`);
+    
+    return new Response(
+      JSON.stringify({ 
+        success: true,
+        message: 'Calendar responses checked successfully',
+        results
+      }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
     
   } catch (error) {
     console.error('❌ Error in check-calendar-responses function:', error);

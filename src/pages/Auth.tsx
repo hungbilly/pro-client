@@ -198,13 +198,13 @@ const Auth = () => {
 
   return <PageTransition>
       <div className="min-h-screen relative overflow-hidden">
-        {/* Enhanced Glassmorphism Background with more vibrant gradients */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600">
-          <div className="absolute inset-0 bg-gradient-to-tr from-cyan-500/40 via-blue-600/30 to-purple-700/50"></div>
+        {/* Soft Tiffany Blue Glassmorphism Background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-teal-300 via-cyan-300 to-blue-400">
+          <div className="absolute inset-0 bg-gradient-to-tr from-cyan-200/40 via-teal-300/30 to-blue-400/50"></div>
           <div className="absolute top-0 left-0 w-96 h-96 bg-white/20 rounded-full blur-3xl animate-pulse-soft"></div>
-          <div className="absolute top-1/2 right-0 w-[32rem] h-[32rem] bg-blue-400/30 rounded-full blur-3xl animate-float"></div>
-          <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-purple-500/25 rounded-full blur-3xl animate-pulse-soft"></div>
-          <div className="absolute top-1/4 left-1/2 w-64 h-64 bg-pink-400/20 rounded-full blur-2xl animate-float"></div>
+          <div className="absolute top-1/2 right-0 w-[32rem] h-[32rem] bg-teal-200/30 rounded-full blur-3xl animate-float"></div>
+          <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-cyan-300/25 rounded-full blur-3xl animate-pulse-soft"></div>
+          <div className="absolute top-1/4 left-1/2 w-64 h-64 bg-blue-300/20 rounded-full blur-2xl animate-float"></div>
         </div>
 
         <div className="relative z-10 flex items-center justify-center min-h-screen">
@@ -327,7 +327,7 @@ const Auth = () => {
                   <CardFooter className="flex flex-col space-y-4">
                     <Button 
                       type="submit" 
-                      className="w-full glass-button-primary-enhanced bg-blue-600/80 hover:bg-blue-700/80 text-white border border-blue-400/50 backdrop-blur-md transition-all duration-300 hover:scale-105 shadow-glass-lg font-medium" 
+                      className="w-full glass-button-primary-enhanced bg-teal-500/80 hover:bg-teal-600/80 text-white border border-teal-400/50 backdrop-blur-md transition-all duration-300 hover:scale-105 shadow-glass-lg font-medium" 
                       disabled={loading}
                     >
                       {loading ? isForgotPassword ? 'Sending reset instructions...' : isLogin ? 'Signing in...' : 'Creating account...' : isForgotPassword ? 'Send reset instructions' : isLogin ? 'Sign in' : 'Start Free Trial'}

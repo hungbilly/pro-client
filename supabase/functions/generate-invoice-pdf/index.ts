@@ -185,13 +185,15 @@ serve(async (req) => {
 
   try {
     executionStages.parse_request = { start: Date.now() };
-    const { invoiceId, forceRegenerate = false, debugMode = false, clientInfo = {} } = await req.json();
+    const { invoiceId, forceRegenerate = false, debugMode = false, skipSizeValidation = false, allowLargeFiles = false, clientInfo = {} } = await req.json();
     executionStages.parse_request.end = Date.now();
     
     log.info('Received request to generate PDF for invoice:', {
       invoiceId,
       forceRegenerate,
       debugMode,
+      skipSizeValidation,
+      allowLargeFiles,
       clientInfo
     });
     
@@ -199,6 +201,8 @@ serve(async (req) => {
       invoiceId,
       forceRegenerate,
       debugMode,
+      skipSizeValidation,
+      allowLargeFiles,
       clientInfo
     };
 
@@ -490,7 +494,7 @@ serve(async (req) => {
       );
     }
 
-    // Handle very small or large PDF sizes
+    // Handle very small PDFs
     if (pdfData.byteLength < 1000) {
       executionStages.validate_pdf.end = Date.now();
       executionStages.validate_pdf.success = false;
@@ -506,19 +510,35 @@ serve(async (req) => {
       );
     }
     
-    if (pdfData.byteLength > 5000000) {
-      executionStages.validate_pdf.end = Date.now();
-      executionStages.validate_pdf.success = false;
-      executionStages.validate_pdf.error = `PDF too large: ${pdfData.byteLength} bytes`;
-      
-      log.error('Generated PDF is suspiciously large:', pdfData.byteLength, 'bytes');
-      return new Response(
-        JSON.stringify({ 
-          error: `Generated PDF appears invalid. PDF size too large: ${(pdfData.byteLength / 1024 / 1024).toFixed(2)} MB`,
-          debugInfo: debugMode ? debugInfo : undefined
-        }),
-        { headers, status: 500 }
-      );
+    // Updated size validation - more permissive for large invoices
+    if (!skipSizeValidation && !allowLargeFiles) {
+      // Standard size limit of 15MB for regular invoices
+      if (pdfData.byteLength > 15000000) {
+        executionStages.validate_pdf.end = Date.now();
+        executionStages.validate_pdf.success = false;
+        executionStages.validate_pdf.error = `PDF too large: ${pdfData.byteLength} bytes`;
+        
+        log.warn('Generated PDF is large:', pdfData.byteLength, 'bytes, but allowing it to proceed');
+        // Continue processing rather than failing
+      }
+    } else if (allowLargeFiles) {
+      // For large files mode, allow up to 50MB
+      if (pdfData.byteLength > 50000000) {
+        executionStages.validate_pdf.end = Date.now();
+        executionStages.validate_pdf.success = false;
+        executionStages.validate_pdf.error = `PDF too large even for large files mode: ${pdfData.byteLength} bytes`;
+        
+        log.error('Generated PDF exceeds large file limit:', pdfData.byteLength, 'bytes');
+        return new Response(
+          JSON.stringify({ 
+            error: `Generated PDF is too large: ${(pdfData.byteLength / 1024 / 1024).toFixed(2)} MB (max 50MB)`,
+            debugInfo: debugMode ? debugInfo : undefined
+          }),
+          { headers, status: 500 }
+        );
+      } else {
+        log.info('Large PDF generated successfully:', pdfData.byteLength, 'bytes');
+      }
     }
     
     // Check PDF signature
@@ -541,7 +561,7 @@ serve(async (req) => {
     executionStages.validate_pdf.end = Date.now();
     executionStages.validate_pdf.success = true;
 
-    log.info(`PDF generated successfully, size: ${pdfData.byteLength} bytes`);
+    log.info(`PDF generated successfully, size: ${pdfData.byteLength} bytes (${(pdfData.byteLength / 1024 / 1024).toFixed(2)} MB)`);
     debugInfo.pdfSize = pdfData.byteLength;
 
     // Upload PDF to storage

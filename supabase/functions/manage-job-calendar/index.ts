@@ -78,7 +78,7 @@ function createCalendarEvent(job: any, client: any, teammates: any[], accessToke
   console.log(`🔧 Creating calendar event with isFullDay: ${job.is_full_day}`);
   
   const eventData: any = {
-    summary: `${job.title} - ${client.name}`,
+    summary: job.title,
     description: `Job: ${job.title}\nDate: ${job.date}\nClient: ${client.name}\n\n${job.description || ''}\n\nClient Contact:\nEmail: ${client.email}\nPhone: ${client.phone}`,
     location: job.location || '',
     attendees: teammates.map(teammate => ({ email: teammate.email }))

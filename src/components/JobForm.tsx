@@ -139,62 +139,6 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
     return false;
   };
 
-  const addToCalendar = async (job: Job) => {
-    if (!user || !client) return null;
-    
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        console.error('No active session for calendar creation');
-        return null;
-      }
-      
-      const { data, error } = await supabase.functions.invoke('add-to-calendar', {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: {
-          jobId: job.id,
-          clientId: client.id,
-          userId: user.id,
-          timeZone: timezoneToUse
-        }
-      });
-      
-      if (error) {
-        console.error('Error adding to calendar:', error);
-        toast.error('Failed to add event to calendar');
-        return null;
-      }
-      
-      if (data.success) {
-        toast.success('Added to Google Calendar');
-        setCalendarEventId(data.eventId);
-        
-        if (data.eventId) {
-          try {
-            await supabase
-              .from('jobs')
-              .update({ calendar_event_id: data.eventId })
-              .eq('id', job.id);
-          } catch (updateError) {
-            console.error('Failed to update job with calendar event ID:', updateError);
-          }
-        }
-        
-        return data.eventId;
-      } else if (data.message) {
-        toast.info(data.message);
-      }
-    } catch (error) {
-      console.error('Error in addToCalendar:', error);
-      toast.error('Failed to add event to calendar');
-    }
-    
-    return null;
-  };
-
   const manageJobCalendar = async (operation: string, jobId: string, teammates: Array<{ id?: string; name: string; email: string }>, eventId?: string) => {
     if (!user) {
       console.log('❌ [FRONTEND] Cannot manage calendar - no user');
@@ -442,17 +386,52 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
         
         setNewJob(savedJob);
 
-        // Handle teammates for new job using unified function
-        if (selectedTeammates.length > 0 && formattedDate) {
+        // Handle calendar creation for new job using unified function
+        if (formattedDate && hasCalendarIntegration) {
           try {
-            console.log('👥 Creating calendar event with teammates using unified function:', savedJob.id, selectedTeammates);
-            await manageJobCalendar('create_with_teammates', savedJob.id, selectedTeammates);
-            toast.success('Job created and teammates invited successfully!');
+            if (selectedTeammates.length > 0) {
+              console.log('👥 [FRONTEND] Creating calendar event with teammates using unified function');
+              await manageJobCalendar('create_with_teammates', savedJob.id, selectedTeammates);
+              toast.success('Job created and teammates invited successfully!');
+              
+              // Invalidate the job teammates query for the new job
+              queryClient.invalidateQueries({ queryKey: ['job-teammates', savedJob.id] });
+              
+              // Navigate directly since calendar event was created by unified function
+              if (onSuccess) {
+                onSuccess(savedJob.id);
+              } else {
+                navigate(`/job/${savedJob.id}`);
+              }
+            } else {
+              console.log('📅 [FRONTEND] Creating personal calendar event using unified function');
+              await manageJobCalendar('create_with_teammates', savedJob.id, []);
+              toast.success('Job created and added to calendar!');
+              
+              if (onSuccess) {
+                onSuccess(savedJob.id);
+              } else {
+                navigate(`/job/${savedJob.id}`);
+              }
+            }
+          } catch (error) {
+            console.error('Error creating calendar event:', error);
+            toast.error('Job created but failed to add to calendar');
             
-            // Invalidate the job teammates query for the new job
+            if (onSuccess) {
+              onSuccess(savedJob.id);
+            } else {
+              navigate(`/job/${savedJob.id}`);
+            }
+          }
+        } else if (selectedTeammates.length > 0) {
+          // No calendar integration but has teammates - create database records only
+          try {
+            await createJobTeammateRecords(savedJob.id, selectedTeammates);
+            toast.success('Job created and teammates invited!');
+            
             queryClient.invalidateQueries({ queryKey: ['job-teammates', savedJob.id] });
             
-            // Navigate directly since calendar event was created by unified function
             if (onSuccess) {
               onSuccess(savedJob.id);
             } else {
@@ -469,17 +448,13 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
             }
           }
         } else {
-          // No teammates - show calendar dialog for personal calendar event
+          // No calendar integration and no teammates - just navigate
           toast.success('Job created successfully!');
           
-          if (hasCalendarIntegration && formattedDate) {
-            setShowCalendarDialog(true);
+          if (onSuccess) {
+            onSuccess(savedJob.id);
           } else {
-            if (onSuccess) {
-              onSuccess(savedJob.id);
-            } else {
-              navigate(`/job/${savedJob.id}`);
-            }
+            navigate(`/job/${savedJob.id}`);
           }
         }
       }
@@ -520,31 +495,11 @@ const JobForm: React.FC<JobFormProps> = ({ job: existingJob, clientId: predefine
   const handleCalendarDialogClose = (shouldAddEvent: boolean = false) => {
     setShowCalendarDialog(false);
     
-    if (shouldAddEvent && newJob && client) {
-      addToCalendar(newJob)
-        .then(eventId => {
-          if (eventId && newJob) {
-            const updatedJob = { ...newJob, calendarEventId: eventId };
-            return updateJob(updatedJob);
-          }
-        })
-        .catch(error => {
-          console.error("Failed to add to calendar:", error);
-          toast.error("Failed to add event to calendar");
-        })
-        .finally(() => {
-          if (onSuccess && newJob) {
-            onSuccess(newJob.id);
-          } else if (newJob) {
-            navigate(`/job/${newJob.id}`);
-          }
-        });
-    } else {
-      if (onSuccess && newJob) {
-        onSuccess(newJob.id);
-      } else if (newJob) {
-        navigate(`/job/${newJob.id}`);
-      }
+    // This dialog is no longer needed since we use the unified function
+    if (onSuccess && newJob) {
+      onSuccess(newJob.id);
+    } else if (newJob) {
+      navigate(`/job/${newJob.id}`);
     }
   };
 

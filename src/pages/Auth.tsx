@@ -15,7 +15,6 @@ import AuthFeaturesGrid from "@/components/ui-custom/AuthFeaturesGrid";
 import AuthPricingGrid from "@/components/ui-custom/AuthPricingGrid";
 import SignUpDialog from "@/components/ui-custom/SignUpDialog";
 import Footer from "@/components/Footer";
-
 const Auth = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -31,14 +30,12 @@ const Auth = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [signUpDialogOpen, setSignUpDialogOpen] = useState(false);
   const appCallbackUrl = `${window.location.origin}/auth/callback`;
-
   useEffect(() => {
     if (location.state && location.state.signUp === true) {
       setIsLogin(false);
       setIsForgotPassword(false);
     }
   }, [location.state]);
-
   useEffect(() => {
     const checkForLogoutRedirect = async () => {
       if (window.location.search.includes('logout')) {
@@ -62,14 +59,12 @@ const Auth = () => {
     };
     checkForLogoutRedirect();
   }, []);
-
   useEffect(() => {
     if (user) {
       console.log('Auth page: User already logged in, redirecting to home');
       navigate('/');
     }
   }, [user, navigate]);
-
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const errorParam = urlParams.get('error');
@@ -84,7 +79,6 @@ const Auth = () => {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
-
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -142,7 +136,11 @@ const Auth = () => {
           setIsLogin(true);
         } else {
           // Instead of showing a toast, redirect to the email verification page
-          navigate('/auth/verify-email', { state: { email } });
+          navigate('/auth/verify-email', {
+            state: {
+              email
+            }
+          });
         }
       }
     } catch (error: any) {
@@ -153,7 +151,6 @@ const Auth = () => {
       setLoading(false);
     }
   };
-
   const handleGoogleSignIn = async () => {
     try {
       setLoading(true);
@@ -195,7 +192,6 @@ const Auth = () => {
       setLoading(false);
     }
   };
-
   return <PageTransition>
       <div className="min-h-screen relative overflow-hidden">
         {/* Soft muted Tiffany Blue Glassmorphism Background */}
@@ -212,11 +208,7 @@ const Auth = () => {
             <div className="flex flex-col justify-center space-y-6 my-0">
               <div className="flex flex-col items-start">
                 <div className="glass-panel-enhanced p-4 rounded-2xl mb-4">
-                  <img 
-                    alt="ProClient Logo" 
-                    src="/lovable-uploads/9fd4660b-36e4-4596-9ee9-60b3c52c8c69.png" 
-                    className="h-19 object-contain" 
-                  />
+                  <img alt="ProClient Logo" src="/lovable-uploads/9fd4660b-36e4-4596-9ee9-60b3c52c8c69.png" className="h-19 object-contain" />
                 </div>
                 <p className="text-xl text-gray-800 font-medium mb-6 glass-panel-enhanced p-6 rounded-xl shadow-glass-lg">
                   Simply define your services and manage your clients. Track jobs, create professional invoices, and get paid faster.
@@ -263,42 +255,18 @@ const Auth = () => {
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="email" className="text-gray-800 font-medium">Email</Label>
-                      <Input 
-                        id="email" 
-                        type="email" 
-                        placeholder="email@example.com" 
-                        value={email} 
-                        onChange={e => setEmail(e.target.value)} 
-                        required 
-                        className="glass-input-enhanced bg-white/30 border-white/50 text-gray-900 placeholder:text-gray-600 backdrop-blur-md focus:bg-white/40 focus:border-white/70 shadow-glass"
-                      />
+                      <Input id="email" type="email" placeholder="email@example.com" value={email} onChange={e => setEmail(e.target.value)} required className="glass-input-enhanced bg-white/30 border-white/50 text-gray-900 placeholder:text-gray-600 backdrop-blur-md focus:bg-white/40 focus:border-white/70 shadow-glass" />
                     </div>
                     
                     {!isForgotPassword && <div className="space-y-2">
                         <Label htmlFor="password" className="text-gray-800 font-medium">Password</Label>
-                        <Input 
-                          id="password" 
-                          type="password" 
-                          value={password} 
-                          onChange={e => setPassword(e.target.value)} 
-                          required 
-                          className="glass-input-enhanced bg-white/30 border-white/50 text-gray-900 placeholder:text-gray-600 backdrop-blur-md focus:bg-white/40 focus:border-white/70 shadow-glass"
-                        />
+                        <Input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} required className="glass-input-enhanced bg-white/30 border-white/50 text-gray-900 placeholder:text-gray-600 backdrop-blur-md focus:bg-white/40 focus:border-white/70 shadow-glass" />
                       </div>}
                     
-                    {!isForgotPassword && !isLogin && (
-                      <div className="space-y-2">
+                    {!isForgotPassword && !isLogin && <div className="space-y-2">
                         <Label htmlFor="confirm-password" className="text-gray-800 font-medium">Confirm Password</Label>
-                        <Input 
-                          id="confirm-password" 
-                          type="password" 
-                          value={confirmPassword} 
-                          onChange={e => setConfirmPassword(e.target.value)} 
-                          required 
-                          className="glass-input-enhanced bg-white/30 border-white/50 text-gray-900 placeholder:text-gray-600 backdrop-blur-md focus:bg-white/40 focus:border-white/70 shadow-glass"
-                        />
-                      </div>
-                    )}
+                        <Input id="confirm-password" type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required className="glass-input-enhanced bg-white/30 border-white/50 text-gray-900 placeholder:text-gray-600 backdrop-blur-md focus:bg-white/40 focus:border-white/70 shadow-glass" />
+                      </div>}
                     
                     {!isForgotPassword && <>
                         <div className="flex items-center gap-4 py-2">
@@ -307,13 +275,7 @@ const Auth = () => {
                           <Separator className="flex-1 bg-gray-400/50" />
                         </div>
                         
-                        <Button 
-                          type="button" 
-                          variant="outline" 
-                          className="w-full flex gap-2 items-center justify-center glass-button-enhanced bg-white/25 border-white/50 text-gray-800 hover:bg-white/35 hover:border-white/70 backdrop-blur-md transition-all duration-300 shadow-glass font-medium" 
-                          onClick={handleGoogleSignIn} 
-                          disabled={loading}
-                        >
+                        <Button type="button" variant="outline" className="w-full flex gap-2 items-center justify-center glass-button-enhanced bg-white/25 border-white/50 text-gray-800 hover:bg-white/35 hover:border-white/70 backdrop-blur-md transition-all duration-300 shadow-glass font-medium" onClick={handleGoogleSignIn} disabled={loading}>
                           <svg viewBox="0 0 48 48" className="w-5 h-5">
                             <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z" />
                             <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z" />
@@ -325,39 +287,25 @@ const Auth = () => {
                       </>}
                   </CardContent>
                   <CardFooter className="flex flex-col space-y-4">
-                    <Button 
-                      type="submit" 
-                      className="w-full glass-button-primary-enhanced bg-slate-500/80 hover:bg-slate-600/80 text-white border border-slate-400/50 backdrop-blur-md transition-all duration-300 hover:scale-105 shadow-glass-lg font-medium" 
-                      disabled={loading}
-                    >
+                    <Button type="submit" disabled={loading} className="w-full glass-button-primary-enhanced text-white border border-slate-400/50 backdrop-blur-md transition-all duration-300 hover:scale-105 shadow-glass-lg font-medium bg-[#3ba2e3]/80">
                       {loading ? isForgotPassword ? 'Sending reset instructions...' : isLogin ? 'Signing in...' : 'Creating account...' : isForgotPassword ? 'Send reset instructions' : isLogin ? 'Sign in' : 'Start Free Trial'}
                     </Button>
                     
-                    {!isForgotPassword && <Button 
-                      type="button" 
-                      variant="link" 
-                      className="w-full text-gray-700 hover:text-gray-900 hover:bg-white/20 backdrop-blur-sm rounded-lg transition-all duration-300 font-medium" 
-                      onClick={() => {
-                        if (isLogin) {
-                          // Open the SignUpDialog instead of toggling isLogin
-                          setSignUpDialogOpen(true);
-                        } else {
-                          setIsLogin(true);
-                        }
-                      }}
-                    >
+                    {!isForgotPassword && <Button type="button" variant="link" className="w-full text-gray-700 hover:text-gray-900 hover:bg-white/20 backdrop-blur-sm rounded-lg transition-all duration-300 font-medium" onClick={() => {
+                    if (isLogin) {
+                      // Open the SignUpDialog instead of toggling isLogin
+                      setSignUpDialogOpen(true);
+                    } else {
+                      setIsLogin(true);
+                    }
+                  }}>
                       {isLogin ? "Not a member yet? Start your free trial" : "Already have an account? Sign in"}
                     </Button>}
                     
-                    <Button 
-                      type="button" 
-                      variant="link" 
-                      className="w-full text-sm text-gray-600 hover:text-gray-800 hover:bg-white/20 backdrop-blur-sm rounded-lg transition-all duration-300 font-medium" 
-                      onClick={() => {
-                        setIsForgotPassword(!isForgotPassword);
-                        setErrorMessage(null);
-                      }}
-                    >
+                    <Button type="button" variant="link" className="w-full text-sm text-gray-600 hover:text-gray-800 hover:bg-white/20 backdrop-blur-sm rounded-lg transition-all duration-300 font-medium" onClick={() => {
+                    setIsForgotPassword(!isForgotPassword);
+                    setErrorMessage(null);
+                  }}>
                       {isForgotPassword ? 'Back to login' : 'Forgot password?'}
                     </Button>
                   </CardFooter>
@@ -383,5 +331,4 @@ const Auth = () => {
       <SignUpDialog open={signUpDialogOpen} onOpenChange={setSignUpDialogOpen} />
     </PageTransition>;
 };
-
 export default Auth;

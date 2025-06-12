@@ -64,10 +64,10 @@ const PaymentScheduleTable = memo(({
   const [customPercentages, setCustomPercentages] = useState<{[key: string]: string}>({});
   const [editMode, setEditMode] = useState<'amount' | 'percentage'>('amount');
   
-  // New state for payment date dialog
+  // New state for payment date dialog - fixed initialization
   const [isPaymentDateDialogOpen, setIsPaymentDateDialogOpen] = useState(false);
   const [selectedPaymentForDate, setSelectedPaymentForDate] = useState<PaymentSchedule | null>(null);
-  const [selectedPaymentDate, setSelectedPaymentDate] = useState<Date | undefined>(new Date());
+  const [selectedPaymentDate, setSelectedPaymentDate] = useState<Date | undefined>(undefined);
 
   const totalPercentage = useMemo(() => {
     return paymentSchedules.reduce((sum, schedule) => {
@@ -94,7 +94,7 @@ const PaymentScheduleTable = memo(({
   const handleStatusUpdate = (payment: PaymentSchedule, newStatus: PaymentStatus) => {
     if (newStatus === 'paid') {
       setSelectedPaymentForDate(payment);
-      setSelectedPaymentDate(new Date());
+      setSelectedPaymentDate(new Date()); // Set to today by default
       setIsPaymentDateDialogOpen(true);
     } else {
       onUpdateStatus(payment.id, newStatus);
@@ -107,9 +107,16 @@ const PaymentScheduleTable = memo(({
     const formattedDate = format(selectedPaymentDate, 'yyyy-MM-dd');
     onUpdateStatus(selectedPaymentForDate.id, 'paid', formattedDate);
     
+    // Reset dialog state
     setIsPaymentDateDialogOpen(false);
     setSelectedPaymentForDate(null);
-    setSelectedPaymentDate(new Date());
+    setSelectedPaymentDate(undefined);
+  };
+
+  const handleCancelPaymentDialog = () => {
+    setIsPaymentDateDialogOpen(false);
+    setSelectedPaymentForDate(null);
+    setSelectedPaymentDate(undefined);
   };
 
   const handleDateSelect = (paymentId: string, date: Date | undefined) => {
@@ -641,8 +648,12 @@ const PaymentScheduleTable = memo(({
         </div>
       </div>
 
-      {/* Payment Date Selection Dialog */}
-      <Dialog open={isPaymentDateDialogOpen} onOpenChange={setIsPaymentDateDialogOpen}>
+      {/* Payment Date Selection Dialog - Fixed */}
+      <Dialog open={isPaymentDateDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          handleCancelPaymentDialog();
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Select Payment Date</DialogTitle>
@@ -654,7 +665,10 @@ const PaymentScheduleTable = memo(({
             <Calendar
               mode="single"
               selected={selectedPaymentDate}
-              onSelect={setSelectedPaymentDate}
+              onSelect={(date) => {
+                console.log('Calendar date selected:', date);
+                setSelectedPaymentDate(date);
+              }}
               initialFocus
               className="p-3 pointer-events-auto rounded-md border"
             />
@@ -662,11 +676,14 @@ const PaymentScheduleTable = memo(({
           <DialogFooter>
             <Button 
               variant="outline" 
-              onClick={() => setIsPaymentDateDialogOpen(false)}
+              onClick={handleCancelPaymentDialog}
             >
               Cancel
             </Button>
-            <Button onClick={handleConfirmPayment}>
+            <Button 
+              onClick={handleConfirmPayment}
+              disabled={!selectedPaymentDate}
+            >
               Confirm Payment
             </Button>
           </DialogFooter>

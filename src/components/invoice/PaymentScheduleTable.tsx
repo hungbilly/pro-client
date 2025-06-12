@@ -1,4 +1,3 @@
-
 import React, { memo, useState, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -18,6 +17,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { formatCurrency } from '@/lib/utils';
 import { useCompanyContext } from '@/context/CompanyContext';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface PaymentScheduleTableProps {
   paymentSchedules: PaymentSchedule[];
@@ -25,7 +25,7 @@ interface PaymentScheduleTableProps {
   isClientView: boolean;
   isEditView?: boolean;
   updatingPaymentId: string | null;
-  onUpdateStatus: (paymentId: string, status: PaymentStatus) => void;
+  onUpdateStatus: (paymentId: string, status: PaymentStatus, paymentDate?: string) => void;
   formatCurrency: (amount: number) => string;
   onUpdatePaymentDate?: (paymentId: string, paymentDate: string) => void;
   onUpdateAmount?: (paymentId: string, amount: number, percentage: number) => void;
@@ -63,6 +63,11 @@ const PaymentScheduleTable = memo(({
   const [customAmounts, setCustomAmounts] = useState<{[key: string]: string}>({});
   const [customPercentages, setCustomPercentages] = useState<{[key: string]: string}>({});
   const [editMode, setEditMode] = useState<'amount' | 'percentage'>('amount');
+  
+  // New state for payment date dialog
+  const [isPaymentDateDialogOpen, setIsPaymentDateDialogOpen] = useState(false);
+  const [selectedPaymentForDate, setSelectedPaymentForDate] = useState<PaymentSchedule | null>(null);
+  const [selectedPaymentDate, setSelectedPaymentDate] = useState<Date | undefined>(new Date());
 
   const totalPercentage = useMemo(() => {
     return paymentSchedules.reduce((sum, schedule) => {
@@ -85,6 +90,27 @@ const PaymentScheduleTable = memo(({
   const shouldEnableEditing = isEditView || isCreateOrEditPath;
   
   console.log('Current path:', currentPath, 'isEditView from props:', isEditView, 'shouldEnableEditing:', shouldEnableEditing);
+
+  const handleStatusUpdate = (payment: PaymentSchedule, newStatus: PaymentStatus) => {
+    if (newStatus === 'paid') {
+      setSelectedPaymentForDate(payment);
+      setSelectedPaymentDate(new Date());
+      setIsPaymentDateDialogOpen(true);
+    } else {
+      onUpdateStatus(payment.id, newStatus);
+    }
+  };
+
+  const handleConfirmPayment = () => {
+    if (!selectedPaymentForDate || !selectedPaymentDate) return;
+    
+    const formattedDate = format(selectedPaymentDate, 'yyyy-MM-dd');
+    onUpdateStatus(selectedPaymentForDate.id, 'paid', formattedDate);
+    
+    setIsPaymentDateDialogOpen(false);
+    setSelectedPaymentForDate(null);
+    setSelectedPaymentDate(new Date());
+  };
 
   const handleDateSelect = (paymentId: string, date: Date | undefined) => {
     if (!date || !onUpdatePaymentDate) return;
@@ -517,6 +543,7 @@ const PaymentScheduleTable = memo(({
                                   selected={schedule.paymentDate ? new Date(schedule.paymentDate) : undefined}
                                   onSelect={(date) => handleDateSelect(schedule.id, date)}
                                   initialFocus
+                                  className="p-3 pointer-events-auto"
                                 />
                               </PopoverContent>
                             </Popover>
@@ -546,7 +573,7 @@ const PaymentScheduleTable = memo(({
                         <DropdownMenuContent align="end">
                           {schedule.status !== 'paid' && (
                             <DropdownMenuItem 
-                              onClick={() => onUpdateStatus(schedule.id, 'paid')}
+                              onClick={() => handleStatusUpdate(schedule, 'paid')}
                               className="text-green-600"
                             >
                               Mark as Paid
@@ -554,14 +581,14 @@ const PaymentScheduleTable = memo(({
                           )}
                           {schedule.status !== 'unpaid' && (
                             <DropdownMenuItem 
-                              onClick={() => onUpdateStatus(schedule.id, 'unpaid')}
+                              onClick={() => handleStatusUpdate(schedule, 'unpaid')}
                             >
                               Mark as Unpaid
                             </DropdownMenuItem>
                           )}
                           {schedule.status !== 'write-off' && (
                             <DropdownMenuItem 
-                              onClick={() => onUpdateStatus(schedule.id, 'write-off')}
+                              onClick={() => handleStatusUpdate(schedule, 'write-off')}
                               className="text-red-600"
                             >
                               Write Off
@@ -613,6 +640,38 @@ const PaymentScheduleTable = memo(({
           </div>
         </div>
       </div>
+
+      {/* Payment Date Selection Dialog */}
+      <Dialog open={isPaymentDateDialogOpen} onOpenChange={setIsPaymentDateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Select Payment Date</DialogTitle>
+            <DialogDescription>
+              Choose the date when this payment was received.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-center py-4">
+            <Calendar
+              mode="single"
+              selected={selectedPaymentDate}
+              onSelect={setSelectedPaymentDate}
+              initialFocus
+              className="p-3 pointer-events-auto rounded-md border"
+            />
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsPaymentDateDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmPayment}>
+              Confirm Payment
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </TooltipProvider>
   );
 });

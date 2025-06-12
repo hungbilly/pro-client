@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -180,12 +179,17 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
             if (jobData?.clientId) {
               const clientData = await getClient(jobData.clientId);
               setClient(clientData);
+              
+              // Use job date if available, otherwise use today's date
+              const jobDate = jobData.date ? jobData.date : format(new Date(), 'yyyy-MM-dd');
+              
               setInvoice(prev => ({ 
                 ...prev, 
                 jobId: propJobId, 
                 clientId: jobData.clientId,
                 number: invoiceNumber,
-                amount: 0
+                amount: 0,
+                shootingDate: jobDate // Set to job's date
               }));
             }
           } else if (propClientId) {

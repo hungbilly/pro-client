@@ -1,3 +1,4 @@
+
 import React, { memo, useState, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -64,7 +65,7 @@ const PaymentScheduleTable = memo(({
   const [customPercentages, setCustomPercentages] = useState<{[key: string]: string}>({});
   const [editMode, setEditMode] = useState<'amount' | 'percentage'>('amount');
   
-  // New state for payment date dialog - fixed initialization
+  // Payment date dialog state
   const [isPaymentDateDialogOpen, setIsPaymentDateDialogOpen] = useState(false);
   const [selectedPaymentForDate, setSelectedPaymentForDate] = useState<PaymentSchedule | null>(null);
   const [selectedPaymentDate, setSelectedPaymentDate] = useState<Date | undefined>(undefined);
@@ -672,6 +673,9 @@ const PaymentScheduleTable = memo(({
               initialFocus
               className="p-3 pointer-events-auto rounded-md border"
             />
+          </div>
+          <div className="text-center text-sm text-muted-foreground mb-4">
+            Selected date: {selectedPaymentDate ? format(selectedPaymentDate, 'MMMM d, yyyy') : 'None'}
           </div>
           <DialogFooter>
             <Button 

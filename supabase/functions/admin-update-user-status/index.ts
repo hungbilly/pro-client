@@ -113,16 +113,17 @@ serve(async (req) => {
       previousStatus = currentSubscription.status;
       previousTrialEndDate = currentSubscription.trial_end_date;
       
-      console.log(`Previous subscription state: status=${previousStatus}, trial_end=${previousTrialEndDate}, admin_override=${currentSubscription.admin_override}`);
+      console.log(`Previous subscription state: status=${previousStatus}, trial_end_date=${previousTrialEndDate}, admin_override=${currentSubscription.admin_override}`);
     }
     
-    // Update or create subscription record
+    // Prepare subscription data for update/insert
     let subscriptionData = {
       status: status,
       admin_override: adminOverride,
       override_notes: notes,
       override_by: adminUser.id,
-      override_at: new Date().toISOString()
+      override_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     };
     
     // Add trial end date if provided
@@ -154,9 +155,11 @@ serve(async (req) => {
       }
       
       result = newSub;
+      console.log('Successfully created new subscription with admin override:', result);
     } else {
-      // Update existing subscription
+      // Update existing subscription - make sure we're setting all the admin override fields
       console.log('Updating existing subscription with admin override:', adminOverride);
+      console.log('Subscription data being applied:', subscriptionData);
       
       const { data: updatedSub, error: updateError } = await supabase
         .from('user_subscriptions')
@@ -171,6 +174,7 @@ serve(async (req) => {
       }
       
       result = updatedSub;
+      console.log('Successfully updated subscription with admin override:', result);
     }
     
     // Record change in history table
@@ -193,12 +197,26 @@ serve(async (req) => {
       console.log('Successfully recorded subscription change in history');
     }
     
+    // Verify the update was successful by querying the updated record
+    const { data: verifyData, error: verifyError } = await supabase
+      .from('user_subscriptions')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+      
+    if (verifyError) {
+      console.error('Error verifying subscription update:', verifyError);
+    } else {
+      console.log('Verification - Updated subscription record:', verifyData);
+    }
+    
     // Return the updated subscription data
     return new Response(
       JSON.stringify({ 
         success: true, 
         message: 'Subscription status updated successfully',
-        subscription: result
+        subscription: result,
+        verification: verifyData
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

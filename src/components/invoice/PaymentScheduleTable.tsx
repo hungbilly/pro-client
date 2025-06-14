@@ -1,4 +1,3 @@
-
 import React, { memo, useState, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -50,6 +49,36 @@ const PaymentScheduleTable = memo(({
   const { selectedCompany } = useCompanyContext();
   const currency = selectedCompany?.currency || "USD";
 
+  // Sort payment schedules by description order (1st, 2nd, 3rd, etc.) and then by due date
+  const sortedPaymentSchedules = useMemo(() => {
+    return [...paymentSchedules].sort((a, b) => {
+      // Extract numbers from descriptions for proper ordering
+      const getOrderNumber = (description: string) => {
+        const match = description.match(/(\d+)(st|nd|rd|th)/i);
+        return match ? parseInt(match[1]) : 999; // Put non-numbered items at the end
+      };
+      
+      const orderA = getOrderNumber(a.description || '');
+      const orderB = getOrderNumber(b.description || '');
+      
+      // If order numbers are different, sort by order number
+      if (orderA !== orderB) {
+        return orderA - orderB;
+      }
+      
+      // If order numbers are the same or both don't have numbers, sort by due date
+      if (a.dueDate && b.dueDate) {
+        return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+      }
+      
+      // If one has a due date and the other doesn't, prioritize the one with due date
+      if (a.dueDate && !b.dueDate) return -1;
+      if (!a.dueDate && b.dueDate) return 1;
+      
+      return 0;
+    });
+  }, [paymentSchedules]);
+
   const paymentStatusColors: { [key: string]: string } = {
     paid: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
     unpaid: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
@@ -71,10 +100,10 @@ const PaymentScheduleTable = memo(({
   const [selectedPaymentDate, setSelectedPaymentDate] = useState<Date | undefined>(undefined);
 
   const totalPercentage = useMemo(() => {
-    return paymentSchedules.reduce((sum, schedule) => {
+    return sortedPaymentSchedules.reduce((sum, schedule) => {
       return sum + (typeof schedule.percentage === 'number' ? schedule.percentage : 0);
     }, 0);
-  }, [paymentSchedules]);
+  }, [sortedPaymentSchedules]);
 
   const isPercentageValid = useMemo(() => {
     return Math.abs(totalPercentage - 100) < 0.01;
@@ -246,7 +275,7 @@ const PaymentScheduleTable = memo(({
     let description = '';
     
     if (descType === 'custom') {
-      description = customDescriptions[paymentId] || paymentSchedules.find(s => s.id === paymentId)?.description || '';
+      description = customDescriptions[paymentId] || sortedPaymentSchedules.find(s => s.id === paymentId)?.description || '';
     } else {
       switch(descType) {
         case 'deposit':
@@ -400,6 +429,11 @@ const PaymentScheduleTable = memo(({
     return formatCurrency(amt, currency);
   };
 
+  const ensureValidNumber = (value: any): number => {
+    const num = Number(value);
+    return isNaN(num) ? 0 : num;
+  };
+
   return (
     <TooltipProvider>
       <div className="border rounded-md overflow-hidden">
@@ -500,7 +534,7 @@ const PaymentScheduleTable = memo(({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {paymentSchedules.map((schedule, index) => (
+            {sortedPaymentSchedules.map((schedule, index) => (
               <TableRow key={schedule.id}>
                 <TableCell className="w-[140px]">
                   {renderDescriptionCell(schedule, index)}

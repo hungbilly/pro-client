@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -361,33 +362,48 @@ const InvoiceTemplateSettings = () => {
                     <div className="mt-4 space-y-2">
                       <h4 className="font-medium">Selected Items:</h4>
                       {selectedItems.map((item) => (
-                        <div key={item.id} className="p-3 bg-muted rounded-md space-y-2">
-                          <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-                            <Input
-                              placeholder="Item name"
-                              value={item.name}
-                              onChange={(e) => handleUpdateItem(item.id, 'name', e.target.value)}
-                            />
-                            <Input
-                              placeholder="Description"
+                        <div key={item.id} className="p-4 bg-muted rounded-md space-y-3">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-sm font-medium text-gray-700 mb-1 block">Item Name</label>
+                              <Input
+                                placeholder="Item name"
+                                value={item.name}
+                                onChange={(e) => handleUpdateItem(item.id, 'name', e.target.value)}
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="text-sm font-medium text-gray-700 mb-1 block">Quantity</label>
+                                <Input
+                                  type="number"
+                                  placeholder="Qty"
+                                  value={item.quantity}
+                                  onChange={(e) => handleUpdateItem(item.id, 'quantity', Number(e.target.value))}
+                                />
+                              </div>
+                              <div>
+                                <label className="text-sm font-medium text-gray-700 mb-1 block">Rate</label>
+                                <Input
+                                  type="number"
+                                  placeholder="Rate"
+                                  value={item.rate}
+                                  onChange={(e) => handleUpdateItem(item.id, 'rate', Number(e.target.value))}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-gray-700 mb-1 block">Description</label>
+                            <QuillEditor
                               value={item.description}
-                              onChange={(e) => handleUpdateItem(item.id, 'description', e.target.value)}
-                            />
-                            <Input
-                              type="number"
-                              placeholder="Quantity"
-                              value={item.quantity}
-                              onChange={(e) => handleUpdateItem(item.id, 'quantity', Number(e.target.value))}
-                            />
-                            <Input
-                              type="number"
-                              placeholder="Rate"
-                              value={item.rate}
-                              onChange={(e) => handleUpdateItem(item.id, 'rate', Number(e.target.value))}
+                              onChange={(value) => handleUpdateItem(item.id, 'description', value)}
+                              placeholder="Item description..."
+                              className="min-h-[100px]"
                             />
                           </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-muted-foreground">
+                          <div className="flex justify-between items-center pt-2 border-t">
+                            <span className="text-sm font-medium">
                               Total: ${item.amount.toFixed(2)}
                             </span>
                             <Button

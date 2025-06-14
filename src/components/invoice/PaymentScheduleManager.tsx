@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -205,19 +204,19 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
   const isPercentageValid = Math.abs(totalPercentage - 100) < 0.01;
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className="mx-0">
+      <CardHeader className="px-2 py-4 sm:px-6 sm:py-6">
         <CardTitle className="flex items-center gap-2">
           <Calendar className="h-5 w-5" />
           Payment Schedule
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 px-2 pb-2 sm:px-6 sm:pb-6">
         {/* Existing Payment Schedules */}
         {paymentSchedules.length > 0 && (
           <div className="space-y-3">
             {paymentSchedules.map((schedule) => (
-              <div key={schedule.id} className="grid grid-cols-1 lg:grid-cols-6 gap-3 p-3 border rounded-lg">
+              <div key={schedule.id} className="grid grid-cols-1 gap-2 p-2 border rounded-lg sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 lg:gap-3 lg:p-3">
                 <div className="lg:col-span-1">
                   <Label className="text-xs text-muted-foreground lg:hidden">Description</Label>
                   <span className="font-medium text-sm">{schedule.description}</span>
@@ -294,7 +293,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
               </div>
             ))}
             
-            <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
+            <div className="flex justify-between items-center p-2 bg-muted rounded-lg sm:p-3">
               <div className="flex gap-4">
                 <span className="text-sm font-medium">
                   Total: {totalPercentage.toFixed(2)}%
@@ -313,9 +312,9 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
         )}
 
         {/* Add New Payment Schedule */}
-        <div className="space-y-3 p-4 border rounded-lg bg-muted/50">
+        <div className="space-y-3 p-2 border rounded-lg bg-muted/50 sm:p-4">
           <Label className="text-sm font-medium">Add Payment Schedule</Label>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 lg:gap-3">
             <div className="md:col-span-1 lg:col-span-1">
               <Label className="text-xs text-muted-foreground">Due Date</Label>
               <DatePicker

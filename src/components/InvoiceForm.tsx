@@ -533,23 +533,25 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
               {/* Package/Product Selector */}
               <Card>
-                <CardHeader className="text-center p-3 sm:p-6">
-                  <CardTitle className="flex items-center justify-center gap-2 text-sm sm:text-base">
+                <CardHeader className="text-center py-3 sm:py-6 px-2 sm:px-6"> {/* Modified padding */}
+                  <CardTitle className="flex items-center justify-center gap-2 min-w-0 flex-wrap break-words text-sm sm:text-base"> {/* Added min-w-0, flex-wrap, break-words */}
                     <Package className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-                    <span className="break-words">Products & Services</span>
+                    <span className="truncate min-w-0 block" style={{ maxWidth: '100%' }}>
+                      Products &amp; Services
+                    </span>
                   </CardTitle>
                   <CardDescription className="break-words text-xs sm:text-sm">
                     Add products and services to this invoice
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-3 sm:space-y-4 p-3 sm:p-6">
+                <CardContent className="space-y-3 sm:space-y-4 py-3 sm:py-6 px-2 sm:px-6 overflow-x-auto"> {/* Apply responsive px, prevent overflow */}
                   <Button 
                     onClick={() => setIsAddProductDialogOpen(true)}
-                    className="w-full text-xs sm:text-sm p-2 sm:p-3"
+                    className="w-full text-xs sm:text-sm p-2 sm:p-3 whitespace-normal break-words truncate"
                     variant="outline"
                   >
                     <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
-                    <span className="truncate">Add Product</span>
+                    <span className="truncate min-w-0 block">Add Product</span> {/* Safe for long translations */}
                   </Button>
                   
                   {/* Selected Products Display */}

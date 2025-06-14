@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -14,6 +13,7 @@ import { Plus, Save, Trash2, Edit } from 'lucide-react';
 import { useCompanyContext } from '@/context/CompanyContext';
 import { InvoiceTemplate, InvoiceItem } from '@/types';
 import PackageSelector from './PackageSelector';
+import DiscountSelector from './DiscountSelector';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import QuillEditor from './QuillEditor';
@@ -34,6 +34,13 @@ interface ContractTemplate {
   content: string;
 }
 
+interface DiscountItem {
+  id: string;
+  name: string;
+  amount: number;
+  type: 'fixed' | 'percentage';
+}
+
 const InvoiceTemplateSettings = () => {
   const { user } = useAuth();
   const { selectedCompany } = useCompanyContext();
@@ -43,6 +50,7 @@ const InvoiceTemplateSettings = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [selectedItems, setSelectedItems] = useState<InvoiceItem[]>([]);
+  const [selectedDiscounts, setSelectedDiscounts] = useState<DiscountItem[]>([]);
   const [contractTerms, setContractTerms] = useState('');
   const [selectedContractTemplateId, setSelectedContractTemplateId] = useState<string>('');
 
@@ -136,6 +144,10 @@ const InvoiceTemplateSettings = () => {
     setSelectedItems(prev => [...prev, ...items]);
   };
 
+  const handleDiscountSelect = (discounts: DiscountItem[]) => {
+    setSelectedDiscounts(prev => [...prev, ...discounts]);
+  };
+
   const handleAddCustomItem = () => {
     const newItem: InvoiceItem = {
       id: Date.now().toString(),
@@ -146,6 +158,16 @@ const InvoiceTemplateSettings = () => {
       amount: 0
     };
     setSelectedItems(prev => [...prev, newItem]);
+  };
+
+  const handleAddCustomDiscount = () => {
+    const newDiscount: DiscountItem = {
+      id: Date.now().toString(),
+      name: '',
+      amount: 0,
+      type: 'fixed'
+    };
+    setSelectedDiscounts(prev => [...prev, newDiscount]);
   };
 
   const handleUpdateItem = (itemId: string, field: keyof InvoiceItem, value: any) => {
@@ -162,8 +184,18 @@ const InvoiceTemplateSettings = () => {
     }));
   };
 
+  const handleUpdateDiscount = (discountId: string, field: keyof DiscountItem, value: any) => {
+    setSelectedDiscounts(prev => prev.map(discount => 
+      discount.id === discountId ? { ...discount, [field]: value } : discount
+    ));
+  };
+
   const handleRemoveItem = (itemId: string) => {
     setSelectedItems(prev => prev.filter(item => item.id !== itemId));
+  };
+
+  const handleRemoveDiscount = (discountId: string) => {
+    setSelectedDiscounts(prev => prev.filter(discount => discount.id !== discountId));
   };
 
   const handleContractTemplateSelect = (templateId: string) => {
@@ -193,6 +225,7 @@ const InvoiceTemplateSettings = () => {
     
     // Set selected items and contract terms
     setSelectedItems(template.items || []);
+    setSelectedDiscounts(template.discounts || []);
     setContractTerms(template.contractTerms || '');
     setSelectedContractTemplateId('');
   };
@@ -201,6 +234,7 @@ const InvoiceTemplateSettings = () => {
     setEditingTemplateId(null);
     form.reset();
     setSelectedItems([]);
+    setSelectedDiscounts([]);
     setContractTerms('');
     setSelectedContractTemplateId('');
   };
@@ -240,6 +274,7 @@ const InvoiceTemplateSettings = () => {
       // Format the template data for storage
       const content = JSON.stringify({
         items: selectedItems,
+        discounts: selectedDiscounts,
         contractTerms: contractTerms,
         notes: values.notes
       });
@@ -273,6 +308,7 @@ const InvoiceTemplateSettings = () => {
       // Reset form and state
       form.reset();
       setSelectedItems([]);
+      setSelectedDiscounts([]);
       setContractTerms('');
       setSelectedContractTemplateId('');
       setIsCreating(false);
@@ -422,6 +458,81 @@ const InvoiceTemplateSettings = () => {
                 </div>
 
                 <div className="space-y-4">
+                  <FormLabel>Discounts</FormLabel>
+                  <Tabs defaultValue="templates" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="templates">From Templates</TabsTrigger>
+                      <TabsTrigger value="manual">Manual Entry</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="templates" className="space-y-2">
+                      <DiscountSelector onDiscountSelect={handleDiscountSelect} variant="direct-list" />
+                    </TabsContent>
+                    <TabsContent value="manual" className="space-y-2">
+                      <Button type="button" onClick={handleAddCustomDiscount} variant="outline" className="w-full">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Custom Discount
+                      </Button>
+                    </TabsContent>
+                  </Tabs>
+                  
+                  {selectedDiscounts.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                      <h4 className="font-medium">Selected Discounts:</h4>
+                      {selectedDiscounts.map((discount) => (
+                        <div key={discount.id} className="p-4 bg-muted rounded-md space-y-3">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div>
+                              <label className="text-sm font-medium text-gray-700 mb-1 block">Discount Name</label>
+                              <Input
+                                placeholder="Discount name"
+                                value={discount.name}
+                                onChange={(e) => handleUpdateDiscount(discount.id, 'name', e.target.value)}
+                              />
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium text-gray-700 mb-1 block">Type</label>
+                              <Select
+                                value={discount.type}
+                                onValueChange={(value) => handleUpdateDiscount(discount.id, 'type', value)}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="fixed">Fixed Amount</SelectItem>
+                                  <SelectItem value="percentage">Percentage</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium text-gray-700 mb-1 block">
+                                {discount.type === 'percentage' ? 'Percentage' : 'Amount'}
+                              </label>
+                              <Input
+                                type="number"
+                                placeholder={discount.type === 'percentage' ? 'e.g., 10' : 'e.g., 100'}
+                                value={discount.amount}
+                                onChange={(e) => handleUpdateDiscount(discount.id, 'amount', Number(e.target.value))}
+                              />
+                            </div>
+                          </div>
+                          <div className="flex justify-end pt-2 border-t">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRemoveDiscount(discount.id)}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-4">
                   <FormLabel>Contract Terms</FormLabel>
                   <Tabs defaultValue="templates" className="w-full">
                     <TabsList className="grid w-full grid-cols-2">
@@ -483,6 +594,7 @@ const InvoiceTemplateSettings = () => {
                         setIsCreating(false);
                         form.reset();
                         setSelectedItems([]);
+                        setSelectedDiscounts([]);
                         setContractTerms('');
                         setSelectedContractTemplateId('');
                       }

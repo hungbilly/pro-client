@@ -482,7 +482,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
               {/* Job Information Display (Read-only) */}
               {job && (
-                <div className="p-4 bg-muted rounded-lg w-full max-w-full overflow-x-auto">
+                <div className="p-4 bg-muted rounded-lg inline-block min-w-0 max-w-fit">
                   <Label className="text-base font-medium">Job</Label>
                   <div className="mt-2">
                     <p className="font-medium break-words">{job.title}</p>

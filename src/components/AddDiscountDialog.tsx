@@ -10,7 +10,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { InvoiceItem } from '@/types';
+import { InvoiceItem, DiscountItem } from '@/types';
 import DiscountSelector from './DiscountSelector';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,8 +38,8 @@ const AddDiscountDialog: React.FC<AddDiscountDialogProps> = ({
   const [discountName, setDiscountName] = useState<string>('');
   const [discountDescription, setDiscountDescription] = useState<string>('');
 
-  const handleDiscountSelect = (items: InvoiceItem[]) => {
-    onAddDiscount(items);
+  const handleDiscountSelect = (discounts: DiscountItem[]) => {
+    onAddDiscount(discounts);
     onOpenChange(false);
   };
 

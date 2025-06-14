@@ -442,341 +442,352 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
   return (
     <PageTransition>
-      <Card className="w-full max-w-6xl mx-auto">
-        <CardHeader className="space-y-4">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-2xl font-bold">
-              {propInvoiceId ? 'Edit Invoice' : 'Create Invoice'}
-            </CardTitle>
-            <div className="flex items-center gap-2">
-              {propInvoiceId && (
-                <DeleteInvoiceDialog 
-                  invoiceId={propInvoiceId}
-                  invoiceNumber={invoice.number}
-                />
+      <div className="w-full max-w-6xl mx-auto px-4">
+        <Card className="w-full">
+          <CardHeader className="space-y-4">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-xl sm:text-2xl font-bold">
+                {propInvoiceId ? 'Edit Invoice' : 'Create Invoice'}
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                {propInvoiceId && (
+                  <DeleteInvoiceDialog 
+                    invoiceId={propInvoiceId}
+                    invoiceNumber={invoice.number}
+                  />
+                )}
+                <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back
+                </Button>
+              </div>
+            </div>
+            
+            <CardDescription>
+              {propInvoiceId ? 'Edit the invoice details.' : 'Create a new invoice.'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-6">
+              {/* Client Information Display (Read-only) */}
+              {client && (
+                <div className="p-4 bg-muted rounded-lg">
+                  <Label className="text-base font-medium">Client</Label>
+                  <div className="mt-2">
+                    <p className="font-medium">{client.name}</p>
+                    <p className="text-sm text-muted-foreground break-words">{client.email}</p>
+                  </div>
+                </div>
               )}
-              <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
-              </Button>
-            </div>
-          </div>
-          
-          <CardDescription>
-            {propInvoiceId ? 'Edit the invoice details.' : 'Create a new invoice.'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-6">
-            {/* Client Information Display (Read-only) */}
-            {client && (
-              <div className="p-4 bg-muted rounded-lg">
-                <Label className="text-base font-medium">Client</Label>
-                <div className="mt-2">
-                  <p className="font-medium">{client.name}</p>
-                  <p className="text-sm text-muted-foreground">{client.email}</p>
+
+              {/* Job Information Display (Read-only) */}
+              {job && (
+                <div className="p-4 bg-muted rounded-lg">
+                  <Label className="text-base font-medium">Job</Label>
+                  <div className="mt-2">
+                    <p className="font-medium">{job.title}</p>
+                    {job.description && (
+                      <p className="text-sm text-muted-foreground">{job.description}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="w-full">
+                    <Label htmlFor="number">Invoice Number</Label>
+                    <Input
+                      type="text"
+                      id="number"
+                      name="number"
+                      value={invoice.number}
+                      onChange={handleInputChange}
+                      placeholder="Auto-generated"
+                      className="w-full"
+                    />
+                  </div>
+                  <div className="w-full">
+                    <Label htmlFor="date">Invoice Date</Label>
+                    <div className="w-full">
+                      <DatePicker
+                        mode="single"
+                        selected={invoice.date ? new Date(invoice.date) : undefined}
+                        onSelect={(date) => handleDateChange('date', date)}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="w-full">
+                  <Label htmlFor="shootingDate">Job Date</Label>
+                  <div className="w-full">
+                    <DatePicker
+                      mode="single"
+                      selected={invoice.shootingDate ? new Date(invoice.shootingDate) : undefined}
+                      onSelect={(date) => handleDateChange('shootingDate', date)}
+                    />
+                  </div>
                 </div>
               </div>
-            )}
 
-            {/* Job Information Display (Read-only) */}
-            {job && (
-              <div className="p-4 bg-muted rounded-lg">
-                <Label className="text-base font-medium">Job</Label>
-                <div className="mt-2">
-                  <p className="font-medium">{job.title}</p>
-                  {job.description && (
-                    <p className="text-sm text-muted-foreground">{job.description}</p>
+              {/* Package/Product Selector */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Package className="h-5 w-5" />
+                    Products & Services
+                  </CardTitle>
+                  <CardDescription>
+                    Add products and services to this invoice
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Button 
+                    onClick={() => setIsAddProductDialogOpen(true)}
+                    className="w-full"
+                    variant="outline"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Product/Package
+                  </Button>
+                  
+                  {/* Selected Products Display */}
+                  {selectedProducts.length > 0 && (
+                    <div className="mt-4">
+                      <Label className="text-sm font-medium">Invoice Items</Label>
+                      <div className="mt-2 space-y-2">
+                        {selectedProducts.map((item, index) => (
+                          <div key={item.id || index} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-muted rounded-lg gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium truncate">{item.name}</div>
+                              {item.description && (
+                                <div className="text-sm text-muted-foreground break-words" dangerouslySetInnerHTML={{ __html: item.description }} />
+                              )}
+                              <div className="text-sm text-muted-foreground">
+                                Qty: {item.quantity} × ${formatCurrency(item.rate)}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 justify-between sm:justify-end">
+                              <div className="text-right">
+                                <div className="font-medium">${formatCurrency(item.amount)}</div>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeItem(item.id || '')}
+                                className="text-red-500 hover:text-red-700 flex-shrink-0"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   )}
-                </div>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="number">Invoice Number</Label>
-                <Input
-                  type="text"
-                  id="number"
-                  name="number"
-                  value={invoice.number}
-                  onChange={handleInputChange}
-                  placeholder="Auto-generated"
-                />
-              </div>
-              <div>
-                <Label htmlFor="date">Invoice Date</Label>
-                <DatePicker
-                  mode="single"
-                  selected={invoice.date ? new Date(invoice.date) : undefined}
-                  onSelect={(date) => handleDateChange('date', date)}
-                />
-              </div>
-              <div>
-                <Label htmlFor="shootingDate">Job Date</Label>
-                <DatePicker
-                  mode="single"
-                  selected={invoice.shootingDate ? new Date(invoice.shootingDate) : undefined}
-                  onSelect={(date) => handleDateChange('shootingDate', date)}
-                />
-              </div>
-            </div>
-
-            {/* Package/Product Selector */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Package className="h-5 w-5" />
-                  Products & Services
-                </CardTitle>
-                <CardDescription>
-                  Add products and services to this invoice
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Button 
-                  onClick={() => setIsAddProductDialogOpen(true)}
-                  className="w-full"
-                  variant="outline"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Product/Package
-                </Button>
-                
-                {/* Selected Products Display */}
-                {selectedProducts.length > 0 && (
-                  <div className="mt-4">
-                    <Label className="text-sm font-medium">Invoice Items</Label>
-                    <div className="mt-2 space-y-2">
-                      {selectedProducts.map((item, index) => (
-                        <div key={item.id || index} className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                          <div className="flex-1">
-                            <div className="font-medium">{item.name}</div>
-                            {item.description && (
-                              <div className="text-sm text-muted-foreground" dangerouslySetInnerHTML={{ __html: item.description }} />
-                            )}
-                            <div className="text-sm text-muted-foreground">
-                              Qty: {item.quantity} × ${formatCurrency(item.rate)}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className="text-right">
-                              <div className="font-medium">${formatCurrency(item.amount)}</div>
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => removeItem(item.id || '')}
-                              className="text-red-500 hover:text-red-700"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Discount Selector */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Percent className="h-5 w-5" />
-                  Discounts
-                </CardTitle>
-                <CardDescription>
-                  Apply discounts to this invoice
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Button 
-                  onClick={() => setIsAddDiscountDialogOpen(true)}
-                  className="w-full"
-                  variant="outline"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Discount
-                </Button>
-                
-                {/* Percentage Discount Display */}
-                {percentageDiscount && (
-                  <div className="mt-4">
-                    <Label className="text-sm font-medium">Applied Percentage Discount</Label>
-                    <div className="mt-2">
-                      <div className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg">
-                        <div className="flex-1">
-                          <div className="font-medium text-red-700">{percentageDiscount.name}</div>
-                          <div className="text-sm text-red-600">{percentageDiscount.description}</div>
-                          <div className="text-sm text-red-600">
-                            {percentageDiscount.value}% off total invoice
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="text-right">
-                            <div className="font-medium text-red-700">
-                              -{percentageDiscount.value}%
-                            </div>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setPercentageDiscount(null);
-                              const totalAmount = calculateTotalWithDiscount();
-                              setInvoice(prev => ({ ...prev, amount: totalAmount }));
-                              toast.success('Percentage discount removed');
-                            }}
-                            className="text-red-500 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                
-                {/* Selected Fixed Discounts Display */}
-                {selectedDiscountItems.length > 0 && !percentageDiscount && (
-                  <div className="mt-4">
-                    <Label className="text-sm font-medium">Applied Fixed Discounts</Label>
-                    <div className="mt-2 space-y-2">
-                      {selectedDiscountItems.map((item, index) => (
-                        <div key={item.id || index} className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg">
-                          <div className="flex-1">
-                            <div className="font-medium text-red-700">{item.name}</div>
-                            {item.description && (
-                              <div className="text-sm text-red-600" dangerouslySetInnerHTML={{ __html: item.description }} />
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className="text-right">
-                              <div className="font-medium text-red-700">-${formatCurrency(Math.abs(ensureValidNumber(item.amount)))}</div>
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => removeItem(item.id || '')}
-                              className="text-red-500 hover:text-red-700"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Invoice Summary */}
-            {(selectedProducts.length > 0 || selectedDiscountItems.length > 0 || percentageDiscount) && (
-              <Card className="bg-muted/50">
-                <CardContent className="pt-6">
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">Subtotal:</span>
-                      <span className="text-sm">${formatCurrency(subtotal)}</span>
-                    </div>
-                    {percentageDiscount && (
-                      <div className="flex justify-between items-center text-red-600">
-                        <span className="text-sm">Discount ({percentageDiscount.value}%):</span>
-                        <span className="text-sm">-${formatCurrency((subtotal * percentageDiscount.value) / 100)}</span>
-                      </div>
-                    )}
-                    {selectedDiscountItems.length > 0 && !percentageDiscount && (
-                      <div className="flex justify-between items-center text-red-600">
-                        <span className="text-sm">Total Discounts:</span>
-                        <span className="text-sm">-${formatCurrency(Math.abs(ensureValidNumber(selectedDiscountItems.reduce((sum, item) => sum + ensureValidNumber(item.amount), 0))))}</span>
-                      </div>
-                    )}
-                    <Separator />
-                    <div className="flex justify-between items-center font-medium">
-                      <span>Total:</span>
-                      <span>${formatCurrency(invoice.amount)}</span>
-                    </div>
-                  </div>
                 </CardContent>
               </Card>
-            )}
 
-            {/* Payment Schedule Manager */}
-            <PaymentScheduleManager
-              paymentSchedules={invoice.paymentSchedules || []}
-              invoiceAmount={ensureValidNumber(invoice.amount)}
-              onUpdateSchedules={handlePaymentSchedulesUpdate}
-            />
-
-            <div>
-              <Label htmlFor="notes">Notes</Label>
-              <RichTextEditor value={invoice.notes} onChange={handleNotesChange} />
-            </div>
-
-            {hasContractTemplates && (
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="contractTemplate">Contract Template</Label>
-                  <Select 
-                    onValueChange={handleContractTemplateSelect}
-                    value={selectedContractTemplate}
+              {/* Discount Selector */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Percent className="h-5 w-5" />
+                    Discounts
+                  </CardTitle>
+                  <CardDescription>
+                    Apply discounts to this invoice
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Button 
+                    onClick={() => setIsAddDiscountDialogOpen(true)}
+                    className="w-full"
+                    variant="outline"
                   >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Choose a contract template or type manually" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="manual">Type manually</SelectItem>
-                      {contractTemplates.map((template) => (
-                        <SelectItem key={template.id} value={template.id}>
-                          {template.name}
-                          {template.description && (
-                            <span className="text-muted-foreground ml-2">
-                              - {template.description}
-                            </span>
-                          )}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div>
-                  <Label htmlFor="contractTerms">Contract Terms</Label>
-                  <RichTextEditor 
-                    value={invoice.contractTerms} 
-                    onChange={handleContractTermsChange}
-                    id="contract-terms-editor"
-                  />
-                </div>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Discount
+                  </Button>
+                  
+                  {/* Percentage Discount Display */}
+                  {percentageDiscount && (
+                    <div className="mt-4">
+                      <Label className="text-sm font-medium">Applied Percentage Discount</Label>
+                      <div className="mt-2">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-red-700 truncate">{percentageDiscount.name}</div>
+                            <div className="text-sm text-red-600 break-words">{percentageDiscount.description}</div>
+                            <div className="text-sm text-red-600">
+                              {percentageDiscount.value}% off total invoice
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 justify-between sm:justify-end">
+                            <div className="text-right">
+                              <div className="font-medium text-red-700">
+                                -{percentageDiscount.value}%
+                              </div>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setPercentageDiscount(null);
+                                const totalAmount = calculateTotalWithDiscount();
+                                setInvoice(prev => ({ ...prev, amount: totalAmount }));
+                                toast.success('Percentage discount removed');
+                              }}
+                              className="text-red-500 hover:text-red-700 flex-shrink-0"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Selected Fixed Discounts Display */}
+                  {selectedDiscountItems.length > 0 && !percentageDiscount && (
+                    <div className="mt-4">
+                      <Label className="text-sm font-medium">Applied Fixed Discounts</Label>
+                      <div className="mt-2 space-y-2">
+                        {selectedDiscountItems.map((item, index) => (
+                          <div key={item.id || index} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-red-700 truncate">{item.name}</div>
+                              {item.description && (
+                                <div className="text-sm text-red-600 break-words" dangerouslySetInnerHTML={{ __html: item.description }} />
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 justify-between sm:justify-end">
+                              <div className="text-right">
+                                <div className="font-medium text-red-700">-${formatCurrency(Math.abs(ensureValidNumber(item.amount)))}</div>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeItem(item.id || '')}
+                                className="text-red-500 hover:text-red-700 flex-shrink-0"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Invoice Summary */}
+              {(selectedProducts.length > 0 || selectedDiscountItems.length > 0 || percentageDiscount) && (
+                <Card className="bg-muted/50">
+                  <CardContent className="pt-6">
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm">Subtotal:</span>
+                        <span className="text-sm">${formatCurrency(subtotal)}</span>
+                      </div>
+                      {percentageDiscount && (
+                        <div className="flex justify-between items-center text-red-600">
+                          <span className="text-sm">Discount ({percentageDiscount.value}%):</span>
+                          <span className="text-sm">-${formatCurrency((subtotal * percentageDiscount.value) / 100)}</span>
+                        </div>
+                      )}
+                      {selectedDiscountItems.length > 0 && !percentageDiscount && (
+                        <div className="flex justify-between items-center text-red-600">
+                          <span className="text-sm">Total Discounts:</span>
+                          <span className="text-sm">-${formatCurrency(Math.abs(ensureValidNumber(selectedDiscountItems.reduce((sum, item) => sum + ensureValidNumber(item.amount), 0))))}</span>
+                        </div>
+                      )}
+                      <Separator />
+                      <div className="flex justify-between items-center font-medium">
+                        <span>Total:</span>
+                        <span>${formatCurrency(invoice.amount)}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Payment Schedule Manager */}
+              <PaymentScheduleManager
+                paymentSchedules={invoice.paymentSchedules || []}
+                invoiceAmount={ensureValidNumber(invoice.amount)}
+                onUpdateSchedules={handlePaymentSchedulesUpdate}
+              />
+
+              <div>
+                <Label htmlFor="notes">Notes</Label>
+                <RichTextEditor value={invoice.notes} onChange={handleNotesChange} />
               </div>
-            )}
 
-            <div className="flex gap-2 pt-4">
-              <Button onClick={handleSaveInvoice} disabled={isSaving}>
-                <Save className="h-4 w-4 mr-2" />
-                {isSaving ? 'Saving...' : 'Save Invoice'}
-              </Button>
+              {hasContractTemplates && (
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="contractTemplate">Contract Template</Label>
+                    <Select 
+                      onValueChange={handleContractTemplateSelect}
+                      value={selectedContractTemplate}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Choose a contract template or type manually" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="manual">Type manually</SelectItem>
+                        {contractTemplates.map((template) => (
+                          <SelectItem key={template.id} value={template.id}>
+                            <div className="flex flex-col">
+                              <span>{template.name}</span>
+                              {template.description && (
+                                <span className="text-muted-foreground text-xs">
+                                  {template.description}
+                                </span>
+                              )}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="contractTerms">Contract Terms</Label>
+                    <RichTextEditor 
+                      value={invoice.contractTerms} 
+                      onChange={handleContractTermsChange}
+                      id="contract-terms-editor"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-4">
+                <Button onClick={handleSaveInvoice} disabled={isSaving} className="w-full sm:w-auto">
+                  <Save className="h-4 w-4 mr-2" />
+                  {isSaving ? 'Saving...' : 'Save Invoice'}
+                </Button>
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      <AddProductPackageDialog
-        open={isAddProductDialogOpen}
-        onOpenChange={setIsAddProductDialogOpen}
-        onAddItems={handleAddItems}
-      />
+        <AddProductPackageDialog
+          open={isAddProductDialogOpen}
+          onOpenChange={setIsAddProductDialogOpen}
+          onAddItems={handleAddItems}
+        />
 
-      <AddDiscountDialog
-        open={isAddDiscountDialogOpen}
-        onOpenChange={setIsAddDiscountDialogOpen}
-        onAddDiscount={handleAddDiscount}
-        subtotal={subtotal}
-        hasExistingFixedDiscounts={hasExistingFixedDiscounts}
-      />
+        <AddDiscountDialog
+          open={isAddDiscountDialogOpen}
+          onOpenChange={setIsAddDiscountDialogOpen}
+          onAddDiscount={handleAddDiscount}
+          subtotal={subtotal}
+          hasExistingFixedDiscounts={hasExistingFixedDiscounts}
+        />
+      </div>
     </PageTransition>
   );
 };

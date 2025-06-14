@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -444,7 +445,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     <PageTransition>
       <div className="w-full max-w-6xl mx-auto px-4">
         <Card className="w-full">
-          <CardHeader className="space-y-4">
+          <CardHeader className="space-y-4 p-4 sm:p-6">
             <div className="flex items-center justify-between">
               <CardTitle className="text-xl sm:text-2xl font-bold">
                 {propInvoiceId ? 'Edit Invoice' : 'Create Invoice'}
@@ -467,7 +468,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
               {propInvoiceId ? 'Edit the invoice details.' : 'Create a new invoice.'}
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 sm:p-6">
             <div className="grid gap-6">
               {/* Client Information Display (Read-only) */}
               {client && (

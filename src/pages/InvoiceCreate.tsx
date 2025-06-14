@@ -186,6 +186,8 @@ const InvoiceCreate = () => {
             name: template.name,
             description: template.description || undefined,
             items: parsedContent.items || [],
+            discounts: parsedContent.discounts || [],
+            paymentSchedules: parsedContent.paymentSchedules || [],
             contractTerms: parsedContent.contractTerms || undefined,
             notes: parsedContent.notes || undefined,
             companyId: template.company_id,
@@ -343,6 +345,28 @@ const InvoiceCreate = () => {
         // Ensure job relationship is preserved
         jobId: jobId || invoice?.jobId
       };
+
+      // Apply discounts from template - Convert template discounts to invoice items for fixed discounts
+      if (Array.isArray(parsedContent.discounts) && parsedContent.discounts.length > 0) {
+        const discountItems = parsedContent.discounts.map((discount: any) => {
+          if (discount.type === 'fixed') {
+            // Convert fixed discount to negative line item
+            return {
+              id: `template-discount-${discount.id}`,
+              name: discount.name,
+              description: `Discount: ${discount.name}`,
+              quantity: 1,
+              rate: -Math.abs(discount.amount),
+              amount: -Math.abs(discount.amount)
+            };
+          }
+          // For percentage discounts, we'll need to handle them differently in the invoice form
+          return null;
+        }).filter(Boolean);
+
+        // Add discount items to the invoice items
+        newInvoice.items = [...(newInvoice.items || []), ...discountItems];
+      }
       
       // Validate the items array
       if (!Array.isArray(newInvoice.items) || newInvoice.items.length === 0) {
@@ -363,6 +387,7 @@ const InvoiceCreate = () => {
       console.log('New invoice after template application', { 
         newInvoiceNumber: newInvoice.number,
         itemsCount: newInvoice.items?.length || 0,
+        paymentSchedulesCount: newInvoice.paymentSchedules?.length || 0,
         newShootingDate: newInvoice.shootingDate,
         jobId: newInvoice.jobId
       });
@@ -370,10 +395,21 @@ const InvoiceCreate = () => {
       // Update the invoice state
       setInvoice(newInvoice as Invoice);
       
+      const appliedFeatures = [];
       if (newInvoice.items && newInvoice.items.length > 0) {
-        toast.success(`Template "${selectedTemplate.name}" applied successfully with ${newInvoice.items.length} items`);
+        appliedFeatures.push(`${newInvoice.items.length} items`);
+      }
+      if (newInvoice.paymentSchedules && newInvoice.paymentSchedules.length > 0) {
+        appliedFeatures.push(`${newInvoice.paymentSchedules.length} payment schedules`);
+      }
+      if (parsedContent.discounts && parsedContent.discounts.length > 0) {
+        appliedFeatures.push(`${parsedContent.discounts.length} discounts`);
+      }
+
+      if (appliedFeatures.length > 0) {
+        toast.success(`Template "${selectedTemplate.name}" applied successfully with ${appliedFeatures.join(', ')}`);
       } else {
-        toast.warning(`Template "${selectedTemplate.name}" applied, but contains no items`);
+        toast.warning(`Template "${selectedTemplate.name}" applied, but contains no items or schedules`);
       }
       
     } catch (error) {

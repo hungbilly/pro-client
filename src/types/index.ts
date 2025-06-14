@@ -67,6 +67,7 @@ export interface InvoiceTemplate {
   description?: string;
   items: InvoiceItem[];
   discounts?: DiscountItem[];
+  paymentSchedules?: PaymentSchedule[];
   contractTerms?: string;
   notes?: string;
   companyId?: string;

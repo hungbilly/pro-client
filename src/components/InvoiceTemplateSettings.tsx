@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Plus, Save, Trash2, Edit } from 'lucide-react';
 import { useCompanyContext } from '@/context/CompanyContext';
-import { InvoiceTemplate, InvoiceItem } from '@/types';
+import { InvoiceTemplate, InvoiceItem, PaymentSchedule } from '@/types';
 import PackageSelector from './PackageSelector';
 import DiscountSelector from './DiscountSelector';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -51,6 +51,7 @@ const InvoiceTemplateSettings = () => {
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [selectedItems, setSelectedItems] = useState<InvoiceItem[]>([]);
   const [selectedDiscounts, setSelectedDiscounts] = useState<DiscountItem[]>([]);
+  const [selectedPaymentSchedules, setSelectedPaymentSchedules] = useState<PaymentSchedule[]>([]);
   const [contractTerms, setContractTerms] = useState('');
   const [selectedContractTemplateId, setSelectedContractTemplateId] = useState<string>('');
 
@@ -117,6 +118,7 @@ const InvoiceTemplateSettings = () => {
           description: template.description || undefined,
           items: parsedContent.items || [],
           discounts: parsedContent.discounts || [],
+          paymentSchedules: parsedContent.paymentSchedules || [],
           contractTerms: parsedContent.contractTerms || undefined,
           notes: parsedContent.notes || undefined,
           companyId: template.company_id,
@@ -171,6 +173,17 @@ const InvoiceTemplateSettings = () => {
     setSelectedDiscounts(prev => [...prev, newDiscount]);
   };
 
+  const handleAddPaymentSchedule = () => {
+    const newSchedule: PaymentSchedule = {
+      id: Date.now().toString(),
+      description: '',
+      dueDate: '',
+      percentage: 0,
+      status: 'unpaid'
+    };
+    setSelectedPaymentSchedules(prev => [...prev, newSchedule]);
+  };
+
   const handleUpdateItem = (itemId: string, field: keyof InvoiceItem, value: any) => {
     setSelectedItems(prev => prev.map(item => {
       if (item.id === itemId) {
@@ -191,12 +204,22 @@ const InvoiceTemplateSettings = () => {
     ));
   };
 
+  const handleUpdatePaymentSchedule = (scheduleId: string, field: keyof PaymentSchedule, value: any) => {
+    setSelectedPaymentSchedules(prev => prev.map(schedule => 
+      schedule.id === scheduleId ? { ...schedule, [field]: value } : schedule
+    ));
+  };
+
   const handleRemoveItem = (itemId: string) => {
     setSelectedItems(prev => prev.filter(item => item.id !== itemId));
   };
 
   const handleRemoveDiscount = (discountId: string) => {
     setSelectedDiscounts(prev => prev.filter(discount => discount.id !== discountId));
+  };
+
+  const handleRemovePaymentSchedule = (scheduleId: string) => {
+    setSelectedPaymentSchedules(prev => prev.filter(schedule => schedule.id !== scheduleId));
   };
 
   const handleContractTemplateSelect = (templateId: string) => {
@@ -224,9 +247,10 @@ const InvoiceTemplateSettings = () => {
       notes: template.notes || '',
     });
     
-    // Set selected items and contract terms
+    // Set selected items, discounts, payment schedules and contract terms
     setSelectedItems(template.items || []);
     setSelectedDiscounts(template.discounts || []);
+    setSelectedPaymentSchedules(template.paymentSchedules || []);
     setContractTerms(template.contractTerms || '');
     setSelectedContractTemplateId('');
   };
@@ -236,6 +260,7 @@ const InvoiceTemplateSettings = () => {
     form.reset();
     setSelectedItems([]);
     setSelectedDiscounts([]);
+    setSelectedPaymentSchedules([]);
     setContractTerms('');
     setSelectedContractTemplateId('');
   };
@@ -276,6 +301,7 @@ const InvoiceTemplateSettings = () => {
       const content = JSON.stringify({
         items: selectedItems,
         discounts: selectedDiscounts,
+        paymentSchedules: selectedPaymentSchedules,
         contractTerms: contractTerms,
         notes: values.notes
       });
@@ -310,6 +336,7 @@ const InvoiceTemplateSettings = () => {
       form.reset();
       setSelectedItems([]);
       setSelectedDiscounts([]);
+      setSelectedPaymentSchedules([]);
       setContractTerms('');
       setSelectedContractTemplateId('');
       setIsCreating(false);
@@ -377,6 +404,7 @@ const InvoiceTemplateSettings = () => {
                   )}
                 />
 
+                {/* Items Section */}
                 <div className="space-y-4">
                   <FormLabel>Items</FormLabel>
                   <Tabs defaultValue="packages" className="w-full">
@@ -458,6 +486,7 @@ const InvoiceTemplateSettings = () => {
                   )}
                 </div>
 
+                {/* Discounts Section */}
                 <div className="space-y-4">
                   <FormLabel>Discounts</FormLabel>
                   <Tabs defaultValue="templates" className="w-full">
@@ -533,6 +562,65 @@ const InvoiceTemplateSettings = () => {
                   )}
                 </div>
 
+                {/* Payment Schedules Section */}
+                <div className="space-y-4">
+                  <FormLabel>Payment Schedules</FormLabel>
+                  <Button type="button" onClick={handleAddPaymentSchedule} variant="outline" className="w-full">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Payment Schedule
+                  </Button>
+                  
+                  {selectedPaymentSchedules.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                      <h4 className="font-medium">Payment Schedules:</h4>
+                      {selectedPaymentSchedules.map((schedule) => (
+                        <div key={schedule.id} className="p-4 bg-muted rounded-md space-y-3">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div>
+                              <label className="text-sm font-medium text-gray-700 mb-1 block">Description</label>
+                              <Input
+                                placeholder="Payment description"
+                                value={schedule.description}
+                                onChange={(e) => handleUpdatePaymentSchedule(schedule.id, 'description', e.target.value)}
+                              />
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium text-gray-700 mb-1 block">Due Date</label>
+                              <Input
+                                type="date"
+                                value={schedule.dueDate}
+                                onChange={(e) => handleUpdatePaymentSchedule(schedule.id, 'dueDate', e.target.value)}
+                              />
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium text-gray-700 mb-1 block">Percentage (%)</label>
+                              <Input
+                                type="number"
+                                placeholder="e.g., 50"
+                                min="1"
+                                max="100"
+                                value={schedule.percentage}
+                                onChange={(e) => handleUpdatePaymentSchedule(schedule.id, 'percentage', Number(e.target.value))}
+                              />
+                            </div>
+                          </div>
+                          <div className="flex justify-end pt-2 border-t">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRemovePaymentSchedule(schedule.id)}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Contract Terms Section */}
                 <div className="space-y-4">
                   <FormLabel>Contract Terms</FormLabel>
                   <Tabs defaultValue="templates" className="w-full">
@@ -596,6 +684,7 @@ const InvoiceTemplateSettings = () => {
                         form.reset();
                         setSelectedItems([]);
                         setSelectedDiscounts([]);
+                        setSelectedPaymentSchedules([]);
                         setContractTerms('');
                         setSelectedContractTemplateId('');
                       }
@@ -648,6 +737,30 @@ const InvoiceTemplateSettings = () => {
                     {template.items.map((item, index) => (
                       <div key={index} className="text-sm">
                         {item.name || item.productName} - ${item.rate} x {item.quantity}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {template.discounts && template.discounts.length > 0 && (
+                <div className="mt-4">
+                  <h4 className="text-sm font-medium mb-2">Discounts:</h4>
+                  <div className="space-y-1">
+                    {template.discounts.map((discount, index) => (
+                      <div key={index} className="text-sm">
+                        {discount.name} - {discount.type === 'percentage' ? `${discount.amount}%` : `$${discount.amount}`}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {template.paymentSchedules && template.paymentSchedules.length > 0 && (
+                <div className="mt-4">
+                  <h4 className="text-sm font-medium mb-2">Payment Schedules:</h4>
+                  <div className="space-y-1">
+                    {template.paymentSchedules.map((schedule, index) => (
+                      <div key={index} className="text-sm">
+                        {schedule.description} - {schedule.percentage}% due {schedule.dueDate}
                       </div>
                     ))}
                   </div>

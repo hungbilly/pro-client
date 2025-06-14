@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -14,6 +13,9 @@ import { Plus, Save, Trash2, Edit } from 'lucide-react';
 import { useCompanyContext } from '@/context/CompanyContext';
 import { InvoiceTemplate, InvoiceItem } from '@/types';
 import PackageSelector from './PackageSelector';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import QuillEditor from './QuillEditor';
 
 // Schema for template form
 const templateFormSchema = z.object({
@@ -25,14 +27,23 @@ const templateFormSchema = z.object({
 
 type TemplateFormValues = z.infer<typeof templateFormSchema>;
 
+interface ContractTemplate {
+  id: string;
+  name: string;
+  content: string;
+}
+
 const InvoiceTemplateSettings = () => {
   const { user } = useAuth();
   const { selectedCompany } = useCompanyContext();
   const [templates, setTemplates] = useState<InvoiceTemplate[]>([]);
+  const [contractTemplates, setContractTemplates] = useState<ContractTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [selectedItems, setSelectedItems] = useState<InvoiceItem[]>([]);
+  const [contractTerms, setContractTerms] = useState('');
+  const [selectedContractTemplateId, setSelectedContractTemplateId] = useState<string>('');
 
   const form = useForm<TemplateFormValues>({
     resolver: zodResolver(templateFormSchema),
@@ -47,8 +58,26 @@ const InvoiceTemplateSettings = () => {
   useEffect(() => {
     if (selectedCompany) {
       loadTemplates();
+      loadContractTemplates();
     }
   }, [selectedCompany]);
+
+  const loadContractTemplates = async () => {
+    if (!selectedCompany) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('contract_templates')
+        .select('id, name, content')
+        .eq('company_id', selectedCompany.id);
+
+      if (error) throw error;
+      setContractTemplates(data || []);
+    } catch (error) {
+      console.error('Error loading contract templates:', error);
+      toast.error('Failed to load contract templates');
+    }
+  };
 
   const loadTemplates = async () => {
     if (!selectedCompany) return;
@@ -106,8 +135,47 @@ const InvoiceTemplateSettings = () => {
     setSelectedItems(prev => [...prev, ...items]);
   };
 
+  const handleAddCustomItem = () => {
+    const newItem: InvoiceItem = {
+      id: Date.now().toString(),
+      name: '',
+      description: '',
+      quantity: 1,
+      rate: 0,
+      amount: 0
+    };
+    setSelectedItems(prev => [...prev, newItem]);
+  };
+
+  const handleUpdateItem = (itemId: string, field: keyof InvoiceItem, value: any) => {
+    setSelectedItems(prev => prev.map(item => {
+      if (item.id === itemId) {
+        const updatedItem = { ...item, [field]: value };
+        // Recalculate amount when quantity or rate changes
+        if (field === 'quantity' || field === 'rate') {
+          updatedItem.amount = updatedItem.quantity * updatedItem.rate;
+        }
+        return updatedItem;
+      }
+      return item;
+    }));
+  };
+
   const handleRemoveItem = (itemId: string) => {
     setSelectedItems(prev => prev.filter(item => item.id !== itemId));
+  };
+
+  const handleContractTemplateSelect = (templateId: string) => {
+    if (templateId === 'manual') {
+      setSelectedContractTemplateId('');
+      return;
+    }
+    
+    const template = contractTemplates.find(t => t.id === templateId);
+    if (template) {
+      setContractTerms(template.content);
+      setSelectedContractTemplateId(templateId);
+    }
   };
 
   const handleEditTemplate = (template: InvoiceTemplate) => {
@@ -122,14 +190,18 @@ const InvoiceTemplateSettings = () => {
       notes: template.notes || '',
     });
     
-    // Set selected items
+    // Set selected items and contract terms
     setSelectedItems(template.items || []);
+    setContractTerms(template.contractTerms || '');
+    setSelectedContractTemplateId('');
   };
 
   const handleCancelEdit = () => {
     setEditingTemplateId(null);
     form.reset();
     setSelectedItems([]);
+    setContractTerms('');
+    setSelectedContractTemplateId('');
   };
 
   const handleDeleteTemplate = async (templateId: string) => {
@@ -167,7 +239,7 @@ const InvoiceTemplateSettings = () => {
       // Format the template data for storage
       const content = JSON.stringify({
         items: selectedItems,
-        contractTerms: values.contractTerms,
+        contractTerms: contractTerms,
         notes: values.notes
       });
       
@@ -200,6 +272,8 @@ const InvoiceTemplateSettings = () => {
       // Reset form and state
       form.reset();
       setSelectedItems([]);
+      setContractTerms('');
+      setSelectedContractTemplateId('');
       setIsCreating(false);
       setEditingTemplateId(null);
     } catch (error) {
@@ -265,49 +339,105 @@ const InvoiceTemplateSettings = () => {
                   )}
                 />
 
-                <div className="space-y-2">
+                <div className="space-y-4">
                   <FormLabel>Items</FormLabel>
-                  <PackageSelector onPackageSelect={handleItemsSelect} variant="direct-list" />
+                  <Tabs defaultValue="packages" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="packages">From Packages</TabsTrigger>
+                      <TabsTrigger value="manual">Manual Entry</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="packages" className="space-y-2">
+                      <PackageSelector onPackageSelect={handleItemsSelect} variant="direct-list" />
+                    </TabsContent>
+                    <TabsContent value="manual" className="space-y-2">
+                      <Button type="button" onClick={handleAddCustomItem} variant="outline" className="w-full">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Custom Item
+                      </Button>
+                    </TabsContent>
+                  </Tabs>
                   
                   {selectedItems.length > 0 && (
                     <div className="mt-4 space-y-2">
+                      <h4 className="font-medium">Selected Items:</h4>
                       {selectedItems.map((item) => (
-                        <div key={item.id} className="flex justify-between items-center p-2 bg-muted rounded-md">
-                          <div>
-                            <div className="font-medium">{item.name}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {item.quantity} x ${item.rate} = ${item.amount}
-                            </div>
+                        <div key={item.id} className="p-3 bg-muted rounded-md space-y-2">
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+                            <Input
+                              placeholder="Item name"
+                              value={item.name}
+                              onChange={(e) => handleUpdateItem(item.id, 'name', e.target.value)}
+                            />
+                            <Input
+                              placeholder="Description"
+                              value={item.description}
+                              onChange={(e) => handleUpdateItem(item.id, 'description', e.target.value)}
+                            />
+                            <Input
+                              type="number"
+                              placeholder="Quantity"
+                              value={item.quantity}
+                              onChange={(e) => handleUpdateItem(item.id, 'quantity', Number(e.target.value))}
+                            />
+                            <Input
+                              type="number"
+                              placeholder="Rate"
+                              value={item.rate}
+                              onChange={(e) => handleUpdateItem(item.id, 'rate', Number(e.target.value))}
+                            />
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleRemoveItem(item.id)}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-muted-foreground">
+                              Total: ${item.amount.toFixed(2)}
+                            </span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRemoveItem(item.id)}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
                         </div>
                       ))}
                     </div>
                   )}
                 </div>
 
-                <FormField
-                  control={form.control}
-                  name="contractTerms"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Contract Terms (Optional)</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Default contract terms for this template"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="space-y-4">
+                  <FormLabel>Contract Terms</FormLabel>
+                  <Tabs defaultValue="templates" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="templates">From Templates</TabsTrigger>
+                      <TabsTrigger value="manual">Manual Entry</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="templates" className="space-y-2">
+                      <Select value={selectedContractTemplateId} onValueChange={handleContractTemplateSelect}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a contract template" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="manual">Enter manually</SelectItem>
+                          {contractTemplates.map((template) => (
+                            <SelectItem key={template.id} value={template.id}>
+                              {template.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </TabsContent>
+                    <TabsContent value="manual" className="space-y-2">
+                      <p className="text-sm text-muted-foreground">Enter contract terms manually below</p>
+                    </TabsContent>
+                  </Tabs>
+                  <QuillEditor
+                    value={contractTerms}
+                    onChange={setContractTerms}
+                    placeholder="Enter contract terms here..."
+                    className="min-h-[200px]"
+                  />
+                </div>
 
                 <FormField
                   control={form.control}
@@ -337,6 +467,8 @@ const InvoiceTemplateSettings = () => {
                         setIsCreating(false);
                         form.reset();
                         setSelectedItems([]);
+                        setContractTerms('');
+                        setSelectedContractTemplateId('');
                       }
                     }}
                   >

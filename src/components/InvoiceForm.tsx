@@ -506,26 +506,22 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                       placeholder="Auto-generated"
                     />
                   </div>
-                  <div className="w-full min-w-0">
+                  <div className="w-auto min-w-0 max-w-xs">
                     <Label htmlFor="date">Invoice Date</Label>
-                    <div className="w-full min-w-0">
-                      <DatePicker
-                        mode="single"
-                        selected={invoice.date ? new Date(invoice.date) : undefined}
-                        onSelect={(date) => handleDateChange('date', date)}
-                      />
-                    </div>
-                  </div>
-                </div>
-                <div className="w-full min-w-0">
-                  <Label htmlFor="shootingDate">Job Date</Label>
-                  <div className="w-full min-w-0">
                     <DatePicker
                       mode="single"
-                      selected={invoice.shootingDate ? new Date(invoice.shootingDate) : undefined}
-                      onSelect={(date) => handleDateChange('shootingDate', date)}
+                      selected={invoice.date ? new Date(invoice.date) : undefined}
+                      onSelect={(date) => handleDateChange('date', date)}
                     />
                   </div>
+                </div>
+                <div className="w-auto min-w-0 max-w-xs">
+                  <Label htmlFor="shootingDate">Job Date</Label>
+                  <DatePicker
+                    mode="single"
+                    selected={invoice.shootingDate ? new Date(invoice.shootingDate) : undefined}
+                    onSelect={(date) => handleDateChange('shootingDate', date)}
+                  />
                 </div>
               </div>
 

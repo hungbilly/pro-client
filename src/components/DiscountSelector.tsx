@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -67,7 +66,7 @@ const DiscountSelector: React.FC<DiscountSelectorProps> = ({
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>

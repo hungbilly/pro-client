@@ -12,6 +12,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import UserProfileModal from './ui-custom/UserProfileModal';
 import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
 import { SubscriptionStatusBadge } from './SubscriptionStatus';
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface MenuItem {
   path: string;
@@ -134,15 +135,17 @@ const TopNavbar = () => {
                       <Menu className="h-5 w-5" />
                     </Button>
                   </DrawerTrigger>
-                  <DrawerContent className="h-[80vh] bg-slate-900 border-t border-slate-800">
+                  <DrawerContent className="h-[90vh] bg-slate-900 border-t border-slate-800">
                     <div className="px-4 py-6 flex flex-col h-full">
-                      <div className="flex justify-center mb-4">
+                      <div className="flex justify-center mb-4 flex-shrink-0">
                         <img src="/lovable-uploads/5f353837-9102-43b7-ab18-7950b403147a.png" alt="PRO CLIENT" className="h-14" />
                       </div>
-                      <div className="space-y-1 flex-1">
-                        {renderMenuItems()}
-                      </div>
-                      <div className="mt-auto pt-4 border-t border-slate-800">
+                      <ScrollArea className="flex-1">
+                        <div className="space-y-1 pr-4">
+                          {renderMenuItems()}
+                        </div>
+                      </ScrollArea>
+                      <div className="mt-4 pt-4 border-t border-slate-800 flex-shrink-0">
                         <div className="flex flex-col items-center justify-center space-y-4">
                           <Button variant="ghost" size="sm" className="text-white hover:bg-slate-800 flex flex-col items-center w-full" onClick={() => {
                         setIsDrawerOpen(false);

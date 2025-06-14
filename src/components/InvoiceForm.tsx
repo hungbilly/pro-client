@@ -471,7 +471,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
             <div className="grid gap-6 w-full p-4 sm:p-0">
               {/* Client Information Display (Read-only) */}
               {client && (
-                <div className="p-4 bg-muted rounded-lg w-full max-w-full overflow-x-auto">
+                <div className="p-4 bg-muted rounded-lg inline-block min-w-0 max-w-fit">
                   <Label className="text-base font-medium">Client</Label>
                   <div className="mt-2">
                     <p className="font-medium break-words">{client.name}</p>

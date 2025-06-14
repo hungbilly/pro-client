@@ -506,7 +506,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                       placeholder="Auto-generated"
                     />
                   </div>
-                  <div className="w-auto min-w-0 max-w-xs">
+                  <div className="w-auto min-w-0 max-w-64">
                     <Label htmlFor="date">Invoice Date</Label>
                     <DatePicker
                       mode="single"
@@ -515,7 +515,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                     />
                   </div>
                 </div>
-                <div className="w-auto min-w-0 max-w-xs">
+                <div className="w-auto min-w-0 max-w-64">
                   <Label htmlFor="shootingDate">Job Date</Label>
                   <DatePicker
                     mode="single"
@@ -527,7 +527,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
               {/* Package/Product Selector */}
               <Card>
-                <CardHeader>
+                <CardHeader className="items-center text-center">
                   <CardTitle className="flex items-center gap-2">
                     <Package className="h-5 w-5" />
                     Products & Services
@@ -585,7 +585,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
               {/* Discount Selector */}
               <Card>
-                <CardHeader>
+                <CardHeader className="items-center text-center">
                   <CardTitle className="flex items-center gap-2">
                     <Percent className="h-5 w-5" />
                     Discounts

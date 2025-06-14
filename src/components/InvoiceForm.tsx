@@ -370,8 +370,9 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
       errors.push('Invoice date is required');
     }
 
-    if (!invoice.dueDate) {
-      errors.push('Due date is required');
+    // Only require due date if there are no payment schedules
+    if (!invoice.dueDate && (!invoice.paymentSchedules || invoice.paymentSchedules.length === 0)) {
+      errors.push('Due date is required when no payment schedules are set');
     }
 
     if (!invoice.shootingDate) {
@@ -632,6 +633,18 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                     </div>
                   </div>
                 </div>
+                
+                {/* Optional Due Date - only show if no payment schedules */}
+                {(!invoice.paymentSchedules || invoice.paymentSchedules.length === 0) && (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="min-w-0">
+                      <Label htmlFor="dueDate" className="text-sm">Due Date (Optional when using payment schedules)</Label>
+                      <div className="mt-1">
+                        <DatePicker mode="single" selected={invoice.dueDate ? new Date(invoice.dueDate) : undefined} onSelect={date => handleDateChange('dueDate', date)} />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Package/Product Selector */}

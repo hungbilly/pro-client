@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -9,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Plus, Save, Trash2 } from 'lucide-react';
+import { Plus, Save, Trash2, Edit } from 'lucide-react';
 import { useCompanyContext } from '@/context/CompanyContext';
 import { InvoiceTemplate, InvoiceItem } from '@/types';
 import PackageSelector from './PackageSelector';
@@ -109,6 +110,28 @@ const InvoiceTemplateSettings = () => {
     setSelectedItems(prev => prev.filter(item => item.id !== itemId));
   };
 
+  const handleEditTemplate = (template: InvoiceTemplate) => {
+    setEditingTemplateId(template.id);
+    setIsCreating(false);
+    
+    // Populate form with template data
+    form.reset({
+      name: template.name,
+      description: template.description || '',
+      contractTerms: template.contractTerms || '',
+      notes: template.notes || '',
+    });
+    
+    // Set selected items
+    setSelectedItems(template.items || []);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingTemplateId(null);
+    form.reset();
+    setSelectedItems([]);
+  };
+
   const handleDeleteTemplate = async (templateId: string) => {
     if (!confirm("Are you sure you want to delete this template?")) {
       return;
@@ -175,11 +198,10 @@ const InvoiceTemplateSettings = () => {
       loadTemplates();
       
       // Reset form and state
-      if (!editingTemplateId) {
-        form.reset();
-        setSelectedItems([]);
-        setIsCreating(false);
-      }
+      form.reset();
+      setSelectedItems([]);
+      setIsCreating(false);
+      setEditingTemplateId(null);
     } catch (error) {
       console.error('Error saving template:', error);
       toast.error('Failed to save template');
@@ -192,19 +214,24 @@ const InvoiceTemplateSettings = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold">Invoice Templates</h2>
-        {!isCreating && (
+        {!isCreating && !editingTemplateId && (
           <Button onClick={() => setIsCreating(true)} size="sm">
             <Plus className="mr-2 h-4 w-4" /> Create Template
           </Button>
         )}
       </div>
 
-      {isCreating && (
+      {(isCreating || editingTemplateId) && (
         <Card>
           <CardHeader>
-            <CardTitle>Create Invoice Template</CardTitle>
+            <CardTitle>
+              {editingTemplateId ? 'Edit Invoice Template' : 'Create Invoice Template'}
+            </CardTitle>
             <CardDescription>
-              Create a reusable template with predefined items and terms
+              {editingTemplateId 
+                ? 'Update your existing template with new items and terms'
+                : 'Create a reusable template with predefined items and terms'
+              }
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -304,15 +331,19 @@ const InvoiceTemplateSettings = () => {
                     type="button"
                     variant="outline"
                     onClick={() => {
-                      setIsCreating(false);
-                      form.reset();
-                      setSelectedItems([]);
+                      if (editingTemplateId) {
+                        handleCancelEdit();
+                      } else {
+                        setIsCreating(false);
+                        form.reset();
+                        setSelectedItems([]);
+                      }
                     }}
                   >
                     Cancel
                   </Button>
                   <Button type="submit" disabled={isLoading}>
-                    {isLoading ? 'Saving...' : 'Save Template'}
+                    {isLoading ? 'Saving...' : (editingTemplateId ? 'Update Template' : 'Save Template')}
                   </Button>
                 </div>
               </form>
@@ -332,13 +363,22 @@ const InvoiceTemplateSettings = () => {
                     <p className="text-sm text-muted-foreground">{template.description}</p>
                   )}
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleDeleteTemplate(template.id)}
-                >
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleEditTemplate(template)}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleDeleteTemplate(template.id)}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
               </div>
               {template.items && template.items.length > 0 && (
                 <div className="mt-4">

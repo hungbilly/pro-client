@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -442,7 +443,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
   return (
     <PageTransition>
-      <div className="w-full max-w-6xl mx-auto">
+      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6">
         <Card className="w-full border-0 shadow-none sm:border sm:shadow-sm">
           <CardHeader className="space-y-4 p-4 sm:p-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -471,7 +472,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
             <div className="grid gap-6 w-full p-4 sm:p-0">
               {/* Client Information Display (Read-only) */}
               {client && (
-                <div className="p-4 bg-muted rounded-lg inline-block min-w-0 max-w-fit">
+                <div className="p-4 bg-muted rounded-lg w-full">
                   <Label className="text-base font-medium">Client</Label>
                   <div className="mt-2">
                     <p className="font-medium break-words">{client.name}</p>
@@ -482,7 +483,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
               {/* Job Information Display (Read-only) */}
               {job && (
-                <div className="p-4 bg-muted rounded-lg inline-block min-w-0 max-w-fit">
+                <div className="p-4 bg-muted rounded-lg w-full">
                   <Label className="text-base font-medium">Job</Label>
                   <div className="mt-2">
                     <p className="font-medium break-words">{job.title}</p>
@@ -494,8 +495,8 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
               )}
 
               <div className="grid grid-cols-1 gap-4 w-full">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
-                  <div className="w-auto min-w-0 max-w-40">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
+                  <div className="w-full">
                     <Label htmlFor="number">Invoice Number</Label>
                     <Input
                       type="text"
@@ -504,24 +505,29 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                       value={invoice.number}
                       onChange={handleInputChange}
                       placeholder="Auto-generated"
+                      className="w-full"
                     />
                   </div>
-                  <div className="w-auto min-w-0 max-w-64">
+                  <div className="w-full">
                     <Label htmlFor="date">Invoice Date</Label>
-                    <DatePicker
-                      mode="single"
-                      selected={invoice.date ? new Date(invoice.date) : undefined}
-                      onSelect={(date) => handleDateChange('date', date)}
-                    />
+                    <div className="w-full">
+                      <DatePicker
+                        mode="single"
+                        selected={invoice.date ? new Date(invoice.date) : undefined}
+                        onSelect={(date) => handleDateChange('date', date)}
+                      />
+                    </div>
                   </div>
-                </div>
-                <div className="w-auto min-w-0 max-w-64">
-                  <Label htmlFor="shootingDate">Job Date</Label>
-                  <DatePicker
-                    mode="single"
-                    selected={invoice.shootingDate ? new Date(invoice.shootingDate) : undefined}
-                    onSelect={(date) => handleDateChange('shootingDate', date)}
-                  />
+                  <div className="w-full">
+                    <Label htmlFor="shootingDate">Job Date</Label>
+                    <div className="w-full">
+                      <DatePicker
+                        mode="single"
+                        selected={invoice.shootingDate ? new Date(invoice.shootingDate) : undefined}
+                        onSelect={(date) => handleDateChange('shootingDate', date)}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -552,28 +558,30 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                       <Label className="text-sm font-medium">Invoice Items</Label>
                       <div className="mt-2 space-y-2">
                         {selectedProducts.map((item, index) => (
-                          <div key={item.id || index} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-muted rounded-lg gap-2 w-full min-w-0">
-                            <div className="flex-1 min-w-0">
-                              <div className="font-medium truncate">{item.name}</div>
-                              {item.description && (
-                                <div className="text-sm text-muted-foreground break-words" dangerouslySetInnerHTML={{ __html: item.description }} />
-                              )}
-                              <div className="text-sm text-muted-foreground">
-                                Qty: {item.quantity} × ${formatCurrency(item.rate)}
+                          <div key={item.id || index} className="flex flex-col p-3 bg-muted rounded-lg gap-2 w-full">
+                            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium break-words">{item.name}</div>
+                                {item.description && (
+                                  <div className="text-sm text-muted-foreground break-words mt-1" dangerouslySetInnerHTML={{ __html: item.description }} />
+                                )}
+                                <div className="text-sm text-muted-foreground mt-1">
+                                  Qty: {item.quantity} × ${formatCurrency(item.rate)}
+                                </div>
                               </div>
-                            </div>
-                            <div className="flex items-center gap-2 justify-between sm:justify-end flex-shrink-0">
-                              <div className="text-right">
-                                <div className="font-medium">${formatCurrency(item.amount)}</div>
+                              <div className="flex items-center gap-2 justify-between sm:justify-end flex-shrink-0">
+                                <div className="text-right">
+                                  <div className="font-medium">${formatCurrency(item.amount)}</div>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removeItem(item.id || '')}
+                                  className="text-red-500 hover:text-red-700 flex-shrink-0"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
                               </div>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => removeItem(item.id || '')}
-                                className="text-red-500 hover:text-red-700 flex-shrink-0"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
                             </div>
                           </div>
                         ))}
@@ -609,33 +617,35 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                     <div className="mt-4">
                       <Label className="text-sm font-medium">Applied Percentage Discount</Label>
                       <div className="mt-2">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg gap-2 w-full min-w-0">
-                          <div className="flex-1 min-w-0">
-                            <div className="font-medium text-red-700 truncate">{percentageDiscount.name}</div>
-                            <div className="text-sm text-red-600 break-words">{percentageDiscount.description}</div>
-                            <div className="text-sm text-red-600">
-                              {percentageDiscount.value}% off total invoice
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 justify-between sm:justify-end flex-shrink-0">
-                            <div className="text-right">
-                              <div className="font-medium text-red-700">
-                                -{percentageDiscount.value}%
+                        <div className="flex flex-col p-3 bg-red-50 border border-red-200 rounded-lg gap-2 w-full">
+                          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-red-700 break-words">{percentageDiscount.name}</div>
+                              <div className="text-sm text-red-600 break-words mt-1">{percentageDiscount.description}</div>
+                              <div className="text-sm text-red-600 mt-1">
+                                {percentageDiscount.value}% off total invoice
                               </div>
                             </div>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                setPercentageDiscount(null);
-                                const totalAmount = calculateTotalWithDiscount();
-                                setInvoice(prev => ({ ...prev, amount: totalAmount }));
-                                toast.success('Percentage discount removed');
-                              }}
-                              className="text-red-500 hover:text-red-700 flex-shrink-0"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <div className="flex items-center gap-2 justify-between sm:justify-end flex-shrink-0">
+                              <div className="text-right">
+                                <div className="font-medium text-red-700">
+                                  -{percentageDiscount.value}%
+                                </div>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setPercentageDiscount(null);
+                                  const totalAmount = calculateTotalWithDiscount();
+                                  setInvoice(prev => ({ ...prev, amount: totalAmount }));
+                                  toast.success('Percentage discount removed');
+                                }}
+                                className="text-red-500 hover:text-red-700 flex-shrink-0"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -648,25 +658,27 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                       <Label className="text-sm font-medium">Applied Fixed Discounts</Label>
                       <div className="mt-2 space-y-2">
                         {selectedDiscountItems.map((item, index) => (
-                          <div key={item.id || index} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg gap-2 w-full min-w-0">
-                            <div className="flex-1 min-w-0">
-                              <div className="font-medium text-red-700 truncate">{item.name}</div>
-                              {item.description && (
-                                <div className="text-sm text-red-600 break-words" dangerouslySetInnerHTML={{ __html: item.description }} />
-                              )}
-                            </div>
-                            <div className="flex items-center gap-2 justify-between sm:justify-end flex-shrink-0">
-                              <div className="text-right">
-                                <div className="font-medium text-red-700">-${formatCurrency(Math.abs(ensureValidNumber(item.amount)))}</div>
+                          <div key={item.id || index} className="flex flex-col p-3 bg-red-50 border border-red-200 rounded-lg gap-2 w-full">
+                            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium text-red-700 break-words">{item.name}</div>
+                                {item.description && (
+                                  <div className="text-sm text-red-600 break-words mt-1" dangerouslySetInnerHTML={{ __html: item.description }} />
+                                )}
                               </div>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => removeItem(item.id || '')}
-                                className="text-red-500 hover:text-red-700 flex-shrink-0"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              <div className="flex items-center gap-2 justify-between sm:justify-end flex-shrink-0">
+                                <div className="text-right">
+                                  <div className="font-medium text-red-700">-${formatCurrency(Math.abs(ensureValidNumber(item.amount)))}</div>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removeItem(item.id || '')}
+                                  className="text-red-500 hover:text-red-700 flex-shrink-0"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </div>
                           </div>
                         ))}

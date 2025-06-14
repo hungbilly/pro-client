@@ -3,14 +3,20 @@ import React, { useEffect, useState } from 'react';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { DollarSign, Percent } from 'lucide-react';
-import { InvoiceItem } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { DiscountTemplate, mapDiscountTemplateFromRow } from '@/components/discount/types';
 import { useCompanyContext } from '@/context/CompanyContext';
 
+interface DiscountItem {
+  id: string;
+  name: string;
+  amount: number;
+  type: 'fixed' | 'percentage';
+}
+
 interface DiscountSelectorProps {
-  onDiscountSelect: (items: InvoiceItem[]) => void;
-  variant?: 'dialog' | 'page';
+  onDiscountSelect: (items: DiscountItem[]) => void;
+  variant?: 'dialog' | 'page' | 'direct-list';
   subtotal?: number;
 }
 
@@ -50,18 +56,11 @@ const DiscountSelector: React.FC<DiscountSelectorProps> = ({
   };
 
   const handleSelect = (discount: DiscountTemplate) => {
-    const discountAmount = calculateDiscountAmount(
-      Number(discount.amount),
-      discount.type
-    );
-
-    const discountItem: InvoiceItem = {
+    const discountItem: DiscountItem = {
       id: `template-discount-${discount.id}`,
       name: discount.name,
-      description: discount.description || 'Template discount',
-      quantity: 1,
-      rate: -discountAmount,
-      amount: -discountAmount,
+      amount: Number(discount.amount),
+      type: discount.type,
     };
 
     onDiscountSelect([discountItem]);

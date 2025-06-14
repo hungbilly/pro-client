@@ -116,6 +116,7 @@ const InvoiceTemplateSettings = () => {
           name: template.name,
           description: template.description || undefined,
           items: parsedContent.items || [],
+          discounts: parsedContent.discounts || [],
           contractTerms: parsedContent.contractTerms || undefined,
           notes: parsedContent.notes || undefined,
           companyId: template.company_id,

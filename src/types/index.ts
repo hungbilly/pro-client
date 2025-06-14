@@ -1,3 +1,4 @@
+
 export interface Client {
   id: string;
   name: string;
@@ -65,6 +66,7 @@ export interface InvoiceTemplate {
   name: string;
   description?: string;
   items: InvoiceItem[];
+  discounts?: DiscountItem[];
   contractTerms?: string;
   notes?: string;
   companyId?: string;
@@ -139,6 +141,13 @@ export interface InvoiceItem {
   amount: number;
   discount?: string;
   tax?: string;
+}
+
+export interface DiscountItem {
+  id: string;
+  name: string;
+  amount: number;
+  type: 'fixed' | 'percentage';
 }
 
 export interface DiscountTemplate {

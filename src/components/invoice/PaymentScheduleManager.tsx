@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -216,11 +217,13 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
         {paymentSchedules.length > 0 && (
           <div className="space-y-3">
             {paymentSchedules.map((schedule) => (
-              <div key={schedule.id} className="flex items-center gap-4 p-3 border rounded-lg">
-                <div className="w-28 flex-shrink-0">
+              <div key={schedule.id} className="grid grid-cols-1 lg:grid-cols-6 gap-3 p-3 border rounded-lg">
+                <div className="lg:col-span-1">
+                  <Label className="text-xs text-muted-foreground lg:hidden">Description</Label>
                   <span className="font-medium text-sm">{schedule.description}</span>
                 </div>
-                <div className="w-40 flex-shrink-0">
+                <div className="lg:col-span-1">
+                  <Label className="text-xs text-muted-foreground lg:hidden">Due Date</Label>
                   <DatePicker
                     mode="single"
                     selected={schedule.dueDate ? new Date(schedule.dueDate) : undefined}
@@ -231,7 +234,8 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
                     }}
                   />
                 </div>
-                <div className="w-24 flex-shrink-0">
+                <div className="lg:col-span-1">
+                  <Label className="text-xs text-muted-foreground lg:hidden">Percentage</Label>
                   <div className="relative">
                     <Input
                       type="number"
@@ -246,7 +250,8 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
                     <Percent className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground" />
                   </div>
                 </div>
-                <div className="w-32 flex-shrink-0">
+                <div className="lg:col-span-1">
+                  <Label className="text-xs text-muted-foreground lg:hidden">Amount</Label>
                   <div className="relative">
                     <Input
                       type="number"
@@ -260,7 +265,8 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
                     <DollarSign className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground" />
                   </div>
                 </div>
-                <div className="w-32 flex-shrink-0">
+                <div className="lg:col-span-1">
+                  <Label className="text-xs text-muted-foreground lg:hidden">Status</Label>
                   <Select
                     value={schedule.status}
                     onValueChange={(value) => updatePaymentSchedule(schedule.id, 'status', value)}
@@ -275,14 +281,16 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
                     </SelectContent>
                   </Select>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => removePaymentSchedule(schedule.id)}
-                  className="text-red-500 hover:text-red-700 flex-shrink-0"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <div className="lg:col-span-1 flex justify-center lg:justify-end">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removePaymentSchedule(schedule.id)}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             ))}
             
@@ -307,40 +315,48 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
         {/* Add New Payment Schedule */}
         <div className="space-y-3 p-4 border rounded-lg bg-muted/50">
           <Label className="text-sm font-medium">Add Payment Schedule</Label>
-          <div className="flex items-center gap-4">
-            <div className="w-40 flex-shrink-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+            <div className="md:col-span-1 lg:col-span-1">
+              <Label className="text-xs text-muted-foreground">Due Date</Label>
               <DatePicker
                 mode="single"
                 selected={newSchedule.dueDate ? new Date(newSchedule.dueDate) : undefined}
                 onSelect={(date) => handleDateChange(date, 'dueDate')}
               />
             </div>
-            <div className="w-24 flex-shrink-0 relative">
-              <Input
-                type="number"
-                value={newSchedule.percentage || ''}
-                onChange={(e) => handleNewSchedulePercentageChange(e.target.value)}
-                placeholder="Percentage"
-                min="0"
-                max="100"
-                step="0.01"
-                className="pr-6"
-              />
-              <Percent className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <div className="md:col-span-1 lg:col-span-1">
+              <Label className="text-xs text-muted-foreground">Percentage</Label>
+              <div className="relative">
+                <Input
+                  type="number"
+                  value={newSchedule.percentage || ''}
+                  onChange={(e) => handleNewSchedulePercentageChange(e.target.value)}
+                  placeholder="Percentage"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  className="pr-6"
+                />
+                <Percent className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              </div>
             </div>
-            <div className="w-32 flex-shrink-0 relative">
-              <Input
-                type="number"
-                value={newSchedule.amount || ''}
-                onChange={(e) => handleNewScheduleAmountChange(e.target.value)}
-                placeholder="Amount"
-                min="0"
-                step="0.01"
-                className="pr-6"
-              />
-              <DollarSign className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <div className="md:col-span-1 lg:col-span-1">
+              <Label className="text-xs text-muted-foreground">Amount</Label>
+              <div className="relative">
+                <Input
+                  type="number"
+                  value={newSchedule.amount || ''}
+                  onChange={(e) => handleNewScheduleAmountChange(e.target.value)}
+                  placeholder="Amount"
+                  min="0"
+                  step="0.01"
+                  className="pr-6"
+                />
+                <DollarSign className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              </div>
             </div>
-            <div className="w-32 flex-shrink-0">
+            <div className="md:col-span-1 lg:col-span-1">
+              <Label className="text-xs text-muted-foreground">Status</Label>
               <Select
                 value={newSchedule.status || 'unpaid'}
                 onValueChange={(value) => setNewSchedule(prev => ({ ...prev, status: value as PaymentStatus }))}
@@ -355,10 +371,12 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={addPaymentSchedule} className="flex-shrink-0">
-              <Plus className="h-4 w-4 mr-2" />
-              Add
-            </Button>
+            <div className="md:col-span-2 lg:col-span-1 flex items-end">
+              <Button onClick={addPaymentSchedule} className="w-full">
+                <Plus className="h-4 w-4 mr-2" />
+                Add
+              </Button>
+            </div>
           </div>
         </div>
       </CardContent>

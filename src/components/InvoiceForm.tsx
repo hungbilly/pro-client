@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -468,7 +467,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
               {propInvoiceId ? 'Edit the invoice details.' : 'Create a new invoice.'}
             </CardDescription>
           </CardHeader>
-          <CardContent className="p-4 sm:p-6">
+          <CardContent className="p-0 sm:p-6">
             <div className="grid gap-6 w-full">
               {/* Client Information Display (Read-only) */}
               {client && (
@@ -495,7 +494,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
               )}
 
               <div className="grid grid-cols-1 gap-4 w-full">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
                   <div className="w-full min-w-0">
                     <Label htmlFor="number">Invoice Number</Label>
                     <Input
@@ -505,7 +504,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                       value={invoice.number}
                       onChange={handleInputChange}
                       placeholder="Auto-generated"
-                      className="w-full min-w-0"
+                      className="w-full"
                     />
                   </div>
                   <div className="w-full min-w-0">
@@ -722,7 +721,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
               <div className="w-full">
                 <Label htmlFor="notes">Notes</Label>
-                <RichTextEditor value={invoice.notes} onChange={handleNotesChange} id="notes" className="w-full min-w-0"/>
+                <RichTextEditor value={invoice.notes} onChange={handleNotesChange} id="notes" className="w-full"/>
               </div>
 
               {hasContractTemplates && (
@@ -760,7 +759,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                       value={invoice.contractTerms} 
                       onChange={handleContractTermsChange}
                       id="contract-terms-editor"
-                      className="w-full min-w-0"
+                      className="w-full"
                     />
                   </div>
                 </div>

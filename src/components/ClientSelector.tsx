@@ -10,6 +10,7 @@ import { getClients } from '@/lib/storage';
 import { PlusCircle, UserSearch } from 'lucide-react';
 import AddClientModal from '@/components/ui-custom/AddClientModal';
 import { useCompany } from './CompanySelector';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ClientSelectorProps {
   selectedClientId?: string;
@@ -28,6 +29,7 @@ const ClientSelector: React.FC<ClientSelectorProps> = ({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [clientModalOpen, setClientModalOpen] = useState(false);
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   
   // Get the selected company from context
   const { selectedCompanyId } = useCompany();
@@ -82,12 +84,12 @@ const ClientSelector: React.FC<ClientSelectorProps> = ({
   return (
     <div className={className}>
       <Label htmlFor="client" className="text-base font-medium">Primary Client Contact</Label>
-      <div className="flex items-center gap-3 mt-2">
+      <div className={`mt-2 ${isMobile ? 'flex flex-col gap-3' : 'flex items-center gap-3'}`}>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button
               variant="outline"
-              className="flex-1 justify-start text-left font-normal h-10 px-3 relative"
+              className={`${isMobile ? 'w-full' : 'flex-1'} justify-start text-left font-normal h-10 px-3 relative`}
             >
               {selectedClient ? (
                 `${selectedClient.name} (${selectedClient.email})`
@@ -125,10 +127,10 @@ const ClientSelector: React.FC<ClientSelectorProps> = ({
             </div>
           </DialogContent>
         </Dialog>
-        <span className="text-gray-500">OR</span>
+        {!isMobile && <span className="text-gray-500">OR</span>}
         <Button 
           variant="secondary" 
-          className="flex items-center gap-1" 
+          className={`${isMobile ? 'w-full' : ''} flex items-center gap-1`}
           onClick={handleCreateNewClient}
         >
           <PlusCircle className="h-4 w-4" />

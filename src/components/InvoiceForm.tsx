@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { CalendarDays, Plus, Trash2, FileText, ArrowLeft, Package, Percent, Save, Eye, Send, Copy, Share2, Download } from 'lucide-react';
+import { CalendarDays, Plus, Trash2, FileText, ArrowLeft, Package, Percent, Save, Eye, Send, Copy, Share2, Download, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import { Client, Invoice, InvoiceItem, Job, PaymentSchedule, ContractStatus, InvoiceStatus, PaymentStatus } from '@/types';
 import { getClient, getClients, saveInvoice, updateInvoice, getJob, getClientJobs } from '@/lib/storage';
@@ -30,6 +30,8 @@ import { generateInvoiceNumber } from '@/utils/invoiceNumberGenerator';
 import AddProductPackageDialog from '@/components/AddProductPackageDialog';
 import AddDiscountDialog from '@/components/AddDiscountDialog';
 import { supabase } from '@/integrations/supabase/client';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+
 interface InvoiceFormProps {
   propInvoice?: Invoice;
   propClientId?: string;
@@ -38,12 +40,14 @@ interface InvoiceFormProps {
   isEditView?: boolean;
   hasContractTemplates?: boolean;
 }
+
 interface ContractTemplate {
   id: string;
   name: string;
   content: string;
   description?: string;
 }
+
 const InvoiceForm: React.FC<InvoiceFormProps> = ({
   propInvoice,
   propClientId,
@@ -59,6 +63,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   const {
     user
   } = useAuth();
+
   const [invoice, setInvoice] = useState<Invoice>({
     id: '',
     clientId: '',
@@ -347,7 +352,77 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
       return productTotal + fixedDiscounts;
     }
   };
+
+  // Add validation state
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [showValidationAlert, setShowValidationAlert] = useState(false);
+
+  // Add validation function
+  const validateInvoice = (): string[] => {
+    const errors: string[] = [];
+
+    // Check required fields
+    if (!invoice.number?.trim()) {
+      errors.push('Invoice number is required');
+    }
+
+    if (!invoice.date) {
+      errors.push('Invoice date is required');
+    }
+
+    if (!invoice.dueDate) {
+      errors.push('Due date is required');
+    }
+
+    if (!invoice.shootingDate) {
+      errors.push('Job date is required');
+    }
+
+    // Check if client is selected (either through job or directly)
+    if (!client) {
+      errors.push('Client must be selected');
+    }
+
+    // Check if there are any items
+    if (!invoice.items || invoice.items.length === 0) {
+      errors.push('At least one item must be added to the invoice');
+    }
+
+    // Check payment schedules
+    if (!invoice.paymentSchedules || invoice.paymentSchedules.length === 0) {
+      errors.push('At least one payment schedule is required');
+    } else {
+      // Check if payment schedules total to 100%
+      const totalPercentage = invoice.paymentSchedules.reduce((sum, schedule) => sum + (schedule.percentage || 0), 0);
+      if (Math.abs(totalPercentage - 100) > 0.01) {
+        errors.push(`Payment schedules must total 100% (currently ${totalPercentage.toFixed(2)}%)`);
+      }
+
+      // Check if all payment schedules have due dates
+      const missingDates = invoice.paymentSchedules.some(schedule => !schedule.dueDate);
+      if (missingDates) {
+        errors.push('All payment schedules must have due dates');
+      }
+    }
+
+    return errors;
+  };
+
   const handleSaveInvoice = async () => {
+    // Validate the invoice before saving
+    const errors = validateInvoice();
+    
+    if (errors.length > 0) {
+      setValidationErrors(errors);
+      setShowValidationAlert(true);
+      toast.error(`Please fix ${errors.length} validation error${errors.length > 1 ? 's' : ''} before saving`);
+      return;
+    }
+
+    // Clear any previous validation errors
+    setValidationErrors([]);
+    setShowValidationAlert(false);
+
     setIsSaving(true);
     try {
       // Ensure amount is valid before saving
@@ -384,6 +459,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
       setIsSaving(false);
     }
   };
+
   const handleNotesChange = (value: string) => {
     setInvoice(prev => ({
       ...prev,
@@ -477,6 +553,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
       }));
     }
   }, [subtotal, percentageDiscount, selectedDiscountItems.length]);
+
   return <PageTransition>
       <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <Card className="w-full border-0 shadow-none sm:border sm:shadow-sm">
@@ -501,6 +578,23 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
           </CardHeader>
           <CardContent className="py-0 sm:px-6 px-0">
             <div className="space-y-6">
+              {/* Validation Alert */}
+              {showValidationAlert && validationErrors.length > 0 && (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    <div className="space-y-1">
+                      <div className="font-medium">Please fix the following issues:</div>
+                      <ul className="list-disc list-inside space-y-1">
+                        {validationErrors.map((error, index) => (
+                          <li key={index} className="text-sm">{error}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              )}
+
               {/* Client Information Display (Read-only) */}
               {client && <div className="rounded-lg bg-muted p-4">
                   <Label className="text-base font-medium">Client</Label>
@@ -743,4 +837,5 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
       </div>
     </PageTransition>;
 };
+
 export default InvoiceForm;

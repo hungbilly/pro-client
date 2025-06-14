@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from 'https://esm.sh/stripe@14.21.0';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
@@ -78,11 +79,6 @@ serve(async (req) => {
 
     console.log(`Checking subscription for user: ${userId} (${email})`);
 
-    // Initialize Stripe
-    const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
-      apiVersion: '2023-10-16',
-    });
-
     // Check for subscription in our database first
     const { data: userSubscription, error: subError } = await supabase
       .from('user_subscriptions')
@@ -94,9 +90,10 @@ serve(async (req) => {
 
     console.log('Local subscription data:', userSubscription);
 
-    // If an admin override is present, always honor DB status, skip all expiration and Stripe checks
-    if (!subError && userSubscription && userSubscription.admin_override) {
-      console.log(`User ${userId} has an admin override for subscription status`);
+    // CRITICAL: If an admin override is present, ALWAYS honor DB status, skip ALL expiration and Stripe checks
+    if (!subError && userSubscription && userSubscription.admin_override === true) {
+      console.log(`ADMIN OVERRIDE DETECTED for user ${userId} - bypassing all checks`);
+      console.log('Admin override subscription data:', userSubscription);
 
       return new Response(
         JSON.stringify({
@@ -108,7 +105,7 @@ serve(async (req) => {
             cancel_at: userSubscription.cancel_at || null,
           },
           trialDaysLeft: userSubscription.trial_end_date ?
-            Math.ceil((new Date(userSubscription.trial_end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0,
+            Math.max(0, Math.ceil((new Date(userSubscription.trial_end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))) : 0,
           isInTrialPeriod: userSubscription.status === 'trialing',
           trialEndDate: userSubscription.trial_end_date,
           adminOverride: true,
@@ -121,36 +118,9 @@ serve(async (req) => {
       );
     }
 
-    // If we have a valid subscription in our database
-    if (!subError && userSubscription) {
-      console.log(`User ${userId} has subscription record in database with status: ${userSubscription.status}`);
-      
-      // Check if this is an admin override
-      if (userSubscription.admin_override) {
-        console.log(`User ${userId} has an admin override for subscription status`);
-        
-        // Return the status based on the admin override
-        return new Response(
-          JSON.stringify({
-            hasAccess: userSubscription.status === 'active' || userSubscription.status === 'trialing',
-            subscription: {
-              id: userSubscription.stripe_subscription_id,
-              status: userSubscription.status,
-              currentPeriodEnd: userSubscription.current_period_end,
-            },
-            trialDaysLeft: userSubscription.trial_end_date ? 
-              Math.ceil((new Date(userSubscription.trial_end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0,
-            isInTrialPeriod: userSubscription.status === 'trialing',
-            trialEndDate: userSubscription.trial_end_date,
-            adminOverride: true,
-            local: true,
-          }),
-          { 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 200,
-          }
-        );
-      }
+    // Only run expiration logic if NO admin override
+    if (!subError && userSubscription && !userSubscription.admin_override) {
+      console.log(`User ${userId} has subscription record in database with status: ${userSubscription.status} (no admin override)`);
       
       // Check if active subscription has expired
       if (userSubscription.status === 'active' && userSubscription.current_period_end) {
@@ -296,6 +266,11 @@ serve(async (req) => {
         );
       }
     }
+
+    // Initialize Stripe
+    const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
+      apiVersion: '2023-10-16',
+    });
 
     // Get trial days setting from admin_settings
     const { data: settingsData, error: settingsError } = await supabase

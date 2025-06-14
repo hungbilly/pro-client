@@ -71,15 +71,6 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     loadConfig();
   }, []);
 
-  // Helper function to check if a subscription has expired
-  const isSubscriptionExpired = (subscription: Subscription) => {
-    if (!subscription || !subscription.currentPeriodEnd) return false;
-    
-    const now = new Date();
-    const periodEnd = new Date(subscription.currentPeriodEnd);
-    return now > periodEnd;
-  };
-
   // Helper function to update state from subscription data
   const updateSubscriptionState = useCallback((data: {
     hasAccess: boolean;
@@ -89,8 +80,11 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     trialEndDate: string | null;
     adminOverride?: boolean;
   }) => {
-    // If adminOverride, always trust the DB status & skip expiration logic
+    console.log('Updating subscription state with data:', data);
+    
+    // If adminOverride is true, always trust the database status and skip all expiration logic
     if (data.subscription && (data as any).adminOverride === true) {
+      console.log('Admin override detected - trusting database status without expiration checks');
       setHasAccess(data.hasAccess);
       setSubscription(data.subscription);
       setIsInTrialPeriod(data.isInTrialPeriod);
@@ -109,24 +103,13 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       return;
     }
 
-    // Additional validation: check if active subscription has expired
-    if (data.subscription && data.subscription.status === 'active' && isSubscriptionExpired(data.subscription)) {
-      console.log('Active subscription has expired, denying access');
-      setHasAccess(false);
-      setSubscription({
-        ...data.subscription,
-        status: 'inactive'
-      });
-      setIsInTrialPeriod(false);
-      setTrialDaysLeft(0);
-      setTrialEndDate(null);
-    } else {
-      setHasAccess(data.hasAccess);
-      setSubscription(data.subscription);
-      setIsInTrialPeriod(data.isInTrialPeriod);
-      setTrialDaysLeft(data.trialDaysLeft);
-      setTrialEndDate(data.trialEndDate);
-    }
+    // Only run expiration checks if there's NO admin override
+    console.log('No admin override - running normal expiration checks');
+    setHasAccess(data.hasAccess);
+    setSubscription(data.subscription);
+    setIsInTrialPeriod(data.isInTrialPeriod);
+    setTrialDaysLeft(data.trialDaysLeft);
+    setTrialEndDate(data.trialEndDate);
     
     setIsLoading(false);
     setHasCheckedSubscription(true);
@@ -142,15 +125,6 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     console.log('Subscription state updated and cached:', data);
   }, []);
-
-  // Helper function to check if a trial has expired
-  const checkTrialExpiration = (trialEndDateString: string | null) => {
-    if (!trialEndDateString) return false;
-    
-    const now = new Date();
-    const trialEnd = new Date(trialEndDateString);
-    return now > trialEnd;
-  };
 
   const checkSubscription = useCallback(async () => {
     // Check if we should skip this check
@@ -220,7 +194,37 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         console.log('Found subscription in database:', subscriptionData);
       }
       
-      if (subscriptionData) {
+      // CRITICAL: Check for admin override FIRST before any expiration logic
+      if (subscriptionData && subscriptionData.admin_override === true) {
+        console.log('ADMIN OVERRIDE DETECTED - bypassing all expiration checks');
+        console.log('Admin override subscription data:', subscriptionData);
+        
+        const subscription = {
+          id: subscriptionData.stripe_subscription_id,
+          status: subscriptionData.status as SubscriptionStatus,
+          currentPeriodEnd: subscriptionData.current_period_end,
+          cancel_at: subscriptionData.cancel_at,
+        };
+        
+        const data = {
+          hasAccess: subscriptionData.status === 'active' || subscriptionData.status === 'trialing',
+          subscription,
+          isInTrialPeriod: subscriptionData.status === 'trialing',
+          trialDaysLeft: subscriptionData.trial_end_date ? 
+            Math.max(0, Math.ceil((new Date(subscriptionData.trial_end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))) : 0,
+          trialEndDate: subscriptionData.trial_end_date,
+          adminOverride: true
+        };
+        
+        updateSubscriptionState(data);
+        console.log('Admin override applied, final state:', data);
+        return;
+      }
+      
+      // Only run expiration logic if NO admin override
+      if (subscriptionData && !subscriptionData.admin_override) {
+        console.log('No admin override - checking expiration logic');
+        
         // Check if active subscription has expired
         if (subscriptionData.status === 'active' && subscriptionData.current_period_end) {
           const now = new Date();
@@ -265,7 +269,9 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
         // Secondary check for trial expiration - client-side validation
         if (subscriptionData.status === 'trialing' && subscriptionData.trial_end_date) {
-          const isTrialExpired = checkTrialExpiration(subscriptionData.trial_end_date);
+          const now = new Date();
+          const trialEnd = new Date(subscriptionData.trial_end_date);
+          const isTrialExpired = now > trialEnd;
           
           if (isTrialExpired) {
             console.log('Trial has expired based on client-side check, updating status...');
@@ -384,6 +390,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
           isInTrialPeriod: data.subscription && data.subscription.status === 'active' ? false : data.isInTrialPeriod,
           trialDaysLeft: data.subscription && data.subscription.status === 'active' ? 0 : data.trialDaysLeft,
           trialEndDate: data.subscription && data.subscription.status === 'active' ? null : data.trialEndDate,
+          adminOverride: data.adminOverride || false
         };
         
         updateSubscriptionState(subscriptionData);

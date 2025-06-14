@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from 'https://esm.sh/stripe@14.21.0';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
@@ -125,7 +126,47 @@ serve(async (req) => {
         );
       }
       
-      // If the status is active, user has access regardless of trial status
+      // Check if active subscription has expired
+      if (userSubscription.status === 'active' && userSubscription.current_period_end) {
+        const now = new Date();
+        const periodEnd = new Date(userSubscription.current_period_end);
+        const isExpired = now > periodEnd;
+
+        if (isExpired) {
+          console.log(`User ${userId} active subscription has expired on ${periodEnd.toISOString()}, setting status to inactive`);
+          
+          // Update the status in the database to 'inactive'
+          const { error: updateError } = await supabase
+            .from('user_subscriptions')
+            .update({ status: 'inactive' })
+            .eq('id', userSubscription.id);
+            
+          if (updateError) {
+            console.error('Error updating expired active subscription to inactive:', updateError);
+          }
+          
+          return new Response(
+            JSON.stringify({
+              hasAccess: false,
+              subscription: {
+                id: userSubscription.stripe_subscription_id,
+                status: 'inactive',
+                currentPeriodEnd: userSubscription.current_period_end,
+              },
+              trialDaysLeft: 0,
+              isInTrialPeriod: false,
+              trialEndDate: null,
+              local: true,
+            }),
+            { 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 200,
+            }
+          );
+        }
+      }
+      
+      // If the status is active and not expired, user has access
       if (userSubscription.status === 'active') {
         console.log(`User ${userId} has active subscription in database`);
         
@@ -355,6 +396,45 @@ serve(async (req) => {
       status: activeSubscription.status,
       current_period_end: activeSubscription.current_period_end,
     });
+
+    // Additional validation: Check if the Stripe subscription has actually expired
+    const stripeSubscriptionEndDate = new Date(activeSubscription.current_period_end * 1000);
+    const isStripeSubscriptionExpired = now > stripeSubscriptionEndDate;
+    
+    if (isStripeSubscriptionExpired) {
+      console.log(`Stripe subscription ${activeSubscription.id} has expired on ${stripeSubscriptionEndDate.toISOString()}`);
+      
+      // Update our database to reflect the expired status
+      if (!subError && userSubscription) {
+        await supabase
+          .from('user_subscriptions')
+          .update({
+            status: 'inactive',
+          })
+          .eq('id', userSubscription.id);
+      }
+      
+      return new Response(
+        JSON.stringify({ 
+          hasAccess: false,
+          subscription: {
+            id: activeSubscription.id,
+            status: 'inactive',
+            currentPeriodEnd: new Date(activeSubscription.current_period_end * 1000).toISOString(),
+          },
+          trialDaysLeft: 0,
+          isInTrialPeriod: false,
+          stripeData: {
+            customerId,
+            subscriptionId: activeSubscription.id,
+          },
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      );
+    }
     
     // Found active subscription in Stripe but not in our DB (or status mismatch) - sync it
     if (subError || !userSubscription || userSubscription.status !== activeSubscription.status) {

@@ -72,6 +72,15 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     loadConfig();
   }, []);
 
+  // Helper function to check if a subscription has expired
+  const isSubscriptionExpired = (subscription: Subscription) => {
+    if (!subscription || !subscription.currentPeriodEnd) return false;
+    
+    const now = new Date();
+    const periodEnd = new Date(subscription.currentPeriodEnd);
+    return now > periodEnd;
+  };
+
   // Helper function to update state from subscription data
   const updateSubscriptionState = useCallback((data: {
     hasAccess: boolean;
@@ -80,11 +89,25 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     trialDaysLeft: number;
     trialEndDate: string | null;
   }) => {
-    setHasAccess(data.hasAccess);
-    setSubscription(data.subscription);
-    setIsInTrialPeriod(data.isInTrialPeriod);
-    setTrialDaysLeft(data.trialDaysLeft);
-    setTrialEndDate(data.trialEndDate);
+    // Additional validation: check if active subscription has expired
+    if (data.subscription && data.subscription.status === 'active' && isSubscriptionExpired(data.subscription)) {
+      console.log('Active subscription has expired, denying access');
+      setHasAccess(false);
+      setSubscription({
+        ...data.subscription,
+        status: 'inactive'
+      });
+      setIsInTrialPeriod(false);
+      setTrialDaysLeft(0);
+      setTrialEndDate(null);
+    } else {
+      setHasAccess(data.hasAccess);
+      setSubscription(data.subscription);
+      setIsInTrialPeriod(data.isInTrialPeriod);
+      setTrialDaysLeft(data.trialDaysLeft);
+      setTrialEndDate(data.trialEndDate);
+    }
+    
     setIsLoading(false);
     setHasCheckedSubscription(true);
 
@@ -178,6 +201,48 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       }
       
       if (subscriptionData) {
+        // Check if active subscription has expired
+        if (subscriptionData.status === 'active' && subscriptionData.current_period_end) {
+          const now = new Date();
+          const periodEnd = new Date(subscriptionData.current_period_end);
+          const isExpired = now > periodEnd;
+          
+          if (isExpired) {
+            console.log('Active subscription has expired, updating to inactive...');
+            
+            // Update the subscription status to inactive
+            try {
+              const { error: updateError } = await supabase
+                .from('user_subscriptions')
+                .update({ status: 'inactive' })
+                .eq('id', subscriptionData.id);
+              
+              if (updateError) {
+                console.error('Error updating expired subscription locally:', updateError);
+              } else {
+                console.log('Successfully updated expired subscription to inactive');
+                
+                const data = {
+                  hasAccess: false,
+                  subscription: {
+                    id: subscriptionData.stripe_subscription_id,
+                    status: 'inactive' as SubscriptionStatus,
+                    currentPeriodEnd: subscriptionData.current_period_end,
+                    cancel_at: subscriptionData.cancel_at,
+                  },
+                  isInTrialPeriod: false,
+                  trialDaysLeft: 0,
+                  trialEndDate: null,
+                };
+                updateSubscriptionState(data);
+                return;
+              }
+            } catch (error) {
+              console.error('Error in local active subscription expiration update:', error);
+            }
+          }
+        }
+
         // Secondary check for trial expiration - client-side validation
         if (subscriptionData.status === 'trialing' && subscriptionData.trial_end_date) {
           const isTrialExpired = checkTrialExpiration(subscriptionData.trial_end_date);

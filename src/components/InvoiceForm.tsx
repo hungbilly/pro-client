@@ -442,8 +442,8 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
   return (
     <PageTransition>
-      <div className="w-full max-w-6xl mx-auto px-2 sm:px-4">
-        <Card className="w-full">
+      <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 overflow-hidden">
+        <Card className="w-full overflow-hidden">
           <CardHeader className="space-y-4 p-3 sm:p-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <CardTitle className="text-xl sm:text-2xl font-bold">
@@ -467,8 +467,8 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
               {propInvoiceId ? 'Edit the invoice details.' : 'Create a new invoice.'}
             </CardDescription>
           </CardHeader>
-          <CardContent className="p-3 sm:p-6">
-            <div className="grid gap-6">
+          <CardContent className="p-3 sm:p-6 overflow-hidden">
+            <div className="grid gap-6 w-full overflow-hidden">
               {/* Client Information Display (Read-only) */}
               {client && (
                 <div className="p-4 bg-muted rounded-lg">
@@ -493,9 +493,9 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                 </div>
               )}
 
-              <div className="grid grid-cols-1 gap-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="w-full min-w-0">
+              <div className="grid grid-cols-1 gap-4 w-full overflow-hidden">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+                  <div className="w-full min-w-0 overflow-hidden">
                     <Label htmlFor="number">Invoice Number</Label>
                     <Input
                       type="text"
@@ -507,26 +507,24 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                       className="w-full min-w-0"
                     />
                   </div>
-                  <div className="w-full min-w-0">
+                  <div className="w-full min-w-0 overflow-hidden">
                     <Label htmlFor="date">Invoice Date</Label>
-                    <div className="w-full min-w-0">
+                    <div className="w-full min-w-0 overflow-hidden">
                       <DatePicker
                         mode="single"
                         selected={invoice.date ? new Date(invoice.date) : undefined}
                         onSelect={(date) => handleDateChange('date', date)}
-                        className="w-full"
                       />
                     </div>
                   </div>
                 </div>
-                <div className="w-full min-w-0">
+                <div className="w-full min-w-0 overflow-hidden">
                   <Label htmlFor="shootingDate">Job Date</Label>
-                  <div className="w-full min-w-0">
+                  <div className="w-full min-w-0 overflow-hidden">
                     <DatePicker
                       mode="single"
                       selected={invoice.shootingDate ? new Date(invoice.shootingDate) : undefined}
                       onSelect={(date) => handleDateChange('shootingDate', date)}
-                      className="w-full"
                     />
                   </div>
                 </div>
@@ -559,8 +557,8 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                       <Label className="text-sm font-medium">Invoice Items</Label>
                       <div className="mt-2 space-y-2">
                         {selectedProducts.map((item, index) => (
-                          <div key={item.id || index} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-muted rounded-lg gap-2">
-                            <div className="flex-1 min-w-0">
+                          <div key={item.id || index} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-muted rounded-lg gap-2 w-full overflow-hidden">
+                            <div className="flex-1 min-w-0 overflow-hidden">
                               <div className="font-medium truncate">{item.name}</div>
                               {item.description && (
                                 <div className="text-sm text-muted-foreground break-words" dangerouslySetInnerHTML={{ __html: item.description }} />
@@ -569,7 +567,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                                 Qty: {item.quantity} × ${formatCurrency(item.rate)}
                               </div>
                             </div>
-                            <div className="flex items-center gap-2 justify-between sm:justify-end">
+                            <div className="flex items-center gap-2 justify-between sm:justify-end flex-shrink-0">
                               <div className="text-right">
                                 <div className="font-medium">${formatCurrency(item.amount)}</div>
                               </div>
@@ -616,15 +614,15 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                     <div className="mt-4">
                       <Label className="text-sm font-medium">Applied Percentage Discount</Label>
                       <div className="mt-2">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg gap-2">
-                          <div className="flex-1 min-w-0">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg gap-2 w-full overflow-hidden">
+                          <div className="flex-1 min-w-0 overflow-hidden">
                             <div className="font-medium text-red-700 truncate">{percentageDiscount.name}</div>
                             <div className="text-sm text-red-600 break-words">{percentageDiscount.description}</div>
                             <div className="text-sm text-red-600">
                               {percentageDiscount.value}% off total invoice
                             </div>
                           </div>
-                          <div className="flex items-center gap-2 justify-between sm:justify-end">
+                          <div className="flex items-center gap-2 justify-between sm:justify-end flex-shrink-0">
                             <div className="text-right">
                               <div className="font-medium text-red-700">
                                 -{percentageDiscount.value}%
@@ -655,14 +653,14 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                       <Label className="text-sm font-medium">Applied Fixed Discounts</Label>
                       <div className="mt-2 space-y-2">
                         {selectedDiscountItems.map((item, index) => (
-                          <div key={item.id || index} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg gap-2">
-                            <div className="flex-1 min-w-0">
+                          <div key={item.id || index} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg gap-2 w-full overflow-hidden">
+                            <div className="flex-1 min-w-0 overflow-hidden">
                               <div className="font-medium text-red-700 truncate">{item.name}</div>
                               {item.description && (
                                 <div className="text-sm text-red-600 break-words" dangerouslySetInnerHTML={{ __html: item.description }} />
                               )}
                             </div>
-                            <div className="flex items-center gap-2 justify-between sm:justify-end">
+                            <div className="flex items-center gap-2 justify-between sm:justify-end flex-shrink-0">
                               <div className="text-right">
                                 <div className="font-medium text-red-700">-${formatCurrency(Math.abs(ensureValidNumber(item.amount)))}</div>
                               </div>
@@ -721,14 +719,14 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                 onUpdateSchedules={handlePaymentSchedulesUpdate}
               />
 
-              <div>
+              <div className="w-full overflow-hidden">
                 <Label htmlFor="notes">Notes</Label>
                 <RichTextEditor value={invoice.notes} onChange={handleNotesChange} id="notes" className="w-full min-w-0"/>
               </div>
 
               {hasContractTemplates && (
-                <div className="space-y-4">
-                  <div>
+                <div className="space-y-4 w-full overflow-hidden">
+                  <div className="w-full overflow-hidden">
                     <Label htmlFor="contractTemplate">Contract Template</Label>
                     <Select 
                       onValueChange={handleContractTemplateSelect}
@@ -755,7 +753,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                     </Select>
                   </div>
                   
-                  <div>
+                  <div className="w-full overflow-hidden">
                     <Label htmlFor="contractTerms">Contract Terms</Label>
                     <RichTextEditor 
                       value={invoice.contractTerms} 

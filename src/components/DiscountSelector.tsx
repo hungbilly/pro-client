@@ -97,6 +97,7 @@ const DiscountSelector: React.FC<DiscountSelectorProps> = ({
               </TableCell>
               <TableCell className="text-right">
                 <Button
+                  type="button"
                   variant="outline"
                   size="sm"
                   onClick={() => handleSelect(discount)}

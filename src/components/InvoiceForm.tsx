@@ -468,13 +468,13 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0 sm:p-6">
-            <div className="grid gap-6 w-full">
+            <div className="grid gap-6 w-full p-4 sm:p-0">
               {/* Client Information Display (Read-only) */}
               {client && (
                 <div className="p-4 bg-muted rounded-lg">
                   <Label className="text-base font-medium">Client</Label>
                   <div className="mt-2">
-                    <p className="font-medium">{client.name}</p>
+                    <p className="font-medium break-words">{client.name}</p>
                     <p className="text-sm text-muted-foreground break-words">{client.email}</p>
                   </div>
                 </div>
@@ -485,9 +485,9 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                 <div className="p-4 bg-muted rounded-lg">
                   <Label className="text-base font-medium">Job</Label>
                   <div className="mt-2">
-                    <p className="font-medium">{job.title}</p>
+                    <p className="font-medium break-words">{job.title}</p>
                     {job.description && (
-                      <p className="text-sm text-muted-foreground">{job.description}</p>
+                      <p className="text-sm text-muted-foreground break-words">{job.description}</p>
                     )}
                   </div>
                 </div>

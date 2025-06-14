@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
@@ -88,7 +87,28 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     isInTrialPeriod: boolean;
     trialDaysLeft: number;
     trialEndDate: string | null;
+    adminOverride?: boolean;
   }) => {
+    // If adminOverride, always trust the DB status & skip expiration logic
+    if (data.subscription && (data as any).adminOverride === true) {
+      setHasAccess(data.hasAccess);
+      setSubscription(data.subscription);
+      setIsInTrialPeriod(data.isInTrialPeriod);
+      setTrialDaysLeft(data.trialDaysLeft);
+      setTrialEndDate(data.trialEndDate);
+      setIsLoading(false);
+      setHasCheckedSubscription(true);
+      SubscriptionCache.set({
+        hasAccess: data.hasAccess,
+        subscription: data.subscription,
+        isInTrialPeriod: data.isInTrialPeriod,
+        trialDaysLeft: data.trialDaysLeft,
+        trialEndDate: data.trialEndDate,
+      });
+      console.log('Admin override active. Subscription state updated and cached:', data);
+      return;
+    }
+
     // Additional validation: check if active subscription has expired
     if (data.subscription && data.subscription.status === 'active' && isSubscriptionExpired(data.subscription)) {
       console.log('Active subscription has expired, denying access');

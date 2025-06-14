@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from 'https://esm.sh/stripe@14.21.0';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
@@ -94,6 +93,33 @@ serve(async (req) => {
       .single();
 
     console.log('Local subscription data:', userSubscription);
+
+    // If an admin override is present, always honor DB status, skip all expiration and Stripe checks
+    if (!subError && userSubscription && userSubscription.admin_override) {
+      console.log(`User ${userId} has an admin override for subscription status`);
+
+      return new Response(
+        JSON.stringify({
+          hasAccess: userSubscription.status === 'active' || userSubscription.status === 'trialing',
+          subscription: {
+            id: userSubscription.stripe_subscription_id,
+            status: userSubscription.status,
+            currentPeriodEnd: userSubscription.current_period_end,
+            cancel_at: userSubscription.cancel_at || null,
+          },
+          trialDaysLeft: userSubscription.trial_end_date ?
+            Math.ceil((new Date(userSubscription.trial_end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0,
+          isInTrialPeriod: userSubscription.status === 'trialing',
+          trialEndDate: userSubscription.trial_end_date,
+          adminOverride: true,
+          local: true,
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      );
+    }
 
     // If we have a valid subscription in our database
     if (!subError && userSubscription) {

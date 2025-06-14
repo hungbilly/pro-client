@@ -1,4 +1,3 @@
-
 import * as React from "react"
 import * as TabsPrimitive from "@radix-ui/react-tabs"
 
@@ -13,7 +12,7 @@ const TabsList = React.forwardRef<
   <TabsPrimitive.List
     ref={ref}
     className={cn(
-      "inline-flex h-auto items-center justify-center rounded-md bg-muted p-1 text-muted-foreground grid grid-cols-1 md:grid-cols-2 gap-1 w-full md:h-10",
+      "inline-flex h-auto items-center justify-center rounded-md bg-muted p-1 text-muted-foreground grid grid-cols-1 sm:grid-cols-2 lg:flex lg:flex-wrap xl:grid xl:grid-cols-7 gap-1 w-full lg:h-10",
       className
     )}
     {...props}
@@ -28,7 +27,7 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      "inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm w-full h-auto min-h-[2.5rem]",
+      "inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm w-full h-auto min-h-[2.5rem] lg:flex-1 xl:w-auto",
       className
     )}
     {...props}

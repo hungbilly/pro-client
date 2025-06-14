@@ -495,7 +495,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
               <div className="grid grid-cols-1 gap-4 w-full">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
-                  <div className="w-auto min-w-0 max-w-xs">
+                  <div className="w-auto min-w-0 max-w-40">
                     <Label htmlFor="number">Invoice Number</Label>
                     <Input
                       type="text"
@@ -504,7 +504,6 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                       value={invoice.number}
                       onChange={handleInputChange}
                       placeholder="Auto-generated"
-                      className="w-full"
                     />
                   </div>
                   <div className="w-full min-w-0">

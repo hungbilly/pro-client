@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -443,10 +442,10 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
   return (
     <PageTransition>
-      <div className="w-full max-w-6xl mx-auto px-4">
+      <div className="w-full max-w-6xl mx-auto px-2 sm:px-4">
         <Card className="w-full">
-          <CardHeader className="space-y-4 p-4 sm:p-6">
-            <div className="flex items-center justify-between">
+          <CardHeader className="space-y-4 p-3 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <CardTitle className="text-xl sm:text-2xl font-bold">
                 {propInvoiceId ? 'Edit Invoice' : 'Create Invoice'}
               </CardTitle>
@@ -468,7 +467,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
               {propInvoiceId ? 'Edit the invoice details.' : 'Create a new invoice.'}
             </CardDescription>
           </CardHeader>
-          <CardContent className="p-4 sm:p-6">
+          <CardContent className="p-3 sm:p-6">
             <div className="grid gap-6">
               {/* Client Information Display (Read-only) */}
               {client && (
@@ -496,7 +495,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
               <div className="grid grid-cols-1 gap-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="w-full">
+                  <div className="w-full min-w-0">
                     <Label htmlFor="number">Invoice Number</Label>
                     <Input
                       type="text"
@@ -505,27 +504,29 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                       value={invoice.number}
                       onChange={handleInputChange}
                       placeholder="Auto-generated"
-                      className="w-full"
+                      className="w-full min-w-0"
                     />
                   </div>
-                  <div className="w-full">
+                  <div className="w-full min-w-0">
                     <Label htmlFor="date">Invoice Date</Label>
-                    <div className="w-full">
+                    <div className="w-full min-w-0">
                       <DatePicker
                         mode="single"
                         selected={invoice.date ? new Date(invoice.date) : undefined}
                         onSelect={(date) => handleDateChange('date', date)}
+                        className="w-full"
                       />
                     </div>
                   </div>
                 </div>
-                <div className="w-full">
+                <div className="w-full min-w-0">
                   <Label htmlFor="shootingDate">Job Date</Label>
-                  <div className="w-full">
+                  <div className="w-full min-w-0">
                     <DatePicker
                       mode="single"
                       selected={invoice.shootingDate ? new Date(invoice.shootingDate) : undefined}
                       onSelect={(date) => handleDateChange('shootingDate', date)}
+                      className="w-full"
                     />
                   </div>
                 </div>
@@ -722,7 +723,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
               <div>
                 <Label htmlFor="notes">Notes</Label>
-                <RichTextEditor value={invoice.notes} onChange={handleNotesChange} />
+                <RichTextEditor value={invoice.notes} onChange={handleNotesChange} id="notes" className="w-full min-w-0"/>
               </div>
 
               {hasContractTemplates && (
@@ -733,7 +734,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                       onValueChange={handleContractTemplateSelect}
                       value={selectedContractTemplate}
                     >
-                      <SelectTrigger className="w-full">
+                      <SelectTrigger className="w-full min-w-0">
                         <SelectValue placeholder="Choose a contract template or type manually" />
                       </SelectTrigger>
                       <SelectContent>
@@ -760,12 +761,13 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                       value={invoice.contractTerms} 
                       onChange={handleContractTermsChange}
                       id="contract-terms-editor"
+                      className="w-full min-w-0"
                     />
                   </div>
                 </div>
               )}
 
-              <div className="flex gap-2 pt-4">
+              <div className="flex flex-col sm:flex-row gap-2 pt-4">
                 <Button onClick={handleSaveInvoice} disabled={isSaving} className="w-full sm:w-auto">
                   <Save className="h-4 w-4 mr-2" />
                   {isSaving ? 'Saving...' : 'Save Invoice'}

@@ -443,61 +443,61 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
   return (
     <PageTransition>
-      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6">
+      <div className="w-full max-w-6xl mx-auto px-2 sm:px-4 lg:px-6">
         <Card className="w-full border-0 shadow-none sm:border sm:shadow-sm">
-          <CardHeader className="space-y-4 p-4 sm:p-6">
+          <CardHeader className="space-y-4 p-3 sm:p-4 lg:p-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <CardTitle className="text-xl sm:text-2xl font-bold">
+              <CardTitle className="text-lg sm:text-xl lg:text-2xl font-bold break-words">
                 {propInvoiceId ? 'Edit Invoice' : 'Create Invoice'}
               </CardTitle>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-shrink-0">
                 {propInvoiceId && (
                   <DeleteInvoiceDialog 
                     invoiceId={propInvoiceId}
                     invoiceNumber={invoice.number}
                   />
                 )}
-                <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back
+                <Button variant="outline" size="sm" onClick={() => navigate(-1)} className="flex-shrink-0">
+                  <ArrowLeft className="h-4 w-4 mr-1 sm:mr-2" />
+                  <span className="hidden xs:inline">Back</span>
                 </Button>
               </div>
             </div>
             
-            <CardDescription className="break-words">
+            <CardDescription className="break-words text-sm">
               {propInvoiceId ? 'Edit the invoice details.' : 'Create a new invoice.'}
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0 sm:p-6">
-            <div className="grid gap-6 w-full p-4 sm:p-0">
+            <div className="grid gap-4 sm:gap-6 w-full p-3 sm:p-0">
               {/* Client Information Display (Read-only) */}
               {client && (
-                <div className="p-4 bg-muted rounded-lg w-full">
+                <div className="p-3 sm:p-4 bg-muted rounded-lg w-full">
                   <Label className="text-base font-medium">Client</Label>
                   <div className="mt-2">
-                    <p className="font-medium break-words">{client.name}</p>
-                    <p className="text-sm text-muted-foreground break-words">{client.email}</p>
+                    <p className="font-medium break-words text-sm sm:text-base">{client.name}</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground break-words">{client.email}</p>
                   </div>
                 </div>
               )}
 
               {/* Job Information Display (Read-only) */}
               {job && (
-                <div className="p-4 bg-muted rounded-lg w-full">
+                <div className="p-3 sm:p-4 bg-muted rounded-lg w-full">
                   <Label className="text-base font-medium">Job</Label>
                   <div className="mt-2">
-                    <p className="font-medium break-words">{job.title}</p>
+                    <p className="font-medium break-words text-sm sm:text-base">{job.title}</p>
                     {job.description && (
-                      <p className="text-sm text-muted-foreground break-words">{job.description}</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground break-words">{job.description}</p>
                     )}
                   </div>
                 </div>
               )}
 
               <div className="grid grid-cols-1 gap-4 w-full">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
-                  <div className="w-full">
-                    <Label htmlFor="number">Invoice Number</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 w-full">
+                  <div className="w-full min-w-0">
+                    <Label htmlFor="number" className="text-sm">Invoice Number</Label>
                     <Input
                       type="text"
                       id="number"
@@ -505,11 +505,11 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                       value={invoice.number}
                       onChange={handleInputChange}
                       placeholder="Auto-generated"
-                      className="w-full"
+                      className="w-full text-sm"
                     />
                   </div>
-                  <div className="w-full">
-                    <Label htmlFor="date">Invoice Date</Label>
+                  <div className="w-full min-w-0">
+                    <Label htmlFor="date" className="text-sm">Invoice Date</Label>
                     <div className="w-full">
                       <DatePicker
                         mode="single"
@@ -518,8 +518,8 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                       />
                     </div>
                   </div>
-                  <div className="w-full">
-                    <Label htmlFor="shootingDate">Job Date</Label>
+                  <div className="w-full min-w-0">
+                    <Label htmlFor="shootingDate" className="text-sm">Job Date</Label>
                     <div className="w-full">
                       <DatePicker
                         mode="single"
@@ -533,53 +533,53 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
               {/* Package/Product Selector */}
               <Card>
-                <CardHeader className="items-center text-center">
-                  <CardTitle className="flex items-center gap-2">
-                    <Package className="h-5 w-5" />
-                    Products & Services
+                <CardHeader className="text-center p-3 sm:p-6">
+                  <CardTitle className="flex items-center justify-center gap-2 text-sm sm:text-base">
+                    <Package className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                    <span className="break-words">Products & Services</span>
                   </CardTitle>
-                  <CardDescription className="break-words">
+                  <CardDescription className="break-words text-xs sm:text-sm">
                     Add products and services to this invoice
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-3 sm:space-y-4 p-3 sm:p-6">
                   <Button 
                     onClick={() => setIsAddProductDialogOpen(true)}
-                    className="w-full"
+                    className="w-full text-xs sm:text-sm p-2 sm:p-3"
                     variant="outline"
                   >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Product/Package
+                    <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
+                    <span className="truncate">Add Product</span>
                   </Button>
                   
                   {/* Selected Products Display */}
                   {selectedProducts.length > 0 && (
-                    <div className="mt-4">
-                      <Label className="text-sm font-medium">Invoice Items</Label>
+                    <div className="mt-3 sm:mt-4">
+                      <Label className="text-xs sm:text-sm font-medium">Invoice Items</Label>
                       <div className="mt-2 space-y-2">
                         {selectedProducts.map((item, index) => (
-                          <div key={item.id || index} className="flex flex-col p-3 bg-muted rounded-lg gap-2 w-full">
+                          <div key={item.id || index} className="flex flex-col p-2 sm:p-3 bg-muted rounded-lg gap-2 w-full">
                             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
                               <div className="flex-1 min-w-0">
-                                <div className="font-medium break-words">{item.name}</div>
+                                <div className="font-medium break-words text-xs sm:text-sm">{item.name}</div>
                                 {item.description && (
-                                  <div className="text-sm text-muted-foreground break-words mt-1" dangerouslySetInnerHTML={{ __html: item.description }} />
+                                  <div className="text-xs text-muted-foreground break-words mt-1" dangerouslySetInnerHTML={{ __html: item.description }} />
                                 )}
-                                <div className="text-sm text-muted-foreground mt-1">
+                                <div className="text-xs text-muted-foreground mt-1">
                                   Qty: {item.quantity} × ${formatCurrency(item.rate)}
                                 </div>
                               </div>
                               <div className="flex items-center gap-2 justify-between sm:justify-end flex-shrink-0">
                                 <div className="text-right">
-                                  <div className="font-medium">${formatCurrency(item.amount)}</div>
+                                  <div className="font-medium text-xs sm:text-sm">${formatCurrency(item.amount)}</div>
                                 </div>
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => removeItem(item.id || '')}
-                                  className="text-red-500 hover:text-red-700 flex-shrink-0"
+                                  className="text-red-500 hover:text-red-700 flex-shrink-0 p-1"
                                 >
-                                  <Trash2 className="h-4 w-4" />
+                                  <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
                                 </Button>
                               </div>
                             </div>
@@ -593,42 +593,42 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
               {/* Discount Selector */}
               <Card>
-                <CardHeader className="items-center text-center">
-                  <CardTitle className="flex items-center gap-2">
-                    <Percent className="h-5 w-5" />
-                    Discounts
+                <CardHeader className="text-center p-3 sm:p-6">
+                  <CardTitle className="flex items-center justify-center gap-2 text-sm sm:text-base">
+                    <Percent className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                    <span className="break-words">Discounts</span>
                   </CardTitle>
-                  <CardDescription className="break-words">
+                  <CardDescription className="break-words text-xs sm:text-sm">
                     Apply discounts to this invoice
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-3 sm:space-y-4 p-3 sm:p-6">
                   <Button 
                     onClick={() => setIsAddDiscountDialogOpen(true)}
-                    className="w-full"
+                    className="w-full text-xs sm:text-sm p-2 sm:p-3"
                     variant="outline"
                   >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Discount
+                    <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
+                    <span className="truncate">Add Discount</span>
                   </Button>
                   
                   {/* Percentage Discount Display */}
                   {percentageDiscount && (
-                    <div className="mt-4">
-                      <Label className="text-sm font-medium">Applied Percentage Discount</Label>
+                    <div className="mt-3 sm:mt-4">
+                      <Label className="text-xs sm:text-sm font-medium">Applied Percentage Discount</Label>
                       <div className="mt-2">
-                        <div className="flex flex-col p-3 bg-red-50 border border-red-200 rounded-lg gap-2 w-full">
+                        <div className="flex flex-col p-2 sm:p-3 bg-red-50 border border-red-200 rounded-lg gap-2 w-full">
                           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
-                              <div className="font-medium text-red-700 break-words">{percentageDiscount.name}</div>
-                              <div className="text-sm text-red-600 break-words mt-1">{percentageDiscount.description}</div>
-                              <div className="text-sm text-red-600 mt-1">
+                              <div className="font-medium text-red-700 break-words text-xs sm:text-sm">{percentageDiscount.name}</div>
+                              <div className="text-xs text-red-600 break-words mt-1">{percentageDiscount.description}</div>
+                              <div className="text-xs text-red-600 mt-1">
                                 {percentageDiscount.value}% off total invoice
                               </div>
                             </div>
                             <div className="flex items-center gap-2 justify-between sm:justify-end flex-shrink-0">
                               <div className="text-right">
-                                <div className="font-medium text-red-700">
+                                <div className="font-medium text-red-700 text-xs sm:text-sm">
                                   -{percentageDiscount.value}%
                                 </div>
                               </div>
@@ -641,9 +641,9 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                                   setInvoice(prev => ({ ...prev, amount: totalAmount }));
                                   toast.success('Percentage discount removed');
                                 }}
-                                className="text-red-500 hover:text-red-700 flex-shrink-0"
+                                className="text-red-500 hover:text-red-700 flex-shrink-0 p-1"
                               >
-                                <Trash2 className="h-4 w-4" />
+                                <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
                               </Button>
                             </div>
                           </div>
@@ -654,29 +654,29 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                   
                   {/* Selected Fixed Discounts Display */}
                   {selectedDiscountItems.length > 0 && !percentageDiscount && (
-                    <div className="mt-4">
-                      <Label className="text-sm font-medium">Applied Fixed Discounts</Label>
+                    <div className="mt-3 sm:mt-4">
+                      <Label className="text-xs sm:text-sm font-medium">Applied Fixed Discounts</Label>
                       <div className="mt-2 space-y-2">
                         {selectedDiscountItems.map((item, index) => (
-                          <div key={item.id || index} className="flex flex-col p-3 bg-red-50 border border-red-200 rounded-lg gap-2 w-full">
+                          <div key={item.id || index} className="flex flex-col p-2 sm:p-3 bg-red-50 border border-red-200 rounded-lg gap-2 w-full">
                             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
                               <div className="flex-1 min-w-0">
-                                <div className="font-medium text-red-700 break-words">{item.name}</div>
+                                <div className="font-medium text-red-700 break-words text-xs sm:text-sm">{item.name}</div>
                                 {item.description && (
-                                  <div className="text-sm text-red-600 break-words mt-1" dangerouslySetInnerHTML={{ __html: item.description }} />
+                                  <div className="text-xs text-red-600 break-words mt-1" dangerouslySetInnerHTML={{ __html: item.description }} />
                                 )}
                               </div>
                               <div className="flex items-center gap-2 justify-between sm:justify-end flex-shrink-0">
                                 <div className="text-right">
-                                  <div className="font-medium text-red-700">-${formatCurrency(Math.abs(ensureValidNumber(item.amount)))}</div>
+                                  <div className="font-medium text-red-700 text-xs sm:text-sm">-${formatCurrency(Math.abs(ensureValidNumber(item.amount)))}</div>
                                 </div>
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => removeItem(item.id || '')}
-                                  className="text-red-500 hover:text-red-700 flex-shrink-0"
+                                  className="text-red-500 hover:text-red-700 flex-shrink-0 p-1"
                                 >
-                                  <Trash2 className="h-4 w-4" />
+                                  <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
                                 </Button>
                               </div>
                             </div>
@@ -691,28 +691,28 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
               {/* Invoice Summary */}
               {(selectedProducts.length > 0 || selectedDiscountItems.length > 0 || percentageDiscount) && (
                 <Card className="bg-muted/50">
-                  <CardContent className="pt-6">
+                  <CardContent className="pt-4 sm:pt-6 p-3 sm:p-6">
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <span className="text-sm">Subtotal:</span>
-                        <span className="text-sm">${formatCurrency(subtotal)}</span>
+                        <span className="text-xs sm:text-sm">Subtotal:</span>
+                        <span className="text-xs sm:text-sm">${formatCurrency(subtotal)}</span>
                       </div>
                       {percentageDiscount && (
                         <div className="flex justify-between items-center text-red-600">
-                          <span className="text-sm">Discount ({percentageDiscount.value}%):</span>
-                          <span className="text-sm">-${formatCurrency((subtotal * percentageDiscount.value) / 100)}</span>
+                          <span className="text-xs sm:text-sm">Discount ({percentageDiscount.value}%):</span>
+                          <span className="text-xs sm:text-sm">-${formatCurrency((subtotal * percentageDiscount.value) / 100)}</span>
                         </div>
                       )}
                       {selectedDiscountItems.length > 0 && !percentageDiscount && (
                         <div className="flex justify-between items-center text-red-600">
-                          <span className="text-sm">Total Discounts:</span>
-                          <span className="text-sm">-${formatCurrency(Math.abs(ensureValidNumber(selectedDiscountItems.reduce((sum, item) => sum + ensureValidNumber(item.amount), 0))))}</span>
+                          <span className="text-xs sm:text-sm">Total Discounts:</span>
+                          <span className="text-xs sm:text-sm">-${formatCurrency(Math.abs(ensureValidNumber(selectedDiscountItems.reduce((sum, item) => sum + ensureValidNumber(item.amount), 0))))}</span>
                         </div>
                       )}
                       <Separator />
                       <div className="flex justify-between items-center font-medium">
-                        <span>Total:</span>
-                        <span>${formatCurrency(invoice.amount)}</span>
+                        <span className="text-sm sm:text-base">Total:</span>
+                        <span className="text-sm sm:text-base">${formatCurrency(invoice.amount)}</span>
                       </div>
                     </div>
                   </CardContent>
@@ -727,14 +727,14 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
               />
 
               <div className="w-full">
-                <Label htmlFor="notes">Notes</Label>
+                <Label htmlFor="notes" className="text-sm">Notes</Label>
                 <RichTextEditor value={invoice.notes} onChange={handleNotesChange} id="notes" className="w-full"/>
               </div>
 
               {hasContractTemplates && (
-                <div className="space-y-4 w-full">
+                <div className="space-y-3 sm:space-y-4 w-full">
                   <div className="w-full">
-                    <Label htmlFor="contractTemplate">Contract Template</Label>
+                    <Label htmlFor="contractTemplate" className="text-sm">Contract Template</Label>
                     <Select 
                       onValueChange={handleContractTemplateSelect}
                       value={selectedContractTemplate}
@@ -761,7 +761,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                   </div>
                   
                   <div className="w-full">
-                    <Label htmlFor="contractTerms">Contract Terms</Label>
+                    <Label htmlFor="contractTerms" className="text-sm">Contract Terms</Label>
                     <RichTextEditor 
                       value={invoice.contractTerms} 
                       onChange={handleContractTermsChange}
@@ -773,8 +773,8 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
               )}
 
               <div className="flex flex-col sm:flex-row gap-2 pt-4">
-                <Button onClick={handleSaveInvoice} disabled={isSaving} className="w-full sm:w-auto">
-                  <Save className="h-4 w-4 mr-2" />
+                <Button onClick={handleSaveInvoice} disabled={isSaving} className="w-full sm:w-auto text-xs sm:text-sm">
+                  <Save className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                   {isSaving ? 'Saving...' : 'Save Invoice'}
                 </Button>
               </div>

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
@@ -463,7 +462,7 @@ const InvoiceCreate = () => {
           <h1 className="text-3xl font-bold tracking-tight">{invoice ? 'Edit Invoice' : 'New Invoice'}</h1>
           <div className="text-sm text-muted-foreground flex items-center">
             {paths.map((path, index) => (
-              <React.Fragment key={path.path}>
+              <div key={`breadcrumb-${index}`}>
                 {index > 0 && <span className="mx-1">{'>'}</span>}
                 {path.path === '#' ? (
                   <span>{path.label}</span>
@@ -475,7 +474,7 @@ const InvoiceCreate = () => {
                     {path.label}
                   </span>
                 )}
-              </React.Fragment>
+              </div>
             ))}
           </div>
         </div>

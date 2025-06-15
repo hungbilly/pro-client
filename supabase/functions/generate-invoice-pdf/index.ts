@@ -166,8 +166,7 @@ const corsHeaders = {
 async function loadChineseFont(doc: any) {
   try {
     // Use a TrueType (.ttf) font file for Noto Sans CJK SC
-    // Replace with a valid URL or local path to the .ttf file
-    const fontUrl = 'https://cdn.jsdelivr.net/npm/noto-sans-cjk@0.1.0/NotoSansCJKsc-Regular.ttf'; // Example CDN (replace with actual URL)
+    const fontUrl = 'https://raw.githubusercontent.com/google/fonts/main/ofl/notosanssc/NotoSansSC-Regular.ttf'; // Using Google Fonts raw file
     // For local testing: const fontPath = './fonts/NotoSansCJKsc-Regular.ttf';
     log.info('Attempting to load Chinese font from:', fontUrl);
     const fontResponse = await fetch(fontUrl, {
@@ -187,11 +186,11 @@ async function loadChineseFont(doc: any) {
     );
 
     // Add font to jsPDF's virtual file system
-    doc.addFileToVFS('NotoSansCJKsc-Regular.ttf', base64String);
-    doc.addFont('NotoSansCJKsc-Regular.ttf', 'NotoSansCJKsc', 'normal');
+    doc.addFileToVFS('NotoSansSC-Regular.ttf', base64String);
+    doc.addFont('NotoSansSC-Regular.ttf', 'NotoSansSC', 'normal');
     
     // Set as default font
-    doc.setFont('NotoSansCJKsc', 'normal');
+    doc.setFont('NotoSansSC', 'normal');
     log.info('Chinese font loaded and set successfully');
     return true;
   } catch (error) {
@@ -1108,7 +1107,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
         const generatedText = `Generated on ${new Date().toLocaleDateString()}`;
         const statusText = `${invoiceData.status === 'accepted' ? 'Invoice accepted' : 'Invoice not accepted'} | ${invoiceData.contractStatus === 'accepted' ? 'Contract terms accepted' : 'Contract terms not accepted'}`;
         log.debug(`Footer for page ${i}:`, { generatedText, statusText });
-        doc.setFont(fontLoaded ? 'NotoSansCJKsc' : 'helvetica', 'normal');
+        doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'normal');
         doc.text(generatedText, margin, pageHeight - 10);
         doc.text(statusText, pageWidth - margin, pageHeight - 10, { align: 'right' });
       }
@@ -1133,20 +1132,20 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       } catch (logoError) {
         log.error('Error adding optimized logo:', logoError);
         doc.setFontSize(24);
-        doc.setFont(fontLoaded ? 'NotoSansCJKsc' : 'helvetica', 'normal');
+        doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'normal');
         doc.text(invoiceData.company.name.toUpperCase(), margin, leftColumnY + 15);
         leftColumnY += 20;
       }
     } else {
       doc.setFontSize(24);
-      doc.setFont(fontLoaded ? 'NotoSansCJKsc' : 'helvetica', 'normal');
+      doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'normal');
       doc.text(invoiceData.company.name.toUpperCase(), margin, leftColumnY + 15);
       leftColumnY += 20;
     }
 
     // Company details below logo
     doc.setFontSize(12);
-    doc.setFont(fontLoaded ? 'NotoSansCJKsc' : 'helvetica', 'bold');
+    doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'bold');
     doc.setTextColor(100, 100, 100);
     doc.text('FROM', margin, leftColumnY);
     leftColumnY += 7;
@@ -1157,7 +1156,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
     leftColumnY += 7;
 
     doc.setFontSize(10);
-    doc.setFont(fontLoaded ? 'NotoSansCJKsc' : 'helvetica', 'normal');
+    doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'normal');
     
     if (invoiceData.company.email) {
       doc.text(invoiceData.company.email, margin, leftColumnY);
@@ -1178,7 +1177,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
 
     // Client Information
     doc.setFontSize(12);
-    doc.setFont(fontLoaded ? 'NotoSansCJKsc' : 'helvetica', 'bold');
+    doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'bold');
     doc.setTextColor(100, 100, 100);
     doc.text('INVOICE FOR', rightColumnX, rightColumnY);
     rightColumnY += 7;
@@ -1186,12 +1185,14 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
     if (invoiceData.job && invoiceData.job.title) {
       doc.setFontSize(14);
       doc.setTextColor(0, 0, 0);
-      doc.text(invoiceData.job.title, rightColumnX, rightColumnY);
-      rightColumnY += 7;
+      const rightColumnWidth = pageWidth - rightColumnX - margin;
+      const jobTitleLines = doc.splitTextToSize(invoiceData.job.title, rightColumnWidth);
+      doc.text(jobTitleLines, rightColumnX, rightColumnY);
+      rightColumnY += (jobTitleLines.length * 6) + 1;
     }
 
     doc.setFontSize(10);
-    doc.setFont(fontLoaded ? 'NotoSansCJKsc' : 'helvetica', 'normal');
+    doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'normal');
     doc.text(`Client: ${invoiceData.client.name}`, rightColumnX, rightColumnY);
     rightColumnY += 6;
     
@@ -1208,13 +1209,13 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
     if (invoiceData.job && invoiceData.job.date) {
       rightColumnY += 4;
       doc.setFontSize(12);
-      doc.setFont(fontLoaded ? 'NotoSansCJKsc' : 'helvetica', 'bold');
+      doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'bold');
       doc.setTextColor(100, 100, 100);
       doc.text('JOB DATE', rightColumnX, rightColumnY);
       rightColumnY += 7;
     
       doc.setFontSize(10);
-      doc.setFont(fontLoaded ? 'NotoSansCJKsc' : 'helvetica', 'normal');
+      doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'normal');
       doc.setTextColor(0, 0, 0);
       doc.text(invoiceData.job.date, rightColumnX, rightColumnY);
     }
@@ -1228,12 +1229,12 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
 
     // Invoice Number and Details
     doc.setFontSize(14);
-    doc.setFont(fontLoaded ? 'NotoSansCJKsc' : 'helvetica', 'bold');
+    doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'bold');
     doc.text(`INVOICE #${invoiceData.number}`, margin, y);
     y += 7;
     
     doc.setFontSize(10);
-    doc.setFont(fontLoaded ? 'NotoSansCJKsc' : 'helvetica', 'normal');
+    doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'normal');
     
     const invoiceDetailsTable = [
       ['Invoice Date:', new Date(invoiceData.date).toLocaleDateString()],
@@ -1249,7 +1250,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       styles: {
         cellPadding: 1,
         fontSize: 10,
-        font: fontLoaded ? 'NotoSansCJKsc' : 'helvetica'
+        font: fontLoaded ? 'NotoSansSC' : 'helvetica'
       },
       columnStyles: {
         0: { cellWidth: 30, fontStyle: 'bold' },
@@ -1263,7 +1264,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
     if (invoiceData.items && invoiceData.items.length > 0) {
       log.debug('Rendering INVOICE ITEMS section');
       doc.setFontSize(12);
-      doc.setFont(fontLoaded ? 'NotoSansCJKsc' : 'helvetica', 'bold');
+      doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'bold');
       doc.text('INVOICE ITEMS', margin, y);
       
       y += 5;
@@ -1299,13 +1300,13 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
           fillColor: [240, 240, 240], 
           textColor: [50, 50, 50],
           fontStyle: 'bold',
-          font: fontLoaded ? 'NotoSansCJKsc' : 'helvetica'
+          font: fontLoaded ? 'NotoSansSC' : 'helvetica'
         },
         bodyStyles: { 
           fontSize: 9,
           lineColor: [220, 220, 220],
           lineWidth: 0.1,
-          font: fontLoaded ? 'NotoSansCJKsc' : 'helvetica'
+          font: fontLoaded ? 'NotoSansSC' : 'helvetica'
         },
         columnStyles: {
           0: { cellWidth: 35 },
@@ -1318,7 +1319,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
         styles: {
           overflow: 'linebreak',
           cellPadding: 3,
-          font: fontLoaded ? 'NotoSansCJKsc' : 'helvetica'
+          font: fontLoaded ? 'NotoSansSC' : 'helvetica'
         },
         didDrawPage: (data: any) => {
           y = data.cursor.y + 5;
@@ -1327,7 +1328,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       });
       
       doc.setFontSize(10);
-      doc.setFont(fontLoaded ? 'NotoSansCJKsc' : 'helvetica', 'bold');
+      doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'bold');
       log.debug('Total amount:', invoiceData.amount);
       doc.text('TOTAL:', pageWidth - margin - 35, y);
       doc.text(`$${invoiceData.amount.toFixed(2)}`, pageWidth - margin, y, { align: 'right' });
@@ -1347,7 +1348,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       
       log.debug('Rendering PAYMENT SCHEDULE section');
       doc.setFontSize(12);
-      doc.setFont(fontLoaded ? 'NotoSansCJKsc' : 'helvetica', 'bold');
+      doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'bold');
       doc.text('PAYMENT SCHEDULE', margin, y);
       
       y += 8;
@@ -1385,13 +1386,13 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
           fillColor: [240, 240, 240], 
           textColor: [50, 50, 50],
           fontStyle: 'bold',
-          font: fontLoaded ? 'NotoSansCJKsc' : 'helvetica'
+          font: fontLoaded ? 'NotoSansSC' : 'helvetica'
         },
         bodyStyles: { 
           fontSize: 9,
           lineColor: [220, 220, 220],
           lineWidth: 0.1,
-          font: fontLoaded ? 'NotoSansCJKsc' : 'helvetica'
+          font: fontLoaded ? 'NotoSansSC' : 'helvetica'
         },
         columnStyles: {
           0: { cellWidth: 'auto' },
@@ -1404,7 +1405,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
         styles: {
           overflow: 'linebreak',
           cellPadding: 3,
-          font: fontLoaded ? 'NotoSansCJKsc' : 'helvetica'
+          font: fontLoaded ? 'NotoSansSC' : 'helvetica'
         },
         didDrawPage: (data: any) => {
           y = data.cursor.y + 10;
@@ -1425,13 +1426,13 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       
       log.debug('Rendering PAYMENT METHODS section');
       doc.setFontSize(12);
-      doc.setFont(fontLoaded ? 'NotoSansCJKsc' : 'helvetica', 'bold');
+      doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'bold');
       doc.text('PAYMENT METHODS', margin, y);
       
       y += 8;
       
       doc.setFontSize(9);
-      doc.setFont(fontLoaded ? 'NotoSansCJKsc' : 'helvetica', 'normal');
+      doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'normal');
       log.debug('Payment methods content:', invoiceData.company.payment_methods);
       
       const paymentMethodsY = addWrappedText(
@@ -1460,13 +1461,13 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       
       log.debug('Rendering NOTES section');
       doc.setFontSize(12);
-      doc.setFont(fontLoaded ? 'NotoSansCJKsc' : 'helvetica', 'bold');
+      doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'bold');
       doc.text('NOTES', margin, y);
       
       y += 8;
       
       doc.setFontSize(9);
-      doc.setFont(fontLoaded ? 'NotoSansCJKsc' : 'helvetica', 'normal');
+      doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'normal');
       log.debug('Notes content:', invoiceData.notes);
       
       const notesY = addWrappedText(doc, invoiceData.notes, margin, y, contentWidth, 5, pageHeight, margin);
@@ -1490,7 +1491,7 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
       log.debug('Added new page for contract terms, new y position:', y);
       
       doc.setFontSize(14);
-      doc.setFont(fontLoaded ? 'NotoSansCJKsc' : 'helvetica', 'bold');
+      doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'bold');
       doc.text('CONTRACT TERMS', margin, y);
       
       y += 10;
@@ -1515,11 +1516,11 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
         });
         
         if (isHeading) {
-          doc.setFont(fontLoaded ? 'NotoSansCJKsc' : 'helvetica', 'bold');
+          doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'bold');
           addWrappedText(doc, trimmedParagraph, margin, y, contentWidth, 5, pageHeight, margin);
           y += 7;
         } else {
-          doc.setFont(fontLoaded ? 'NotoSansCJKsc' : 'helvetica', 'normal');
+          doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'normal');
           const paragraphY = addWrappedText(doc, trimmedParagraph, margin, y, contentWidth, 5, pageHeight, margin);
           y = paragraphY + 5;
         }

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -235,10 +236,10 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
         {paymentSchedules.length > 0 && (
           <div className="space-y-3">
             {paymentSchedules.map((schedule) => (
-              <div key={schedule.id} className="grid grid-cols-[80px_120px_80px_120px_100px_40px] gap-2 p-3 border rounded-lg items-end">
+              <div key={schedule.id} className="grid grid-cols-[minmax(70px,1fr)_130px_70px_110px_90px_36px] gap-1.5 p-3 border rounded-lg items-end">
                 <div>
                   <Label className="text-xs text-muted-foreground">Description</Label>
-                  <span className="font-medium text-sm block mt-1">{schedule.description}</span>
+                  <span className="font-medium text-sm block mt-1 truncate">{schedule.description}</span>
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Due Date</Label>
@@ -300,12 +301,12 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex justify-center w-fit">
+                <div className="flex justify-center">
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => removePaymentSchedule(schedule.id)}
-                    className="text-red-500 hover:text-red-700 p-2"
+                    className="text-red-500 hover:text-red-700 p-1 h-8 w-8"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -331,10 +332,10 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
           </div>
         )}
 
-        {/* Add New Payment Schedule - Adjusted Grid Layout with smaller description column */}
+        {/* Add New Payment Schedule - Optimized Grid Layout */}
         <div className="space-y-3 p-2 border rounded-lg bg-muted/50 sm:p-4">
           <Label className="text-sm font-medium">Add Payment Schedule</Label>
-          <div className="grid grid-cols-[120px_80px_120px_100px_auto] gap-2 items-end">
+          <div className="grid grid-cols-[130px_70px_110px_90px_auto] gap-1.5 items-end">
             <div>
               <Label className="text-xs text-muted-foreground">Due Date</Label>
               <DatePicker

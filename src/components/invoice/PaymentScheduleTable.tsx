@@ -324,113 +324,6 @@ const PaymentScheduleTable = memo(({
     return num + (suffix[(v - 20) % 10] || suffix[v] || suffix[0]);
   };
 
-  const renderAmountCell = (schedule: PaymentSchedule) => {
-    const paymentAmount = getPaymentAmount(schedule);
-    const percentage = schedule.percentage || 0;
-
-    if (editingAmountId === schedule.id) {
-      // EDIT MODE: Render all fields inline in a single row (flex)
-      return (
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Amount/Percentage Toggle Buttons */}
-          <div className="flex items-center">
-            <Button
-              size="sm"
-              variant={editMode === 'amount' ? 'default' : 'outline'}
-              onClick={() => setEditMode('amount')}
-              className={`text-xs h-7 px-2 rounded-l-md ${editMode === 'amount' ? '' : '!bg-white'} border`}
-            >
-              Amount
-            </Button>
-            <Button
-              size="sm"
-              variant={editMode === 'percentage' ? 'default' : 'outline'}
-              onClick={() => setEditMode('percentage')}
-              className={`text-xs h-7 px-2 rounded-r-md border-l-0 ${editMode === 'percentage' ? '' : '!bg-white'}`}
-            >
-              %
-            </Button>
-          </div>
-
-          {/* Amount or Percentage Input */}
-          {editMode === 'amount' ? (
-            <Input
-              type="text"
-              inputMode="decimal"
-              value={customAmounts[schedule.id] !== undefined ? customAmounts[schedule.id] : paymentAmount}
-              onChange={e => {
-                const value = e.target.value.replace(/[^\d.]/g, '');
-                setCustomAmounts(prev => ({
-                  ...prev,
-                  [schedule.id]: value
-                }));
-              }}
-              className="w-24 mx-0"
-              autoFocus
-            />
-          ) : (
-            <div className="relative flex items-center">
-              <Input
-                type="text"
-                inputMode="decimal"
-                value={customPercentages[schedule.id] !== undefined ? customPercentages[schedule.id] : percentage.toFixed(2)}
-                onChange={e => {
-                  const value = e.target.value.replace(/[^\d.]/g, '');
-                  setCustomPercentages(prev => ({
-                    ...prev,
-                    [schedule.id]: value
-                  }));
-                }}
-                className="w-16 pr-6"
-                autoFocus
-              />
-              <span className="absolute right-3 text-muted-foreground pointer-events-none select-none">%</span>
-            </div>
-          )}
-
-          {/* Save Button */}
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              if (editMode === 'amount') {
-                handleAmountUpdate(schedule.id, schedule);
-              } else {
-                handlePercentageUpdate(schedule.id, schedule);
-              }
-            }}
-            className="ml-2"
-          >
-            Save
-          </Button>
-        </div>
-      );
-    }
-
-    const trueFormatCurrency = (amt: number) => {
-      return formatCurrency(amt, currency);
-    };
-  
-    return (
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1">
-          <CircleDollarSign className="h-3.5 w-3.5 text-muted-foreground" />
-          <span>{trueFormatCurrency(paymentAmount)}</span>
-        </div>
-        {!isClientView && shouldEnableEditing && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 ml-2"
-            onClick={() => setEditingAmountId(schedule.id)}
-          >
-            <Edit2 className="h-3 w-3" />
-          </Button>
-        )}
-      </div>
-    );
-  };
-
   const trueFormatCurrency = (amt: number) => {
     return formatCurrency(amt, currency);
   };
@@ -444,26 +337,27 @@ const PaymentScheduleTable = memo(({
     const autoDescription = `${getOrdinalNumber(index + 1)} Payment`;
     const currentDescription = schedule.description || autoDescription;
 
-    if (isEditing) {
-      // Render all editable fields in a single TableCell using colSpan
+    // Always show all fields in one row when we're in create/edit mode
+    if (shouldEnableEditing) {
       return (
         <TableRow key={schedule.id}>
           <TableCell colSpan={7}>
             <div className="flex flex-col md:flex-row md:items-end gap-3 md:gap-6 w-full">
               {/* Description */}
               <div className="flex flex-col w-full md:w-[180px]">
-                <label className="text-xs mb-1">Description</label>
+                <label className="text-xs mb-1 font-medium">Description</label>
                 <Input
                   type="text"
                   value={currentDescription}
-                  readOnly
+                  onChange={e => {
+                    if (onUpdateDescription) onUpdateDescription(schedule.id, e.target.value);
+                  }}
                   className="w-full"
-                  disabled
                 />
               </div>
               {/* Due Date */}
               <div className="flex flex-col w-full md:w-[155px]">
-                <label className="text-xs mb-1">Due Date</label>
+                <label className="text-xs mb-1 font-medium">Due Date</label>
                 <Input
                   type="date"
                   value={schedule.dueDate ? format(new Date(schedule.dueDate), 'yyyy-MM-dd') : ''}
@@ -475,7 +369,7 @@ const PaymentScheduleTable = memo(({
               </div>
               {/* Percentage */}
               <div className="flex flex-col w-full md:w-[110px]">
-                <label className="text-xs mb-1">% of Total</label>
+                <label className="text-xs mb-1 font-medium">% of Total</label>
                 <div className="relative flex items-center">
                   <Input
                     type="text"
@@ -487,16 +381,21 @@ const PaymentScheduleTable = memo(({
                         ...prev,
                         [schedule.id]: value
                       }));
+                      // Auto-update on change for smoother UX
+                      if (onUpdateAmount && value && !isNaN(parseFloat(value))) {
+                        const newPercentage = parseFloat(value);
+                        const newAmount = (amount * newPercentage) / 100;
+                        onUpdateAmount(schedule.id, newAmount, newPercentage);
+                      }
                     }}
                     className="w-full pr-5 text-right"
-                    autoFocus
                   />
                   <span className="absolute right-3 text-muted-foreground select-none">%</span>
                 </div>
               </div>
               {/* Amount */}
               <div className="flex flex-col w-full md:w-[140px]">
-                <label className="text-xs mb-1">Amount</label>
+                <label className="text-xs mb-1 font-medium">Amount</label>
                 <div className="flex items-center gap-1">
                   <CircleDollarSign className="h-3.5 w-3.5 text-muted-foreground" />
                   <Input
@@ -509,6 +408,12 @@ const PaymentScheduleTable = memo(({
                         ...prev,
                         [schedule.id]: value
                       }));
+                      // Auto-update on change for smoother UX
+                      if (onUpdateAmount && value && !isNaN(parseFloat(value))) {
+                        const newAmount = parseFloat(value);
+                        const newPercentage = amount > 0 ? (newAmount / amount) * 100 : 0;
+                        onUpdateAmount(schedule.id, newAmount, newPercentage);
+                      }
                     }}
                     className="w-full text-right"
                   />
@@ -516,45 +421,40 @@ const PaymentScheduleTable = memo(({
               </div>
               {/* Status */}
               <div className="flex flex-col w-full md:w-[105px]">
-                <label className="text-xs mb-1">Status</label>
+                <label className="text-xs mb-1 font-medium">Status</label>
                 <Badge className={paymentStatusColors[status] || paymentStatusColors.unpaid}>
                   {status.toUpperCase()}
                 </Badge>
               </div>
               {/* Payment Date */}
               <div className="flex flex-col w-full md:w-[140px]">
-                <label className="text-xs mb-1">Payment Date</label>
+                <label className="text-xs mb-1 font-medium">Payment Date</label>
                 {status === 'paid' && schedule.paymentDate
                   ? <span className="text-sm">{format(new Date(schedule.paymentDate), 'MMM d, yyyy')}</span>
                   : <span className="text-muted-foreground text-sm">-</span>}
               </div>
               {/* Actions */}
-              <div className="flex flex-col md:w-auto gap-2 mt-2 md:mt-5">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    handleAmountUpdate(schedule.id, schedule);
-                    handlePercentageUpdate(schedule.id, schedule);
-                  }}
-                >
-                  Save
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setEditingAmountId(null)}
-                >
-                  Cancel
-                </Button>
-              </div>
+              {!isClientView && (
+                <div className="flex flex-col md:w-auto gap-2 mt-2 md:mt-5">
+                  {onRemovePaymentSchedule && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onRemovePaymentSchedule(schedule.id)}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           </TableCell>
         </TableRow>
       );
     }
 
-    // ... keep existing code (the default, non-editing row) the same ...
+    // Regular view for non-edit mode
     return (
       <TableRow key={schedule.id}>
         {/* Description */}
@@ -657,11 +557,6 @@ const PaymentScheduleTable = memo(({
     );
   };
 
-  const ensureValidNumber = (value: any): number => {
-    const num = Number(value);
-    return isNaN(num) ? 0 : num;
-  };
-
   return (
     <TooltipProvider>
       <div className="border rounded-md overflow-hidden">
@@ -680,85 +575,103 @@ const PaymentScheduleTable = memo(({
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
-              <TableHead className="min-w-[110px] max-w-[220px]">
-                <div className="flex items-center gap-2">
-                  Description
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <Info className="h-3 w-3 text-muted-foreground" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Name or description for this payment installment</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-              </TableHead>
-              <TableHead className="min-w-[105px] max-w-[125px]">
-                <div className="flex items-center gap-2">
-                  Due Date
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <Info className="h-3 w-3 text-muted-foreground" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>When this payment is expected to be received</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-              </TableHead>
-              <TableHead className="text-right min-w-[60px] max-w-[70px]">
-                <div className="flex items-center justify-end gap-2">
-                  Percentage
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <Info className="h-3 w-3 text-muted-foreground" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Percentage of total invoice amount for this payment</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-              </TableHead>
-              <TableHead className="text-right min-w-[100px] max-w-[115px]">
-                <div className="flex items-center justify-end gap-2">
-                  Amount
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <Info className="h-3 w-3 text-muted-foreground" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Dollar amount for this payment installment</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-              </TableHead>
-              <TableHead className="min-w-[95px] max-w-[110px]">
-                <div className="flex items-center gap-2">
-                  Status
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <Info className="h-3 w-3 text-muted-foreground" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Current payment status: Paid, Unpaid, or Write-off</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-              </TableHead>
-              <TableHead className="min-w-[110px] max-w-[120px]">
-                <div className="flex items-center gap-2">
-                  Payment Date
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <Info className="h-3 w-3 text-muted-foreground" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Actual date when payment was received (for paid items)</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-              </TableHead>
-              {!isClientView && <TableHead className="min-w-[115px] max-w-[130px]">Actions</TableHead>}
+              {shouldEnableEditing ? (
+                <TableHead colSpan={7}>
+                  <div className="flex items-center gap-2">
+                    Payment Schedule Configuration
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <Info className="h-3 w-3 text-muted-foreground" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Configure payment schedules with descriptions, due dates, percentages, and amounts</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                </TableHead>
+              ) : (
+                <>
+                  <TableHead className="min-w-[110px] max-w-[220px]">
+                    <div className="flex items-center gap-2">
+                      Description
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <Info className="h-3 w-3 text-muted-foreground" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Name or description for this payment installment</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                  </TableHead>
+                  <TableHead className="min-w-[105px] max-w-[125px]">
+                    <div className="flex items-center gap-2">
+                      Due Date
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <Info className="h-3 w-3 text-muted-foreground" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>When this payment is expected to be received</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                  </TableHead>
+                  <TableHead className="text-right min-w-[60px] max-w-[70px]">
+                    <div className="flex items-center justify-end gap-2">
+                      Percentage
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <Info className="h-3 w-3 text-muted-foreground" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Percentage of total invoice amount for this payment</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                  </TableHead>
+                  <TableHead className="text-right min-w-[100px] max-w-[115px]">
+                    <div className="flex items-center justify-end gap-2">
+                      Amount
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <Info className="h-3 w-3 text-muted-foreground" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Dollar amount for this payment installment</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                  </TableHead>
+                  <TableHead className="min-w-[95px] max-w-[110px]">
+                    <div className="flex items-center gap-2">
+                      Status
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <Info className="h-3 w-3 text-muted-foreground" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Current payment status: Paid, Unpaid, or Write-off</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                  </TableHead>
+                  <TableHead className="min-w-[110px] max-w-[120px]">
+                    <div className="flex items-center gap-2">
+                      Payment Date
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <Info className="h-3 w-3 text-muted-foreground" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Actual date when payment was received (for paid items)</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                  </TableHead>
+                  {!isClientView && <TableHead className="min-w-[115px] max-w-[130px]">Actions</TableHead>}
+                </>
+              )}
             </TableRow>
           </TableHeader>
           <TableBody>

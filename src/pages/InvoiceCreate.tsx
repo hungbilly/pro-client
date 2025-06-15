@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
@@ -295,8 +296,8 @@ const InvoiceCreate = () => {
       
       // Preserve the current invoice important fields that should not be overridden
       const currentDate = invoice?.date || format(new Date(), 'yyyy-MM-dd');
-      // Preserve invoice number if it exists (including auto-generated ones)
-      const currentNumber = invoice?.number || '';
+      // Only preserve invoice number if it has a meaningful value (not empty/whitespace)
+      const currentNumber = invoice?.number && invoice.number.trim() !== '' ? invoice.number : undefined;
       const currentStatus = invoice?.status || 'draft';
       const currentShootingDate = invoice?.shootingDate || (job?.date ? job.date : undefined);
       const currentInvoiceId = invoice?.id || ''; // Preserve invoice ID
@@ -311,7 +312,7 @@ const InvoiceCreate = () => {
         currentClientId,
         hasJob: !!job,
         jobDate: job?.date,
-        hasExistingNumber: currentNumber !== ''
+        willPreserveNumber: currentNumber !== undefined
       });
       
       // Parse the template content with improved error handling
@@ -351,11 +352,14 @@ const InvoiceCreate = () => {
         date: currentDate,
         status: currentStatus,
         shootingDate: currentShootingDate,
-        // Always preserve the invoice number, whether it's auto-generated or manually set
-        number: currentNumber,
         // Ensure job relationship is preserved
         jobId: jobId || invoice?.jobId
       };
+
+      // Only set the number if we have a meaningful number to preserve
+      if (currentNumber !== undefined) {
+        newInvoice.number = currentNumber;
+      }
 
       // Apply discounts from template - Convert template discounts to invoice items for fixed discounts
       if (Array.isArray(parsedContent.discounts) && parsedContent.discounts.length > 0) {
@@ -403,7 +407,7 @@ const InvoiceCreate = () => {
         paymentSchedulesCount: newInvoice.paymentSchedules?.length || 0,
         newShootingDate: newInvoice.shootingDate,
         jobId: newInvoice.jobId,
-        numberPreserved: !!newInvoice.number
+        numberPreserved: newInvoice.number !== undefined
       });
       
       // Update the invoice state

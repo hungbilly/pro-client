@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useSubscription } from '@/context/SubscriptionContext';
@@ -30,12 +29,7 @@ const SubscriptionSuccess = () => {
     const verifySubscription = async () => {
       try {
         if (!sessionId) {
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: "No session ID found"
-          });
-          return;
+          console.warn("SubscriptionSuccess: No session_id found in URL. Proceeding with general subscription check.");
         }
         
         await checkSubscription();

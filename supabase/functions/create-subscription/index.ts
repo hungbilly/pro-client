@@ -219,7 +219,7 @@ serve(async (req) => {
           },
         ],
         mode: "subscription",
-        success_url: `${req.headers.get("origin") || origin}/subscription/success`,
+        success_url: `${req.headers.get("origin") || origin}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${req.headers.get("origin") || origin}/subscription/cancel`,
         client_reference_id: user.id, // Add the user ID as a reference
         subscription_data: withTrial
@@ -234,7 +234,7 @@ serve(async (req) => {
         customer: customerId,
         line_items: `[${priceId} x 1]`,
         mode: "subscription",
-        success_url: `${req.headers.get("origin") || origin}/subscription/success`,
+        success_url: `${req.headers.get("origin") || origin}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${req.headers.get("origin") || origin}/subscription/cancel`,
         withTrial,
         trialDays: withTrial ? 30 : 'none',

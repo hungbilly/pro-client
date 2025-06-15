@@ -231,11 +231,11 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4 px-2 pb-2 sm:px-6 sm:pb-6">
-        {/* Existing Payment Schedules - Single Row Layout */}
+        {/* Existing Payment Schedules - Adjusted Grid Layout */}
         {paymentSchedules.length > 0 && (
           <div className="space-y-3">
             {paymentSchedules.map((schedule) => (
-              <div key={schedule.id} className="grid grid-cols-6 gap-3 p-3 border rounded-lg items-end">
+              <div key={schedule.id} className="grid grid-cols-[1fr_120px_80px_120px_100px_40px] gap-2 p-3 border rounded-lg items-end">
                 <div>
                   <Label className="text-xs text-muted-foreground">Description</Label>
                   <span className="font-medium text-sm block mt-1">{schedule.description}</span>
@@ -254,7 +254,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
                   />
                 </div>
                 <div>
-                  <Label className="text-xs text-muted-foreground">Percentage</Label>
+                  <Label className="text-xs text-muted-foreground">%</Label>
                   <div className="relative">
                     <Input
                       type="number"
@@ -264,9 +264,9 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
                       min="0"
                       max="100"
                       step="0.01"
-                      className="pr-6"
+                      className="pr-5 text-sm"
                     />
-                    <Percent className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Percent className="absolute right-1.5 top-2.5 h-3 w-3 text-muted-foreground" />
                   </div>
                 </div>
                 <div>
@@ -279,9 +279,9 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
                       placeholder="0"
                       min="0"
                       step="0.01"
-                      className="pr-6"
+                      className="pr-5 text-sm"
                     />
-                    <DollarSign className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <DollarSign className="absolute right-1.5 top-2.5 h-3 w-3 text-muted-foreground" />
                   </div>
                 </div>
                 <div>
@@ -290,7 +290,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
                     value={schedule.status}
                     onValueChange={(value) => updatePaymentSchedule(schedule.id, 'status', value)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -331,10 +331,10 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
           </div>
         )}
 
-        {/* Add New Payment Schedule - Single Row Layout */}
+        {/* Add New Payment Schedule - Adjusted Grid Layout */}
         <div className="space-y-3 p-2 border rounded-lg bg-muted/50 sm:p-4">
           <Label className="text-sm font-medium">Add Payment Schedule</Label>
-          <div className="grid grid-cols-5 gap-3 items-end">
+          <div className="grid grid-cols-[120px_80px_120px_100px_auto] gap-2 items-end">
             <div>
               <Label className="text-xs text-muted-foreground">Due Date</Label>
               <DatePicker
@@ -345,19 +345,19 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
               />
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground">Percentage</Label>
+              <Label className="text-xs text-muted-foreground">%</Label>
               <div className="relative">
                 <Input
                   type="number"
                   value={newSchedule.percentage || ''}
                   onChange={(e) => handleNewSchedulePercentageChange(e.target.value)}
-                  placeholder="Percentage"
+                  placeholder="0"
                   min="0"
                   max="100"
                   step="0.01"
-                  className="pr-6"
+                  className="pr-5 text-sm"
                 />
-                <Percent className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Percent className="absolute right-1.5 top-2.5 h-3 w-3 text-muted-foreground" />
               </div>
             </div>
             <div>
@@ -367,12 +367,12 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
                   type="number"
                   value={newSchedule.amount || ''}
                   onChange={(e) => handleNewScheduleAmountChange(e.target.value)}
-                  placeholder="Amount"
+                  placeholder="0"
                   min="0"
                   step="0.01"
-                  className="pr-6"
+                  className="pr-5 text-sm"
                 />
-                <DollarSign className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <DollarSign className="absolute right-1.5 top-2.5 h-3 w-3 text-muted-foreground" />
               </div>
             </div>
             <div>
@@ -381,7 +381,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
                 value={newSchedule.status || 'unpaid'}
                 onValueChange={(value) => setNewSchedule(prev => ({ ...prev, status: value as PaymentStatus }))}
               >
-                <SelectTrigger>
+                <SelectTrigger className="text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

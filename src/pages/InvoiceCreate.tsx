@@ -295,7 +295,8 @@ const InvoiceCreate = () => {
       
       // Preserve the current invoice important fields that should not be overridden
       const currentDate = invoice?.date || format(new Date(), 'yyyy-MM-dd');
-      const currentNumber = invoice?.number || '';
+      // Only preserve invoice number if it was already set, otherwise let auto-generation work
+      const currentNumber = invoice?.number && invoice.number.trim() !== '' ? invoice.number : '';
       const currentStatus = invoice?.status || 'draft';
       const currentShootingDate = invoice?.shootingDate || (job?.date ? job.date : undefined);
       const currentInvoiceId = invoice?.id || ''; // Preserve invoice ID
@@ -309,7 +310,8 @@ const InvoiceCreate = () => {
         currentInvoiceId,
         currentClientId,
         hasJob: !!job,
-        jobDate: job?.date
+        jobDate: job?.date,
+        willPreserveNumber: currentNumber !== ''
       });
       
       // Parse the template content with improved error handling
@@ -347,12 +349,17 @@ const InvoiceCreate = () => {
         id: currentInvoiceId, // Keep original invoice ID
         clientId: currentClientId, // Keep original client ID
         date: currentDate,
-        number: currentNumber,
         status: currentStatus,
         shootingDate: currentShootingDate,
         // Ensure job relationship is preserved
         jobId: jobId || invoice?.jobId
       };
+
+      // Only set the number if we have a current number to preserve, otherwise leave it undefined
+      // so the auto-generation in InvoiceForm can work
+      if (currentNumber !== '') {
+        newInvoice.number = currentNumber;
+      }
 
       // Apply discounts from template - Convert template discounts to invoice items for fixed discounts
       if (Array.isArray(parsedContent.discounts) && parsedContent.discounts.length > 0) {
@@ -399,7 +406,8 @@ const InvoiceCreate = () => {
         itemsCount: newInvoice.items?.length || 0,
         paymentSchedulesCount: newInvoice.paymentSchedules?.length || 0,
         newShootingDate: newInvoice.shootingDate,
-        jobId: newInvoice.jobId
+        jobId: newInvoice.jobId,
+        numberPreserved: !!newInvoice.number
       });
       
       // Update the invoice state

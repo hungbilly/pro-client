@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Home, Users, Briefcase, Settings, CreditCard, LogOut, Building, Menu, User, UserCog, FileText, Shield, DollarSign, BookOpen } from 'lucide-react';
@@ -177,12 +176,12 @@ const TopNavbar = () => {
               </Link>
             </div>
             
-            <nav className="hidden md:flex items-center justify-center absolute left-1/2 transform -translate-x-1/2 space-x-1">
-              {filterMenuItems(menuItems).map(item => <Button key={item.path} variant="ghost" size="sm" asChild={!item.disabled} disabled={item.disabled} className={cn("flex items-center gap-2 px-4 py-2 text-sm rounded-md transition-colors", isActive(item.path) ? "bg-slate-800 text-white" : "text-slate-300 hover:text-white hover:bg-slate-800", item.disabled && "opacity-50 cursor-not-allowed")}>
-                  {!item.disabled ? <Link to={item.path} className="flex items-center gap-2">
+            <nav className="hidden md:flex items-center justify-center absolute left-1/2 transform -translate-x-1/2 space-x-2">
+              {filterMenuItems(menuItems).map(item => <Button key={item.path} variant="ghost" size="sm" asChild={!item.disabled} disabled={item.disabled} className={cn("h-auto px-3 py-1.5 text-xs rounded-md transition-colors", isActive(item.path) ? "bg-slate-800 text-white" : "text-slate-300 hover:text-white hover:bg-slate-800", item.disabled && "opacity-50 cursor-not-allowed")}>
+                  {!item.disabled ? <Link to={item.path} className="flex flex-col items-center gap-1">
                       {item.icon}
                       <span>{item.label}</span>
-                    </Link> : <div className="flex items-center gap-2">
+                    </Link> : <div className="flex flex-col items-center gap-1">
                       {item.icon}
                       <span>{item.label}</span>
                     </div>}

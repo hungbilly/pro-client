@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { getInvoice, getClient, getJob } from '@/lib/storage';
@@ -126,7 +125,7 @@ export function useInvoiceData(): UseInvoiceDataResult {
 
         if (error) throw error;
         const formattedTemplates = data?.map(template => {
-          let parsedContent = {};
+          let parsedContent: any = {};
           try {
             parsedContent = template.content ? JSON.parse(template.content) : {};
           } catch (e) {
@@ -186,7 +185,7 @@ export function useInvoiceData(): UseInvoiceDataResult {
 
   const handleInvoiceDeleted = (invoiceId_: string) => {
     if (invoiceId_ === invoice?.id) {
-      toast.toast({ title: "This invoice has been deleted", variant: "info" });
+      toast.toast({ title: "This invoice has been deleted", variant: "default" });
       if (jobId) navigate(`/job/${jobId}`);
       else if (clientId) navigate(`/client/${clientId}`);
       else navigate('/');

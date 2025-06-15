@@ -800,7 +800,9 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                 </Card>}
 
               {/* Payment Schedule Manager */}
-              <PaymentScheduleManager paymentSchedules={invoice.paymentSchedules || []} invoiceAmount={ensureValidNumber(invoice.amount)} onUpdateSchedules={handlePaymentSchedulesUpdate} />
+              <div className="w-full overflow-hidden">
+                <PaymentScheduleManager paymentSchedules={invoice.paymentSchedules || []} invoiceAmount={ensureValidNumber(invoice.amount)} onUpdateSchedules={handlePaymentSchedulesUpdate} />
+              </div>
 
               <div>
                 <Label htmlFor="notes" className="text-sm">Notes</Label>

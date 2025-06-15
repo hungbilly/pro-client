@@ -231,11 +231,11 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4 px-2 pb-2 sm:px-6 sm:pb-6">
-        {/* Existing Payment Schedules - Optimized grid layout with proper spacing */}
+        {/* Existing Payment Schedules - Elegant grid layout with consistent spacing */}
         {paymentSchedules.length > 0 && (
           <div className="space-y-3">
             {paymentSchedules.map((schedule) => (
-              <div key={schedule.id} className="grid grid-cols-[90px_120px_70px_100px_85px_32px] gap-3 p-3 border rounded-lg items-end">
+              <div key={schedule.id} className="grid grid-cols-[90px_120px_70px_100px_85px_32px] gap-4 p-3 border rounded-lg items-end">
                 <div>
                   <Label className="text-xs text-muted-foreground">Description</Label>
                   <span className="font-medium text-sm block mt-1 truncate" title={schedule.description}>
@@ -333,10 +333,10 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
           </div>
         )}
 
-        {/* Add New Payment Schedule - Matching layout with proper spacing */}
+        {/* Add New Payment Schedule - Matching layout with consistent spacing */}
         <div className="space-y-3 p-2 border rounded-lg bg-muted/50 sm:p-4">
           <Label className="text-sm font-medium">Add Payment Schedule</Label>
-          <div className="grid grid-cols-[120px_70px_100px_85px_auto] gap-3 items-end">
+          <div className="grid grid-cols-[120px_70px_100px_85px_auto] gap-4 items-end">
             <div>
               <Label className="text-xs text-muted-foreground">Due Date</Label>
               <DatePicker

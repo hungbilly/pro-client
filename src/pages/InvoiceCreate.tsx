@@ -296,11 +296,16 @@ const InvoiceCreate = () => {
       // Preserve the current invoice important fields that should not be overridden
       const currentDate = invoice?.date || format(new Date(), 'yyyy-MM-dd');
       // Only preserve invoice number if it has a meaningful value (not empty/whitespace)
-      const currentNumber = invoice?.number && invoice.number.trim() !== '' ? invoice.number : undefined;
-      const currentStatus = invoice?.status || 'draft';
-      const currentShootingDate = invoice?.shootingDate || (job?.date ? job.date : undefined);
-      const currentInvoiceId = invoice?.id || ''; // Preserve invoice ID
-      const currentClientId = invoice?.clientId || (job?.clientId || clientId || ''); // Preserve client ID
+      const currentNumber =
+        typeof invoice?.number === "string" && invoice.number.trim() !== ""
+          ? invoice.number
+          : undefined;
+      const currentStatus = invoice?.status || "draft";
+      const currentShootingDate =
+        invoice?.shootingDate || (job?.date ? job.date : undefined);
+      const currentInvoiceId = invoice?.id || ""; // Preserve invoice ID
+      const currentClientId =
+        invoice?.clientId || job?.clientId || clientId || ""; // Preserve client ID
       
       console.log('Preserving invoice fields before template application', { 
         currentDate, 
@@ -358,6 +363,11 @@ const InvoiceCreate = () => {
       // Only set the number if we have a meaningful number to preserve
       if (currentNumber !== undefined) {
         newInvoice.number = currentNumber;
+      } else {
+        // Remove the number property if it exists and is empty
+        if ("number" in newInvoice) {
+          delete newInvoice.number;
+        }
       }
 
       // Apply discounts from template - Convert template discounts to invoice items for fixed discounts

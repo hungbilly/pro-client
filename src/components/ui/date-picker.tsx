@@ -22,6 +22,7 @@ interface DatePickerProps {
   highlightToday?: boolean
   classNames?: Record<string, string>
   id?: string
+  hideIcon?: boolean
 }
 
 export function DatePicker({ 
@@ -34,6 +35,7 @@ export function DatePicker({
   highlightToday = false,
   classNames,
   id,
+  hideIcon = false,
 }: DatePickerProps) {
   const handleSelect = React.useCallback((value: Date | null | DateRange) => {
     if (onSelect) {
@@ -57,7 +59,7 @@ export function DatePicker({
               !selected && "text-muted-foreground"
             )}
           >
-            <CalendarIcon className="mr-2 h-4 w-4" />
+            {!hideIcon && <CalendarIcon className="mr-2 h-4 w-4" />}
             {mode === "single" ? (
               selected ? (
                 format(selected as Date, "PPP")

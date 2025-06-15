@@ -250,6 +250,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
                         updatePaymentSchedule(schedule.id, 'dueDate', format(date, 'yyyy-MM-dd'));
                       }
                     }}
+                    hideIcon={true}
                   />
                 </div>
                 <div>
@@ -340,6 +341,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
                 mode="single"
                 selected={newSchedule.dueDate ? new Date(newSchedule.dueDate) : undefined}
                 onSelect={(date) => handleDateChange(date, 'dueDate')}
+                hideIcon={true}
               />
             </div>
             <div>

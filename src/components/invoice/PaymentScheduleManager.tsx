@@ -9,6 +9,7 @@ import { Trash2, Plus, Calendar, Percent, DollarSign, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { PaymentSchedule, PaymentStatus } from '@/types';
 import { toast } from 'sonner';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 interface PaymentScheduleManagerProps {
   paymentSchedules: PaymentSchedule[];
@@ -236,86 +237,91 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
         {/* Existing Payment Schedules - Elegant grid layout with consistent spacing */}
         {paymentSchedules.length > 0 && (
           <div className="space-y-3">
-            {paymentSchedules.map((schedule) => (
-              <div key={schedule.id} className="grid grid-cols-[120px_160px_100px_120px_120px_auto] gap-4 p-3 border rounded-lg items-end">
-                <div>
-                  <Label className="text-xs text-muted-foreground">Description</Label>
-                  <span className="font-medium text-sm block mt-1 truncate" title={schedule.description}>
-                    {schedule.description}
-                  </span>
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">Due Date</Label>
-                  <DatePicker
-                    mode="single"
-                    selected={schedule.dueDate ? new Date(schedule.dueDate) : undefined}
-                    onSelect={(date) => {
-                      if (date) {
-                        updatePaymentSchedule(schedule.id, 'dueDate', format(date, 'yyyy-MM-dd'));
-                      }
-                    }}
-                    hideIcon={true}
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">%</Label>
-                  <div className="relative">
-                    <Input
-                      type="number"
-                      value={schedule.percentage || 0}
-                      onChange={(e) => updatePaymentSchedule(schedule.id, 'percentage', Number(e.target.value) || 0)}
-                      placeholder="0"
-                      min="0"
-                      max="100"
-                      step="0.01"
-                      className="pr-5 text-sm"
-                    />
-                    <Percent className="absolute right-1.5 top-2.5 h-3 w-3 text-muted-foreground" />
+            <ScrollArea className="w-full">
+              <div className="space-y-3 py-1 min-w-[700px]">
+                {paymentSchedules.map((schedule) => (
+                  <div key={schedule.id} className="grid grid-cols-[120px_160px_100px_120px_120px_auto] gap-4 p-3 border rounded-lg items-end">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Description</Label>
+                      <span className="font-medium text-sm block mt-1 truncate" title={schedule.description}>
+                        {schedule.description}
+                      </span>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Due Date</Label>
+                      <DatePicker
+                        mode="single"
+                        selected={schedule.dueDate ? new Date(schedule.dueDate) : undefined}
+                        onSelect={(date) => {
+                          if (date) {
+                            updatePaymentSchedule(schedule.id, 'dueDate', format(date, 'yyyy-MM-dd'));
+                          }
+                        }}
+                        hideIcon={true}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">%</Label>
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          value={schedule.percentage || 0}
+                          onChange={(e) => updatePaymentSchedule(schedule.id, 'percentage', Number(e.target.value) || 0)}
+                          placeholder="0"
+                          min="0"
+                          max="100"
+                          step="0.01"
+                          className="pr-5 text-sm"
+                        />
+                        <Percent className="absolute right-1.5 top-2.5 h-3 w-3 text-muted-foreground" />
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Amount</Label>
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          value={schedule.amount || 0}
+                          onChange={(e) => updatePaymentSchedule(schedule.id, 'amount', Number(e.target.value) || 0)}
+                          placeholder="0"
+                          min="0"
+                          step="0.01"
+                          className="pr-5 text-sm"
+                        />
+                        <DollarSign className="absolute right-1.5 top-2.5 h-3 w-3 text-muted-foreground" />
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Status</Label>
+                      <Select
+                        value={schedule.status}
+                        onValueChange={(value) => updatePaymentSchedule(schedule.id, 'status', value)}
+                      >
+                        <SelectTrigger className="text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="unpaid">Unpaid</SelectItem>
+                          <SelectItem value="paid">Paid</SelectItem>
+                          <SelectItem value="write-off">Write-off</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex justify-center">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removePaymentSchedule(schedule.id)}
+                        className="text-red-500 hover:text-red-700 p-1 h-8 w-8"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">Amount</Label>
-                  <div className="relative">
-                    <Input
-                      type="number"
-                      value={schedule.amount || 0}
-                      onChange={(e) => updatePaymentSchedule(schedule.id, 'amount', Number(e.target.value) || 0)}
-                      placeholder="0"
-                      min="0"
-                      step="0.01"
-                      className="pr-5 text-sm"
-                    />
-                    <DollarSign className="absolute right-1.5 top-2.5 h-3 w-3 text-muted-foreground" />
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">Status</Label>
-                  <Select
-                    value={schedule.status}
-                    onValueChange={(value) => updatePaymentSchedule(schedule.id, 'status', value)}
-                  >
-                    <SelectTrigger className="text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="unpaid">Unpaid</SelectItem>
-                      <SelectItem value="paid">Paid</SelectItem>
-                      <SelectItem value="write-off">Write-off</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex justify-center">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removePaymentSchedule(schedule.id)}
-                    className="text-red-500 hover:text-red-700 p-1 h-8 w-8"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+                ))}
               </div>
-            ))}
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
             
             <div className="flex justify-between items-center p-2 bg-muted rounded-lg sm:p-3">
               <div className="flex gap-4">
@@ -339,74 +345,77 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
         {isAddingSchedule ? (
           <div className="space-y-3 p-2 border rounded-lg bg-muted/50 sm:p-4">
             <Label className="text-sm font-medium">Add Payment Schedule</Label>
-            <div className="grid grid-cols-[120px_160px_100px_120px_120px_auto] gap-4 items-end">
-              <div className="col-start-2">
-                <Label className="text-xs text-muted-foreground">Due Date</Label>
-                <DatePicker
-                  mode="single"
-                  selected={newSchedule.dueDate ? new Date(newSchedule.dueDate) : undefined}
-                  onSelect={(date) => handleDateChange(date, 'dueDate')}
-                  hideIcon={true}
-                />
-              </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">%</Label>
-                <div className="relative">
-                  <Input
-                    type="number"
-                    value={newSchedule.percentage || ''}
-                    onChange={(e) => handleNewSchedulePercentageChange(e.target.value)}
-                    placeholder="0"
-                    min="0"
-                    max="100"
-                    step="0.01"
-                    className="pr-5 text-sm"
+            <ScrollArea className="w-full">
+              <div className="grid grid-cols-[120px_160px_100px_120px_120px_auto] gap-4 items-end pt-2 min-w-[700px]">
+                <div className="col-start-2">
+                  <Label className="text-xs text-muted-foreground">Due Date</Label>
+                  <DatePicker
+                    mode="single"
+                    selected={newSchedule.dueDate ? new Date(newSchedule.dueDate) : undefined}
+                    onSelect={(date) => handleDateChange(date, 'dueDate')}
+                    hideIcon={true}
                   />
-                  <Percent className="absolute right-1.5 top-2.5 h-3 w-3 text-muted-foreground" />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">%</Label>
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      value={newSchedule.percentage || ''}
+                      onChange={(e) => handleNewSchedulePercentageChange(e.target.value)}
+                      placeholder="0"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      className="pr-5 text-sm"
+                    />
+                    <Percent className="absolute right-1.5 top-2.5 h-3 w-3 text-muted-foreground" />
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Amount</Label>
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      value={newSchedule.amount || ''}
+                      onChange={(e) => handleNewScheduleAmountChange(e.target.value)}
+                      placeholder="0"
+                      min="0"
+                      step="0.01"
+                      className="pr-5 text-sm"
+                    />
+                    <DollarSign className="absolute right-1.5 top-2.5 h-3 w-3 text-muted-foreground" />
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Status</Label>
+                  <Select
+                    value={newSchedule.status || 'unpaid'}
+                    onValueChange={(value) => setNewSchedule(prev => ({ ...prev, status: value as PaymentStatus }))}
+                  >
+                    <SelectTrigger className="text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unpaid">Unpaid</SelectItem>
+                      <SelectItem value="paid">Paid</SelectItem>
+                      <SelectItem value="write-off">Write-off</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex gap-2 items-center">
+                  <Button onClick={addPaymentSchedule} className="flex-1">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={() => setIsAddingSchedule(false)}>
+                    <X className="h-4 w-4" />
+                    <span className="sr-only">Cancel</span>
+                  </Button>
                 </div>
               </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">Amount</Label>
-                <div className="relative">
-                  <Input
-                    type="number"
-                    value={newSchedule.amount || ''}
-                    onChange={(e) => handleNewScheduleAmountChange(e.target.value)}
-                    placeholder="0"
-                    min="0"
-                    step="0.01"
-                    className="pr-5 text-sm"
-                  />
-                  <DollarSign className="absolute right-1.5 top-2.5 h-3 w-3 text-muted-foreground" />
-                </div>
-              </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">Status</Label>
-                <Select
-                  value={newSchedule.status || 'unpaid'}
-                  onValueChange={(value) => setNewSchedule(prev => ({ ...prev, status: value as PaymentStatus }))}
-                >
-                  <SelectTrigger className="text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="unpaid">Unpaid</SelectItem>
-                    <SelectItem value="paid">Paid</SelectItem>
-                    <SelectItem value="write-off">Write-off</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex gap-2 items-center">
-                <Button onClick={addPaymentSchedule} className="flex-1">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add
-                </Button>
-                <Button variant="ghost" size="icon" onClick={() => setIsAddingSchedule(false)}>
-                  <X className="h-4 w-4" />
-                  <span className="sr-only">Cancel</span>
-                </Button>
-              </div>
-            </div>
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
           </div>
         ) : (
           <div className="pt-2">

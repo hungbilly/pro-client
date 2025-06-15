@@ -277,7 +277,9 @@ const InvoiceCreate = () => {
         templateId, 
         currentInvoiceNumber: invoice?.number,
         currentItems: invoice?.items?.length || 0,
-        currentShootingDate: invoice?.shootingDate
+        currentShootingDate: invoice?.shootingDate,
+        currentInvoiceId: invoice?.id,
+        currentClientId: invoice?.clientId
       });
       
       setSelectedTemplate(templateId);
@@ -291,17 +293,21 @@ const InvoiceCreate = () => {
         return;
       }
       
-      // Preserve the current invoice date, number, status and shootingDate
+      // Preserve the current invoice important fields that should not be overridden
       const currentDate = invoice?.date || format(new Date(), 'yyyy-MM-dd');
       const currentNumber = invoice?.number || '';
       const currentStatus = invoice?.status || 'draft';
       const currentShootingDate = invoice?.shootingDate || (job?.date ? job.date : undefined);
+      const currentInvoiceId = invoice?.id || ''; // Preserve invoice ID
+      const currentClientId = invoice?.clientId || (job?.clientId || clientId || ''); // Preserve client ID
       
       console.log('Preserving invoice fields before template application', { 
         currentDate, 
         currentNumber, 
         currentStatus,
         currentShootingDate,
+        currentInvoiceId,
+        currentClientId,
         hasJob: !!job,
         jobDate: job?.date
       });
@@ -330,14 +336,16 @@ const InvoiceCreate = () => {
         return;
       }
       
-      // Create a new invoice object with the template data
+      // Create a new invoice object with the template data while preserving important fields
       const newInvoice: Partial<Invoice> = {
         ...(invoice || {}),
         items: Array.isArray(parsedContent.items) ? parsedContent.items : [],
         contractTerms: parsedContent.contractTerms || '',
         notes: parsedContent.notes || '',
         paymentSchedules: Array.isArray(parsedContent.paymentSchedules) ? parsedContent.paymentSchedules : [],
-        // Explicitly preserve these important fields
+        // Explicitly preserve these important fields - DO NOT OVERRIDE
+        id: currentInvoiceId, // Keep original invoice ID
+        clientId: currentClientId, // Keep original client ID
         date: currentDate,
         number: currentNumber,
         status: currentStatus,
@@ -385,6 +393,8 @@ const InvoiceCreate = () => {
       }
       
       console.log('New invoice after template application', { 
+        newInvoiceId: newInvoice.id,
+        newClientId: newInvoice.clientId,
         newInvoiceNumber: newInvoice.number,
         itemsCount: newInvoice.items?.length || 0,
         paymentSchedulesCount: newInvoice.paymentSchedules?.length || 0,

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -38,7 +37,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
         dueDate: format(new Date(), 'yyyy-MM-dd'),
         percentage: 100,
         status: 'unpaid',
-        amount: invoiceAmount // Calculate amount based on percentage and invoice amount
+        amount: invoiceAmount
       };
       onUpdateSchedules([defaultSchedule]);
     }
@@ -232,17 +231,17 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4 px-2 pb-2 sm:px-6 sm:pb-6">
-        {/* Existing Payment Schedules */}
+        {/* Existing Payment Schedules - Single Row Layout */}
         {paymentSchedules.length > 0 && (
           <div className="space-y-3">
             {paymentSchedules.map((schedule) => (
-              <div key={schedule.id} className="grid grid-cols-1 gap-2 p-2 border rounded-lg sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 lg:gap-3 lg:p-3">
-                <div className="lg:col-span-1">
-                  <Label className="text-xs text-muted-foreground lg:hidden">Description</Label>
-                  <span className="font-medium text-sm">{schedule.description}</span>
+              <div key={schedule.id} className="grid grid-cols-6 gap-3 p-3 border rounded-lg items-end">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Description</Label>
+                  <span className="font-medium text-sm block mt-1">{schedule.description}</span>
                 </div>
-                <div className="lg:col-span-1">
-                  <Label className="text-xs text-muted-foreground lg:hidden">Due Date</Label>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Due Date</Label>
                   <DatePicker
                     mode="single"
                     selected={schedule.dueDate ? new Date(schedule.dueDate) : undefined}
@@ -253,8 +252,8 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
                     }}
                   />
                 </div>
-                <div className="lg:col-span-1">
-                  <Label className="text-xs text-muted-foreground lg:hidden">Percentage</Label>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Percentage</Label>
                   <div className="relative">
                     <Input
                       type="number"
@@ -269,8 +268,8 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
                     <Percent className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground" />
                   </div>
                 </div>
-                <div className="lg:col-span-1">
-                  <Label className="text-xs text-muted-foreground lg:hidden">Amount</Label>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Amount</Label>
                   <div className="relative">
                     <Input
                       type="number"
@@ -284,8 +283,8 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
                     <DollarSign className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground" />
                   </div>
                 </div>
-                <div className="lg:col-span-1">
-                  <Label className="text-xs text-muted-foreground lg:hidden">Status</Label>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Status</Label>
                   <Select
                     value={schedule.status}
                     onValueChange={(value) => updatePaymentSchedule(schedule.id, 'status', value)}
@@ -300,7 +299,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="lg:col-span-1 flex justify-center lg:justify-end">
+                <div className="flex justify-center">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -331,11 +330,11 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
           </div>
         )}
 
-        {/* Add New Payment Schedule */}
+        {/* Add New Payment Schedule - Single Row Layout */}
         <div className="space-y-3 p-2 border rounded-lg bg-muted/50 sm:p-4">
           <Label className="text-sm font-medium">Add Payment Schedule</Label>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 lg:gap-3">
-            <div className="md:col-span-1 lg:col-span-1">
+          <div className="grid grid-cols-5 gap-3 items-end">
+            <div>
               <Label className="text-xs text-muted-foreground">Due Date</Label>
               <DatePicker
                 mode="single"
@@ -343,7 +342,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
                 onSelect={(date) => handleDateChange(date, 'dueDate')}
               />
             </div>
-            <div className="md:col-span-1 lg:col-span-1">
+            <div>
               <Label className="text-xs text-muted-foreground">Percentage</Label>
               <div className="relative">
                 <Input
@@ -359,7 +358,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
                 <Percent className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground" />
               </div>
             </div>
-            <div className="md:col-span-1 lg:col-span-1">
+            <div>
               <Label className="text-xs text-muted-foreground">Amount</Label>
               <div className="relative">
                 <Input
@@ -374,7 +373,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
                 <DollarSign className="absolute right-2 top-2.5 h-4 w-4 text-muted-foreground" />
               </div>
             </div>
-            <div className="md:col-span-1 lg:col-span-1">
+            <div>
               <Label className="text-xs text-muted-foreground">Status</Label>
               <Select
                 value={newSchedule.status || 'unpaid'}
@@ -390,7 +389,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
                 </SelectContent>
               </Select>
             </div>
-            <div className="md:col-span-2 lg:col-span-1 flex items-end">
+            <div>
               <Button onClick={addPaymentSchedule} className="w-full">
                 <Plus className="h-4 w-4 mr-2" />
                 Add

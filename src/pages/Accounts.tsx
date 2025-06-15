@@ -787,31 +787,31 @@ const Accounts = () => {
       
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 mb-6">
         <div className="rounded-lg p-3 bg-green-50 border border-green-100">
-          <span className="block text-base font-bold text-green-600 whitespace-nowrap overflow-hidden text-ellipsis">
+          <span className="block text-sm font-bold text-green-600 break-words">
             {formatCurrency(accountStats.paid, companyCurrency)}
           </span>
           <p className="text-sm text-gray-500">Income</p>
         </div>
         <div className="rounded-lg p-3 bg-amber-50 border border-amber-100">
-          <span className="block text-base font-bold text-amber-600 whitespace-nowrap overflow-hidden text-ellipsis">
+          <span className="block text-sm font-bold text-amber-600 break-words">
             {formatCurrency(accountStats.unpaid, companyCurrency)}
           </span>
           <p className="text-sm text-gray-500">Unpaid</p>
         </div>
         <div className="rounded-lg p-3 bg-gray-50 border border-gray-100">
-          <span className="block text-base font-bold text-gray-600 whitespace-nowrap overflow-hidden text-ellipsis">
+          <span className="block text-sm font-bold text-gray-600 break-words">
             {formatCurrency(accountStats.writeOff, companyCurrency)}
           </span>
           <p className="text-sm text-gray-500">Write-off</p>
         </div>
         <div className="rounded-lg p-3 bg-red-50 border border-red-100">
-          <span className="block text-base font-bold text-red-600 whitespace-nowrap overflow-hidden text-ellipsis">
+          <span className="block text-sm font-bold text-red-600 break-words">
             {formatCurrency(accountStats.expenses, companyCurrency)}
           </span>
           <p className="text-sm text-gray-500">Expenses</p>
         </div>
         <div className="rounded-lg p-3 bg-blue-50 border border-blue-100">
-          <span className="block text-base font-bold text-blue-600 whitespace-nowrap overflow-hidden text-ellipsis">
+          <span className="block text-sm font-bold text-blue-600 break-words">
             {formatCurrency(accountStats.profit, companyCurrency)}
           </span>
           <p className="text-sm text-gray-500">Profit</p>

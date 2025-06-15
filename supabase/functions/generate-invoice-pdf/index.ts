@@ -1184,11 +1184,15 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
 
     if (invoiceData.job && invoiceData.job.title) {
       doc.setFontSize(14);
-      doc.setTextColor(0, 0, 0);
+      doc.setTextColor(0, 0, 0);      
       const rightColumnWidth = pageWidth - rightColumnX - margin;
-      const jobTitleLines = doc.splitTextToSize(invoiceData.job.title, rightColumnWidth);
-      doc.text(jobTitleLines, rightColumnX, rightColumnY);
-      rightColumnY += (jobTitleLines.length * 6) + 1;
+
+      // ==== CHANGE START: Use splitTextToSize to wrap job title ====
+      doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'bold');
+      const jobTitleBlock = doc.splitTextToSize(invoiceData.job.title, rightColumnWidth);
+      doc.text(jobTitleBlock, rightColumnX, rightColumnY);
+      rightColumnY += (jobTitleBlock.length * 6) + 2;
+      // ==== CHANGE END ====
     }
 
     doc.setFontSize(10);

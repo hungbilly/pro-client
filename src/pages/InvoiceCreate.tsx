@@ -296,7 +296,7 @@ const InvoiceCreate = () => {
       // Preserve the current invoice important fields that should not be overridden
       const currentDate = invoice?.date || format(new Date(), 'yyyy-MM-dd');
       // Only preserve invoice number if it has a meaningful value (not empty/whitespace)
-      const currentNumber =
+      let currentNumber =
         typeof invoice?.number === "string" && invoice.number.trim() !== ""
           ? invoice.number
           : undefined;
@@ -318,6 +318,10 @@ const InvoiceCreate = () => {
         jobDate: job?.date,
         willPreserveNumber: currentNumber !== undefined
       });
+      
+      // Start: NEW - Dynamically import generator
+      const { generateInvoiceNumber } = await import('@/utils/invoiceNumberGenerator');
+      // End: NEW
       
       // Parse the template content with improved error handling
       let parsedContent: any = {};
@@ -359,6 +363,11 @@ const InvoiceCreate = () => {
         // Ensure job relationship is preserved
         jobId: jobId || invoice?.jobId
       };
+
+      // If there is NO existing invoice number, generate one
+      if (!currentNumber) {
+        currentNumber = await generateInvoiceNumber();
+      }
 
       // Only set the number if we have a meaningful number to preserve
       if (currentNumber !== undefined) {

@@ -788,50 +788,51 @@ const PaymentScheduleTable = memo(({
           </div>
         </div>
 
-      {/* Payment Date Selection Dialog - Fixed */}
-      <Dialog open={isPaymentDateDialogOpen} onOpenChange={(open) => {
-        if (!open) {
-          handleCancelPaymentDialog();
-        }
-      }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Select Payment Date</DialogTitle>
-            <DialogDescription>
-              Choose the date when this payment was received.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-center py-4">
-            <Calendar
-              mode="single"
-              selected={selectedPaymentDate}
-              onSelect={(date) => {
-                console.log('Calendar date selected:', date);
-                setSelectedPaymentDate(date);
-              }}
-              initialFocus
-              className="p-3 pointer-events-auto rounded-md border"
-            />
-          </div>
-          <div className="text-center text-sm text-muted-foreground mb-4">
-            Selected date: {selectedPaymentDate ? format(selectedPaymentDate, 'MMMM d, yyyy') : 'None'}
-          </div>
-          <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={handleCancelPaymentDialog}
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleConfirmPayment}
-              disabled={!selectedPaymentDate}
-            >
-              Confirm Payment
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        {/* Payment Date Selection Dialog - Fixed */}
+        <Dialog open={isPaymentDateDialogOpen} onOpenChange={(open) => {
+          if (!open) {
+            handleCancelPaymentDialog();
+          }
+        }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Select Payment Date</DialogTitle>
+              <DialogDescription>
+                Choose the date when this payment was received.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-center py-4">
+              <Calendar
+                mode="single"
+                selected={selectedPaymentDate}
+                onSelect={(date) => {
+                  console.log('Calendar date selected:', date);
+                  setSelectedPaymentDate(date);
+                }}
+                initialFocus
+                className="p-3 pointer-events-auto rounded-md border"
+              />
+            </div>
+            <div className="text-center text-sm text-muted-foreground mb-4">
+              Selected date: {selectedPaymentDate ? format(selectedPaymentDate, 'MMMM d, yyyy') : 'None'}
+            </div>
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={handleCancelPaymentDialog}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleConfirmPayment}
+                disabled={!selectedPaymentDate}
+              >
+                Confirm Payment
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
     </TooltipProvider>
   );
 });

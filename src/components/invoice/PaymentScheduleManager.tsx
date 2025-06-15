@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -235,7 +236,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
         {paymentSchedules.length > 0 && (
           <div className="space-y-3">
             {paymentSchedules.map((schedule) => (
-              <div key={schedule.id} className="grid grid-cols-[90px_120px_70px_100px_85px_32px] gap-4 p-3 border rounded-lg items-end">
+              <div key={schedule.id} className="grid grid-cols-[120px_160px_100px_120px_120px_auto] gap-4 p-3 border rounded-lg items-end">
                 <div>
                   <Label className="text-xs text-muted-foreground">Description</Label>
                   <span className="font-medium text-sm block mt-1 truncate" title={schedule.description}>
@@ -336,8 +337,8 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
         {/* Add New Payment Schedule - Matching layout with consistent spacing */}
         <div className="space-y-3 p-2 border rounded-lg bg-muted/50 sm:p-4">
           <Label className="text-sm font-medium">Add Payment Schedule</Label>
-          <div className="grid grid-cols-[120px_70px_100px_85px_auto] gap-4 items-end">
-            <div>
+          <div className="grid grid-cols-[120px_160px_100px_120px_120px_auto] gap-4 items-end">
+            <div className="col-start-2">
               <Label className="text-xs text-muted-foreground">Due Date</Label>
               <DatePicker
                 mode="single"

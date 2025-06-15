@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -37,11 +38,30 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
         dueDate: format(new Date(), 'yyyy-MM-dd'),
         percentage: 100,
         status: 'unpaid',
-        amount: invoiceAmount
+        amount: invoiceAmount // Calculate amount based on percentage and invoice amount
       };
       onUpdateSchedules([defaultSchedule]);
     }
   }, [paymentSchedules.length, invoiceAmount, onUpdateSchedules]);
+
+  // Update existing payment schedules when invoice amount changes
+  useEffect(() => {
+    if (paymentSchedules.length > 0 && invoiceAmount > 0) {
+      const updatedSchedules = paymentSchedules.map(schedule => ({
+        ...schedule,
+        amount: (invoiceAmount * (schedule.percentage || 0)) / 100
+      }));
+      
+      // Only update if amounts actually changed
+      const hasAmountChanges = updatedSchedules.some((schedule, index) => 
+        Math.abs((schedule.amount || 0) - (paymentSchedules[index].amount || 0)) > 0.01
+      );
+      
+      if (hasAmountChanges) {
+        onUpdateSchedules(updatedSchedules);
+      }
+    }
+  }, [invoiceAmount]);
 
   const generateId = () => `payment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 

@@ -452,7 +452,7 @@ const PaymentScheduleTable = memo(({
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
-              <TableHead colSpan={7}>
+              <TableHead className="w-[140px]">
                 <div className="flex items-center gap-2">
                   Description
                   <Tooltip>
@@ -465,138 +465,193 @@ const PaymentScheduleTable = memo(({
                   </Tooltip>
                 </div>
               </TableHead>
-            </TableRow>
-            <TableRow className="bg-muted/50 border-b-0">
-              <TableHead className="w-[120px]">Due Date</TableHead>
-              <TableHead className="text-right w-[72px]">Percentage</TableHead>
-              <TableHead className="text-right w-[88px]">Amount</TableHead>
-              <TableHead className="w-[100px]">Status</TableHead>
-              <TableHead className="w-[140px]">Payment Date</TableHead>
+              <TableHead className="w-[120px]">
+                <div className="flex items-center gap-2">
+                  Due Date
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Info className="h-3 w-3 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>When this payment is expected to be received</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              </TableHead>
+              <TableHead className="text-right w-[72px]">
+                <div className="flex items-center justify-end gap-2">
+                  Percentage
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Info className="h-3 w-3 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Percentage of total invoice amount for this payment</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              </TableHead>
+              <TableHead className="text-right w-[88px]">
+                <div className="flex items-center justify-end gap-2">
+                  Amount
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Info className="h-3 w-3 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Dollar amount for this payment installment</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              </TableHead>
+              <TableHead className="w-[100px]">
+                <div className="flex items-center gap-2">
+                  Status
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Info className="h-3 w-3 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Current payment status: Paid, Unpaid, or Write-off</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              </TableHead>
+              <TableHead className="w-[140px]">
+                <div className="flex items-center gap-2">
+                  Payment Date
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Info className="h-3 w-3 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Actual date when payment was received (for paid items)</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              </TableHead>
               {!isClientView && <TableHead className="w-24">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {sortedPaymentSchedules.map((schedule, index) => (
-              <React.Fragment key={schedule.id}>
-                <TableRow>
-                  <TableCell colSpan={7} className="!p-4 bg-white border-b-0">
-                    {renderDescriptionCell(schedule, index)}
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="w-[120px]">
-                    {schedule.dueDate && new Date(schedule.dueDate).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell className="text-right w-[72px]">
-                    {(schedule.percentage || 0).toFixed(2)}%
-                  </TableCell>
-                  <TableCell className="text-right font-medium w-[88px]">
-                    {renderAmountCell(schedule)}
-                  </TableCell>
-                  <TableCell className="w-[100px]">
-                    <Badge className={paymentStatusColors[schedule.status] || paymentStatusColors.unpaid}>
-                      {schedule.status.toUpperCase()}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="w-[140px]">
-                    {schedule.status === 'paid' ? (
-                      <div className="flex items-center gap-2">
-                        {schedule.paymentDate ? (
-                          <>
-                            <span>
-                              {format(new Date(schedule.paymentDate), 'MMM d, yyyy')}
-                            </span>
-                            {!isClientView && shouldEnableEditing && (
-                              <Popover open={editingDateId === schedule.id} onOpenChange={(open) => {
-                                if (open) setEditingDateId(schedule.id);
-                                else setEditingDateId(null);
-                              }}>
-                                <PopoverTrigger asChild>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    className="h-8 w-8"
-                                    onClick={() => {
-                                      setEditingDateId(schedule.id);
-                                    }}
-                                  >
-                                    <Edit2 className="h-4 w-4" />
-                                  </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0" align="start">
-                                  <Calendar
-                                    mode="single"
-                                    selected={schedule.paymentDate ? new Date(schedule.paymentDate) : undefined}
-                                    onSelect={(date) => handleDateSelect(schedule.id, date)}
-                                    initialFocus
-                                    className="p-3 pointer-events-auto"
-                                  />
-                                </PopoverContent>
-                              </Popover>
-                            )}
-                          </>
-                        ) : (
-                          <span className="text-muted-foreground">Not set</span>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground">-</span>
-                    )}
-                  </TableCell>
-                  {!isClientView && (
-                    <TableCell>
-                      <div className="flex space-x-2">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              disabled={updatingPaymentId === schedule.id}
-                            >
-                              {updatingPaymentId === schedule.id ? 'Updating...' : 'Set Status'}
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            {schedule.status !== 'paid' && (
-                              <DropdownMenuItem 
-                                onClick={() => handleStatusUpdate(schedule, 'paid')}
-                                className="text-green-600"
-                              >
-                                Mark as Paid
-                              </DropdownMenuItem>
-                            )}
-                            {schedule.status !== 'unpaid' && (
-                              <DropdownMenuItem 
-                                onClick={() => handleStatusUpdate(schedule, 'unpaid')}
-                              >
-                                Mark as Unpaid
-                              </DropdownMenuItem>
-                            )}
-                            {schedule.status !== 'write-off' && (
-                              <DropdownMenuItem 
-                                onClick={() => handleStatusUpdate(schedule, 'write-off')}
-                                className="text-red-600"
-                              >
-                                Write Off
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                        {onRemovePaymentSchedule && shouldEnableEditing && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => onRemovePaymentSchedule(schedule.id)}
-                            className="text-red-500 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
+              <TableRow key={schedule.id}>
+                <TableCell className="w-[140px]">
+                  {renderDescriptionCell(schedule, index)}
+                </TableCell>
+                <TableCell className="w-[120px]">
+                  {schedule.dueDate && new Date(schedule.dueDate).toLocaleDateString()}
+                </TableCell>
+                <TableCell className="text-right w-[72px]">
+                  {(schedule.percentage || 0).toFixed(2)}%
+                </TableCell>
+                <TableCell className="text-right font-medium w-[88px]">
+                  {renderAmountCell(schedule)}
+                </TableCell>
+                <TableCell className="w-[100px]">
+                  <Badge className={paymentStatusColors[schedule.status] || paymentStatusColors.unpaid}>
+                    {schedule.status.toUpperCase()}
+                  </Badge>
+                </TableCell>
+                <TableCell className="w-[140px]">
+                  {schedule.status === 'paid' ? (
+                    <div className="flex items-center gap-2">
+                      {schedule.paymentDate ? (
+                        <>
+                          <span>
+                            {format(new Date(schedule.paymentDate), 'MMM d, yyyy')}
+                          </span>
+                          {!isClientView && shouldEnableEditing && (
+                            <Popover open={editingDateId === schedule.id} onOpenChange={(open) => {
+                              if (open) setEditingDateId(schedule.id);
+                              else setEditingDateId(null);
+                            }}>
+                              <PopoverTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-8 w-8"
+                                  onClick={() => {
+                                    console.log('Edit date button clicked');
+                                    setEditingDateId(schedule.id);
+                                  }}
+                                >
+                                  <Edit2 className="h-4 w-4" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                  mode="single"
+                                  selected={schedule.paymentDate ? new Date(schedule.paymentDate) : undefined}
+                                  onSelect={(date) => handleDateSelect(schedule.id, date)}
+                                  initialFocus
+                                  className="p-3 pointer-events-auto"
+                                />
+                              </PopoverContent>
+                            </Popover>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-muted-foreground">Not set</span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
                   )}
-                </TableRow>
-              </React.Fragment>
+                </TableCell>
+                {!isClientView && (
+                  <TableCell>
+                    <div className="flex space-x-2">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            disabled={updatingPaymentId === schedule.id}
+                          >
+                            {updatingPaymentId === schedule.id ? 'Updating...' : 'Set Status'}
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {schedule.status !== 'paid' && (
+                            <DropdownMenuItem 
+                              onClick={() => handleStatusUpdate(schedule, 'paid')}
+                              className="text-green-600"
+                            >
+                              Mark as Paid
+                            </DropdownMenuItem>
+                          )}
+                          {schedule.status !== 'unpaid' && (
+                            <DropdownMenuItem 
+                              onClick={() => handleStatusUpdate(schedule, 'unpaid')}
+                            >
+                              Mark as Unpaid
+                            </DropdownMenuItem>
+                          )}
+                          {schedule.status !== 'write-off' && (
+                            <DropdownMenuItem 
+                              onClick={() => handleStatusUpdate(schedule, 'write-off')}
+                              className="text-red-600"
+                            >
+                              Write Off
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      {onRemovePaymentSchedule && shouldEnableEditing && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onRemovePaymentSchedule(schedule.id)}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                )}
+              </TableRow>
             ))}
           </TableBody>
         </Table>

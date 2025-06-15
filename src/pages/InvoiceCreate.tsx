@@ -51,45 +51,47 @@ const InvoiceCreate = () => {
 
   return (
     <PageTransition>
-      <div className="container py-8">
-        <div className="flex flex-col space-y-2 mb-6">
-          <h1 className="text-3xl font-bold tracking-tight">{invoice ? 'Edit Invoice' : 'New Invoice'}</h1>
-          <div className="text-sm text-muted-foreground flex items-center">
-            {paths.map((path, index) => (
-              <div key={`breadcrumb-${index}`}>
-                {index > 0 && <span className="mx-1">{'>'}</span>}
-                {path.path === '#' ? (
-                  <span>{path.label}</span>
-                ) : (
-                  <span
-                    className="hover:underline cursor-pointer"
-                    onClick={() => navigate(path.path)}
-                  >
-                    {path.label}
-                  </span>
-                )}
-              </div>
-            ))}
+      <div className="py-8">
+        <div className="container">
+          <div className="flex flex-col space-y-2 mb-6">
+            <h1 className="text-3xl font-bold tracking-tight">{invoice ? 'Edit Invoice' : 'New Invoice'}</h1>
+            <div className="text-sm text-muted-foreground flex items-center">
+              {paths.map((path, index) => (
+                <div key={`breadcrumb-${index}`}>
+                  {index > 0 && <span className="mx-1">{'>'}</span>}
+                  {path.path === '#' ? (
+                    <span>{path.label}</span>
+                  ) : (
+                    <span
+                      className="hover:underline cursor-pointer"
+                      onClick={() => navigate(path.path)}
+                    >
+                      {path.label}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
+          <JobClientSummary job={job} client={client} />
+          {!job && !client && (
+            <div className="mb-6">
+              <Card className="bg-amber-50 border-amber-200">
+                <CardContent className="pt-6">
+                  <p className="text-amber-800">
+                    This invoice is not associated with a job or client. It's recommended to create invoices from a job or client page.
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+          <InvoiceTemplateSelector
+            templates={templates}
+            selectedTemplate={selectedTemplate}
+            onTemplateChange={handleTemplateSelection}
+            onClear={() => setSelectedTemplate(null)}
+          />
         </div>
-        <JobClientSummary job={job} client={client} />
-        {!job && !client && (
-          <div className="mb-6">
-            <Card className="bg-amber-50 border-amber-200">
-              <CardContent className="pt-6">
-                <p className="text-amber-800">
-                  This invoice is not associated with a job or client. It's recommended to create invoices from a job or client page.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-        <InvoiceTemplateSelector
-          templates={templates}
-          selectedTemplate={selectedTemplate}
-          onTemplateChange={handleTemplateSelection}
-          onClear={() => setSelectedTemplate(null)}
-        />
         <InvoiceForm
           propInvoice={invoice}
           propClientId={clientId || job?.clientId}

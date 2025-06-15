@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -556,7 +557,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   }, [subtotal, percentageDiscount, selectedDiscountItems.length]);
 
   return <PageTransition>
-      <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="w-full max-w-4xl mx-auto">
         <Card className="w-full border-0 shadow-none sm:border sm:shadow-sm">
           <CardHeader className="space-y-4 px-4 py-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -577,7 +578,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
               </div>
             </div>
           </CardHeader>
-          <CardContent className="py-0 sm:px-6 px-0">
+          <CardContent className="py-0 px-4 sm:px-6">
             <div className="space-y-6">
               {/* Validation Alert */}
               {showValidationAlert && validationErrors.length > 0 && (

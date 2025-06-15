@@ -231,11 +231,11 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4 px-2 pb-2 sm:px-6 sm:pb-6">
-        {/* Existing Payment Schedules - Adjusted Grid Layout */}
+        {/* Existing Payment Schedules - Adjusted Grid Layout with smaller description column */}
         {paymentSchedules.length > 0 && (
           <div className="space-y-3">
             {paymentSchedules.map((schedule) => (
-              <div key={schedule.id} className="grid grid-cols-[1fr_120px_80px_120px_100px_40px] gap-2 p-3 border rounded-lg items-end">
+              <div key={schedule.id} className="grid grid-cols-[80px_120px_80px_120px_100px_40px] gap-2 p-3 border rounded-lg items-end">
                 <div>
                   <Label className="text-xs text-muted-foreground">Description</Label>
                   <span className="font-medium text-sm block mt-1">{schedule.description}</span>
@@ -331,7 +331,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
           </div>
         )}
 
-        {/* Add New Payment Schedule - Adjusted Grid Layout */}
+        {/* Add New Payment Schedule - Adjusted Grid Layout with smaller description column */}
         <div className="space-y-3 p-2 border rounded-lg bg-muted/50 sm:p-4">
           <Label className="text-sm font-medium">Add Payment Schedule</Label>
           <div className="grid grid-cols-[120px_80px_120px_100px_auto] gap-2 items-end">

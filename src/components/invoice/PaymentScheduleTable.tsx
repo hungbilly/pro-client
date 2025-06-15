@@ -327,16 +327,18 @@ const PaymentScheduleTable = memo(({
   const renderAmountCell = (schedule: PaymentSchedule) => {
     const paymentAmount = getPaymentAmount(schedule);
     const percentage = schedule.percentage || 0;
-    
+
     if (editingAmountId === schedule.id) {
+      // EDIT MODE: Render all fields inline in a single row (flex)
       return (
-        <div className="flex flex-col space-y-2">
-          <div className="flex items-center space-x-2 mb-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Amount/Percentage Toggle Buttons */}
+          <div className="flex items-center">
             <Button
               size="sm"
               variant={editMode === 'amount' ? 'default' : 'outline'}
               onClick={() => setEditMode('amount')}
-              className="text-xs h-6 px-2"
+              className={`text-xs h-7 px-2 rounded-l-md ${editMode === 'amount' ? '' : '!bg-white'} border`}
             >
               Amount
             </Button>
@@ -344,12 +346,13 @@ const PaymentScheduleTable = memo(({
               size="sm"
               variant={editMode === 'percentage' ? 'default' : 'outline'}
               onClick={() => setEditMode('percentage')}
-              className="text-xs h-6 px-2"
+              className={`text-xs h-7 px-2 rounded-r-md border-l-0 ${editMode === 'percentage' ? '' : '!bg-white'}`}
             >
-              Percentage
+              %
             </Button>
           </div>
-          
+
+          {/* Amount or Percentage Input */}
           {editMode === 'amount' ? (
             <Input
               type="text"
@@ -362,10 +365,11 @@ const PaymentScheduleTable = memo(({
                   [schedule.id]: value
                 }));
               }}
-              className="appearance-none"
+              className="w-24 mx-0"
+              autoFocus
             />
           ) : (
-            <div className="relative">
+            <div className="relative flex items-center">
               <Input
                 type="text"
                 inputMode="decimal"
@@ -377,31 +381,33 @@ const PaymentScheduleTable = memo(({
                     [schedule.id]: value
                   }));
                 }}
-                className="appearance-none pr-6"
+                className="w-16 pr-6"
+                autoFocus
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2">%</span>
+              <span className="absolute right-3 text-muted-foreground pointer-events-none select-none">%</span>
             </div>
           )}
-          
-          <div className="flex justify-end">
-            <Button 
-              size="sm" 
-              onClick={() => {
-                console.log('Save button clicked, edit mode:', editMode);
-                if (editMode === 'amount') {
-                  handleAmountUpdate(schedule.id, schedule);
-                } else {
-                  handlePercentageUpdate(schedule.id, schedule);
-                }
-              }}
-            >
-              Save
-            </Button>
-          </div>
+
+          {/* Save Button */}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              if (editMode === 'amount') {
+                handleAmountUpdate(schedule.id, schedule);
+              } else {
+                handlePercentageUpdate(schedule.id, schedule);
+              }
+            }}
+            className="ml-2"
+          >
+            Save
+          </Button>
         </div>
       );
     }
 
+    // ... keep existing code (non-edit mode rendering) the same ...
     return (
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1">
@@ -409,14 +415,11 @@ const PaymentScheduleTable = memo(({
           <span>{trueFormatCurrency(paymentAmount)}</span>
         </div>
         {!isClientView && shouldEnableEditing && (
-          <Button 
-            variant="ghost" 
-            size="icon" 
+          <Button
+            variant="ghost"
+            size="icon"
             className="h-6 w-6 ml-2"
-            onClick={() => {
-              console.log('Edit amount button clicked for schedule:', schedule.id, 'isEditView:', isEditView, 'shouldEnableEditing:', shouldEnableEditing);
-              setEditingAmountId(schedule.id);
-            }}
+            onClick={() => setEditingAmountId(schedule.id)}
           >
             <Edit2 className="h-3 w-3" />
           </Button>

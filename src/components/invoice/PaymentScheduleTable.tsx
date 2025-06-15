@@ -465,7 +465,7 @@ const PaymentScheduleTable = memo(({
                   </Tooltip>
                 </div>
               </TableHead>
-              <TableHead className="w-[140px]">
+              <TableHead className="w-[120px]">
                 <div className="flex items-center gap-2">
                   Due Date
                   <Tooltip>
@@ -478,7 +478,7 @@ const PaymentScheduleTable = memo(({
                   </Tooltip>
                 </div>
               </TableHead>
-              <TableHead className="text-right w-[100px]">
+              <TableHead className="text-right w-[72px]">
                 <div className="flex items-center justify-end gap-2">
                   Percentage
                   <Tooltip>
@@ -491,7 +491,7 @@ const PaymentScheduleTable = memo(({
                   </Tooltip>
                 </div>
               </TableHead>
-              <TableHead className="text-right w-[120px]">
+              <TableHead className="text-right w-[88px]">
                 <div className="flex items-center justify-end gap-2">
                   Amount
                   <Tooltip>
@@ -539,13 +539,13 @@ const PaymentScheduleTable = memo(({
                 <TableCell className="w-[140px]">
                   {renderDescriptionCell(schedule, index)}
                 </TableCell>
-                <TableCell className="w-[140px]">
+                <TableCell className="w-[120px]">
                   {schedule.dueDate && new Date(schedule.dueDate).toLocaleDateString()}
                 </TableCell>
-                <TableCell className="text-right w-[100px]">
+                <TableCell className="text-right w-[72px]">
                   {(schedule.percentage || 0).toFixed(2)}%
                 </TableCell>
-                <TableCell className="text-right font-medium w-[120px]">
+                <TableCell className="text-right font-medium w-[88px]">
                   {renderAmountCell(schedule)}
                 </TableCell>
                 <TableCell className="w-[100px]">

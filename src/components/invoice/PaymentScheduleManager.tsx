@@ -299,12 +299,12 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex justify-center">
+                <div className="flex justify-center w-fit">
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => removePaymentSchedule(schedule.id)}
-                    className="text-red-500 hover:text-red-700"
+                    className="text-red-500 hover:text-red-700 p-2"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>

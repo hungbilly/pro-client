@@ -435,11 +435,6 @@ const PaymentScheduleTable = memo(({
     return formatCurrency(amt, currency);
   };
 
-  const ensureValidNumber = (value: any): number => {
-    const num = Number(value);
-    return isNaN(num) ? 0 : num;
-  };
-
   const renderRow = (schedule: PaymentSchedule, index: number) => {
     const paymentAmount = getPaymentAmount(schedule);
     const percentage = schedule.percentage || 0;

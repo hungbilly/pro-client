@@ -527,7 +527,7 @@ const PaymentScheduleTable = memo(({
               <TableCell className="whitespace-nowrap min-w-[115px] max-w-[130px]">
                 <div className="flex items-center gap-2">
                   <Button
-                    size="xs"
+                    size="sm"
                     variant="outline"
                     onClick={() => {
                       // We'll update both amount & percentage for now as one row. Modify as needed.
@@ -538,7 +538,7 @@ const PaymentScheduleTable = memo(({
                     Save
                   </Button>
                   <Button
-                    size="xs"
+                    size="sm"
                     variant="ghost"
                     onClick={() => setEditingAmountId(null)}
                   >
@@ -585,7 +585,7 @@ const PaymentScheduleTable = memo(({
                 <div className="flex items-center gap-1">
                   <Button
                     variant="ghost"
-                    size="xs"
+                    size="sm"
                     onClick={() => setEditingAmountId(schedule.id)}
                     className="ml-1"
                   >
@@ -596,7 +596,7 @@ const PaymentScheduleTable = memo(({
                     <DropdownMenuTrigger asChild>
                       <Button
                         variant="ghost"
-                        size="xs"
+                        size="sm"
                         disabled={updatingPaymentId === schedule.id}
                       >
                         {updatingPaymentId === schedule.id ? 'Updating...' : 'Set Status'}
@@ -632,7 +632,7 @@ const PaymentScheduleTable = memo(({
                   {onRemovePaymentSchedule && shouldEnableEditing && (
                     <Button
                       variant="ghost"
-                      size="xs"
+                      size="sm"
                       onClick={() => onRemovePaymentSchedule(schedule.id)}
                       className="text-red-500 hover:text-red-700"
                     >

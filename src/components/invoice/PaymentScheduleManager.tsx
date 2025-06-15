@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DatePicker } from '@/components/ui/date-picker';
-import { Trash2, Plus, Calendar, Percent, DollarSign } from 'lucide-react';
+import { Trash2, Plus, Calendar, Percent, DollarSign, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { PaymentSchedule, PaymentStatus } from '@/types';
 import { toast } from 'sonner';
@@ -28,6 +27,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
     amount: 0,
     status: 'unpaid'
   });
+  const [isAddingSchedule, setIsAddingSchedule] = useState(false);
 
   // Initialize with default payment schedule if none exist
   useEffect(() => {
@@ -150,6 +150,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
       onUpdateSchedules([...paymentSchedules, schedule]);
     }
 
+    setIsAddingSchedule(false);
     setNewSchedule({
       dueDate: format(new Date(), 'yyyy-MM-dd'),
       percentage: 0,
@@ -334,74 +335,91 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
           </div>
         )}
 
-        {/* Add New Payment Schedule - Matching layout with consistent spacing */}
-        <div className="space-y-3 p-2 border rounded-lg bg-muted/50 sm:p-4">
-          <Label className="text-sm font-medium">Add Payment Schedule</Label>
-          <div className="grid grid-cols-[120px_160px_100px_120px_120px_auto] gap-4 items-end">
-            <div className="col-start-2">
-              <Label className="text-xs text-muted-foreground">Due Date</Label>
-              <DatePicker
-                mode="single"
-                selected={newSchedule.dueDate ? new Date(newSchedule.dueDate) : undefined}
-                onSelect={(date) => handleDateChange(date, 'dueDate')}
-                hideIcon={true}
-              />
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">%</Label>
-              <div className="relative">
-                <Input
-                  type="number"
-                  value={newSchedule.percentage || ''}
-                  onChange={(e) => handleNewSchedulePercentageChange(e.target.value)}
-                  placeholder="0"
-                  min="0"
-                  max="100"
-                  step="0.01"
-                  className="pr-5 text-sm"
+        {/* Add New Payment Schedule Button / Form */}
+        {isAddingSchedule ? (
+          <div className="space-y-3 p-2 border rounded-lg bg-muted/50 sm:p-4">
+            <Label className="text-sm font-medium">Add Payment Schedule</Label>
+            <div className="grid grid-cols-[120px_160px_100px_120px_120px_auto] gap-4 items-end">
+              <div className="col-start-2">
+                <Label className="text-xs text-muted-foreground">Due Date</Label>
+                <DatePicker
+                  mode="single"
+                  selected={newSchedule.dueDate ? new Date(newSchedule.dueDate) : undefined}
+                  onSelect={(date) => handleDateChange(date, 'dueDate')}
+                  hideIcon={true}
                 />
-                <Percent className="absolute right-1.5 top-2.5 h-3 w-3 text-muted-foreground" />
               </div>
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">Amount</Label>
-              <div className="relative">
-                <Input
-                  type="number"
-                  value={newSchedule.amount || ''}
-                  onChange={(e) => handleNewScheduleAmountChange(e.target.value)}
-                  placeholder="0"
-                  min="0"
-                  step="0.01"
-                  className="pr-5 text-sm"
-                />
-                <DollarSign className="absolute right-1.5 top-2.5 h-3 w-3 text-muted-foreground" />
+              <div>
+                <Label className="text-xs text-muted-foreground">%</Label>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    value={newSchedule.percentage || ''}
+                    onChange={(e) => handleNewSchedulePercentageChange(e.target.value)}
+                    placeholder="0"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    className="pr-5 text-sm"
+                  />
+                  <Percent className="absolute right-1.5 top-2.5 h-3 w-3 text-muted-foreground" />
+                </div>
               </div>
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">Status</Label>
-              <Select
-                value={newSchedule.status || 'unpaid'}
-                onValueChange={(value) => setNewSchedule(prev => ({ ...prev, status: value as PaymentStatus }))}
-              >
-                <SelectTrigger className="text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unpaid">Unpaid</SelectItem>
-                  <SelectItem value="paid">Paid</SelectItem>
-                  <SelectItem value="write-off">Write-off</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Button onClick={addPaymentSchedule} className="w-full">
-                <Plus className="h-4 w-4 mr-2" />
-                Add
-              </Button>
+              <div>
+                <Label className="text-xs text-muted-foreground">Amount</Label>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    value={newSchedule.amount || ''}
+                    onChange={(e) => handleNewScheduleAmountChange(e.target.value)}
+                    placeholder="0"
+                    min="0"
+                    step="0.01"
+                    className="pr-5 text-sm"
+                  />
+                  <DollarSign className="absolute right-1.5 top-2.5 h-3 w-3 text-muted-foreground" />
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Status</Label>
+                <Select
+                  value={newSchedule.status || 'unpaid'}
+                  onValueChange={(value) => setNewSchedule(prev => ({ ...prev, status: value as PaymentStatus }))}
+                >
+                  <SelectTrigger className="text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unpaid">Unpaid</SelectItem>
+                    <SelectItem value="paid">Paid</SelectItem>
+                    <SelectItem value="write-off">Write-off</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex gap-2 items-center">
+                <Button onClick={addPaymentSchedule} className="flex-1">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => setIsAddingSchedule(false)}>
+                  <X className="h-4 w-4" />
+                  <span className="sr-only">Cancel</span>
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="pt-2">
+            <Button
+              onClick={() => setIsAddingSchedule(true)}
+              variant="outline"
+              className="w-full"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Payment Schedule
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

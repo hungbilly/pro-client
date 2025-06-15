@@ -456,123 +456,89 @@ const PaymentScheduleTable = memo(({
           <span>{currentDescription}</span>
         </TableCell>
 
-        {/* Due Date */}
-        <TableCell className="whitespace-nowrap min-w-[105px] max-w-[125px]">
-          {schedule.dueDate
-            ? new Date(schedule.dueDate).toLocaleDateString()
-            : <span className="text-muted-foreground">-</span>}
-        </TableCell>
-
-        {/* Percentage */}
-        <TableCell className="text-right whitespace-nowrap min-w-[60px] max-w-[70px]">
-          {isEditing && editMode === 'percentage' ? (
-            <div className="relative flex items-center">
+        {/* All fields as single horizontal row in edit mode */}
+        {isEditing ? (
+          <>
+            {/* Due Date */}
+            <TableCell className="whitespace-nowrap min-w-[105px] max-w-[125px]">
               <Input
-                type="text"
-                inputMode="decimal"
-                value={customPercentages[schedule.id] ?? percentage.toFixed(2)}
+                type="date"
+                value={schedule.dueDate ? format(new Date(schedule.dueDate), 'yyyy-MM-dd') : ''}
                 onChange={e => {
-                  const value = e.target.value.replace(/[^\d.]/g, '');
-                  setCustomPercentages(prev => ({
-                    ...prev,
-                    [schedule.id]: value
-                  }));
+                  if (onUpdatePaymentDate) {
+                    onUpdatePaymentDate(schedule.id, e.target.value);
+                  }
                 }}
-                className="w-14 pr-5 text-right"
-                autoFocus
+                className="w-[125px]"
               />
-              <span className="absolute right-2 text-muted-foreground select-none">%</span>
-            </div>
-          ) : (
-            `${percentage.toFixed(2)}%`
-          )}
-        </TableCell>
+            </TableCell>
 
-        {/* Amount */}
-        <TableCell className="text-right font-medium whitespace-nowrap min-w-[100px] max-w-[115px]">
-          {isEditing && editMode === 'amount' ? (
-            <Input
-              type="text"
-              inputMode="decimal"
-              value={customAmounts[schedule.id] ?? paymentAmount}
-              onChange={e => {
-                const value = e.target.value.replace(/[^\d.]/g, '');
-                setCustomAmounts(prev => ({
-                  ...prev,
-                  [schedule.id]: value
-                }));
-              }}
-              className="w-24 text-right"
-              autoFocus
-            />
-          ) : (
-            <span className="flex items-center gap-1 justify-end">
-              <CircleDollarSign className="h-3.5 w-3.5 text-muted-foreground" />
-              <span>{trueFormatCurrency(paymentAmount)}</span>
-            </span>
-          )}
-        </TableCell>
+            {/* Percentage Input */}
+            <TableCell className="text-right whitespace-nowrap min-w-[60px] max-w-[70px]">
+              <div className="relative flex items-center">
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  value={customPercentages[schedule.id] ?? percentage.toFixed(2)}
+                  onChange={e => {
+                    const value = e.target.value.replace(/[^\d.]/g, '');
+                    setCustomPercentages(prev => ({
+                      ...prev,
+                      [schedule.id]: value
+                    }));
+                  }}
+                  className="w-14 pr-5 text-right"
+                  autoFocus
+                />
+                <span className="absolute right-2 text-muted-foreground select-none">%</span>
+              </div>
+            </TableCell>
 
-        {/* Status */}
-        <TableCell className="whitespace-nowrap min-w-[95px] max-w-[110px]">
-          <Badge className={paymentStatusColors[status] || paymentStatusColors.unpaid}>
-            {status.toUpperCase()}
-          </Badge>
-        </TableCell>
+            {/* Amount Input */}
+            <TableCell className="text-right font-medium whitespace-nowrap min-w-[100px] max-w-[115px]">
+              <div className="flex items-center gap-1 justify-end">
+                <CircleDollarSign className="h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  value={customAmounts[schedule.id] ?? paymentAmount}
+                  onChange={e => {
+                    const value = e.target.value.replace(/[^\d.]/g, '');
+                    setCustomAmounts(prev => ({
+                      ...prev,
+                      [schedule.id]: value
+                    }));
+                  }}
+                  className="w-24 text-right"
+                />
+              </div>
+            </TableCell>
 
-        {/* Payment Date */}
-        <TableCell className="whitespace-nowrap min-w-[110px] max-w-[120px]">
-          {status === 'paid' && schedule.paymentDate
-            ? format(new Date(schedule.paymentDate), 'MMM d, yyyy')
-            : <span className="text-muted-foreground">-</span>}
-        </TableCell>
+            {/* Status Edit */}
+            <TableCell className="whitespace-nowrap min-w-[95px] max-w-[110px]">
+              <Badge className={paymentStatusColors[status] || paymentStatusColors.unpaid}>
+                {status.toUpperCase()}
+              </Badge>
+            </TableCell>
 
-        {/* Actions */}
-        {!isClientView && (
-          <TableCell className="whitespace-nowrap min-w-[115px] max-w-[130px]">
-            <div className="flex items-center gap-1">
-              {/* Toggle edit mode (Amount/%) */}
-              {shouldEnableEditing && (
-                <>
-                  <Button
-                    size="xs"
-                    variant={editMode === 'amount' ? 'default' : 'outline'}
-                    onClick={() => {
-                      setEditMode('amount');
-                      setEditingAmountId(schedule.id);
-                    }}
-                    className={`text-xs px-2 h-7 rounded-l-md ${editMode === 'amount' && editingAmountId === schedule.id ? '' : '!bg-white'} border`}
-                  >
-                    Amount
-                  </Button>
-                  <Button
-                    size="xs"
-                    variant={editMode === 'percentage' ? 'default' : 'outline'}
-                    onClick={() => {
-                      setEditMode('percentage');
-                      setEditingAmountId(schedule.id);
-                    }}
-                    className={`text-xs px-2 h-7 rounded-r-md border-l-0 ${editMode === 'percentage' && editingAmountId === schedule.id ? '' : '!bg-white'}`}
-                  >
-                    %
-                  </Button>
-                </>
-              )}
-
-              {/* Edit/save/cancel actions */}
-              {isEditing ? (
-                <>
+            {/* Payment Date */}
+            <TableCell className="whitespace-nowrap min-w-[110px] max-w-[120px]">
+              {status === 'paid' && schedule.paymentDate
+                ? format(new Date(schedule.paymentDate), 'MMM d, yyyy')
+                : <span className="text-muted-foreground">-</span>}
+            </TableCell>
+            {/* Actions: Save/Cancel */}
+            {!isClientView && (
+              <TableCell className="whitespace-nowrap min-w-[115px] max-w-[130px]">
+                <div className="flex items-center gap-2">
                   <Button
                     size="xs"
                     variant="outline"
                     onClick={() => {
-                      if (editMode === 'amount') {
-                        handleAmountUpdate(schedule.id, schedule);
-                      } else {
-                        handlePercentageUpdate(schedule.id, schedule);
-                      }
+                      // We'll update both amount & percentage for now as one row. Modify as needed.
+                      handleAmountUpdate(schedule.id, schedule);
+                      handlePercentageUpdate(schedule.id, schedule);
                     }}
-                    className="mx-1"
                   >
                     Save
                   </Button>
@@ -583,9 +549,45 @@ const PaymentScheduleTable = memo(({
                   >
                     Cancel
                   </Button>
-                </>
-              ) : (
-                shouldEnableEditing && (
+                </div>
+              </TableCell>
+            )}
+          </>
+        ) : (
+          <>
+            {/* Due Date */}
+            <TableCell className="whitespace-nowrap min-w-[105px] max-w-[125px]">
+              {schedule.dueDate
+                ? new Date(schedule.dueDate).toLocaleDateString()
+                : <span className="text-muted-foreground">-</span>}
+            </TableCell>
+            {/* Percentage */}
+            <TableCell className="text-right whitespace-nowrap min-w-[60px] max-w-[70px]">
+              {`${percentage.toFixed(2)}%`}
+            </TableCell>
+            {/* Amount */}
+            <TableCell className="text-right font-medium whitespace-nowrap min-w-[100px] max-w-[115px]">
+              <span className="flex items-center gap-1 justify-end">
+                <CircleDollarSign className="h-3.5 w-3.5 text-muted-foreground" />
+                <span>{trueFormatCurrency(paymentAmount)}</span>
+              </span>
+            </TableCell>
+            {/* Status */}
+            <TableCell className="whitespace-nowrap min-w-[95px] max-w-[110px]">
+              <Badge className={paymentStatusColors[status] || paymentStatusColors.unpaid}>
+                {status.toUpperCase()}
+              </Badge>
+            </TableCell>
+            {/* Payment Date */}
+            <TableCell className="whitespace-nowrap min-w-[110px] max-w-[120px]">
+              {status === 'paid' && schedule.paymentDate
+                ? format(new Date(schedule.paymentDate), 'MMM d, yyyy')
+                : <span className="text-muted-foreground">-</span>}
+            </TableCell>
+            {/* Actions */}
+            {!isClientView && (
+              <TableCell className="whitespace-nowrap min-w-[115px] max-w-[130px]">
+                <div className="flex items-center gap-1">
                   <Button
                     variant="ghost"
                     size="xs"
@@ -594,59 +596,58 @@ const PaymentScheduleTable = memo(({
                   >
                     <Edit2 className="h-3 w-3" />
                   </Button>
-                )
-              )}
-
-              {/* Status dropdown */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="xs"
-                    disabled={updatingPaymentId === schedule.id}
-                  >
-                    {updatingPaymentId === schedule.id ? 'Updating...' : 'Set Status'}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {status !== 'paid' && (
-                    <DropdownMenuItem
-                      onClick={() => handleStatusUpdate(schedule, 'paid')}
-                      className="text-green-600"
+                  {/* Status dropdown */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        disabled={updatingPaymentId === schedule.id}
+                      >
+                        {updatingPaymentId === schedule.id ? 'Updating...' : 'Set Status'}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {status !== 'paid' && (
+                        <DropdownMenuItem
+                          onClick={() => handleStatusUpdate(schedule, 'paid')}
+                          className="text-green-600"
+                        >
+                          Mark as Paid
+                        </DropdownMenuItem>
+                      )}
+                      {status !== 'unpaid' && (
+                        <DropdownMenuItem
+                          onClick={() => handleStatusUpdate(schedule, 'unpaid')}
+                        >
+                          Mark as Unpaid
+                        </DropdownMenuItem>
+                      )}
+                      {status !== 'write-off' && (
+                        <DropdownMenuItem
+                          onClick={() => handleStatusUpdate(schedule, 'write-off')}
+                          className="text-red-600"
+                        >
+                          Write Off
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  {/* Remove */}
+                  {onRemovePaymentSchedule && shouldEnableEditing && (
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      onClick={() => onRemovePaymentSchedule(schedule.id)}
+                      className="text-red-500 hover:text-red-700"
                     >
-                      Mark as Paid
-                    </DropdownMenuItem>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   )}
-                  {status !== 'unpaid' && (
-                    <DropdownMenuItem
-                      onClick={() => handleStatusUpdate(schedule, 'unpaid')}
-                    >
-                      Mark as Unpaid
-                    </DropdownMenuItem>
-                  )}
-                  {status !== 'write-off' && (
-                    <DropdownMenuItem
-                      onClick={() => handleStatusUpdate(schedule, 'write-off')}
-                      className="text-red-600"
-                    >
-                      Write Off
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-              {/* Remove */}
-              {onRemovePaymentSchedule && shouldEnableEditing && (
-                <Button
-                  variant="ghost"
-                  size="xs"
-                  onClick={() => onRemovePaymentSchedule(schedule.id)}
-                  className="text-red-500 hover:text-red-700"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-          </TableCell>
+                </div>
+              </TableCell>
+            )}
+          </>
         )}
       </TableRow>
     );

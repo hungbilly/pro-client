@@ -52,6 +52,9 @@ admin_group_name = ""
 [functions.handle-google-calendar-callback]
 verify_jwt = false
 
+[functions.stripe-webhook]
+verify_jwt = false
+
 [db]
 # Port to use for the local database URL.
 port = 54322

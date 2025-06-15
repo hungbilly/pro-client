@@ -1183,20 +1183,66 @@ async function generatePDF(invoiceData: FormattedInvoice): Promise<Uint8Array> {
     rightColumnY += 7;
 
     if (invoiceData.job && invoiceData.job.title) {
-      // ↓ Changed: font size to 10 for smaller text, still bold
-      doc.setFontSize(10);
-      doc.setTextColor(0, 0, 0);
+      // Improved job title handling: auto-fit and multi-line with ellipsis
+      let fontSize = 10;
+      const minFontSize = 8;
       const rightColumnWidth = pageWidth - rightColumnX - margin;
+      let jobTitleBlock: string[] = [];
+      let titleToShow = invoiceData.job.title;
+      let didEllipsis = false;
+
       doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'bold');
-      const jobTitleBlock = doc.splitTextToSize(invoiceData.job.title, rightColumnWidth);
-      doc.text(jobTitleBlock, rightColumnX, rightColumnY);
-      rightColumnY += (jobTitleBlock.length * 5) + 2; // 5 is line height for smaller font
+      doc.setTextColor(0, 0, 0);
+
+      // Try font sizes down to minFontSize until it fits max 2 lines
+      while (fontSize >= minFontSize) {
+        doc.setFontSize(fontSize);
+        jobTitleBlock = doc.splitTextToSize(titleToShow, rightColumnWidth);
+        if (jobTitleBlock.length <= 2) break;
+        fontSize -= 1;
+      }
+
+      // If still too long, add ellipsis at the rightmost end
+      if (jobTitleBlock.length > 2) {
+        // Only show as much text as fits into two lines, then ellipsis
+        // Join lines, truncate to fit
+        const fullText = invoiceData.job.title;
+        let truncated = fullText;
+        let fits = false;
+
+        for (let len = fullText.length; len > 0; len--) {
+          // Try truncating and test fit
+          const attempt = fullText.slice(0, len) + '...';
+          const lines = doc.splitTextToSize(attempt, rightColumnWidth);
+          if (lines.length <= 2) {
+            truncated = attempt;
+            fits = true;
+            jobTitleBlock = lines;
+            didEllipsis = true;
+            break;
+          }
+        }
+        if (!fits) {
+          // Just take the first two lines and add '...'
+          jobTitleBlock = [
+            jobTitleBlock[0],
+            jobTitleBlock[1].slice(0, -3) + '...'
+          ];
+          didEllipsis = true;
+        }
+      }
+      // Render lines
+      for (let i = 0; i < jobTitleBlock.length && i < 2; i++) {
+        doc.text(jobTitleBlock[i], rightColumnX, rightColumnY + i * (fontSize + 1));
+      }
+      rightColumnY += (jobTitleBlock.length * (fontSize + 1)) + 2;
+      if (didEllipsis) {
+        log.debug('Job title too long, used ellipsis/truncate:', jobTitleBlock);
+      }
     }
 
     doc.setFontSize(10);
     doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'normal');
-    doc.text(`Client: ${invoiceData.client.name}`, rightColumnX, rightColumnY);
-    rightColumnY += 6;
     
     if (invoiceData.client.email) {
       doc.text(invoiceData.client.email, rightColumnX, rightColumnY);

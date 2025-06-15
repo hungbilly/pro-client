@@ -162,43 +162,58 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Helper function to load and register the Chinese font
-async function loadChineseFont(doc: any) {
-  try {
-    // Use a TrueType (.ttf) font file for Noto Sans CJK SC
-    const fontUrl = 'https://raw.githubusercontent.com/google/fonts/main/ofl/notosanssc/NotoSansSC-Regular.ttf'; // Using Google Fonts raw file
-    // For local testing: const fontPath = './fonts/NotoSansCJKsc-Regular.ttf';
-    log.info('Attempting to load Chinese font from:', fontUrl);
-    const fontResponse = await fetch(fontUrl, {
-      headers: {
-        'Accept': 'application/octet-stream'
-      }
-    });
-    if (!fontResponse.ok) {
-      throw new Error(`Failed to fetch font: ${fontResponse.status} ${fontUrl}`);
+// Helper to load a single font weight and register it with jsPDF
+async function loadAndRegisterFont(doc: any, fontName: string, weight: string, url:string): Promise<boolean> {
+    try {
+        log.info(`Attempting to load font: ${fontName} ${weight} from:`, url);
+        const fontResponse = await fetch(url, {
+            headers: { 'Accept': 'application/octet-stream' }
+        });
+        if (!fontResponse.ok) {
+            throw new Error(`Failed to fetch font: ${fontResponse.status} ${url}`);
+        }
+        const fontArrayBuffer = await fontResponse.arrayBuffer();
+        const fontBytes = new Uint8Array(fontArrayBuffer);
+        const base64String = btoa(String.fromCharCode.apply(null, Array.from(fontBytes)));
+        
+        const vfsFilename = `${fontName}-${weight}.ttf`;
+        doc.addFileToVFS(vfsFilename, base64String);
+        doc.addFont(vfsFilename, fontName, weight);
+        log.info(`Font loaded and registered successfully: ${fontName} ${weight}`);
+        return true;
+    } catch (error) {
+        log.error(`Error loading font: ${fontName} ${weight}`, error);
+        return false;
     }
-    const fontArrayBuffer = await fontResponse.arrayBuffer();
-    const fontBytes = new Uint8Array(fontArrayBuffer);
+}
 
-    // Convert to base64 using Deno's standard library for reliability
-    const base64String = btoa(
-      String.fromCharCode.apply(null, Array.from(fontBytes))
-    );
+// Loads Chinese fonts (normal and bold) and sets the default font
+async function loadChineseFont(doc: any): Promise<boolean> {
+  const fontBaseUrl = 'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/notosanssc/';
+  const fontName = 'NotoSansSC';
 
-    // Add font to jsPDF's virtual file system
-    doc.addFileToVFS('NotoSansSC-Regular.ttf', base64String);
-    doc.addFont('NotoSansSC-Regular.ttf', 'NotoSansSC', 'normal');
-    
-    // Set as default font
-    doc.setFont('NotoSansSC', 'normal');
-    log.info('Chinese font loaded and set successfully');
-    return true;
-  } catch (error) {
-    log.error('Error loading Chinese font:', error);
-    // Fallback to Helvetica
+  const regularFontUrl = `${fontBaseUrl}NotoSansSC-Regular.ttf`;
+  const boldFontUrl = `${fontBaseUrl}NotoSansSC-Bold.ttf`;
+  
+  const [regularLoaded, boldLoaded] = await Promise.all([
+    loadAndRegisterFont(doc, fontName, 'normal', regularFontUrl),
+    loadAndRegisterFont(doc, fontName, 'bold', boldFontUrl)
+  ]);
+
+  if (regularLoaded) {
+    doc.setFont(fontName, 'normal');
+    log.info('Default font set to NotoSansSC normal.');
+  } else {
     doc.setFont('helvetica', 'normal');
-    return false;
+    log.warn('Failed to load NotoSansSC normal, falling back to helvetica.');
   }
+  
+  if (!boldLoaded) {
+    log.warn('Failed to load NotoSansSC bold. Bold text may not render correctly with Chinese characters.');
+  }
+
+  // Return true if at least the regular font was loaded
+  return regularLoaded;
 }
 
 serve(async (req) => {

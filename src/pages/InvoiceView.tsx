@@ -78,6 +78,7 @@ const InvoiceView = () => {
         }
         
         console.log('[InvoiceView] Fetching invoice with identifier:', identifier);
+        console.log('[InvoiceView] Is client view:', isClientView);
         
         const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
         
@@ -112,18 +113,22 @@ const InvoiceView = () => {
           return;
         }
         
-        console.log('[InvoiceView] Fetched invoice payment schedules DEBUG:', {
-          invoiceId: fetchedInvoice.id,
-          paymentSchedulesCount: fetchedInvoice.paymentSchedules?.length || 0,
-          paymentSchedules: fetchedInvoice.paymentSchedules?.map(ps => ({
+        console.log('[InvoiceView] ===== PAYMENT SCHEDULES DEBUG =====');
+        console.log('[InvoiceView] Invoice ID:', fetchedInvoice.id);
+        console.log('[InvoiceView] Is client view:', isClientView);
+        console.log('[InvoiceView] Payment schedules fetched:', {
+          count: fetchedInvoice.paymentSchedules?.length || 0,
+          isArray: Array.isArray(fetchedInvoice.paymentSchedules),
+          exists: !!fetchedInvoice.paymentSchedules,
+          data: fetchedInvoice.paymentSchedules?.map(ps => ({
             id: ps.id,
             dueDate: ps.dueDate,
             percentage: ps.percentage,
             description: ps.description,
             status: ps.status
-          })) || [],
-          isClientView: isClientView
+          })) || []
         });
+        console.log('[InvoiceView] ===============================');
         
         if (selectedCompanyId && fetchedInvoice.companyId !== selectedCompanyId && !isClientView) {
           console.log('[InvoiceView] Invoice company mismatch. Expected:', selectedCompanyId, 'Got:', fetchedInvoice.companyId);
@@ -232,20 +237,22 @@ const InvoiceView = () => {
 
   useEffect(() => {
     if (invoice) {
-      console.log('[InvoiceView] RENDER DEBUG - Payment Schedules:', {
-        invoiceId: invoice.id,
-        isClientView: isClientView,
-        paymentSchedulesCount: invoice.paymentSchedules?.length || 0,
-        paymentSchedules: invoice.paymentSchedules?.map(ps => ({
+      console.log('[InvoiceView] ==== CURRENT INVOICE STATE ====');
+      console.log('[InvoiceView] Invoice ID:', invoice.id);
+      console.log('[InvoiceView] Is client view:', isClientView);
+      console.log('[InvoiceView] Payment schedules in state:', {
+        count: invoice.paymentSchedules?.length || 0,
+        isArray: Array.isArray(invoice.paymentSchedules),
+        exists: !!invoice.paymentSchedules,
+        data: invoice.paymentSchedules?.map(ps => ({
           id: ps.id,
           dueDate: ps.dueDate,
           percentage: ps.percentage,
           description: ps.description,
           status: ps.status
-        })) || [],
-        paymentSchedulesArray: Array.isArray(invoice.paymentSchedules),
-        paymentSchedulesExists: !!invoice.paymentSchedules
+        })) || []
       });
+      console.log('[InvoiceView] ===============================');
     }
   }, [invoice, isClientView]);
 
@@ -863,11 +870,16 @@ const InvoiceView = () => {
                       <h4 className="text-lg font-semibold">Payment Schedule</h4>
                     </div>
                     
-                    {console.log('[InvoiceView] PAYMENT SECTION RENDER DEBUG:', {
-                      hasPaymentSchedules: Array.isArray(invoice.paymentSchedules) && invoice.paymentSchedules.length > 0,
-                      paymentSchedulesLength: invoice.paymentSchedules?.length || 0,
-                      paymentSchedules: invoice.paymentSchedules
-                    })}
+                    <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-900 rounded-md mb-4">
+                      <h5 className="font-medium text-yellow-800 dark:text-yellow-400 mb-2">DEBUG INFO (Client View Issue):</h5>
+                      <div className="text-sm text-yellow-700 dark:text-yellow-300 space-y-1">
+                        <div>Has payment schedules: {Array.isArray(invoice.paymentSchedules) && invoice.paymentSchedules.length > 0 ? 'YES' : 'NO'}</div>
+                        <div>Payment schedules count: {invoice.paymentSchedules?.length || 0}</div>
+                        <div>Is client view: {isClientView ? 'YES' : 'NO'}</div>
+                        <div>Is array: {Array.isArray(invoice.paymentSchedules) ? 'YES' : 'NO'}</div>
+                        <div>Payment schedules data: {JSON.stringify(invoice.paymentSchedules?.map(ps => ({ id: ps.id, percentage: ps.percentage, description: ps.description })) || [])}</div>
+                      </div>
+                    </div>
                     
                     {Array.isArray(invoice.paymentSchedules) && invoice.paymentSchedules.length > 0 ? (
                       <PaymentInfoSection

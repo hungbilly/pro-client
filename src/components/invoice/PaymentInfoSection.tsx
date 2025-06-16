@@ -23,22 +23,42 @@ const PaymentInfoSection: React.FC<PaymentInfoSectionProps> = ({
   onUpdatePaymentDate,
   formatCurrency
 }) => {
-  console.log('[PaymentInfoSection] RENDER DEBUG:', {
-    invoiceId: invoice.id,
-    isClientView: isClientView,
-    hasPaymentSchedules: invoice.paymentSchedules && invoice.paymentSchedules.length > 0,
-    paymentSchedulesCount: invoice.paymentSchedules?.length || 0,
-    paymentSchedules: invoice.paymentSchedules?.map(ps => ({
-      id: ps.id,
-      dueDate: ps.dueDate,
-      percentage: ps.percentage,
-      description: ps.description,
-      status: ps.status
-    })) || []
+  console.log('[PaymentInfoSection] ===== DETAILED RENDER DEBUG =====');
+  console.log('[PaymentInfoSection] Invoice ID:', invoice.id);
+  console.log('[PaymentInfoSection] Is client view:', isClientView);
+  console.log('[PaymentInfoSection] Payment schedules received:', {
+    exists: !!invoice.paymentSchedules,
+    isArray: Array.isArray(invoice.paymentSchedules),
+    length: invoice.paymentSchedules?.length || 0,
+    type: typeof invoice.paymentSchedules,
+    raw: invoice.paymentSchedules
   });
+  
+  if (invoice.paymentSchedules && Array.isArray(invoice.paymentSchedules)) {
+    console.log('[PaymentInfoSection] Individual payment schedules:');
+    invoice.paymentSchedules.forEach((ps, index) => {
+      console.log(`[PaymentInfoSection] Schedule ${index}:`, {
+        id: ps.id,
+        dueDate: ps.dueDate,
+        percentage: ps.percentage,
+        description: ps.description,
+        status: ps.status
+      });
+    });
+  }
+  console.log('[PaymentInfoSection] ===============================');
 
   return (
     <div className="space-y-4">
+      <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-900 rounded-md">
+        <h5 className="font-medium text-blue-800 dark:text-blue-400 mb-2">PaymentInfoSection Debug:</h5>
+        <div className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
+          <div>Has payment schedules: {invoice.paymentSchedules && invoice.paymentSchedules.length > 0 ? 'YES' : 'NO'}</div>
+          <div>Payment schedules count: {invoice.paymentSchedules?.length || 0}</div>
+          <div>Will render PaymentScheduleTable: {invoice.paymentSchedules && invoice.paymentSchedules.length > 0 ? 'YES' : 'NO'}</div>
+        </div>
+      </div>
+      
       {invoice.paymentSchedules && invoice.paymentSchedules.length > 0 && (
         <PaymentScheduleTable 
           paymentSchedules={invoice.paymentSchedules}

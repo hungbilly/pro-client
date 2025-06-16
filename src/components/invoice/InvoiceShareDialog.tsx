@@ -1,8 +1,7 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { MessageCircle, Mail, Share2, Download, Copy } from 'lucide-react';
+import { MessageCircle, Mail, Share2, Download, Copy, Loader2 } from 'lucide-react';
 import { Invoice, Client } from '@/types';
 import { formatCurrency } from '@/lib/utils';
 import { supabase } from "@/integrations/supabase/client";
@@ -25,20 +24,22 @@ const InvoiceShareDialog: React.FC<InvoiceShareDialogProps> = ({
   companyName,
   currency
 }) => {
+  const [isDownloading, setIsDownloading] = useState(false);
+
   const generateMessage = () => {
     const invoiceLink = `${window.location.origin}/invoice/${invoice.viewLink}`;
     const formattedAmount = formatCurrency(invoice.amount, currency);
     const dueDate = new Date(invoice.dueDate).toLocaleDateString();
     
     return `Hi ${client.name},
-
+    
 Your invoice #${invoice.number} from ${companyName} is ready for review.
-
+    
 Amount: ${formattedAmount}
 Due Date: ${dueDate}
-
+    
 Please view and accept your invoice here: ${invoiceLink}
-
+    
 Thank you!`;
   };
 
@@ -88,6 +89,7 @@ Thank you!`;
 
   const handleDownloadInvoice = async () => {
     try {
+      setIsDownloading(true);
       toast.info('Preparing PDF for download...');
       
       // If we already have a PDF URL, use it directly
@@ -123,6 +125,8 @@ Thank you!`;
       toast.error('Failed to download invoice', {
         description: 'Please try again later or contact support.'
       });
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -184,11 +188,20 @@ Thank you!`;
             onClick={handleDownloadInvoice}
             className="w-full justify-start gap-3 h-12"
             variant="outline"
+            disabled={isDownloading}
           >
-            <Download className="h-5 w-5 text-purple-600" />
+            {isDownloading ? (
+              <Loader2 className="h-5 w-5 text-purple-600 animate-spin" />
+            ) : (
+              <Download className="h-5 w-5 text-purple-600" />
+            )}
             <div className="text-left">
-              <div className="font-medium">Download Invoice</div>
-              <div className="text-sm text-muted-foreground">Download PDF file</div>
+              <div className="font-medium">
+                {isDownloading ? 'Generating PDF...' : 'Download Invoice'}
+              </div>
+              <div className="text-sm text-muted-foreground">
+                {isDownloading ? 'Please wait' : 'Download PDF file'}
+              </div>
             </div>
           </Button>
 

@@ -2,9 +2,11 @@
 import React from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { MessageCircle, Mail, Share2 } from 'lucide-react';
+import { MessageCircle, Mail, Share2, Download, Copy } from 'lucide-react';
 import { Invoice, Client } from '@/types';
 import { formatCurrency } from '@/lib/utils';
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from 'sonner';
 
 interface InvoiceShareDialogProps {
   open: boolean;
@@ -63,6 +65,67 @@ Thank you!`;
     window.open(emailUrl, '_blank');
   };
 
+  const handleCopyInvoiceLink = () => {
+    const baseUrl = window.location.origin;
+    
+    let cleanViewLink = invoice.viewLink;
+    if (cleanViewLink.includes('http') || cleanViewLink.includes('/invoice/')) {
+      const parts = cleanViewLink.split('/');
+      cleanViewLink = parts[parts.length - 1];
+    }
+    
+    const cleanUrl = `${baseUrl}/invoice/${cleanViewLink}`;
+    
+    navigator.clipboard.writeText(cleanUrl)
+      .then(() => {
+        toast.success('Invoice link copied to clipboard');
+      })
+      .catch((err) => {
+        console.error('Failed to copy invoice link:', err);
+        toast.error('Failed to copy link to clipboard');
+      });
+  };
+
+  const handleDownloadInvoice = async () => {
+    try {
+      toast.info('Preparing PDF for download...');
+      
+      // If we already have a PDF URL, use it directly
+      if (invoice.pdfUrl) {
+        window.open(invoice.pdfUrl, '_blank');
+        toast.success('Invoice downloaded successfully');
+        return;
+      }
+      
+      // Generate a new PDF
+      const { data, error } = await supabase.functions.invoke('generate-invoice-pdf', {
+        body: { 
+          invoiceId: invoice.id,
+          forceRegenerate: true // Force regeneration to ensure we get a fresh PDF
+        }
+      });
+      
+      if (error) {
+        console.error('Error generating PDF:', error);
+        toast.error('Failed to generate invoice PDF');
+        return;
+      }
+      
+      if (data?.pdfUrl) {
+        // Open the PDF in a new tab
+        window.open(data.pdfUrl, '_blank');
+        toast.success('Invoice downloaded successfully');
+      } else {
+        throw new Error('No PDF URL returned');
+      }
+    } catch (err) {
+      console.error('Error downloading invoice:', err);
+      toast.error('Failed to download invoice', {
+        description: 'Please try again later or contact support.'
+      });
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -116,6 +179,30 @@ Thank you!`;
               </div>
             </Button>
           )}
+
+          <Button
+            onClick={handleDownloadInvoice}
+            className="w-full justify-start gap-3 h-12"
+            variant="outline"
+          >
+            <Download className="h-5 w-5 text-purple-600" />
+            <div className="text-left">
+              <div className="font-medium">Download Invoice</div>
+              <div className="text-sm text-muted-foreground">Download PDF file</div>
+            </div>
+          </Button>
+
+          <Button
+            onClick={handleCopyInvoiceLink}
+            className="w-full justify-start gap-3 h-12"
+            variant="outline"
+          >
+            <Copy className="h-5 w-5 text-gray-600" />
+            <div className="text-left">
+              <div className="font-medium">Copy Invoice Link</div>
+              <div className="text-sm text-muted-foreground">Copy link to clipboard</div>
+            </div>
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

@@ -77,25 +77,36 @@ const InvoiceView = () => {
           return;
         }
         
-        console.log('[InvoiceView] Fetching invoice with identifier:', identifier);
+        console.log('[InvoiceView] ===== FETCHING INVOICE =====');
+        console.log('[InvoiceView] Identifier:', identifier);
         console.log('[InvoiceView] Is client view:', isClientView);
         
         const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(identifier);
         
         if (isUUID) {
-          console.log('[InvoiceView] Identifier looks like a UUID, using getInvoice');
+          console.log('[InvoiceView] Using getInvoice for UUID');
           fetchedInvoice = await getInvoice(identifier);
         } else {
-          console.log('[InvoiceView] Identifier does not look like a UUID, using getInvoiceByViewLink');
+          console.log('[InvoiceView] Using getInvoiceByViewLink for view link');
           fetchedInvoice = await getInvoiceByViewLink(identifier);
         }
         
+        console.log('[InvoiceView] ===== INITIAL FETCH RESULT =====');
+        console.log('[InvoiceView] Fetched invoice:', {
+          id: fetchedInvoice?.id,
+          hasPaymentSchedules: !!fetchedInvoice?.paymentSchedules,
+          paymentSchedulesCount: fetchedInvoice?.paymentSchedules?.length || 0,
+          paymentSchedulesIsArray: Array.isArray(fetchedInvoice?.paymentSchedules),
+          paymentSchedules: fetchedInvoice?.paymentSchedules
+        });
+        
+        // If no invoice found, try alternative approach
         if (!fetchedInvoice) {
           const urlPath = location.pathname;
           const lastPartOfUrl = urlPath.split('/').pop() || '';
           
           if (lastPartOfUrl && lastPartOfUrl !== identifier) {
-            console.log('[InvoiceView] Trying alternative identifier from URL path:', lastPartOfUrl);
+            console.log('[InvoiceView] Trying alternative identifier:', lastPartOfUrl);
             
             const isLastPartUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(lastPartOfUrl);
             
@@ -108,27 +119,67 @@ const InvoiceView = () => {
         }
         
         if (!fetchedInvoice) {
-          console.log('[InvoiceView] No invoice found for identifier:', identifier);
+          console.log('[InvoiceView] No invoice found');
           setError('Invoice not found. Please check the URL or contact support.');
           return;
         }
         
-        console.log('[InvoiceView] ===== PAYMENT SCHEDULES DEBUG =====');
-        console.log('[InvoiceView] Invoice ID:', fetchedInvoice.id);
-        console.log('[InvoiceView] Is client view:', isClientView);
-        console.log('[InvoiceView] Payment schedules fetched:', {
+        // If this is client view and we used getInvoice (UUID), let's also try getInvoiceByViewLink to see if it has different data
+        if (isClientView && isUUID && fetchedInvoice.viewLink) {
+          console.log('[InvoiceView] Client view with UUID - also trying getInvoiceByViewLink to compare');
+          const invoiceByViewLink = await getInvoiceByViewLink(fetchedInvoice.viewLink);
+          
+          console.log('[InvoiceView] ===== COMPARISON =====');
+          console.log('[InvoiceView] getInvoice result payment schedules:', {
+            count: fetchedInvoice.paymentSchedules?.length || 0,
+            exists: !!fetchedInvoice.paymentSchedules,
+            isArray: Array.isArray(fetchedInvoice.paymentSchedules)
+          });
+          console.log('[InvoiceView] getInvoiceByViewLink result payment schedules:', {
+            count: invoiceByViewLink?.paymentSchedules?.length || 0,
+            exists: !!invoiceByViewLink?.paymentSchedules,
+            isArray: Array.isArray(invoiceByViewLink?.paymentSchedules)
+          });
+          
+          // Use the one with payment schedules if available
+          if (invoiceByViewLink?.paymentSchedules && invoiceByViewLink.paymentSchedules.length > 0) {
+            console.log('[InvoiceView] Using getInvoiceByViewLink result as it has payment schedules');
+            fetchedInvoice = invoiceByViewLink;
+          }
+        }
+        
+        // Additional direct database query for payment schedules if still missing
+        if (isClientView && (!fetchedInvoice.paymentSchedules || fetchedInvoice.paymentSchedules.length === 0)) {
+          console.log('[InvoiceView] Payment schedules missing in client view, querying directly');
+          
+          try {
+            const { data: paymentSchedules, error: psError } = await supabase
+              .from('payment_schedules')
+              .select('*')
+              .eq('invoice_id', fetchedInvoice.id)
+              .order('due_date', { ascending: true });
+            
+            if (psError) {
+              console.error('[InvoiceView] Error fetching payment schedules:', psError);
+            } else {
+              console.log('[InvoiceView] Direct payment schedules query result:', paymentSchedules);
+              if (paymentSchedules && paymentSchedules.length > 0) {
+                fetchedInvoice.paymentSchedules = paymentSchedules as PaymentSchedule[];
+                console.log('[InvoiceView] Applied payment schedules to invoice');
+              }
+            }
+          } catch (err) {
+            console.error('[InvoiceView] Error in direct payment schedules query:', err);
+          }
+        }
+        
+        console.log('[InvoiceView] ===== FINAL INVOICE STATE =====');
+        console.log('[InvoiceView] Final payment schedules:', {
           count: fetchedInvoice.paymentSchedules?.length || 0,
-          isArray: Array.isArray(fetchedInvoice.paymentSchedules),
           exists: !!fetchedInvoice.paymentSchedules,
-          data: fetchedInvoice.paymentSchedules?.map(ps => ({
-            id: ps.id,
-            dueDate: ps.dueDate,
-            percentage: ps.percentage,
-            description: ps.description,
-            status: ps.status
-          })) || []
+          isArray: Array.isArray(fetchedInvoice.paymentSchedules),
+          data: fetchedInvoice.paymentSchedules
         });
-        console.log('[InvoiceView] ===============================');
         
         if (selectedCompanyId && fetchedInvoice.companyId !== selectedCompanyId && !isClientView) {
           console.log('[InvoiceView] Invoice company mismatch. Expected:', selectedCompanyId, 'Got:', fetchedInvoice.companyId);
@@ -149,36 +200,12 @@ const InvoiceView = () => {
               console.log('[InvoiceView] Direct DB query for invoice_accepted_by:', rawInvoice.invoice_accepted_by);
               console.log('[InvoiceView] Direct DB query for contract_accepted_at:', rawInvoice.contract_accepted_at);
               
-              console.log('[InvoiceView] DETAILED DEBUG - Before update:');
-              console.log('[InvoiceView] fetchedInvoice.invoice_accepted_by =', 
-                fetchedInvoice.invoice_accepted_by, 
-                'type:', typeof fetchedInvoice.invoice_accepted_by);
-              console.log('[InvoiceView] fetchedInvoice.contract_accepted_at =', 
-                fetchedInvoice.contract_accepted_at,
-                'type:', typeof fetchedInvoice.contract_accepted_at);
-              console.log('[InvoiceView] rawInvoice.invoice_accepted_by =', 
-                rawInvoice.invoice_accepted_by,
-                'type:', typeof rawInvoice.invoice_accepted_by);
-              console.log('[InvoiceView] rawInvoice.contract_accepted_at =', 
-                rawInvoice.contract_accepted_at,
-                'type:', typeof rawInvoice.contract_accepted_at);
-              
               if (rawInvoice.invoice_accepted_by && !fetchedInvoice.invoice_accepted_by) {
-                console.log('[InvoiceView] Updating fetchedInvoice.invoice_accepted_by with DB value');
                 fetchedInvoice.invoice_accepted_by = rawInvoice.invoice_accepted_by;
               }
               if (rawInvoice.contract_accepted_at && !fetchedInvoice.contract_accepted_at) {
-                console.log('[InvoiceView] Updating fetchedInvoice.contract_accepted_at with DB value');
                 fetchedInvoice.contract_accepted_at = rawInvoice.contract_accepted_at;
               }
-              
-              console.log('[InvoiceView] DETAILED DEBUG - After update:');
-              console.log('[InvoiceView] fetchedInvoice.invoice_accepted_by =', 
-                fetchedInvoice.invoice_accepted_by,
-                'type:', typeof fetchedInvoice.invoice_accepted_by);
-              console.log('[InvoiceView] fetchedInvoice.contract_accepted_at =', 
-                fetchedInvoice.contract_accepted_at,
-                'type:', typeof fetchedInvoice.contract_accepted_at);
             }
           } catch (err) {
             console.error('[InvoiceView] Error fetching raw invoice data:', err);
@@ -423,7 +450,6 @@ const InvoiceView = () => {
         contract_status: 'accepted' as ContractStatus,
         contract_accepted_at: new Date().toISOString(),
         invoice_accepted_by: name,
-        // Removed updated_at field as it doesn't exist in the invoices table
       };
 
       const { data, error } = await supabase
@@ -568,6 +594,8 @@ const InvoiceView = () => {
     ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
     : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
 
+  const hasPaymentSchedules = Array.isArray(invoice.paymentSchedules) && invoice.paymentSchedules.length > 0;
+
   return (
     <>
       {!isClientView && user && <TopNavbar />}
@@ -632,7 +660,6 @@ const InvoiceView = () => {
                         toast.error("Cannot edit invoice: Invoice ID is missing");
                         return;
                       }
-                      // Use the correct route that matches the one defined in Routes.tsx
                       navigate(`/invoice/${invoice.id}/edit`);
                     }}
                     className="flex items-center gap-1"
@@ -871,17 +898,18 @@ const InvoiceView = () => {
                     </div>
                     
                     <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-900 rounded-md mb-4">
-                      <h5 className="font-medium text-yellow-800 dark:text-yellow-400 mb-2">DEBUG INFO (Client View Issue):</h5>
+                      <h5 className="font-medium text-yellow-800 dark:text-yellow-400 mb-2">ENHANCED DEBUG INFO:</h5>
                       <div className="text-sm text-yellow-700 dark:text-yellow-300 space-y-1">
-                        <div>Has payment schedules: {Array.isArray(invoice.paymentSchedules) && invoice.paymentSchedules.length > 0 ? 'YES' : 'NO'}</div>
-                        <div>Payment schedules count: {invoice.paymentSchedules?.length || 0}</div>
                         <div>Is client view: {isClientView ? 'YES' : 'NO'}</div>
-                        <div>Is array: {Array.isArray(invoice.paymentSchedules) ? 'YES' : 'NO'}</div>
-                        <div>Payment schedules data: {JSON.stringify(invoice.paymentSchedules?.map(ps => ({ id: ps.id, percentage: ps.percentage, description: ps.description })) || [])}</div>
+                        <div>hasPaymentSchedules variable: {hasPaymentSchedules ? 'YES' : 'NO'}</div>
+                        <div>Payment schedules array exists: {Array.isArray(invoice.paymentSchedules) ? 'YES' : 'NO'}</div>
+                        <div>Payment schedules count: {invoice.paymentSchedules?.length || 0}</div>
+                        <div>Will show PaymentInfoSection: {hasPaymentSchedules ? 'YES' : 'NO'}</div>
+                        <div>Will show fallback: {!hasPaymentSchedules ? 'YES' : 'NO'}</div>
                       </div>
                     </div>
                     
-                    {Array.isArray(invoice.paymentSchedules) && invoice.paymentSchedules.length > 0 ? (
+                    {hasPaymentSchedules ? (
                       <PaymentInfoSection
                         invoice={invoice}
                         paymentMethods={displayCompany?.payment_methods}
@@ -963,12 +991,6 @@ const InvoiceView = () => {
                         No contract terms provided.
                       </div>
                     )}
-                  </div>
-                  
-                  <div className="hidden">
-                    DEBUG: invoice_accepted_by = {invoice?.invoice_accepted_by || 'null'}, 
-                    type: {invoice?.invoice_accepted_by ? typeof invoice.invoice_accepted_by : 'null'}, 
-                    contract_accepted_at: {invoice?.contract_accepted_at || 'null'}
                   </div>
                 </TabsContent>
               </Tabs>

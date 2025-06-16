@@ -179,16 +179,16 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
         </DialogHeader>
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="profile" className="flex items-center gap-1">
+          <TabsList className="flex w-full">
+            <TabsTrigger value="profile" className="flex items-center gap-1 flex-1">
               <User className="h-4 w-4" />
               <span>Profile</span>
             </TabsTrigger>
-            <TabsTrigger value="password" className="flex items-center gap-1">
+            <TabsTrigger value="password" className="flex items-center gap-1 flex-1">
               <CreditCard className="h-4 w-4" />
               <span>Password</span>
             </TabsTrigger>
-            <TabsTrigger value="subscription" className="flex items-center gap-1">
+            <TabsTrigger value="subscription" className="flex items-center gap-1 flex-1">
               <Calendar className="h-4 w-4" />
               <span>Subscription</span>
             </TabsTrigger>

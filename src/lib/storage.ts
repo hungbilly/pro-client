@@ -819,6 +819,8 @@ export const getJobInvoices = async (jobId: string): Promise<Invoice[]> => {
 
 export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | null> => {
   try {
+    console.log('[getInvoiceByViewLink] Fetching invoice with viewLink:', viewLink);
+    
     const { data: invoiceData, error: invoiceError } = await supabase
       .from('invoices')
       .select('*')
@@ -832,6 +834,12 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
 
     if (!invoiceData) return null;
 
+    console.log('[getInvoiceByViewLink] Fetched invoice data:', {
+      id: invoiceData.id,
+      number: invoiceData.number,
+      amount: invoiceData.amount
+    });
+
     // Get invoice items
     const { data: itemsData, error: itemsError } = await supabase
       .from('invoice_items')
@@ -843,6 +851,8 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
       return null;
     }
 
+    console.log('[getInvoiceByViewLink] Fetched invoice items count:', itemsData?.length || 0);
+
     // Get payment schedules
     const { data: schedulesData, error: schedulesError } = await supabase
       .from('payment_schedules')
@@ -853,6 +863,17 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
       console.error('Error fetching payment schedules by view link:', schedulesError);
       return null;
     }
+
+    console.log('[getInvoiceByViewLink] Fetched payment schedules:', {
+      count: schedulesData?.length || 0,
+      schedules: schedulesData?.map(s => ({
+        id: s.id,
+        due_date: s.due_date,
+        percentage: s.percentage,
+        description: s.description,
+        status: s.status
+      })) || []
+    });
 
     const items: InvoiceItem[] = itemsData.map(item => ({
       id: item.id,
@@ -872,7 +893,18 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
       paymentDate: schedule.payment_date
     }));
 
-    return {
+    console.log('[getInvoiceByViewLink] Mapped payment schedules:', {
+      count: paymentSchedules.length,
+      schedules: paymentSchedules.map(s => ({
+        id: s.id,
+        dueDate: s.dueDate,
+        percentage: s.percentage,
+        description: s.description,
+        status: s.status
+      }))
+    });
+
+    const invoice = {
       id: invoiceData.id,
       clientId: invoiceData.client_id,
       companyId: invoiceData.company_id,
@@ -889,8 +921,14 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
       shootingDate: invoiceData.shooting_date,
       items,
       paymentSchedules,
-      pdfUrl: invoiceData.pdf_url
+      pdfUrl: invoiceData.pdf_url,
+      contract_accepted_at: invoiceData.contract_accepted_at || '',
+      invoice_accepted_by: invoiceData.invoice_accepted_by || ''
     };
+
+    console.log('[getInvoiceByViewLink] Final invoice object payment schedules count:', invoice.paymentSchedules.length);
+
+    return invoice;
   } catch (error) {
     console.error('Error in getInvoiceByViewLink:', error);
     return null;

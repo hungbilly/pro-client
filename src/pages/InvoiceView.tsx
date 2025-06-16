@@ -112,13 +112,17 @@ const InvoiceView = () => {
           return;
         }
         
-        console.log('[InvoiceView] Fetched invoice with contract terms:', {
-          id: fetchedInvoice.id,
-          hasContractTerms: !!fetchedInvoice.contractTerms,
-          contractTermsLength: fetchedInvoice.contractTerms?.length || 0,
-          contractStatus: fetchedInvoice.contractStatus,
-          contractTermsPreview: fetchedInvoice.contractTerms?.substring(0, 100),
-          invoice_accepted_by: fetchedInvoice.invoice_accepted_by
+        console.log('[InvoiceView] Fetched invoice payment schedules DEBUG:', {
+          invoiceId: fetchedInvoice.id,
+          paymentSchedulesCount: fetchedInvoice.paymentSchedules?.length || 0,
+          paymentSchedules: fetchedInvoice.paymentSchedules?.map(ps => ({
+            id: ps.id,
+            dueDate: ps.dueDate,
+            percentage: ps.percentage,
+            description: ps.description,
+            status: ps.status
+          })) || [],
+          isClientView: isClientView
         });
         
         if (selectedCompanyId && fetchedInvoice.companyId !== selectedCompanyId && !isClientView) {
@@ -225,6 +229,25 @@ const InvoiceView = () => {
     
     fetchInvoice();
   }, [idOrViewLink, location.pathname, selectedCompanyId, isClientView]);
+
+  useEffect(() => {
+    if (invoice) {
+      console.log('[InvoiceView] RENDER DEBUG - Payment Schedules:', {
+        invoiceId: invoice.id,
+        isClientView: isClientView,
+        paymentSchedulesCount: invoice.paymentSchedules?.length || 0,
+        paymentSchedules: invoice.paymentSchedules?.map(ps => ({
+          id: ps.id,
+          dueDate: ps.dueDate,
+          percentage: ps.percentage,
+          description: ps.description,
+          status: ps.status
+        })) || [],
+        paymentSchedulesArray: Array.isArray(invoice.paymentSchedules),
+        paymentSchedulesExists: !!invoice.paymentSchedules
+      });
+    }
+  }, [invoice, isClientView]);
 
   const handlePaymentStatusUpdate = useCallback(async (paymentId: string, newStatus: 'paid' | 'unpaid' | 'write-off') => {
     if (!invoice || !paymentId) return;
@@ -839,6 +862,12 @@ const InvoiceView = () => {
                       <CalendarDays className="h-5 w-5 mr-2" />
                       <h4 className="text-lg font-semibold">Payment Schedule</h4>
                     </div>
+                    
+                    {console.log('[InvoiceView] PAYMENT SECTION RENDER DEBUG:', {
+                      hasPaymentSchedules: Array.isArray(invoice.paymentSchedules) && invoice.paymentSchedules.length > 0,
+                      paymentSchedulesLength: invoice.paymentSchedules?.length || 0,
+                      paymentSchedules: invoice.paymentSchedules
+                    })}
                     
                     {Array.isArray(invoice.paymentSchedules) && invoice.paymentSchedules.length > 0 ? (
                       <PaymentInfoSection

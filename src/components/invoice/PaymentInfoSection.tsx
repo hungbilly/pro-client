@@ -23,6 +23,20 @@ const PaymentInfoSection: React.FC<PaymentInfoSectionProps> = ({
   onUpdatePaymentDate,
   formatCurrency
 }) => {
+  console.log('[PaymentInfoSection] RENDER DEBUG:', {
+    invoiceId: invoice.id,
+    isClientView: isClientView,
+    hasPaymentSchedules: invoice.paymentSchedules && invoice.paymentSchedules.length > 0,
+    paymentSchedulesCount: invoice.paymentSchedules?.length || 0,
+    paymentSchedules: invoice.paymentSchedules?.map(ps => ({
+      id: ps.id,
+      dueDate: ps.dueDate,
+      percentage: ps.percentage,
+      description: ps.description,
+      status: ps.status
+    })) || []
+  });
+
   return (
     <div className="space-y-4">
       {invoice.paymentSchedules && invoice.paymentSchedules.length > 0 && (

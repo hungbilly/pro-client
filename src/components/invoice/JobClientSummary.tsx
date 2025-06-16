@@ -3,14 +3,17 @@ import React from "react";
 import { format } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
 import { Briefcase, User, Mail, Phone, Calendar, MapPin } from "lucide-react";
-import { Job, Client } from "@/types";
+import { Job, Client, Invoice } from "@/types";
 
 interface Props {
-  job?: Job | null;
+  invoice: Invoice;
   client?: Client | null;
+  job?: Job | null;
+  company?: any;
+  isClientView: boolean;
 }
 
-const JobClientSummary: React.FC<Props> = ({ job, client }) => {
+const JobClientSummary: React.FC<Props> = ({ invoice, job, client, company, isClientView }) => {
   if (!job && !client) return null;
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">

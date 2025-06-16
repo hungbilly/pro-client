@@ -854,7 +854,8 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
 
     console.log('[getInvoiceByViewLink] Fetched invoice items count:', itemsData?.length || 0);
 
-    // Get payment schedules - fix the query to ensure we get results
+    // Get payment schedules - ensure we get all data
+    console.log('[getInvoiceByViewLink] Querying payment schedules for invoice_id:', invoiceData.id);
     const { data: schedulesData, error: schedulesError } = await supabase
       .from('payment_schedules')
       .select('*')
@@ -865,6 +866,14 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
       console.error('Error fetching payment schedules by view link:', schedulesError);
       // Don't return null here, continue without payment schedules
     }
+
+    console.log('[getInvoiceByViewLink] Raw payment schedules query result:', {
+      error: schedulesError,
+      dataExists: !!schedulesData,
+      isArray: Array.isArray(schedulesData),
+      count: schedulesData?.length || 0,
+      rawData: schedulesData
+    });
 
     console.log('[getInvoiceByViewLink] Fetched payment schedules:', {
       count: schedulesData?.length || 0,
@@ -886,14 +895,25 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
       name: item.name
     }));
 
-    const paymentSchedules: PaymentSchedule[] = (schedulesData || []).map(schedule => ({
-      id: schedule.id,
-      dueDate: schedule.due_date,
-      percentage: schedule.percentage,
-      description: schedule.description || '',
-      status: schedule.status as PaymentStatus || 'unpaid',
-      paymentDate: schedule.payment_date
-    }));
+    const paymentSchedules: PaymentSchedule[] = (schedulesData || []).map(schedule => {
+      console.log('[getInvoiceByViewLink] Mapping schedule:', {
+        id: schedule.id,
+        raw_due_date: schedule.due_date,
+        raw_payment_date: schedule.payment_date,
+        percentage: schedule.percentage,
+        description: schedule.description,
+        status: schedule.status
+      });
+      
+      return {
+        id: schedule.id,
+        dueDate: schedule.due_date,
+        percentage: schedule.percentage,
+        description: schedule.description || '',
+        status: schedule.status as PaymentStatus || 'unpaid',
+        paymentDate: schedule.payment_date
+      };
+    });
 
     console.log('[getInvoiceByViewLink] Mapped payment schedules:', {
       count: paymentSchedules.length,
@@ -929,6 +949,7 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
     };
 
     console.log('[getInvoiceByViewLink] Final invoice object payment schedules count:', invoice.paymentSchedules.length);
+    console.log('[getInvoiceByViewLink] Final invoice object payment schedules:', invoice.paymentSchedules);
 
     return invoice;
   } catch (error) {

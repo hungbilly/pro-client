@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Client, Invoice, InvoiceItem, Job, PaymentSchedule, InvoiceStatus, ContractStatus, PaymentStatus, Expense } from '@/types';
 import { format } from 'date-fns';
@@ -820,8 +819,6 @@ export const getJobInvoices = async (jobId: string): Promise<Invoice[]> => {
 
 export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | null> => {
   try {
-    console.log('[getInvoiceByViewLink] Fetching invoice with viewLink:', viewLink);
-    
     const { data: invoiceData, error: invoiceError } = await supabase
       .from('invoices')
       .select('*')
@@ -835,12 +832,6 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
 
     if (!invoiceData) return null;
 
-    console.log('[getInvoiceByViewLink] Fetched invoice data:', {
-      id: invoiceData.id,
-      number: invoiceData.number,
-      amount: invoiceData.amount
-    });
-
     // Get invoice items
     const { data: itemsData, error: itemsError } = await supabase
       .from('invoice_items')
@@ -852,41 +843,18 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
       return null;
     }
 
-    console.log('[getInvoiceByViewLink] Fetched invoice items count:', itemsData?.length || 0);
-
-    // Get payment schedules - ensure we get all data
-    console.log('[getInvoiceByViewLink] Querying payment schedules for invoice_id:', invoiceData.id);
+    // Get payment schedules
     const { data: schedulesData, error: schedulesError } = await supabase
       .from('payment_schedules')
       .select('*')
-      .eq('invoice_id', invoiceData.id)
-      .order('due_date', { ascending: true });
+      .eq('invoice_id', invoiceData.id);
 
     if (schedulesError) {
       console.error('Error fetching payment schedules by view link:', schedulesError);
-      // Don't return null here, continue without payment schedules
+      return null;
     }
 
-    console.log('[getInvoiceByViewLink] Raw payment schedules query result:', {
-      error: schedulesError,
-      dataExists: !!schedulesData,
-      isArray: Array.isArray(schedulesData),
-      count: schedulesData?.length || 0,
-      rawData: schedulesData
-    });
-
-    console.log('[getInvoiceByViewLink] Fetched payment schedules:', {
-      count: schedulesData?.length || 0,
-      schedules: schedulesData?.map(s => ({
-        id: s.id,
-        due_date: s.due_date,
-        percentage: s.percentage,
-        description: s.description,
-        status: s.status
-      })) || []
-    });
-
-    const items: InvoiceItem[] = (itemsData || []).map(item => ({
+    const items: InvoiceItem[] = itemsData.map(item => ({
       id: item.id,
       description: item.description,
       quantity: item.quantity,
@@ -895,38 +863,16 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
       name: item.name
     }));
 
-    const paymentSchedules: PaymentSchedule[] = (schedulesData || []).map(schedule => {
-      console.log('[getInvoiceByViewLink] Mapping schedule:', {
-        id: schedule.id,
-        raw_due_date: schedule.due_date,
-        raw_payment_date: schedule.payment_date,
-        percentage: schedule.percentage,
-        description: schedule.description,
-        status: schedule.status
-      });
-      
-      return {
-        id: schedule.id,
-        dueDate: schedule.due_date,
-        percentage: schedule.percentage,
-        description: schedule.description || '',
-        status: schedule.status as PaymentStatus || 'unpaid',
-        paymentDate: schedule.payment_date
-      };
-    });
+    const paymentSchedules: PaymentSchedule[] = schedulesData.map(schedule => ({
+      id: schedule.id,
+      dueDate: schedule.due_date,
+      percentage: schedule.percentage,
+      description: schedule.description,
+      status: schedule.status as PaymentStatus || 'unpaid',
+      paymentDate: schedule.payment_date
+    }));
 
-    console.log('[getInvoiceByViewLink] Mapped payment schedules:', {
-      count: paymentSchedules.length,
-      schedules: paymentSchedules.map(s => ({
-        id: s.id,
-        dueDate: s.dueDate,
-        percentage: s.percentage,
-        description: s.description,
-        status: s.status
-      }))
-    });
-
-    const invoice = {
+    return {
       id: invoiceData.id,
       clientId: invoiceData.client_id,
       companyId: invoiceData.company_id,
@@ -936,22 +882,15 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
       dueDate: invoiceData.due_date,
       amount: invoiceData.amount,
       status: invoiceData.status as InvoiceStatus,
-      contractStatus: (invoiceData.contract_status || 'pending') as ContractStatus,
-      notes: invoiceData.notes || '',
-      contractTerms: invoiceData.contract_terms || '',
+      contractStatus: invoiceData.contract_status as ContractStatus,
+      notes: invoiceData.notes,
+      contractTerms: invoiceData.contract_terms,
       viewLink: invoiceData.view_link,
       shootingDate: invoiceData.shooting_date,
       items,
       paymentSchedules,
-      pdfUrl: invoiceData.pdf_url,
-      contract_accepted_at: invoiceData.contract_accepted_at || '',
-      invoice_accepted_by: invoiceData.invoice_accepted_by || ''
+      pdfUrl: invoiceData.pdf_url
     };
-
-    console.log('[getInvoiceByViewLink] Final invoice object payment schedules count:', invoice.paymentSchedules.length);
-    console.log('[getInvoiceByViewLink] Final invoice object payment schedules:', invoice.paymentSchedules);
-
-    return invoice;
   } catch (error) {
     console.error('Error in getInvoiceByViewLink:', error);
     return null;

@@ -38,11 +38,7 @@ const InvoicesTabContent: React.FC<InvoicesTabContentProps> = ({
     invoice.status.toLowerCase().includes(invoiceSearchQuery.toLowerCase())
   );
 
-  const handleInvoiceRowClick = (e: React.MouseEvent, invoiceId: string) => {
-    // Prevent navigation if clicking on a button or link inside the row
-    if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('a')) {
-      return;
-    }
+  const handleInvoiceRowClick = (invoiceId: string) => {
     navigate(`/invoice/${invoiceId}`);
   };
 
@@ -111,11 +107,7 @@ const InvoicesTabContent: React.FC<InvoicesTabContentProps> = ({
               {filteredInvoices.map(invoice => {
                 const invoiceClient = clients.find(c => c.id === invoice.clientId) || null;
                 return (
-                  <TableRow 
-                    key={invoice.id} 
-                    onClick={(e) => handleInvoiceRowClick(e, invoice.id)} 
-                    className="cursor-pointer hover:bg-muted/50"
-                  >
+                  <TableRow key={invoice.id} onClick={() => handleInvoiceRowClick(invoice.id)} className="cursor-pointer">
                     <TableCell className="font-medium">{invoice.number}</TableCell>
                     <TableCell>{invoiceClient?.name}</TableCell>
                     <TableCell className="hidden md:table-cell">
@@ -134,7 +126,7 @@ const InvoicesTabContent: React.FC<InvoicesTabContentProps> = ({
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
+                      <div className="flex justify-end gap-2" onClick={e => e.stopPropagation()}>
                         <Button variant="outline" size={isMobile ? "mobile" : "sm"} asChild className={isMobile ? "touch-manipulation" : ""}>
                           <Link to={`/invoice/${invoice.id}`}>
                             <Eye className="h-4 w-4" />

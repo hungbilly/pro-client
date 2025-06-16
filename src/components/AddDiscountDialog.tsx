@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import {
   Dialog,
@@ -110,9 +111,9 @@ const AddDiscountDialog: React.FC<AddDiscountDialogProps> = ({
         </DialogHeader>
         
         <Tabs defaultValue="templates" className="w-full">
-          <TabsList className="!grid !grid-cols-2 !w-full !h-auto">
-            <TabsTrigger value="templates" className="text-sm !w-auto">Saved Discounts</TabsTrigger>
-            <TabsTrigger value="manual" className="text-sm !w-auto">Manual Discount</TabsTrigger>
+          <TabsList className="!flex !w-full !h-auto !p-1">
+            <TabsTrigger value="templates" className="text-sm !flex-1">Saved Discounts</TabsTrigger>
+            <TabsTrigger value="manual" className="text-sm !flex-1">Manual Discount</TabsTrigger>
           </TabsList>
           
           <TabsContent value="templates">
@@ -211,3 +212,4 @@ const AddDiscountDialog: React.FC<AddDiscountDialogProps> = ({
 };
 
 export default AddDiscountDialog;
+

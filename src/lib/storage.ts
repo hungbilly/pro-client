@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Client, Invoice, InvoiceItem, Job, PaymentSchedule, InvoiceStatus, ContractStatus, PaymentStatus, Expense } from '@/types';
 import { format } from 'date-fns';
@@ -853,15 +854,16 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
 
     console.log('[getInvoiceByViewLink] Fetched invoice items count:', itemsData?.length || 0);
 
-    // Get payment schedules
+    // Get payment schedules - fix the query to ensure we get results
     const { data: schedulesData, error: schedulesError } = await supabase
       .from('payment_schedules')
       .select('*')
-      .eq('invoice_id', invoiceData.id);
+      .eq('invoice_id', invoiceData.id)
+      .order('due_date', { ascending: true });
 
     if (schedulesError) {
       console.error('Error fetching payment schedules by view link:', schedulesError);
-      return null;
+      // Don't return null here, continue without payment schedules
     }
 
     console.log('[getInvoiceByViewLink] Fetched payment schedules:', {
@@ -875,7 +877,7 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
       })) || []
     });
 
-    const items: InvoiceItem[] = itemsData.map(item => ({
+    const items: InvoiceItem[] = (itemsData || []).map(item => ({
       id: item.id,
       description: item.description,
       quantity: item.quantity,
@@ -884,11 +886,11 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
       name: item.name
     }));
 
-    const paymentSchedules: PaymentSchedule[] = schedulesData.map(schedule => ({
+    const paymentSchedules: PaymentSchedule[] = (schedulesData || []).map(schedule => ({
       id: schedule.id,
       dueDate: schedule.due_date,
       percentage: schedule.percentage,
-      description: schedule.description,
+      description: schedule.description || '',
       status: schedule.status as PaymentStatus || 'unpaid',
       paymentDate: schedule.payment_date
     }));
@@ -914,9 +916,9 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
       dueDate: invoiceData.due_date,
       amount: invoiceData.amount,
       status: invoiceData.status as InvoiceStatus,
-      contractStatus: invoiceData.contract_status as ContractStatus,
-      notes: invoiceData.notes,
-      contractTerms: invoiceData.contract_terms,
+      contractStatus: (invoiceData.contract_status || 'pending') as ContractStatus,
+      notes: invoiceData.notes || '',
+      contractTerms: invoiceData.contract_terms || '',
       viewLink: invoiceData.view_link,
       shootingDate: invoiceData.shooting_date,
       items,

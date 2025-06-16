@@ -164,8 +164,19 @@ const InvoiceView = () => {
             } else {
               console.log('[InvoiceView] Direct payment schedules query result:', paymentSchedules);
               if (paymentSchedules && paymentSchedules.length > 0) {
-                fetchedInvoice.paymentSchedules = paymentSchedules as PaymentSchedule[];
-                console.log('[InvoiceView] Applied payment schedules to invoice');
+                // Map database fields to interface fields
+                const mappedPaymentSchedules: PaymentSchedule[] = paymentSchedules.map(ps => ({
+                  id: ps.id,
+                  description: ps.description || '',
+                  dueDate: ps.due_date,
+                  percentage: ps.percentage,
+                  status: ps.status as 'paid' | 'unpaid' | 'write-off',
+                  paymentDate: ps.payment_date,
+                  amount: ps.amount
+                }));
+                
+                fetchedInvoice.paymentSchedules = mappedPaymentSchedules;
+                console.log('[InvoiceView] Applied mapped payment schedules to invoice:', mappedPaymentSchedules);
               }
             }
           } catch (err) {

@@ -171,8 +171,7 @@ const InvoiceView = () => {
                   dueDate: ps.due_date,
                   percentage: ps.percentage,
                   status: ps.status as 'paid' | 'unpaid' | 'write-off',
-                  paymentDate: ps.payment_date,
-                  amount: ps.amount
+                  paymentDate: ps.payment_date
                 }));
                 
                 fetchedInvoice.paymentSchedules = mappedPaymentSchedules;

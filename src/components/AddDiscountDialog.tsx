@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import {
   Dialog,
@@ -110,9 +109,9 @@ const AddDiscountDialog: React.FC<AddDiscountDialogProps> = ({
         </DialogHeader>
         
         <Tabs defaultValue="templates" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="templates">Saved Discounts</TabsTrigger>
-            <TabsTrigger value="manual">Manual Discount</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 h-auto">
+            <TabsTrigger value="templates" className="text-sm">Saved Discounts</TabsTrigger>
+            <TabsTrigger value="manual" className="text-sm">Manual Discount</TabsTrigger>
           </TabsList>
           
           <TabsContent value="templates">

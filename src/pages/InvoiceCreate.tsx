@@ -73,7 +73,15 @@ const InvoiceCreate = () => {
               ))}
             </div>
           </div>
-          <JobClientSummary job={job} client={client} />
+          {(job || client) && (
+            <JobClientSummary 
+              invoice={invoice} 
+              client={client} 
+              job={job} 
+              company={null}
+              isClientView={false} 
+            />
+          )}
           {!job && !client && (
             <div className="mb-6">
               <Card className="bg-amber-50 border-amber-200">

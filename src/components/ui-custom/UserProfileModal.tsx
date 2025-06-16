@@ -23,7 +23,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[650px]">
+      <DialogContent className="sm:max-w-[700px]">
         <DialogHeader>
           <DialogTitle>User Profile</DialogTitle>
           <DialogDescription>
@@ -32,16 +32,16 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
         </DialogHeader>
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="flex w-full">
-            <TabsTrigger value="profile" className="flex items-center justify-center gap-1 flex-1 min-w-[130px] px-2">
+          <TabsList className="flex w-[700px] justify-between">
+            <TabsTrigger value="profile" className="flex items-center justify-center gap-1 min-w-[220px] px-2">
               <User className="h-4 w-4 flex-shrink-0" />
               <span>Profile</span>
             </TabsTrigger>
-            <TabsTrigger value="password" className="flex items-center justify-center gap-1 flex-1 min-w-[130px] px-2">
+            <TabsTrigger value="password" className="flex items-center justify-center gap-1 min-w-[220px] px-2">
               <CreditCard className="h-4 w-4 flex-shrink-0" />
               <span>Password</span>
             </TabsTrigger>
-            <TabsTrigger value="subscription" className="flex items-center justify-center gap-1 flex-1 min-w-[130px] px-2">
+            <TabsTrigger value="subscription" className="flex items-center justify-center gap-1 min-w-[220px] px-2">
               <Calendar className="h-4 w-4 flex-shrink-0" />
               <span>Subscription</span>
             </TabsTrigger>

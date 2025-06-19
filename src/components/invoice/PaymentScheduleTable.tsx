@@ -1,3 +1,4 @@
+
 import React, { memo, useState, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -165,11 +166,11 @@ const PaymentScheduleTable = memo(({
   };
 
   const getPaymentAmount = (schedule: PaymentSchedule) => {
-    // Always use the database amount value first, only fallback to calculation if amount is missing/zero
+    // Use database amount if it exists and is greater than 0
     if (schedule.amount !== undefined && schedule.amount !== null && schedule.amount > 0) {
       return schedule.amount;
     }
-    // Only calculate if amount is missing/zero and percentage exists
+    // Fall back to percentage calculation if amount is missing/zero but percentage exists
     if (schedule.percentage && schedule.percentage > 0) {
       return (amount * schedule.percentage) / 100;
     }
@@ -398,7 +399,7 @@ const PaymentScheduleTable = memo(({
                   <span className="absolute right-3 text-muted-foreground select-none">%</span>
                 </div>
               </div>
-              {/* Amount - Show database value directly */}
+              {/* Amount - Use calculated amount for display */}
               <div className="flex flex-col w-full md:w-[140px]">
                 <label className="text-xs mb-1 font-medium">Amount</label>
                 <div className="flex items-center gap-1">
@@ -406,7 +407,7 @@ const PaymentScheduleTable = memo(({
                   <Input
                     type="text"
                     inputMode="decimal"
-                    value={customAmounts[schedule.id] ?? (schedule.amount?.toFixed(2) || '0.00')}
+                    value={customAmounts[schedule.id] ?? paymentAmount.toFixed(2)}
                     onChange={e => {
                       const value = e.target.value.replace(/[^\d.]/g, '');
                       setCustomAmounts(prev => ({
@@ -459,7 +460,7 @@ const PaymentScheduleTable = memo(({
       );
     }
 
-    // Regular view for non-edit mode - also use database values directly
+    // Regular view for non-edit mode - use calculated amount properly
     return (
       <TableRow key={schedule.id}>
         {/* Description */}
@@ -476,11 +477,11 @@ const PaymentScheduleTable = memo(({
         <TableCell className="text-right whitespace-nowrap min-w-[60px] max-w-[70px]">
           {`${percentage.toFixed(2)}%`}
         </TableCell>
-        {/* Amount - Display actual database value */}
+        {/* Amount - Use calculated amount properly */}
         <TableCell className="text-right font-medium whitespace-nowrap min-w-[100px] max-w-[115px]">
           <span className="flex items-center gap-1 justify-end">
             <CircleDollarSign className="h-3.5 w-3.5 text-muted-foreground" />
-            <span>{trueFormatCurrency(schedule.amount || 0)}</span>
+            <span>{trueFormatCurrency(paymentAmount)}</span>
           </span>
         </TableCell>
         {/* Status */}

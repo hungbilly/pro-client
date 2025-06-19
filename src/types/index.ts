@@ -103,7 +103,7 @@ export interface PaymentSchedule {
   id: string;
   description: string;
   dueDate: string;
-  percentage: number;
+  percentage: number; // Now supports decimal values (e.g., 33.33)
   status: PaymentStatus;
   paymentDate?: string;
   amount?: number;

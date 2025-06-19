@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Invoice, Client } from '@/types';
@@ -145,10 +144,10 @@ const InvoicesTabContent: React.FC<InvoicesTabContentProps> = ({
                       </Badge>
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">
-                      {getAcceptanceBadge(invoice.status === 'accepted' || invoice.status === 'paid', invoice.contract_accepted_at)}
+                      {getAcceptanceBadge(!!invoice.invoice_accepted_at, invoice.invoice_accepted_at)}
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">
-                      {getAcceptanceBadge(invoice.contractStatus === 'accepted', invoice.contract_accepted_at)}
+                      {getAcceptanceBadge(!!invoice.contract_accepted_at, invoice.contract_accepted_at)}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2" onClick={e => e.stopPropagation()}>

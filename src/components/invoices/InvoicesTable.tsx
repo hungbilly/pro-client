@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowUp, ArrowDown, CalendarDays, Check, X } from 'lucide-react';
@@ -153,10 +152,10 @@ const InvoicesTable: React.FC<InvoicesTableProps> = ({
                 <StatusBadge status={invoice.status} />
               </TableCell>
               <TableCell className="hidden lg:table-cell">
-                {getAcceptanceBadge(invoice.status === 'accepted' || invoice.status === 'paid', invoice.invoice_accepted_at)}
+                {getAcceptanceBadge(!!invoice.invoice_accepted_at, invoice.invoice_accepted_at)}
               </TableCell>
               <TableCell className="hidden lg:table-cell">
-                {getAcceptanceBadge(invoice.contract_status === 'accepted', invoice.contract_accepted_at)}
+                {getAcceptanceBadge(!!invoice.contract_accepted_at, invoice.contract_accepted_at)}
               </TableCell>
             </TableRow>
           ))}

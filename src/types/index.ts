@@ -1,4 +1,3 @@
-
 export interface Client {
   id: string;
   name: string;
@@ -129,6 +128,7 @@ export interface Invoice {
   pdfUrl?: string;
   templateId?: string;
   contract_accepted_at?: string;
+  invoice_accepted_at?: string;
   invoice_accepted_by?: string;
 }
 

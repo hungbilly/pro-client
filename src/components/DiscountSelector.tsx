@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -58,7 +59,7 @@ const DiscountSelector: React.FC<DiscountSelectorProps> = ({
     const discountItem: DiscountItem = {
       id: `template-discount-${discount.id}`,
       name: discount.name,
-      amount: Number(discount.amount),
+      amount: -Number(discount.amount), // Make sure discount amount is negative
       type: discount.type,
     };
 

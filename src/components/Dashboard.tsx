@@ -104,7 +104,8 @@ const Dashboard: React.FC = () => {
           percentage: schedule.percentage,
           description: schedule.description || '',
           status: schedule.status || 'unpaid',
-          paymentDate: schedule.payment_date
+          paymentDate: schedule.payment_date,
+          amount: schedule.amount
         }));
         if (invoiceSchedules.length > 0) {
           logDebug(`Invoice ${invoice.id} has ${invoiceSchedules.length} payment schedules`);
@@ -130,7 +131,10 @@ const Dashboard: React.FC = () => {
           contractTerms: invoice.contract_terms,
           shootingDate: invoice.shooting_date,
           viewLink: invoice.view_link,
-          paymentSchedules: invoiceSchedules
+          paymentSchedules: invoiceSchedules,
+          invoice_accepted_at: invoice.invoice_accepted_at,
+          contract_accepted_at: invoice.contract_accepted_at,
+          contract_accepted_by: invoice.contract_accepted_by
         };
       });
       
@@ -344,9 +348,9 @@ const Dashboard: React.FC = () => {
                         clients={clients}
                         jobs={jobs}
                         jobDates={jobDates}
-                        getStatusColor={getStatusColor}
                         getJobDateDisplay={getJobDateDisplay}
                         onOpenCreateInvoiceModal={handleOpenCreateInvoiceModal}
+                        companyCurrency={companies.find(c => c.id === selectedCompanyId)?.currency || 'USD'}
                       />
                     </TabsContent>
                   </Tabs>

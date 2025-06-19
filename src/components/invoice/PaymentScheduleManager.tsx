@@ -48,15 +48,29 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
   // Smart payment schedule adjustment when invoice amount changes
   useEffect(() => {
     if (paymentSchedules.length > 0 && invoiceAmount > 0) {
+      console.log('PaymentScheduleManager: Invoice amount changed to:', invoiceAmount);
+      console.log('PaymentScheduleManager: Current schedules:', paymentSchedules);
+      
       // Separate paid and unpaid schedules
       const paidSchedules = paymentSchedules.filter(schedule => schedule.status === 'paid');
       const unpaidSchedules = paymentSchedules.filter(schedule => schedule.status !== 'paid');
       
-      // Calculate total paid amount
-      const totalPaidAmount = paidSchedules.reduce((sum, schedule) => sum + (schedule.amount || 0), 0);
+      console.log('PaymentScheduleManager: Paid schedules:', paidSchedules);
+      console.log('PaymentScheduleManager: Unpaid schedules:', unpaidSchedules);
+      
+      // Calculate total paid amount - use the ACTUAL amount stored in paid schedules
+      const totalPaidAmount = paidSchedules.reduce((sum, schedule) => {
+        const amount = schedule.amount || 0;
+        console.log(`PaymentScheduleManager: Paid schedule ${schedule.id} amount:`, amount);
+        return sum + amount;
+      }, 0);
+      
+      console.log('PaymentScheduleManager: Total paid amount:', totalPaidAmount);
       
       // Calculate remaining amount for unpaid schedules
       const remainingAmount = invoiceAmount - totalPaidAmount;
+      
+      console.log('PaymentScheduleManager: Remaining amount for unpaid:', remainingAmount);
       
       // Handle edge cases
       if (remainingAmount < 0) {
@@ -65,17 +79,29 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
       }
       
       if (unpaidSchedules.length === 0) {
-        // All payments are paid, just recalculate percentages
-        const updatedSchedules = paymentSchedules.map(schedule => ({
-          ...schedule,
-          percentage: invoiceAmount > 0 ? ((schedule.amount || 0) / invoiceAmount) * 100 : 0
-        }));
+        // All payments are paid, just recalculate percentages for paid schedules
+        const updatedSchedules = paymentSchedules.map(schedule => {
+          if (schedule.status === 'paid') {
+            const preservedAmount = schedule.amount || 0;
+            const newPercentage = invoiceAmount > 0 ? (preservedAmount / invoiceAmount) * 100 : 0;
+            
+            console.log(`PaymentScheduleManager: Updating paid schedule ${schedule.id} - preserving amount:`, preservedAmount, 'new percentage:', newPercentage);
+            
+            return {
+              ...schedule,
+              amount: preservedAmount, // Explicitly preserve the amount
+              percentage: newPercentage
+            };
+          }
+          return schedule;
+        });
         
         const hasPercentageChanges = updatedSchedules.some((schedule, index) => 
           Math.abs((schedule.percentage || 0) - (paymentSchedules[index].percentage || 0)) > 0.01
         );
         
         if (hasPercentageChanges) {
+          console.log('PaymentScheduleManager: Updating schedules with preserved paid amounts');
           onUpdateSchedules(updatedSchedules);
         }
         return;
@@ -84,19 +110,29 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
       // Calculate total current unpaid percentage to maintain proportions
       const totalUnpaidPercentage = unpaidSchedules.reduce((sum, schedule) => sum + (schedule.percentage || 0), 0);
       
+      console.log('PaymentScheduleManager: Total unpaid percentage:', totalUnpaidPercentage);
+      
       // Distribute remaining amount proportionally among unpaid schedules
       const updatedSchedules = paymentSchedules.map(schedule => {
         if (schedule.status === 'paid') {
-          // Keep paid schedules unchanged in amount, just update percentage
+          // CRITICAL: Keep paid schedules unchanged in amount, just update percentage
+          const preservedAmount = schedule.amount || 0;
+          const newPercentage = invoiceAmount > 0 ? (preservedAmount / invoiceAmount) * 100 : 0;
+          
+          console.log(`PaymentScheduleManager: Preserving paid schedule ${schedule.id} - amount:`, preservedAmount, 'percentage:', newPercentage);
+          
           return {
             ...schedule,
-            percentage: invoiceAmount > 0 ? ((schedule.amount || 0) / invoiceAmount) * 100 : 0
+            amount: preservedAmount, // Explicitly preserve the paid amount
+            percentage: newPercentage
           };
         } else {
           // Distribute remaining amount proportionally for unpaid schedules
           const currentProportion = totalUnpaidPercentage > 0 ? (schedule.percentage || 0) / totalUnpaidPercentage : 1 / unpaidSchedules.length;
           const newAmount = remainingAmount * currentProportion;
           const newPercentage = invoiceAmount > 0 ? (newAmount / invoiceAmount) * 100 : 0;
+          
+          console.log(`PaymentScheduleManager: Updating unpaid schedule ${schedule.id} - new amount:`, newAmount, 'new percentage:', newPercentage);
           
           return {
             ...schedule,
@@ -107,12 +143,20 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
       });
       
       // Only update if amounts actually changed
-      const hasAmountChanges = updatedSchedules.some((schedule, index) => 
-        Math.abs((schedule.amount || 0) - (paymentSchedules[index].amount || 0)) > 0.01 ||
-        Math.abs((schedule.percentage || 0) - (paymentSchedules[index].percentage || 0)) > 0.01
-      );
+      const hasAmountChanges = updatedSchedules.some((schedule, index) => {
+        const originalSchedule = paymentSchedules[index];
+        const amountChanged = Math.abs((schedule.amount || 0) - (originalSchedule.amount || 0)) > 0.01;
+        const percentageChanged = Math.abs((schedule.percentage || 0) - (originalSchedule.percentage || 0)) > 0.01;
+        
+        if (amountChanged || percentageChanged) {
+          console.log(`PaymentScheduleManager: Schedule ${schedule.id} changed - amount: ${originalSchedule.amount || 0} -> ${schedule.amount || 0}, percentage: ${originalSchedule.percentage || 0} -> ${schedule.percentage || 0}`);
+        }
+        
+        return amountChanged || percentageChanged;
+      });
       
       if (hasAmountChanges) {
+        console.log('PaymentScheduleManager: Applying payment schedule updates');
         onUpdateSchedules(updatedSchedules);
         
         // Show notification about adjustment
@@ -121,6 +165,8 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
         if (paidCount > 0 && unpaidCount > 0) {
           toast.success(`Payment schedules adjusted. ${paidCount} paid payment(s) unchanged, ${unpaidCount} unpaid payment(s) redistributed.`);
         }
+      } else {
+        console.log('PaymentScheduleManager: No changes needed');
       }
     }
   }, [invoiceAmount]);

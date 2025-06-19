@@ -39,8 +39,23 @@ const PaymentScheduleRow: React.FC<PaymentScheduleRowProps> = ({
     }
   };
 
+  const handleExistingSchedulePercentageChange = (scheduleId: string, value: string) => {
+    // Store the raw input value to prevent cursor jumping
+    const percentageKey = `${scheduleId}_percentage`;
+    onInputValueChange(percentageKey, value);
+    
+    // Only update when it's a valid number
+    const cleanValue = value.replace(/[^\d.]/g, '');
+    if (cleanValue && !isNaN(Number(cleanValue))) {
+      const percentage = Number(cleanValue);
+      const newAmount = (invoiceAmount * percentage) / 100;
+      onUpdateSchedule(scheduleId, 'amount', newAmount);
+    }
+  };
+
   // Calculate percentage for display - always derive from stored amount
   const displayPercentage = invoiceAmount > 0 ? ((schedule.amount || 0) / invoiceAmount) * 100 : 0;
+  const percentageKey = `${schedule.id}_percentage`;
 
   return (
     <div className={`grid grid-cols-[120px_160px_100px_120px_120px_auto] gap-4 p-3 border rounded-lg items-end ${schedule.status === 'paid' ? 'bg-green-50 border-green-200' : ''}`}>
@@ -70,15 +85,14 @@ const PaymentScheduleRow: React.FC<PaymentScheduleRowProps> = ({
           <Input
             type="text"
             inputMode="numeric"
-            value={displayPercentage.toFixed(2)}
+            value={inputValues[percentageKey] ?? Math.round(displayPercentage).toString()}
             onChange={(e) => {
-              // When percentage is edited, calculate and update the amount
-              const percentageValue = e.target.value.replace(/[^\d.]/g, '');
-              const percentage = Number(percentageValue) || 0;
-              const newAmount = (invoiceAmount * percentage) / 100;
-              onUpdateSchedule(schedule.id, 'amount', newAmount);
+              handleExistingSchedulePercentageChange(schedule.id, e.target.value);
             }}
-            placeholder="0.00"
+            onBlur={() => {
+              onInputBlur(percentageKey);
+            }}
+            placeholder="0"
             className="pr-5 text-sm"
             disabled={schedule.status === 'paid'}
           />

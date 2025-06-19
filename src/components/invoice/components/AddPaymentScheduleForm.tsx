@@ -37,11 +37,16 @@ const AddPaymentScheduleForm: React.FC<AddPaymentScheduleFormProps> = ({
   };
 
   const handleNewSchedulePercentageChange = (value: string) => {
-    // When percentage is entered, calculate and store the amount
-    const percentageValue = value.replace(/[^\d.]/g, '');
-    const percentage = Number(percentageValue) || 0;
-    const amount = (invoiceAmount * percentage) / 100;
-    onUpdateNewSchedule('amount', amount);
+    // Store the raw input value to prevent cursor jumping
+    onInputValueChange('newSchedulePercentage', value);
+    
+    // Only update the actual amount when it's a valid number
+    const cleanValue = value.replace(/[^\d.]/g, '');
+    if (cleanValue && !isNaN(Number(cleanValue))) {
+      const percentage = Number(cleanValue);
+      const amount = (invoiceAmount * percentage) / 100;
+      onUpdateNewSchedule('amount', amount);
+    }
   };
 
   const handleNewScheduleAmountChange = (value: string) => {
@@ -77,11 +82,14 @@ const AddPaymentScheduleForm: React.FC<AddPaymentScheduleFormProps> = ({
               <Input
                 type="text"
                 inputMode="numeric"
-                value={displayPercentage.toFixed(2)}
+                value={inputValues.newSchedulePercentage ?? Math.round(displayPercentage).toString()}
                 onChange={(e) => {
                   handleNewSchedulePercentageChange(e.target.value);
                 }}
-                placeholder="0.00"
+                onBlur={() => {
+                  onInputBlur('newSchedulePercentage');
+                }}
+                placeholder="0"
                 className="pr-5 text-sm"
               />
               <Percent className="absolute right-1.5 top-2.5 h-3 w-3 text-muted-foreground" />

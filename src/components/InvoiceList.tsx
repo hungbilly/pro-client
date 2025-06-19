@@ -84,6 +84,16 @@ const getAcceptanceBadge = (accepted: boolean, acceptedAt?: string) => {
   );
 };
 
+// Helper function to check if invoice is accepted
+const isInvoiceAccepted = (invoice: Invoice) => {
+  return !!(invoice.invoice_accepted_at || invoice.invoice_accepted_by);
+};
+
+// Helper function to check if contract is accepted
+const isContractAccepted = (invoice: Invoice) => {
+  return !!(invoice.contract_accepted_at || (invoice.contractStatus === 'accepted'));
+};
+
 const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateButton = true, onInvoiceDeleted }) => {
   const [invoiceToDelete, setInvoiceToDelete] = React.useState<string | null>(null);
   const [localInvoices, setLocalInvoices] = React.useState<Invoice[]>(invoices);
@@ -408,6 +418,8 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
             <TableBody>
               {sortedInvoices.map((invoice) => {
                 console.log(`[InvoiceList] Rendering invoice ${invoice.id}, jobId: ${invoice.jobId}, shootingDate: ${invoice.shootingDate}, jobDate: ${invoice.jobId ? jobDates[invoice.jobId] : 'no job'}`);
+                console.log(`[InvoiceList] Invoice acceptance check: invoice_accepted_at=${invoice.invoice_accepted_at}, invoice_accepted_by=${invoice.invoice_accepted_by}, isAccepted=${isInvoiceAccepted(invoice)}`);
+                console.log(`[InvoiceList] Contract acceptance check: contract_accepted_at=${invoice.contract_accepted_at}, contractStatus=${invoice.contractStatus}, isAccepted=${isContractAccepted(invoice)}`);
                 return (
                   <TableRow key={invoice.id}>
                     <TableCell className="font-medium">{invoice.number}</TableCell>
@@ -431,10 +443,10 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
                       </Badge>
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">
-                      {getAcceptanceBadge(!!invoice.invoice_accepted_at, invoice.invoice_accepted_at)}
+                      {getAcceptanceBadge(isInvoiceAccepted(invoice), invoice.invoice_accepted_at || invoice.invoice_accepted_by)}
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">
-                      {getAcceptanceBadge(!!invoice.contract_accepted_at, invoice.contract_accepted_at)}
+                      {getAcceptanceBadge(isContractAccepted(invoice), invoice.contract_accepted_at)}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end items-center gap-1">

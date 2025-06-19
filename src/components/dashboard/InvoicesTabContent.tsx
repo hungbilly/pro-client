@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Invoice, Client } from '@/types';
@@ -17,6 +18,16 @@ interface InvoicesTabContentProps {
   getJobDateDisplay: (invoice: any) => React.ReactNode;
   onOpenCreateInvoiceModal: () => void;
 }
+
+// Helper function to check if invoice is accepted
+const isInvoiceAccepted = (invoice: Invoice) => {
+  return !!(invoice.invoice_accepted_at || invoice.invoice_accepted_by);
+};
+
+// Helper function to check if contract is accepted
+const isContractAccepted = (invoice: Invoice) => {
+  return !!(invoice.contract_accepted_at || (invoice.contractStatus === 'accepted'));
+};
 
 const InvoicesTabContent: React.FC<InvoicesTabContentProps> = ({ 
   invoices, 
@@ -124,6 +135,8 @@ const InvoicesTabContent: React.FC<InvoicesTabContentProps> = ({
             <TableBody>
               {filteredInvoices.map(invoice => {
                 const invoiceClient = clients.find(c => c.id === invoice.clientId) || null;
+                console.log(`[InvoicesTabContent] Invoice ${invoice.id} acceptance check: invoice_accepted_at=${invoice.invoice_accepted_at}, invoice_accepted_by=${invoice.invoice_accepted_by}, isInvoiceAccepted=${isInvoiceAccepted(invoice)}`);
+                console.log(`[InvoicesTabContent] Invoice ${invoice.id} contract check: contract_accepted_at=${invoice.contract_accepted_at}, contractStatus=${invoice.contractStatus}, isContractAccepted=${isContractAccepted(invoice)}`);
                 return (
                   <TableRow key={invoice.id} onClick={() => handleInvoiceRowClick(invoice.id)} className="cursor-pointer">
                     <TableCell className="font-medium">{invoice.number}</TableCell>
@@ -144,10 +157,10 @@ const InvoicesTabContent: React.FC<InvoicesTabContentProps> = ({
                       </Badge>
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">
-                      {getAcceptanceBadge(!!invoice.invoice_accepted_at, invoice.invoice_accepted_at)}
+                      {getAcceptanceBadge(isInvoiceAccepted(invoice), invoice.invoice_accepted_at || invoice.invoice_accepted_by)}
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">
-                      {getAcceptanceBadge(!!invoice.contract_accepted_at, invoice.contract_accepted_at)}
+                      {getAcceptanceBadge(isContractAccepted(invoice), invoice.contract_accepted_at)}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2" onClick={e => e.stopPropagation()}>

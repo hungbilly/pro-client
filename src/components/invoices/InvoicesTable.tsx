@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowUp, ArrowDown, CalendarDays, Check, X } from 'lucide-react';
@@ -27,6 +28,16 @@ interface InvoicesTableProps {
   getJobDateDisplay: (invoice: any) => React.ReactNode;
   companyCurrency: string;
 }
+
+// Helper function to check if invoice is accepted
+const isInvoiceAccepted = (invoice: any) => {
+  return !!(invoice.invoice_accepted_at || invoice.invoice_accepted_by);
+};
+
+// Helper function to check if contract is accepted
+const isContractAccepted = (invoice: any) => {
+  return !!(invoice.contract_accepted_at || (invoice.contractStatus === 'accepted'));
+};
 
 const InvoicesTable: React.FC<InvoicesTableProps> = ({
   invoices,
@@ -127,38 +138,42 @@ const InvoicesTable: React.FC<InvoicesTableProps> = ({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {invoices.map((invoice) => (
-            <TableRow 
-              key={invoice.id} 
-              className="cursor-pointer"
-              onClick={() => handleRowClick(invoice.id)}
-            >
-              <TableCell className="font-medium">{invoice.number || '-'}</TableCell>
-              <TableCell>{getClientName(invoice.clientId)}</TableCell>
-              <TableCell className="hidden md:table-cell">{getJobName(invoice.jobId)}</TableCell>
-              <TableCell className="hidden md:table-cell">
-                {invoice.date ? new Date(invoice.date).toLocaleDateString() : '-'}
-              </TableCell>
-              <TableCell className="hidden md:table-cell">
-                <div className="flex items-center">
-                  <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
-                  {getJobDateDisplay(invoice)}
-                </div>
-              </TableCell>
-              <TableCell className="hidden md:table-cell">
-                {formatCurrency(invoice.amount || 0, companyCurrency)}
-              </TableCell>
-              <TableCell>
-                <StatusBadge status={invoice.status} />
-              </TableCell>
-              <TableCell className="hidden lg:table-cell">
-                {getAcceptanceBadge(!!invoice.invoice_accepted_at, invoice.invoice_accepted_at)}
-              </TableCell>
-              <TableCell className="hidden lg:table-cell">
-                {getAcceptanceBadge(!!invoice.contract_accepted_at, invoice.contract_accepted_at)}
-              </TableCell>
-            </TableRow>
-          ))}
+          {invoices.map((invoice) => {
+            console.log(`[InvoicesTable] Invoice ${invoice.id} acceptance check: invoice_accepted_at=${invoice.invoice_accepted_at}, invoice_accepted_by=${invoice.invoice_accepted_by}, isInvoiceAccepted=${isInvoiceAccepted(invoice)}`);
+            console.log(`[InvoicesTable] Invoice ${invoice.id} contract check: contract_accepted_at=${invoice.contract_accepted_at}, contractStatus=${invoice.contractStatus}, isContractAccepted=${isContractAccepted(invoice)}`);
+            return (
+              <TableRow 
+                key={invoice.id} 
+                className="cursor-pointer"
+                onClick={() => handleRowClick(invoice.id)}
+              >
+                <TableCell className="font-medium">{invoice.number || '-'}</TableCell>
+                <TableCell>{getClientName(invoice.clientId)}</TableCell>
+                <TableCell className="hidden md:table-cell">{getJobName(invoice.jobId)}</TableCell>
+                <TableCell className="hidden md:table-cell">
+                  {invoice.date ? new Date(invoice.date).toLocaleDateString() : '-'}
+                </TableCell>
+                <TableCell className="hidden md:table-cell">
+                  <div className="flex items-center">
+                    <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+                    {getJobDateDisplay(invoice)}
+                  </div>
+                </TableCell>
+                <TableCell className="hidden md:table-cell">
+                  {formatCurrency(invoice.amount || 0, companyCurrency)}
+                </TableCell>
+                <TableCell>
+                  <StatusBadge status={invoice.status} />
+                </TableCell>
+                <TableCell className="hidden lg:table-cell">
+                  {getAcceptanceBadge(isInvoiceAccepted(invoice), invoice.invoice_accepted_at || invoice.invoice_accepted_by)}
+                </TableCell>
+                <TableCell className="hidden lg:table-cell">
+                  {getAcceptanceBadge(isContractAccepted(invoice), invoice.contract_accepted_at)}
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     </div>

@@ -166,14 +166,15 @@ const PaymentScheduleTable = memo(({
   };
 
   const getPaymentAmount = (schedule: PaymentSchedule) => {
-    // Use database amount if it exists and is greater than 0
-    if (schedule.amount !== undefined && schedule.amount !== null && schedule.amount > 0) {
-      return schedule.amount;
+    // First priority: Use database amount if it exists (including 0)
+    if (schedule.amount !== undefined && schedule.amount !== null) {
+      return Number(schedule.amount);
     }
-    // Fall back to percentage calculation if amount is missing/zero but percentage exists
+    // Second priority: Calculate from percentage if amount is missing
     if (schedule.percentage && schedule.percentage > 0) {
       return (amount * schedule.percentage) / 100;
     }
+    // Fallback: return 0
     return 0;
   };
 
@@ -339,6 +340,13 @@ const PaymentScheduleTable = memo(({
     const percentage = schedule.percentage || 0;
     const isEditing = editingAmountId === schedule.id;
     const status = schedule.status;
+
+    console.log('Payment schedule debug:', {
+      scheduleId: schedule.id,
+      databaseAmount: schedule.amount,
+      calculatedAmount: paymentAmount,
+      percentage: percentage
+    });
 
     const autoDescription = `${getOrdinalNumber(index + 1)} Payment`;
     const currentDescription = schedule.description || autoDescription;

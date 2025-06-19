@@ -298,6 +298,30 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
   const updatePaymentSchedule = (id: string, field: keyof PaymentSchedule, value: any) => {
     const scheduleToUpdate = paymentSchedules.find(s => s.id === id);
     
+    // Special handling for status changes to "paid"
+    if (field === 'status' && value === 'paid' && scheduleToUpdate?.status !== 'paid') {
+      console.log(`PaymentScheduleManager: Marking schedule ${id} as paid, preserving current amount:`, scheduleToUpdate.amount);
+      
+      // When marking as paid, preserve the current amount and calculate the correct percentage
+      const currentAmount = scheduleToUpdate.amount || 0;
+      const newPercentage = invoiceAmount > 0 ? (currentAmount / invoiceAmount) * 100 : 0;
+      
+      const updatedSchedules = paymentSchedules.map(schedule => {
+        if (schedule.id === id) {
+          return {
+            ...schedule,
+            status: value,
+            amount: currentAmount, // Preserve current amount
+            percentage: newPercentage // Update percentage to match
+          };
+        }
+        return schedule;
+      });
+      
+      onUpdateSchedules(updatedSchedules);
+      return;
+    }
+    
     // Prevent editing amount/percentage for paid schedules
     if (scheduleToUpdate?.status === 'paid' && (field === 'amount' || field === 'percentage')) {
       toast.error('Cannot modify amount or percentage of a paid payment schedule');

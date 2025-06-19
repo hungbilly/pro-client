@@ -30,11 +30,6 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
   });
   const [isAddingSchedule, setIsAddingSchedule] = useState(false);
 
-  // Helper function to format percentage with up to 2 decimal places
-  const formatPercentage = (percentage: number): number => {
-    return Math.round(percentage * 100) / 100;
-  };
-
   // Initialize with default payment schedule if none exist
   useEffect(() => {
     if (paymentSchedules.length === 0) {
@@ -99,7 +94,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
             if (preservedAmount === 0 && schedule.percentage && schedule.percentage > 0) {
               preservedAmount = (invoiceAmount * schedule.percentage) / 100;
             }
-            const newPercentage = invoiceAmount > 0 ? formatPercentage((preservedAmount / invoiceAmount) * 100) : 0;
+            const newPercentage = invoiceAmount > 0 ? (preservedAmount / invoiceAmount) * 100 : 0;
             
             console.log(`PaymentScheduleManager: Updating paid schedule ${schedule.id} - preserving amount:`, preservedAmount, 'new percentage:', newPercentage);
             
@@ -138,7 +133,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
           if (preservedAmount === 0 && schedule.percentage && schedule.percentage > 0) {
             preservedAmount = (invoiceAmount * schedule.percentage) / 100;
           }
-          const newPercentage = invoiceAmount > 0 ? formatPercentage((preservedAmount / invoiceAmount) * 100) : 0;
+          const newPercentage = invoiceAmount > 0 ? (preservedAmount / invoiceAmount) * 100 : 0;
           
           console.log(`PaymentScheduleManager: Preserving paid schedule ${schedule.id} - amount:`, preservedAmount, 'percentage:', newPercentage);
           
@@ -151,7 +146,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
           // Distribute remaining amount proportionally for unpaid schedules
           const currentProportion = totalUnpaidPercentage > 0 ? (schedule.percentage || 0) / totalUnpaidPercentage : 1 / unpaidSchedules.length;
           const newAmount = remainingAmount * currentProportion;
-          const newPercentage = invoiceAmount > 0 ? formatPercentage((newAmount / invoiceAmount) * 100) : 0;
+          const newPercentage = invoiceAmount > 0 ? (newAmount / invoiceAmount) * 100 : 0;
           
           console.log(`PaymentScheduleManager: Updating unpaid schedule ${schedule.id} - new amount:`, newAmount, 'new percentage:', newPercentage);
           
@@ -216,7 +211,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
     let amount = newSchedule.amount || 0;
 
     if (amount > 0 && invoiceAmount > 0) {
-      percentage = formatPercentage((amount / invoiceAmount) * 100);
+      percentage = (amount / invoiceAmount) * 100;
     } else if (percentage > 0) {
       amount = (invoiceAmount * percentage) / 100;
     }
@@ -242,7 +237,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
       for (let i = updatedSchedules.length - 1; i >= 0; i--) {
         const schedule = updatedSchedules[i];
         if (schedule.status !== 'paid') {
-          const newPercentageForSchedule = Math.max(0, formatPercentage((schedule.percentage || 0) - excessPercentage));
+          const newPercentageForSchedule = Math.max(0, (schedule.percentage || 0) - excessPercentage);
           const newAmountForSchedule = (invoiceAmount * newPercentageForSchedule) / 100;
           
           updatedSchedules[i] = {
@@ -267,7 +262,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
         id: generateId(),
         description: description,
         dueDate: newSchedule.dueDate,
-        percentage: formatPercentage(percentage),
+        percentage: percentage,
         status: newSchedule.status as PaymentStatus,
         amount: amount
       };
@@ -279,7 +274,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
         id: generateId(),
         description: description,
         dueDate: newSchedule.dueDate,
-        percentage: formatPercentage(percentage),
+        percentage: percentage,
         status: newSchedule.status as PaymentStatus,
         amount: amount
       };
@@ -331,7 +326,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
         console.log(`PaymentScheduleManager: Calculated amount for paid schedule: ${currentAmount} (${scheduleToUpdate.percentage}% of ${invoiceAmount})`);
       }
       
-      const newPercentage = invoiceAmount > 0 ? formatPercentage((currentAmount / invoiceAmount) * 100) : 0;
+      const newPercentage = invoiceAmount > 0 ? (currentAmount / invoiceAmount) * 100 : 0;
       
       const updatedSchedules = paymentSchedules.map(schedule => {
         if (schedule.id === id) {
@@ -364,11 +359,10 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
           if (field === 'percentage') {
             const numValue = Number(value);
             updated.amount = (invoiceAmount * numValue) / 100;
-            // Keep decimal precision for percentage
-            updated.percentage = formatPercentage(numValue);
+            updated.percentage = numValue;
           } else if (field === 'amount') {
             const numValue = Number(value);
-            updated.percentage = invoiceAmount > 0 ? formatPercentage((numValue / invoiceAmount) * 100) : 0;
+            updated.percentage = invoiceAmount > 0 ? (numValue / invoiceAmount) * 100 : 0;
           }
         }
         
@@ -386,14 +380,14 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
   };
 
   const handleNewSchedulePercentageChange = (value: string) => {
-    const percentage = formatPercentage(Number(value) || 0);
+    const percentage = Number(value) || 0;
     const amount = (invoiceAmount * percentage) / 100;
     setNewSchedule(prev => ({ ...prev, percentage, amount }));
   };
 
   const handleNewScheduleAmountChange = (value: string) => {
     const amount = Number(value) || 0;
-    const percentage = invoiceAmount > 0 ? formatPercentage((amount / invoiceAmount) * 100) : 0;
+    const percentage = invoiceAmount > 0 ? (amount / invoiceAmount) * 100 : 0;
     setNewSchedule(prev => ({ ...prev, amount, percentage }));
   };
 
@@ -449,13 +443,14 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
                       <Label className="text-xs text-muted-foreground">%</Label>
                       <div className="relative">
                         <Input
-                          type="number"
+                          type="text"
+                          inputMode="decimal"
                           value={Number(schedule.percentage || 0).toFixed(2)}
-                          onChange={(e) => updatePaymentSchedule(schedule.id, 'percentage', Number(e.target.value) || 0)}
+                          onChange={(e) => {
+                            const value = e.target.value.replace(/[^\d.]/g, '');
+                            updatePaymentSchedule(schedule.id, 'percentage', Number(value) || 0);
+                          }}
                           placeholder="0.00"
-                          min="0"
-                          max="100"
-                          step="0.01"
                           className="pr-5 text-sm"
                           disabled={schedule.status === 'paid'}
                         />
@@ -466,12 +461,14 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
                       <Label className="text-xs text-muted-foreground">Amount</Label>
                       <div className="relative">
                         <Input
-                          type="number"
+                          type="text"
+                          inputMode="decimal"
                           value={Number(schedule.amount || 0).toFixed(2)}
-                          onChange={(e) => updatePaymentSchedule(schedule.id, 'amount', Number(e.target.value) || 0)}
+                          onChange={(e) => {
+                            const value = e.target.value.replace(/[^\d.]/g, '');
+                            updatePaymentSchedule(schedule.id, 'amount', Number(value) || 0);
+                          }}
                           placeholder="0.00"
-                          min="0"
-                          step="0.01"
                           className="pr-5 text-sm"
                           disabled={schedule.status === 'paid'}
                         />
@@ -548,13 +545,14 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
                   <Label className="text-xs text-muted-foreground">%</Label>
                   <div className="relative">
                     <Input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       value={newSchedule.percentage || ''}
-                      onChange={(e) => handleNewSchedulePercentageChange(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/[^\d.]/g, '');
+                        handleNewSchedulePercentageChange(value);
+                      }}
                       placeholder="0.00"
-                      min="0"
-                      max="100"
-                      step="0.01"
                       className="pr-5 text-sm"
                     />
                     <Percent className="absolute right-1.5 top-2.5 h-3 w-3 text-muted-foreground" />
@@ -564,12 +562,14 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
                   <Label className="text-xs text-muted-foreground">Amount</Label>
                   <div className="relative">
                     <Input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       value={newSchedule.amount || ''}
-                      onChange={(e) => handleNewScheduleAmountChange(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/[^\d.]/g, '');
+                        handleNewScheduleAmountChange(value);
+                      }}
                       placeholder="0.00"
-                      min="0"
-                      step="0.01"
                       className="pr-5 text-sm"
                     />
                     <DollarSign className="absolute right-1.5 top-2.5 h-3 w-3 text-muted-foreground" />

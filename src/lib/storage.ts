@@ -959,6 +959,7 @@ export const saveInvoice = async (invoice: Omit<Invoice, 'id' | 'viewLink'>): Pr
       const schedulesToInsert = invoice.paymentSchedules.map(schedule => ({
         invoice_id: invoiceData.id,
         due_date: schedule.dueDate,
+        amount: schedule.amount || 0, // Include the required amount field
         percentage: schedule.percentage,
         description: schedule.description,
         status: schedule.status || 'unpaid',
@@ -1079,6 +1080,7 @@ export const updateInvoice = async (invoice: Invoice): Promise<Invoice> => {
       const schedulesToInsert = invoice.paymentSchedules.map(schedule => ({
         invoice_id: invoice.id,
         due_date: schedule.dueDate,
+        amount: schedule.amount || 0, // Include the required amount field
         percentage: schedule.percentage,
         description: schedule.description,
         status: schedule.status || 'unpaid',

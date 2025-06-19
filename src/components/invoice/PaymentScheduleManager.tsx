@@ -1,15 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DatePicker } from '@/components/ui/date-picker';
-import { Trash2, Plus, Calendar, Percent, DollarSign, X } from 'lucide-react';
-import { format } from 'date-fns';
-import { PaymentSchedule, PaymentStatus } from '@/types';
-import { toast } from 'sonner';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import {  Plus, Calendar } from 'lucide-react';
+import { format } from 'date-fns';
+import { PaymentSchedule } from '@/types';
+import { toast } from 'sonner';
+import { usePaymentScheduleManager } from './hooks/usePaymentScheduleManager';
+import PaymentScheduleRow from './components/PaymentScheduleRow';
+import AddPaymentScheduleForm from './components/AddPaymentScheduleForm';
+import { validatePaymentSchedule, adjustSchedulesForNewPayment } from './utils/paymentScheduleUtils';
 
 interface PaymentScheduleManagerProps {
   paymentSchedules: PaymentSchedule[];
@@ -22,269 +22,39 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
   invoiceAmount,
   onUpdateSchedules
 }) => {
-  const [newSchedule, setNewSchedule] = useState<Partial<PaymentSchedule>>({
-    dueDate: format(new Date(), 'yyyy-MM-dd'),
-    percentage: 0,
-    amount: 0,
-    status: 'unpaid'
+  const {
+    newSchedule,
+    setNewSchedule,
+    isAddingSchedule,
+    setIsAddingSchedule,
+    inputValues,
+    setInputValues,
+    generateId,
+    getNextPaymentDescription,
+    updatePaymentSchedule,
+    removePaymentSchedule
+  } = usePaymentScheduleManager({
+    paymentSchedules,
+    invoiceAmount,
+    onUpdateSchedules
   });
-  const [isAddingSchedule, setIsAddingSchedule] = useState(false);
-  
-  // Add state to track input values to prevent cursor jumping
-  const [inputValues, setInputValues] = useState<{[key: string]: string}>({});
-
-  // Initialize with default payment schedule if none exist
-  useEffect(() => {
-    if (paymentSchedules.length === 0) {
-      const defaultSchedule: PaymentSchedule = {
-        id: generateId(),
-        description: '1st payment',
-        dueDate: format(new Date(), 'yyyy-MM-dd'),
-        percentage: 100,
-        status: 'unpaid',
-        amount: invoiceAmount
-      };
-      onUpdateSchedules([defaultSchedule]);
-    }
-  }, [paymentSchedules.length, invoiceAmount, onUpdateSchedules]);
-
-  // Smart payment schedule adjustment when invoice amount changes
-  useEffect(() => {
-    if (paymentSchedules.length > 0 && invoiceAmount > 0) {
-      console.log('PaymentScheduleManager: Invoice amount changed to:', invoiceAmount);
-      console.log('PaymentScheduleManager: Current schedules:', paymentSchedules);
-      
-      // Separate paid and unpaid schedules
-      const paidSchedules = paymentSchedules.filter(schedule => schedule.status === 'paid');
-      const unpaidSchedules = paymentSchedules.filter(schedule => schedule.status !== 'paid');
-      
-      console.log('PaymentScheduleManager: Paid schedules:', paidSchedules);
-      console.log('PaymentScheduleManager: Unpaid schedules:', unpaidSchedules);
-      
-      // Calculate total paid amount - ensure paid schedules have proper amounts
-      const totalPaidAmount = paidSchedules.reduce((sum, schedule) => {
-        // If paid schedule has no amount, calculate it from percentage
-        let amount = schedule.amount || 0;
-        if (amount === 0 && schedule.percentage && schedule.percentage > 0) {
-          // For paid schedules, we need to calculate what they SHOULD have been paid
-          // based on their percentage at the time they were paid
-          amount = (invoiceAmount * schedule.percentage) / 100;
-          console.log(`PaymentScheduleManager: Paid schedule ${schedule.id} has no amount, calculating from percentage: ${schedule.percentage}% of ${invoiceAmount} = ${amount}`);
-        }
-        console.log(`PaymentScheduleManager: Paid schedule ${schedule.id} amount:`, amount);
-        return sum + amount;
-      }, 0);
-      
-      console.log('PaymentScheduleManager: Total paid amount:', totalPaidAmount);
-      
-      // Calculate remaining amount for unpaid schedules
-      const remainingAmount = invoiceAmount - totalPaidAmount;
-      
-      console.log('PaymentScheduleManager: Remaining amount for unpaid:', remainingAmount);
-      
-      // Handle edge cases
-      if (remainingAmount < 0) {
-        toast.error('Invoice total is less than already paid amounts. Please adjust manually.');
-        return;
-      }
-      
-      if (unpaidSchedules.length === 0) {
-        // All payments are paid, just recalculate percentages for paid schedules
-        const updatedSchedules = paymentSchedules.map(schedule => {
-          if (schedule.status === 'paid') {
-            // For paid schedules, preserve the calculated amount and update percentage
-            let preservedAmount = schedule.amount || 0;
-            if (preservedAmount === 0 && schedule.percentage && schedule.percentage > 0) {
-              preservedAmount = (invoiceAmount * schedule.percentage) / 100;
-            }
-            const newPercentage = invoiceAmount > 0 ? (preservedAmount / invoiceAmount) * 100 : 0;
-            
-            console.log(`PaymentScheduleManager: Updating paid schedule ${schedule.id} - preserving amount:`, preservedAmount, 'new percentage:', newPercentage);
-            
-            return {
-              ...schedule,
-              amount: preservedAmount, // Explicitly preserve the amount
-              percentage: newPercentage
-            };
-          }
-          return schedule;
-        });
-        
-        const hasChanges = updatedSchedules.some((schedule, index) => {
-          const original = paymentSchedules[index];
-          return Math.abs((schedule.amount || 0) - (original.amount || 0)) > 0.01 || 
-                 Math.abs((schedule.percentage || 0) - (original.percentage || 0)) > 0.01;
-        });
-        
-        if (hasChanges) {
-          console.log('PaymentScheduleManager: Updating schedules with preserved paid amounts');
-          onUpdateSchedules(updatedSchedules);
-        }
-        return;
-      }
-      
-      // Calculate total current unpaid percentage to maintain proportions
-      const totalUnpaidPercentage = unpaidSchedules.reduce((sum, schedule) => sum + (schedule.percentage || 0), 0);
-      
-      console.log('PaymentScheduleManager: Total unpaid percentage:', totalUnpaidPercentage);
-      
-      // Distribute remaining amount proportionally among unpaid schedules
-      const updatedSchedules = paymentSchedules.map(schedule => {
-        if (schedule.status === 'paid') {
-          // CRITICAL: Keep paid schedules unchanged in amount, just update percentage
-          let preservedAmount = schedule.amount || 0;
-          if (preservedAmount === 0 && schedule.percentage && schedule.percentage > 0) {
-            preservedAmount = (invoiceAmount * schedule.percentage) / 100;
-          }
-          const newPercentage = invoiceAmount > 0 ? (preservedAmount / invoiceAmount) * 100 : 0;
-          
-          console.log(`PaymentScheduleManager: Preserving paid schedule ${schedule.id} - amount:`, preservedAmount, 'percentage:', newPercentage);
-          
-          return {
-            ...schedule,
-            amount: preservedAmount, // Explicitly preserve the paid amount
-            percentage: newPercentage
-          };
-        } else {
-          // Distribute remaining amount proportionally for unpaid schedules
-          const currentProportion = totalUnpaidPercentage > 0 ? (schedule.percentage || 0) / totalUnpaidPercentage : 1 / unpaidSchedules.length;
-          const newAmount = remainingAmount * currentProportion;
-          const newPercentage = invoiceAmount > 0 ? (newAmount / invoiceAmount) * 100 : 0;
-          
-          console.log(`PaymentScheduleManager: Updating unpaid schedule ${schedule.id} - new amount:`, newAmount, 'new percentage:', newPercentage);
-          
-          return {
-            ...schedule,
-            amount: newAmount,
-            percentage: newPercentage
-          };
-        }
-      });
-      
-      // Only update if amounts actually changed
-      const hasAmountChanges = updatedSchedules.some((schedule, index) => {
-        const originalSchedule = paymentSchedules[index];
-        const amountChanged = Math.abs((schedule.amount || 0) - (originalSchedule.amount || 0)) > 0.01;
-        const percentageChanged = Math.abs((schedule.percentage || 0) - (originalSchedule.percentage || 0)) > 0.01;
-        
-        if (amountChanged || percentageChanged) {
-          console.log(`PaymentScheduleManager: Schedule ${schedule.id} changed - amount: ${originalSchedule.amount || 0} -> ${schedule.amount || 0}, percentage: ${originalSchedule.percentage || 0} -> ${schedule.percentage || 0}`);
-        }
-        
-        return amountChanged || percentageChanged;
-      });
-      
-      if (hasAmountChanges) {
-        console.log('PaymentScheduleManager: Applying payment schedule updates');
-        onUpdateSchedules(updatedSchedules);
-        
-        // Show notification about adjustment
-        const paidCount = paidSchedules.length;
-        const unpaidCount = unpaidSchedules.length;
-        if (paidCount > 0 && unpaidCount > 0) {
-          toast.success(`Payment schedules adjusted. ${paidCount} paid payment(s) unchanged, ${unpaidCount} unpaid payment(s) redistributed.`);
-        }
-      } else {
-        console.log('PaymentScheduleManager: No changes needed');
-      }
-    }
-  }, [invoiceAmount]);
-
-  const generateId = () => `payment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-  const getOrdinalNumber = (num: number): string => {
-    const suffix = ['th', 'st', 'nd', 'rd'];
-    const v = num % 100;
-    return num + (suffix[(v - 20) % 10] || suffix[v] || suffix[0]);
-  };
-
-  const getNextPaymentDescription = () => {
-    const count = paymentSchedules.length + 1;
-    return `${getOrdinalNumber(count)} payment`;
-  };
 
   const addPaymentSchedule = () => {
-    if (!newSchedule.dueDate || (!newSchedule.percentage && !newSchedule.amount)) {
-      toast.error('Please fill in all fields');
+    const validation = validatePaymentSchedule(newSchedule, paymentSchedules, invoiceAmount);
+    
+    if (!validation.isValid) {
+      toast.error(validation.errorMessage);
       return;
     }
 
-    // Calculate percentage from amount or vice versa
-    let percentage = newSchedule.percentage || 0;
-    let amount = newSchedule.amount || 0;
+    const updatedSchedules = adjustSchedulesForNewPayment(
+      newSchedule,
+      paymentSchedules,
+      invoiceAmount,
+      generateId
+    );
 
-    if (amount > 0 && invoiceAmount > 0) {
-      percentage = (amount / invoiceAmount) * 100;
-    } else if (percentage > 0) {
-      amount = (invoiceAmount * percentage) / 100;
-    }
-
-    if (percentage <= 0 || percentage > 100) {
-      toast.error('Percentage must be between 1 and 100');
-      return;
-    }
-
-    const totalCurrentPercentage = paymentSchedules.reduce((sum, schedule) => sum + (schedule.percentage || 0), 0);
-    
-    // Auto-generate description
-    const description = getNextPaymentDescription();
-    
-    // If adding this would exceed 100%, adjust the previous payment schedule
-    if (totalCurrentPercentage + percentage > 100) {
-      const excessPercentage = (totalCurrentPercentage + percentage) - 100;
-      
-      // Find the last unpaid payment schedule to deduct from
-      const updatedSchedules = [...paymentSchedules];
-      let adjustmentMade = false;
-      
-      for (let i = updatedSchedules.length - 1; i >= 0; i--) {
-        const schedule = updatedSchedules[i];
-        if (schedule.status !== 'paid') {
-          const newPercentageForSchedule = Math.max(0, (schedule.percentage || 0) - excessPercentage);
-          const newAmountForSchedule = (invoiceAmount * newPercentageForSchedule) / 100;
-          
-          updatedSchedules[i] = {
-            ...schedule,
-            percentage: newPercentageForSchedule,
-            amount: newAmountForSchedule
-          };
-          
-          adjustmentMade = true;
-          toast.success(`Adjusted previous unpaid payment by ${excessPercentage.toFixed(2)}% to accommodate new payment`);
-          break;
-        }
-      }
-      
-      if (!adjustmentMade) {
-        toast.error('Cannot add payment: would exceed 100% and all existing payments are paid');
-        return;
-      }
-      
-      // Add the new schedule
-      const schedule: PaymentSchedule = {
-        id: generateId(),
-        description: description,
-        dueDate: newSchedule.dueDate,
-        percentage: percentage,
-        status: newSchedule.status as PaymentStatus,
-        amount: amount
-      };
-
-      onUpdateSchedules([...updatedSchedules, schedule]);
-    } else {
-      // Normal case - no adjustment needed
-      const schedule: PaymentSchedule = {
-        id: generateId(),
-        description: description,
-        dueDate: newSchedule.dueDate,
-        percentage: percentage,
-        status: newSchedule.status as PaymentStatus,
-        amount: amount
-      };
-
-      onUpdateSchedules([...paymentSchedules, schedule]);
-    }
-
+    onUpdateSchedules(updatedSchedules);
     setIsAddingSchedule(false);
     setNewSchedule({
       dueDate: format(new Date(), 'yyyy-MM-dd'),
@@ -295,121 +65,20 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
     toast.success('Payment schedule added');
   };
 
-  const removePaymentSchedule = (id: string) => {
-    const scheduleToRemove = paymentSchedules.find(s => s.id === id);
-    if (scheduleToRemove?.status === 'paid') {
-      toast.error('Cannot remove a paid payment schedule');
-      return;
-    }
-    
-    const updatedSchedules = paymentSchedules.filter(schedule => schedule.id !== id);
-    
-    // Regenerate descriptions for remaining schedules
-    const reorderedSchedules = updatedSchedules.map((schedule, index) => ({
-      ...schedule,
-      description: `${getOrdinalNumber(index + 1)} payment`
-    }));
-    
-    onUpdateSchedules(reorderedSchedules);
-    toast.success('Payment schedule removed');
+  const handleInputValueChange = (key: string, value: string) => {
+    setInputValues(prev => ({ ...prev, [key]: value }));
   };
 
-  const updatePaymentSchedule = (id: string, field: keyof PaymentSchedule, value: any) => {
-    const scheduleToUpdate = paymentSchedules.find(s => s.id === id);
-    
-    // Special handling for status changes to "paid"
-    if (field === 'status' && value === 'paid' && scheduleToUpdate?.status !== 'paid') {
-      console.log(`PaymentScheduleManager: Marking schedule ${id} as paid`);
-      
-      // Calculate the correct amount based on current percentage and invoice amount
-      let currentAmount = scheduleToUpdate.amount || 0;
-      if (scheduleToUpdate.percentage && invoiceAmount > 0) {
-        // Always recalculate the amount based on current percentage for consistency
-        currentAmount = (invoiceAmount * scheduleToUpdate.percentage) / 100;
-        console.log(`PaymentScheduleManager: Calculated amount for paid schedule: ${currentAmount} (${scheduleToUpdate.percentage}% of ${invoiceAmount})`);
-      }
-      
-      const newPercentage = invoiceAmount > 0 ? (currentAmount / invoiceAmount) * 100 : 0;
-      
-      const updatedSchedules = paymentSchedules.map(schedule => {
-        if (schedule.id === id) {
-          return {
-            ...schedule,
-            status: value,
-            amount: currentAmount, // Store the calculated amount
-            percentage: newPercentage // Update percentage to match
-          };
-        }
-        return schedule;
-      });
-      
-      onUpdateSchedules(updatedSchedules);
-      return;
-    }
-    
-    // Prevent editing amount/percentage for paid schedules
-    if (scheduleToUpdate?.status === 'paid' && (field === 'amount' || field === 'percentage')) {
-      toast.error('Cannot modify amount or percentage of a paid payment schedule');
-      return;
-    }
-    
-    const updatedSchedules = paymentSchedules.map(schedule => {
-      if (schedule.id === id) {
-        const updated = { ...schedule, [field]: value };
-        
-        // Sync percentage and amount only for unpaid schedules
-        if (schedule.status !== 'paid') {
-          if (field === 'percentage') {
-            const numValue = Number(value);
-            updated.amount = (invoiceAmount * numValue) / 100;
-            updated.percentage = numValue;
-          } else if (field === 'amount') {
-            const numValue = Number(value);
-            updated.percentage = invoiceAmount > 0 ? (numValue / invoiceAmount) * 100 : 0;
-          }
-        }
-        
-        return updated;
-      }
-      return schedule;
+  const handleInputBlur = (key: string) => {
+    setInputValues(prev => {
+      const newValues = { ...prev };
+      delete newValues[key];
+      return newValues;
     });
-    onUpdateSchedules(updatedSchedules);
   };
 
-  const handleDateChange = (date: Date | undefined, field: string) => {
-    if (date) {
-      setNewSchedule(prev => ({ ...prev, [field]: format(date, 'yyyy-MM-dd') }));
-    }
-  };
-
-  const handleNewSchedulePercentageChange = (value: string) => {
-    // Only allow integers for input
-    const intValue = value.replace(/[^\d]/g, '');
-    const percentage = Number(intValue) || 0;
-    const amount = (invoiceAmount * percentage) / 100;
-    setNewSchedule(prev => ({ ...prev, percentage, amount }));
-  };
-
-  const handleNewScheduleAmountChange = (value: string) => {
-    // Store the raw input value to prevent cursor jumping
-    setInputValues(prev => ({ ...prev, newScheduleAmount: value }));
-    
-    // Only update the actual amount when it's a valid number
-    const cleanValue = value.replace(/[^\d.]/g, '');
-    const amount = Number(cleanValue) || 0;
-    const percentage = invoiceAmount > 0 ? (amount / invoiceAmount) * 100 : 0;
-    setNewSchedule(prev => ({ ...prev, amount, percentage }));
-  };
-
-  const handleExistingScheduleAmountChange = (scheduleId: string, value: string) => {
-    // Store the raw input value to prevent cursor jumping
-    setInputValues(prev => ({ ...prev, [scheduleId]: value }));
-    
-    // Only update when it's a valid number
-    const cleanValue = value.replace(/[^\d.]/g, '');
-    if (cleanValue && !isNaN(Number(cleanValue))) {
-      updatePaymentSchedule(scheduleId, 'amount', Number(cleanValue));
-    }
+  const handleUpdateNewSchedule = (field: keyof PaymentSchedule, value: any) => {
+    setNewSchedule(prev => ({ ...prev, [field]: value }));
   };
 
   // Set default description for new schedule when component mounts or schedules change
@@ -418,7 +87,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
       ...prev,
       description: getNextPaymentDescription()
     }));
-  }, [paymentSchedules.length]);
+  }, [paymentSchedules.length, getNextPaymentDescription]);
 
   const totalPercentage = paymentSchedules.reduce((sum, schedule) => sum + (schedule.percentage || 0), 0);
   const totalAmount = paymentSchedules.reduce((sum, schedule) => sum + (schedule.amount || 0), 0);
@@ -439,100 +108,16 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
             <ScrollArea className="w-full">
               <div className="space-y-3 py-1 min-w-[700px]">
                 {paymentSchedules.map((schedule) => (
-                  <div key={schedule.id} className={`grid grid-cols-[120px_160px_100px_120px_120px_auto] gap-4 p-3 border rounded-lg items-end ${schedule.status === 'paid' ? 'bg-green-50 border-green-200' : ''}`}>
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Description</Label>
-                      <span className="font-medium text-sm block mt-1 truncate" title={schedule.description}>
-                        {schedule.description}
-                        {schedule.status === 'paid' && <span className="ml-1 text-green-600 text-xs">(Paid)</span>}
-                      </span>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Due Date</Label>
-                      <DatePicker
-                        mode="single"
-                        selected={schedule.dueDate ? new Date(schedule.dueDate) : undefined}
-                        onSelect={(date) => {
-                          if (date) {
-                            updatePaymentSchedule(schedule.id, 'dueDate', format(date, 'yyyy-MM-dd'));
-                          }
-                        }}
-                        hideIcon={true}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs text-muted-foreground">%</Label>
-                      <div className="relative">
-                        <Input
-                          type="text"
-                          inputMode="numeric"
-                          value={Math.round(schedule.percentage || 0).toString()}
-                          onChange={(e) => {
-                            // Only allow integers for editing
-                            const intValue = e.target.value.replace(/[^\d]/g, '');
-                            const percentage = Number(intValue) || 0;
-                            updatePaymentSchedule(schedule.id, 'percentage', percentage);
-                          }}
-                          placeholder="0"
-                          className="pr-5 text-sm"
-                          disabled={schedule.status === 'paid'}
-                        />
-                        <Percent className="absolute right-1.5 top-2.5 h-3 w-3 text-muted-foreground" />
-                      </div>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Amount</Label>
-                      <div className="relative">
-                        <Input
-                          type="text"
-                          inputMode="decimal"
-                          value={inputValues[schedule.id] ?? Number(schedule.amount || 0).toFixed(2)}
-                          onChange={(e) => {
-                            handleExistingScheduleAmountChange(schedule.id, e.target.value);
-                          }}
-                          onBlur={() => {
-                            // Clear the input tracking when done editing
-                            setInputValues(prev => {
-                              const newValues = { ...prev };
-                              delete newValues[schedule.id];
-                              return newValues;
-                            });
-                          }}
-                          placeholder="0.00"
-                          className="pr-5 text-sm"
-                          disabled={schedule.status === 'paid'}
-                        />
-                        <DollarSign className="absolute right-1.5 top-2.5 h-3 w-3 text-muted-foreground" />
-                      </div>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Status</Label>
-                      <Select
-                        value={schedule.status}
-                        onValueChange={(value) => updatePaymentSchedule(schedule.id, 'status', value)}
-                      >
-                        <SelectTrigger className="text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="unpaid">Unpaid</SelectItem>
-                          <SelectItem value="paid">Paid</SelectItem>
-                          <SelectItem value="write-off">Write-off</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="flex justify-center">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removePaymentSchedule(schedule.id)}
-                        className="text-red-500 hover:text-red-700 p-1 h-8 w-8"
-                        disabled={schedule.status === 'paid'}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
+                  <PaymentScheduleRow
+                    key={schedule.id}
+                    schedule={schedule}
+                    invoiceAmount={invoiceAmount}
+                    inputValues={inputValues}
+                    onUpdateSchedule={updatePaymentSchedule}
+                    onRemoveSchedule={removePaymentSchedule}
+                    onInputValueChange={handleInputValueChange}
+                    onInputBlur={handleInputBlur}
+                  />
                 ))}
               </div>
               <ScrollBar orientation="horizontal" />
@@ -558,89 +143,16 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
 
         {/* Add New Payment Schedule Button / Form */}
         {isAddingSchedule ? (
-          <div className="space-y-3 p-2 border rounded-lg bg-muted/50 sm:p-4">
-            <Label className="text-sm font-medium">Add Payment Schedule</Label>
-            <ScrollArea className="w-full">
-              <div className="grid grid-cols-[120px_160px_100px_120px_120px_auto] gap-4 items-end pt-2 min-w-[700px]">
-                <div className="col-start-2">
-                  <Label className="text-xs text-muted-foreground">Due Date</Label>
-                  <DatePicker
-                    mode="single"
-                    selected={newSchedule.dueDate ? new Date(newSchedule.dueDate) : undefined}
-                    onSelect={(date) => handleDateChange(date, 'dueDate')}
-                    hideIcon={true}
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">%</Label>
-                  <div className="relative">
-                    <Input
-                      type="text"
-                      inputMode="numeric"
-                      value={Math.round(newSchedule.percentage || 0).toString()}
-                      onChange={(e) => {
-                        handleNewSchedulePercentageChange(e.target.value);
-                      }}
-                      placeholder="0"
-                      className="pr-5 text-sm"
-                    />
-                    <Percent className="absolute right-1.5 top-2.5 h-3 w-3 text-muted-foreground" />
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">Amount</Label>
-                  <div className="relative">
-                    <Input
-                      type="text"
-                      inputMode="decimal"
-                      value={inputValues.newScheduleAmount ?? (newSchedule.amount || '')}
-                      onChange={(e) => {
-                        handleNewScheduleAmountChange(e.target.value);
-                      }}
-                      onBlur={() => {
-                        // Clear the input tracking when done editing
-                        setInputValues(prev => {
-                          const newValues = { ...prev };
-                          delete newValues.newScheduleAmount;
-                          return newValues;
-                        });
-                      }}
-                      placeholder="0.00"
-                      className="pr-5 text-sm"
-                    />
-                    <DollarSign className="absolute right-1.5 top-2.5 h-3 w-3 text-muted-foreground" />
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">Status</Label>
-                  <Select
-                    value={newSchedule.status || 'unpaid'}
-                    onValueChange={(value) => setNewSchedule(prev => ({ ...prev, status: value as PaymentStatus }))}
-                  >
-                    <SelectTrigger className="text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="unpaid">Unpaid</SelectItem>
-                      <SelectItem value="paid">Paid</SelectItem>
-                      <SelectItem value="write-off">Write-off</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex gap-2 items-center">
-                  <Button onClick={addPaymentSchedule} className="flex-1">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => setIsAddingSchedule(false)}>
-                    <X className="h-4 w-4" />
-                    <span className="sr-only">Cancel</span>
-                  </Button>
-                </div>
-              </div>
-              <ScrollBar orientation="horizontal" />
-            </ScrollArea>
-          </div>
+          <AddPaymentScheduleForm
+            newSchedule={newSchedule}
+            invoiceAmount={invoiceAmount}
+            inputValues={inputValues}
+            onUpdateNewSchedule={handleUpdateNewSchedule}
+            onAddSchedule={addPaymentSchedule}
+            onCancel={() => setIsAddingSchedule(false)}
+            onInputValueChange={handleInputValueChange}
+            onInputBlur={handleInputBlur}
+          />
         ) : (
           <div className="pt-2">
             <Button

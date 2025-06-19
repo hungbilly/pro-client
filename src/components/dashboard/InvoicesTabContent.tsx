@@ -145,10 +145,10 @@ const InvoicesTabContent: React.FC<InvoicesTabContentProps> = ({
                       </Badge>
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">
-                      {getAcceptanceBadge(invoice.status === 'accepted' || invoice.status === 'paid', invoice.invoice_accepted_at)}
+                      {getAcceptanceBadge(invoice.status === 'accepted' || invoice.status === 'paid', invoice.contract_accepted_at)}
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">
-                      {getAcceptanceBadge(invoice.contract_status === 'accepted', invoice.contract_accepted_at)}
+                      {getAcceptanceBadge(invoice.contractStatus === 'accepted', invoice.contract_accepted_at)}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2" onClick={e => e.stopPropagation()}>

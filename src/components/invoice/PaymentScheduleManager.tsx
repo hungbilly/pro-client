@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -301,10 +300,15 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
     
     // Special handling for status changes to "paid"
     if (field === 'status' && value === 'paid' && scheduleToUpdate?.status !== 'paid') {
-      console.log(`PaymentScheduleManager: Marking schedule ${id} as paid, preserving current amount:`, scheduleToUpdate.amount);
+      console.log(`PaymentScheduleManager: Marking schedule ${id} as paid`);
       
-      // When marking as paid, preserve the current amount and calculate the correct percentage
-      const currentAmount = scheduleToUpdate.amount || 0;
+      // Calculate the correct amount based on percentage if current amount is 0 or undefined
+      let currentAmount = scheduleToUpdate.amount || 0;
+      if (currentAmount === 0 && scheduleToUpdate.percentage && invoiceAmount > 0) {
+        currentAmount = (invoiceAmount * scheduleToUpdate.percentage) / 100;
+        console.log(`PaymentScheduleManager: Calculated amount for paid schedule: ${currentAmount} (${scheduleToUpdate.percentage}% of ${invoiceAmount})`);
+      }
+      
       const newPercentage = invoiceAmount > 0 ? (currentAmount / invoiceAmount) * 100 : 0;
       
       const updatedSchedules = paymentSchedules.map(schedule => {
@@ -312,7 +316,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
           return {
             ...schedule,
             status: value,
-            amount: currentAmount, // Preserve current amount
+            amount: currentAmount, // Use calculated amount
             percentage: newPercentage // Update percentage to match
           };
         }

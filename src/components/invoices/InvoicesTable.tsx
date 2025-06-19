@@ -3,7 +3,6 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowUp, ArrowDown, CalendarDays } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
-import StatusBadge from './StatusBadge';
 import AcceptanceStatusDots from './AcceptanceStatusDots';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import {
@@ -38,6 +37,17 @@ const isInvoiceAccepted = (invoice: any) => {
 // Helper function to check if contract is accepted
 const isContractAccepted = (invoice: any) => {
   return !!(invoice.contract_accepted_at || invoice.contract_accepted_by || (invoice.contractStatus === 'accepted'));
+};
+
+// Helper function to calculate paid amount from payment schedules
+const getPaidAmount = (invoice: any) => {
+  if (!invoice.paymentSchedules || !Array.isArray(invoice.paymentSchedules)) {
+    return 0;
+  }
+  
+  return invoice.paymentSchedules
+    .filter(schedule => schedule.status === 'paid')
+    .reduce((total, schedule) => total + (schedule.amount || 0), 0);
 };
 
 const InvoicesTable: React.FC<InvoicesTableProps> = ({
@@ -109,10 +119,10 @@ const InvoicesTable: React.FC<InvoicesTableProps> = ({
                 Amount {getSortIndicator('amount')}
               </TableHead>
               <TableHead 
-                className="cursor-pointer" 
-                onClick={() => onSort('status')}
+                className="hidden md:table-cell cursor-pointer" 
+                onClick={() => onSort('paid')}
               >
-                Status {getSortIndicator('status')}
+                Paid {getSortIndicator('paid')}
               </TableHead>
               <TableHead>
                 Acceptance
@@ -123,6 +133,7 @@ const InvoicesTable: React.FC<InvoicesTableProps> = ({
             {invoices.map((invoice) => {
               console.log(`[InvoicesTable] Invoice ${invoice.id} acceptance check: status=${invoice.status}, invoice_accepted_at=${invoice.invoice_accepted_at}, isInvoiceAccepted=${isInvoiceAccepted(invoice)}`);
               console.log(`[InvoicesTable] Invoice ${invoice.id} contract check: contract_accepted_at=${invoice.contract_accepted_at}, contract_accepted_by=${invoice.contract_accepted_by}, contractStatus=${invoice.contractStatus}, isContractAccepted=${isContractAccepted(invoice)}`);
+              const paidAmount = getPaidAmount(invoice);
               return (
                 <TableRow 
                   key={invoice.id} 
@@ -144,8 +155,8 @@ const InvoicesTable: React.FC<InvoicesTableProps> = ({
                   <TableCell className="hidden md:table-cell">
                     {formatCurrency(invoice.amount || 0, companyCurrency)}
                   </TableCell>
-                  <TableCell>
-                    <StatusBadge status={invoice.status} />
+                  <TableCell className="hidden md:table-cell">
+                    {formatCurrency(paidAmount, companyCurrency)}
                   </TableCell>
                   <TableCell>
                     <AcceptanceStatusDots 

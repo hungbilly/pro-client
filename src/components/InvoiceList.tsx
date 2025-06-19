@@ -1,16 +1,15 @@
-
 import React from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Invoice, Client } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { CalendarDays, Copy, Eye, FileEdit, Trash2, AreaChart, ArrowUp, ArrowDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { deleteInvoice } from '@/lib/storage';
 import { supabase } from '@/integrations/supabase/client';
+import { formatCurrency } from '@/lib/utils';
 import AcceptanceStatusDots from '@/components/invoices/AcceptanceStatusDots';
 import {
   Table,
@@ -37,37 +36,13 @@ interface InvoiceListProps {
   client: Client;
   showCreateButton?: boolean;
   onInvoiceDeleted?: (invoiceId: string) => void;
+  companyCurrency?: string;
 }
 
 // Type for sorting configuration
 type SortConfig = {
   key: string;
   direction: 'asc' | 'desc';
-};
-
-const getStatusColor = (status: Invoice['status']) => {
-  switch (status) {
-    case 'draft':
-      return 'bg-muted text-muted-foreground';
-    case 'sent':
-      return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-    case 'accepted':
-      return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-    case 'paid':
-      return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
-    default:
-      return 'bg-gray-100 text-gray-800';
-  }
-};
-
-const getContractStatusColor = (status?: 'pending' | 'accepted') => {
-  switch (status) {
-    case 'accepted':
-      return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-    case 'pending':
-    default:
-      return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
-  }
 };
 
 // Helper function to check if invoice is accepted (based on status or timestamp)
@@ -80,7 +55,24 @@ const isContractAccepted = (invoice: Invoice) => {
   return !!(invoice.contract_accepted_at || invoice.contract_accepted_by || (invoice.contractStatus === 'accepted'));
 };
 
-const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateButton = true, onInvoiceDeleted }) => {
+// Helper function to calculate paid amount from payment schedules
+const getPaidAmount = (invoice: Invoice) => {
+  if (!invoice.paymentSchedules || !Array.isArray(invoice.paymentSchedules)) {
+    return 0;
+  }
+  
+  return invoice.paymentSchedules
+    .filter(schedule => schedule.status === 'paid')
+    .reduce((total, schedule) => total + (schedule.amount || 0), 0);
+};
+
+const InvoiceList: React.FC<InvoiceListProps> = ({ 
+  invoices, 
+  client, 
+  showCreateButton = true, 
+  onInvoiceDeleted,
+  companyCurrency = 'USD'
+}) => {
   const [invoiceToDelete, setInvoiceToDelete] = React.useState<string | null>(null);
   const [localInvoices, setLocalInvoices] = React.useState<Invoice[]>(invoices);
   const [sortBy, setSortBy] = React.useState<'invoice-date' | 'job-date'>('invoice-date');
@@ -192,14 +184,9 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
             aValue = a.amount || 0;
             bValue = b.amount || 0;
             break;
-          case 'status':
-            const statusOrder = { 'paid': 1, 'accepted': 2, 'sent': 3, 'draft': 4 };
-            aValue = statusOrder[a.status] || 999;
-            bValue = statusOrder[b.status] || 999;
-            break;
-          case 'contractStatus':
-            aValue = a.contractStatus === 'accepted' ? 1 : 2;
-            bValue = b.contractStatus === 'accepted' ? 1 : 2;
+          case 'paid':
+            aValue = getPaidAmount(a);
+            bValue = getPaidAmount(b);
             break;
           default:
             aValue = a[sortConfig.key];
@@ -389,9 +376,9 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
                   </TableHead>
                   <TableHead 
                     className="cursor-pointer"
-                    onClick={() => handleSort('status')}
+                    onClick={() => handleSort('paid')}
                   >
-                    Status {getSortIndicator('status')}
+                    Paid {getSortIndicator('paid')}
                   </TableHead>
                   <TableHead>
                     Acceptance
@@ -401,6 +388,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
               </TableHeader>
               <TableBody>
                 {sortedInvoices.map((invoice) => {
+                  const paidAmount = getPaidAmount(invoice);
                   console.log(`[InvoiceList] Rendering invoice ${invoice.id}, jobId: ${invoice.jobId}, shootingDate: ${invoice.shootingDate}, jobDate: ${invoice.jobId ? jobDates[invoice.jobId] : 'no job'}`);
                   console.log(`[InvoiceList] Invoice acceptance check: status=${invoice.status}, invoice_accepted_at=${invoice.invoice_accepted_at}, isAccepted=${isInvoiceAccepted(invoice)}`);
                   console.log(`[InvoiceList] Contract acceptance check: contract_accepted_at=${invoice.contract_accepted_at}, contract_accepted_by=${invoice.contract_accepted_by}, contractStatus=${invoice.contractStatus}, isAccepted=${isContractAccepted(invoice)}`);
@@ -420,12 +408,8 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
                           {getJobDateDisplay(invoice)}
                         </div>
                       </TableCell>
-                      <TableCell className="font-semibold">${invoice.amount.toFixed(2)}</TableCell>
-                      <TableCell>
-                        <Badge className={getStatusColor(invoice.status)}>
-                          {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
-                        </Badge>
-                      </TableCell>
+                      <TableCell className="font-semibold">{formatCurrency(invoice.amount, companyCurrency)}</TableCell>
+                      <TableCell className="font-semibold">{formatCurrency(paidAmount, companyCurrency)}</TableCell>
                       <TableCell>
                         <AcceptanceStatusDots 
                           isInvoiceAccepted={isInvoiceAccepted(invoice)}

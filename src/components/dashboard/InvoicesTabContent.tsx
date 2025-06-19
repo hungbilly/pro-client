@@ -5,10 +5,10 @@ import { Invoice, Client } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Search, FilePlus, Eye, CalendarDays } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { formatCurrency } from '@/lib/utils';
 import AcceptanceStatusDots from '@/components/invoices/AcceptanceStatusDots';
 
 interface InvoicesTabContentProps {
@@ -16,9 +16,9 @@ interface InvoicesTabContentProps {
   clients: Client[];
   jobs: any[];
   jobDates: Record<string, string>;
-  getStatusColor: (status: string) => string;
   getJobDateDisplay: (invoice: any) => React.ReactNode;
   onOpenCreateInvoiceModal: () => void;
+  companyCurrency: string;
 }
 
 // Helper function to check if invoice is accepted (based on status or timestamp)
@@ -31,14 +31,25 @@ const isContractAccepted = (invoice: Invoice) => {
   return !!(invoice.contract_accepted_at || invoice.contract_accepted_by || (invoice.contractStatus === 'accepted'));
 };
 
+// Helper function to calculate paid amount from payment schedules
+const getPaidAmount = (invoice: Invoice) => {
+  if (!invoice.paymentSchedules || !Array.isArray(invoice.paymentSchedules)) {
+    return 0;
+  }
+  
+  return invoice.paymentSchedules
+    .filter(schedule => schedule.status === 'paid')
+    .reduce((total, schedule) => total + (schedule.amount || 0), 0);
+};
+
 const InvoicesTabContent: React.FC<InvoicesTabContentProps> = ({ 
   invoices, 
   clients, 
   jobs, 
   jobDates,
-  getStatusColor, 
   getJobDateDisplay,
-  onOpenCreateInvoiceModal
+  onOpenCreateInvoiceModal,
+  companyCurrency
 }) => {
   const navigate = useNavigate();
   const [invoiceSearchQuery, setInvoiceSearchQuery] = useState('');
@@ -46,8 +57,7 @@ const InvoicesTabContent: React.FC<InvoicesTabContentProps> = ({
 
   const filteredInvoices = [...invoices].filter(invoice => 
     invoice.number.toLowerCase().includes(invoiceSearchQuery.toLowerCase()) || 
-    clients.find(c => c.id === invoice.clientId)?.name.toLowerCase().includes(invoiceSearchQuery.toLowerCase()) ||
-    invoice.status.toLowerCase().includes(invoiceSearchQuery.toLowerCase())
+    clients.find(c => c.id === invoice.clientId)?.name.toLowerCase().includes(invoiceSearchQuery.toLowerCase())
   );
 
   const handleInvoiceRowClick = (invoiceId: string) => {
@@ -74,7 +84,7 @@ const InvoicesTabContent: React.FC<InvoicesTabContentProps> = ({
       
       <div className="relative mb-4">
         <Input 
-          placeholder="Search invoices by number, client name, or status..." 
+          placeholder="Search invoices by number or client name..." 
           value={invoiceSearchQuery} 
           onChange={e => setInvoiceSearchQuery(e.target.value)} 
           className="pr-10" 
@@ -112,7 +122,7 @@ const InvoicesTabContent: React.FC<InvoicesTabContentProps> = ({
                   <TableHead>Invoice Date</TableHead>
                   <TableHead>Job Date</TableHead>
                   <TableHead>Amount</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Paid</TableHead>
                   <TableHead>Acceptance</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -120,6 +130,7 @@ const InvoicesTabContent: React.FC<InvoicesTabContentProps> = ({
               <TableBody>
                 {filteredInvoices.map(invoice => {
                   const invoiceClient = clients.find(c => c.id === invoice.clientId) || null;
+                  const paidAmount = getPaidAmount(invoice);
                   console.log(`[InvoicesTabContent] Invoice ${invoice.id} acceptance check: status=${invoice.status}, invoice_accepted_at=${invoice.invoice_accepted_at}, isInvoiceAccepted=${isInvoiceAccepted(invoice)}`);
                   console.log(`[InvoicesTabContent] Invoice ${invoice.id} contract check: contract_accepted_at=${invoice.contract_accepted_at}, contract_accepted_by=${invoice.contract_accepted_by}, contractStatus=${invoice.contractStatus}, isContractAccepted=${isContractAccepted(invoice)}`);
                   return (
@@ -135,12 +146,8 @@ const InvoicesTabContent: React.FC<InvoicesTabContentProps> = ({
                           {getJobDateDisplay(invoice)}
                         </div>
                       </TableCell>
-                      <TableCell>${invoice.amount.toFixed(2)}</TableCell>
-                      <TableCell>
-                        <Badge className={getStatusColor(invoice.status)}>
-                          {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
-                        </Badge>
-                      </TableCell>
+                      <TableCell>{formatCurrency(invoice.amount, companyCurrency)}</TableCell>
+                      <TableCell>{formatCurrency(paidAmount, companyCurrency)}</TableCell>
                       <TableCell>
                         <AcceptanceStatusDots 
                           isInvoiceAccepted={isInvoiceAccepted(invoice)}

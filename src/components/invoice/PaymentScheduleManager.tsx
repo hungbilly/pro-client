@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -421,7 +422,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
                       <div className="relative">
                         <Input
                           type="number"
-                          value={schedule.percentage || 0}
+                          value={Number(schedule.percentage || 0).toFixed(2)}
                           onChange={(e) => updatePaymentSchedule(schedule.id, 'percentage', Number(e.target.value) || 0)}
                           placeholder="0"
                           min="0"
@@ -438,7 +439,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
                       <div className="relative">
                         <Input
                           type="number"
-                          value={schedule.amount || 0}
+                          value={Number(schedule.amount || 0).toFixed(2)}
                           onChange={(e) => updatePaymentSchedule(schedule.id, 'amount', Number(e.target.value) || 0)}
                           placeholder="0"
                           min="0"

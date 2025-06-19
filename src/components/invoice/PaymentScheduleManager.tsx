@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -217,7 +218,7 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
     }
 
     if (percentage <= 0 || percentage > 100) {
-      toast.error('Percentage must be between 0.01 and 100');
+      toast.error('Percentage must be between 1 and 100');
       return;
     }
 
@@ -380,7 +381,9 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
   };
 
   const handleNewSchedulePercentageChange = (value: string) => {
-    const percentage = Number(value) || 0;
+    // Only allow integers for input
+    const intValue = value.replace(/[^\d]/g, '');
+    const percentage = Number(intValue) || 0;
     const amount = (invoiceAmount * percentage) / 100;
     setNewSchedule(prev => ({ ...prev, percentage, amount }));
   };
@@ -444,13 +447,15 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
                       <div className="relative">
                         <Input
                           type="text"
-                          inputMode="decimal"
-                          value={Number(schedule.percentage || 0).toFixed(2)}
+                          inputMode="numeric"
+                          value={Math.round(schedule.percentage || 0).toString()}
                           onChange={(e) => {
-                            const value = e.target.value.replace(/[^\d.]/g, '');
-                            updatePaymentSchedule(schedule.id, 'percentage', Number(value) || 0);
+                            // Only allow integers for editing
+                            const intValue = e.target.value.replace(/[^\d]/g, '');
+                            const percentage = Number(intValue) || 0;
+                            updatePaymentSchedule(schedule.id, 'percentage', percentage);
                           }}
-                          placeholder="0.00"
+                          placeholder="0"
                           className="pr-5 text-sm"
                           disabled={schedule.status === 'paid'}
                         />
@@ -546,13 +551,12 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
                   <div className="relative">
                     <Input
                       type="text"
-                      inputMode="decimal"
-                      value={newSchedule.percentage || ''}
+                      inputMode="numeric"
+                      value={Math.round(newSchedule.percentage || 0).toString()}
                       onChange={(e) => {
-                        const value = e.target.value.replace(/[^\d.]/g, '');
-                        handleNewSchedulePercentageChange(value);
+                        handleNewSchedulePercentageChange(e.target.value);
                       }}
-                      placeholder="0.00"
+                      placeholder="0"
                       className="pr-5 text-sm"
                     />
                     <Percent className="absolute right-1.5 top-2.5 h-3 w-3 text-muted-foreground" />

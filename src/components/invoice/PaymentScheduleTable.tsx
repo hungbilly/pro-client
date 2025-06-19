@@ -165,10 +165,15 @@ const PaymentScheduleTable = memo(({
   };
 
   const getPaymentAmount = (schedule: PaymentSchedule) => {
-    if (schedule.amount !== undefined) {
+    // Always use the database amount value first, only fallback to calculation if amount is missing/zero
+    if (schedule.amount !== undefined && schedule.amount !== null && schedule.amount > 0) {
       return schedule.amount;
     }
-    return (amount * (schedule.percentage || 0)) / 100;
+    // Only calculate if amount is missing/zero and percentage exists
+    if (schedule.percentage && schedule.percentage > 0) {
+      return (amount * schedule.percentage) / 100;
+    }
+    return 0;
   };
 
   const handleAmountUpdate = (paymentId: string, schedule: PaymentSchedule) => {
@@ -393,7 +398,7 @@ const PaymentScheduleTable = memo(({
                   <span className="absolute right-3 text-muted-foreground select-none">%</span>
                 </div>
               </div>
-              {/* Amount */}
+              {/* Amount - Show database value directly */}
               <div className="flex flex-col w-full md:w-[140px]">
                 <label className="text-xs mb-1 font-medium">Amount</label>
                 <div className="flex items-center gap-1">
@@ -401,7 +406,7 @@ const PaymentScheduleTable = memo(({
                   <Input
                     type="text"
                     inputMode="decimal"
-                    value={customAmounts[schedule.id] ?? paymentAmount}
+                    value={customAmounts[schedule.id] ?? (schedule.amount?.toFixed(2) || '0.00')}
                     onChange={e => {
                       const value = e.target.value.replace(/[^\d.]/g, '');
                       setCustomAmounts(prev => ({
@@ -454,7 +459,7 @@ const PaymentScheduleTable = memo(({
       );
     }
 
-    // Regular view for non-edit mode
+    // Regular view for non-edit mode - also use database values directly
     return (
       <TableRow key={schedule.id}>
         {/* Description */}
@@ -471,11 +476,11 @@ const PaymentScheduleTable = memo(({
         <TableCell className="text-right whitespace-nowrap min-w-[60px] max-w-[70px]">
           {`${percentage.toFixed(2)}%`}
         </TableCell>
-        {/* Amount */}
+        {/* Amount - Display actual database value */}
         <TableCell className="text-right font-medium whitespace-nowrap min-w-[100px] max-w-[115px]">
           <span className="flex items-center gap-1 justify-end">
             <CircleDollarSign className="h-3.5 w-3.5 text-muted-foreground" />
-            <span>{trueFormatCurrency(paymentAmount)}</span>
+            <span>{trueFormatCurrency(schedule.amount || 0)}</span>
           </span>
         </TableCell>
         {/* Status */}

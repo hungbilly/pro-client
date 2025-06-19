@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -299,7 +298,7 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     const newItem: InvoiceItem = {
       id: `manual-${Date.now()}`,
       name: manualItem.name,
-      description: manualItem.description,
+      description: manualItem.description || '', // Ensure description is never empty
       quantity: manualItem.quantity,
       rate: manualItem.rate,
       amount: manualItem.quantity * manualItem.rate
@@ -427,12 +426,20 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
 
     setIsSaving(true);
     try {
-      // Ensure amount is valid before saving
+      // Ensure amount is valid before saving and fix any items with missing descriptions
+      const sanitizedItems = invoice.items.map(item => ({
+        ...item,
+        description: item.description || '', // Ensure description is never null/undefined
+        name: item.name || item.productName || 'Item' // Ensure name is not empty
+      }));
+
       const safeInvoice = {
         ...invoice,
         amount: ensureValidNumber(invoice.amount),
-        companyId: selectedCompany?.id || ''
+        companyId: selectedCompany?.id || '',
+        items: sanitizedItems
       };
+      
       if (propInvoiceId) {
         // If it's an existing invoice, update it
         const updatedInvoice = {
@@ -481,8 +488,15 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
     }));
   };
   const handleAddItems = (items: InvoiceItem[]) => {
+    // Sanitize items to ensure they have descriptions
+    const sanitizedItems = items.map(item => ({
+      ...item,
+      description: item.description || '', // Ensure description is never null/undefined
+      name: item.name || item.productName || 'Item' // Ensure name is not empty
+    }));
+
     // Add new items to existing items
-    const newItems = [...invoice.items, ...items];
+    const newItems = [...invoice.items, ...sanitizedItems];
     setInvoice(prev => ({
       ...prev,
       items: newItems

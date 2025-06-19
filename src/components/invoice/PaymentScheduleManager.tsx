@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,6 +29,9 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
     status: 'unpaid'
   });
   const [isAddingSchedule, setIsAddingSchedule] = useState(false);
+  
+  // Add state to track input values to prevent cursor jumping
+  const [inputValues, setInputValues] = useState<{[key: string]: string}>({});
 
   // Initialize with default payment schedule if none exist
   useEffect(() => {
@@ -389,9 +391,25 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
   };
 
   const handleNewScheduleAmountChange = (value: string) => {
-    const amount = Number(value) || 0;
+    // Store the raw input value to prevent cursor jumping
+    setInputValues(prev => ({ ...prev, newScheduleAmount: value }));
+    
+    // Only update the actual amount when it's a valid number
+    const cleanValue = value.replace(/[^\d.]/g, '');
+    const amount = Number(cleanValue) || 0;
     const percentage = invoiceAmount > 0 ? (amount / invoiceAmount) * 100 : 0;
     setNewSchedule(prev => ({ ...prev, amount, percentage }));
+  };
+
+  const handleExistingScheduleAmountChange = (scheduleId: string, value: string) => {
+    // Store the raw input value to prevent cursor jumping
+    setInputValues(prev => ({ ...prev, [scheduleId]: value }));
+    
+    // Only update when it's a valid number
+    const cleanValue = value.replace(/[^\d.]/g, '');
+    if (cleanValue && !isNaN(Number(cleanValue))) {
+      updatePaymentSchedule(scheduleId, 'amount', Number(cleanValue));
+    }
   };
 
   // Set default description for new schedule when component mounts or schedules change
@@ -468,10 +486,17 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
                         <Input
                           type="text"
                           inputMode="decimal"
-                          value={Number(schedule.amount || 0).toFixed(2)}
+                          value={inputValues[schedule.id] ?? Number(schedule.amount || 0).toFixed(2)}
                           onChange={(e) => {
-                            const value = e.target.value.replace(/[^\d.]/g, '');
-                            updatePaymentSchedule(schedule.id, 'amount', Number(value) || 0);
+                            handleExistingScheduleAmountChange(schedule.id, e.target.value);
+                          }}
+                          onBlur={() => {
+                            // Clear the input tracking when done editing
+                            setInputValues(prev => {
+                              const newValues = { ...prev };
+                              delete newValues[schedule.id];
+                              return newValues;
+                            });
                           }}
                           placeholder="0.00"
                           className="pr-5 text-sm"
@@ -568,10 +593,17 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
                     <Input
                       type="text"
                       inputMode="decimal"
-                      value={newSchedule.amount || ''}
+                      value={inputValues.newScheduleAmount ?? (newSchedule.amount || '')}
                       onChange={(e) => {
-                        const value = e.target.value.replace(/[^\d.]/g, '');
-                        handleNewScheduleAmountChange(value);
+                        handleNewScheduleAmountChange(e.target.value);
+                      }}
+                      onBlur={() => {
+                        // Clear the input tracking when done editing
+                        setInputValues(prev => {
+                          const newValues = { ...prev };
+                          delete newValues.newScheduleAmount;
+                          return newValues;
+                        });
                       }}
                       placeholder="0.00"
                       className="pr-5 text-sm"

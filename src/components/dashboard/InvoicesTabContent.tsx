@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { Search, FilePlus, Eye, CalendarDays, Check, X } from 'lucide-react';
+import { Search, FilePlus, Eye, CalendarDays } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import AcceptanceStatusDots from '@/components/invoices/AcceptanceStatusDots';
 
 interface InvoicesTabContentProps {
   invoices: Invoice[];
@@ -51,23 +52,6 @@ const InvoicesTabContent: React.FC<InvoicesTabContentProps> = ({
 
   const handleInvoiceRowClick = (invoiceId: string) => {
     navigate(`/invoice/${invoiceId}`);
-  };
-
-  const getAcceptanceBadge = (accepted: boolean, acceptedAt?: string) => {
-    if (accepted) {
-      return (
-        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-          <Check className="w-3 h-3 mr-1" />
-          Accepted
-        </Badge>
-      );
-    }
-    return (
-      <Badge variant="outline" className="bg-gray-50 text-gray-500 border-gray-200">
-        <X className="w-3 h-3 mr-1" />
-        Pending
-      </Badge>
-    );
   };
 
   return (
@@ -129,8 +113,7 @@ const InvoicesTabContent: React.FC<InvoicesTabContentProps> = ({
                   <TableHead>Job Date</TableHead>
                   <TableHead>Amount</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Invoice</TableHead>
-                  <TableHead>Contract</TableHead>
+                  <TableHead>Acceptance</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -159,10 +142,10 @@ const InvoicesTabContent: React.FC<InvoicesTabContentProps> = ({
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {getAcceptanceBadge(isInvoiceAccepted(invoice), invoice.invoice_accepted_at)}
-                      </TableCell>
-                      <TableCell>
-                        {getAcceptanceBadge(isContractAccepted(invoice), invoice.contract_accepted_at)}
+                        <AcceptanceStatusDots 
+                          isInvoiceAccepted={isInvoiceAccepted(invoice)}
+                          isContractAccepted={isContractAccepted(invoice)}
+                        />
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2" onClick={e => e.stopPropagation()}>

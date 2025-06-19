@@ -1,9 +1,10 @@
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowUp, ArrowDown, CalendarDays, Check, X } from 'lucide-react';
+import { ArrowUp, ArrowDown, CalendarDays } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import StatusBadge from './StatusBadge';
-import { Badge } from '@/components/ui/badge';
+import AcceptanceStatusDots from './AcceptanceStatusDots';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import {
   Table,
@@ -65,23 +66,6 @@ const InvoicesTable: React.FC<InvoicesTableProps> = ({
     return null;
   };
 
-  const getAcceptanceBadge = (accepted: boolean, acceptedAt?: string) => {
-    if (accepted) {
-      return (
-        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-          <Check className="w-3 h-3 mr-1" />
-          Accepted
-        </Badge>
-      );
-    }
-    return (
-      <Badge variant="outline" className="bg-gray-50 text-gray-500 border-gray-200">
-        <X className="w-3 h-3 mr-1" />
-        Pending
-      </Badge>
-    );
-  };
-
   return (
     <div className="rounded-md border">
       <ScrollArea className="w-full">
@@ -130,11 +114,8 @@ const InvoicesTable: React.FC<InvoicesTableProps> = ({
               >
                 Status {getSortIndicator('status')}
               </TableHead>
-              <TableHead className="hidden lg:table-cell">
-                Invoice Accepted
-              </TableHead>
-              <TableHead className="hidden lg:table-cell">
-                Contract Accepted
+              <TableHead>
+                Acceptance
               </TableHead>
             </TableRow>
           </TableHeader>
@@ -166,11 +147,11 @@ const InvoicesTable: React.FC<InvoicesTableProps> = ({
                   <TableCell>
                     <StatusBadge status={invoice.status} />
                   </TableCell>
-                  <TableCell className="hidden lg:table-cell">
-                    {getAcceptanceBadge(isInvoiceAccepted(invoice), invoice.invoice_accepted_at)}
-                  </TableCell>
-                  <TableCell className="hidden lg:table-cell">
-                    {getAcceptanceBadge(isContractAccepted(invoice), invoice.contract_accepted_at)}
+                  <TableCell>
+                    <AcceptanceStatusDots 
+                      isInvoiceAccepted={isInvoiceAccepted(invoice)}
+                      isContractAccepted={isContractAccepted(invoice)}
+                    />
                   </TableCell>
                 </TableRow>
               );

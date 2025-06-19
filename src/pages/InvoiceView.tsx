@@ -29,6 +29,7 @@ import ContractAcceptance from '@/components/invoice/ContractAcceptance';
 import { formatCurrency as utilFormatCurrency } from "@/lib/utils";
 import TopNavbar from '@/components/TopNavbar';
 import InvoiceShareDialog from '@/components/invoice/InvoiceShareDialog';
+import { useEmailNotifications } from '@/components/invoice/hooks/useEmailNotifications';
 
 const InvoiceView = () => {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
@@ -46,6 +47,7 @@ const InvoiceView = () => {
   const { idOrViewLink } = useParams<{ idOrViewLink: string }>();
   const location = useLocation();
   const navigate = useNavigate();
+  const { sendInvoiceAcceptedNotification, sendContractAcceptedNotification } = useEmailNotifications();
 
   const isClientView = useMemo(() => 
     !location.pathname.includes('/admin') && !user, 
@@ -371,12 +373,31 @@ const InvoiceView = () => {
   };
 
   const handleAcceptInvoice = async () => {
-    if (!invoice) return;
+    if (!invoice || !client) return;
     
     try {
       await updateInvoiceStatus(invoice.id, 'accepted');
       toast.success('Invoice accepted successfully');
       setInvoice(prev => prev ? { ...prev, status: 'accepted' } : null);
+
+      // Send email notification to business owner
+      const displayCompany = getDisplayCompany();
+      if (displayCompany?.email) {
+        try {
+          await sendInvoiceAcceptedNotification(
+            invoice.number,
+            client.name,
+            invoice.amount,
+            displayCompany.name || 'Your Company',
+            displayCompany.email,
+            companyCurrency
+          );
+          console.log('[InvoiceView] Invoice acceptance notification sent successfully');
+        } catch (emailError) {
+          console.error('[InvoiceView] Failed to send invoice acceptance notification:', emailError);
+          // Don't show error to client, just log it
+        }
+      }
     } catch (err) {
       console.error('Failed to accept invoice:', err);
       toast.error('Error accepting invoice');
@@ -384,7 +405,7 @@ const InvoiceView = () => {
   };
 
   const handleAcceptContract = async (name: string) => {
-    if (!invoice) return;
+    if (!invoice || !client) return;
     
     try {
       console.log('[InvoiceView] Accepting contract with name:', name);
@@ -420,6 +441,24 @@ const InvoiceView = () => {
           contract_accepted_at: new Date().toISOString()
         };
       });
+
+      // Send email notification to business owner
+      const displayCompany = getDisplayCompany();
+      if (displayCompany?.email) {
+        try {
+          await sendContractAcceptedNotification(
+            invoice.number,
+            client.name,
+            name,
+            displayCompany.name || 'Your Company',
+            displayCompany.email
+          );
+          console.log('[InvoiceView] Contract acceptance notification sent successfully');
+        } catch (emailError) {
+          console.error('[InvoiceView] Failed to send contract acceptance notification:', emailError);
+          // Don't show error to client, just log it
+        }
+      }
     } catch (err) {
       console.error('[InvoiceView] Failed to accept contract:', err);
       toast.error('Error accepting contract terms');

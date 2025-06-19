@@ -516,6 +516,7 @@ export const getInvoice = async (invoiceId: string): Promise<Invoice | null> => 
     const paymentSchedules: PaymentSchedule[] = schedulesData.map(schedule => ({
       id: schedule.id,
       dueDate: schedule.due_date,
+      amount: schedule.amount, // Add the missing amount field mapping
       percentage: schedule.percentage,
       description: schedule.description,
       status: schedule.status as PaymentStatus || 'unpaid',
@@ -594,6 +595,7 @@ export const getInvoices = async (companyId?: string): Promise<Invoice[]> => {
       const paymentSchedules: PaymentSchedule[] = (schedulesData || []).map(schedule => ({
         id: schedule.id,
         dueDate: schedule.due_date,
+        amount: schedule.amount, // Add the missing amount field mapping
         percentage: schedule.percentage,
         description: schedule.description,
         status: schedule.status as PaymentStatus || 'unpaid',
@@ -709,6 +711,7 @@ export const getClientInvoices = async (clientId: string): Promise<Invoice[]> =>
       const paymentSchedules: PaymentSchedule[] = (schedulesData || []).map(schedule => ({
         id: schedule.id,
         dueDate: schedule.due_date,
+        amount: schedule.amount, // Add the missing amount field mapping
         percentage: schedule.percentage,
         description: schedule.description,
         status: schedule.status as PaymentStatus || 'unpaid',
@@ -783,6 +786,7 @@ export const getJobInvoices = async (jobId: string): Promise<Invoice[]> => {
       const paymentSchedules: PaymentSchedule[] = (schedulesData || []).map(schedule => ({
         id: schedule.id,
         dueDate: schedule.due_date,
+        amount: schedule.amount, // Add the missing amount field mapping
         percentage: schedule.percentage,
         description: schedule.description,
         status: schedule.status as PaymentStatus || 'unpaid',
@@ -866,6 +870,7 @@ export const getInvoiceByViewLink = async (viewLink: string): Promise<Invoice | 
     const paymentSchedules: PaymentSchedule[] = schedulesData.map(schedule => ({
       id: schedule.id,
       dueDate: schedule.due_date,
+      amount: schedule.amount, // Add the missing amount field mapping
       percentage: schedule.percentage,
       description: schedule.description,
       status: schedule.status as PaymentStatus || 'unpaid',
@@ -1215,6 +1220,7 @@ export const updatePaymentScheduleStatus = async (scheduleId: string, status: Pa
     return {
       id: data.id,
       dueDate: data.due_date,
+      amount: data.amount, // Add the missing amount field mapping
       percentage: data.percentage,
       description: data.description || '',
       status: data.status as PaymentStatus,

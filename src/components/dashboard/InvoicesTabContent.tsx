@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Search, FilePlus, Eye, CalendarDays } from 'lucide-react';
+import { Search, FilePlus, Eye, CalendarDays, Check, X } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 interface InvoicesTabContentProps {
@@ -40,6 +40,23 @@ const InvoicesTabContent: React.FC<InvoicesTabContentProps> = ({
 
   const handleInvoiceRowClick = (invoiceId: string) => {
     navigate(`/invoice/${invoiceId}`);
+  };
+
+  const getAcceptanceBadge = (accepted: boolean, acceptedAt?: string) => {
+    if (accepted && acceptedAt) {
+      return (
+        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+          <Check className="w-3 h-3 mr-1" />
+          Accepted
+        </Badge>
+      );
+    }
+    return (
+      <Badge variant="outline" className="bg-gray-50 text-gray-500 border-gray-200">
+        <X className="w-3 h-3 mr-1" />
+        Pending
+      </Badge>
+    );
   };
 
   return (
@@ -100,6 +117,8 @@ const InvoicesTabContent: React.FC<InvoicesTabContentProps> = ({
                 <TableHead className="hidden md:table-cell">Job Date</TableHead>
                 <TableHead>Amount</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead className="hidden lg:table-cell">Invoice</TableHead>
+                <TableHead className="hidden lg:table-cell">Contract</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -124,6 +143,12 @@ const InvoicesTabContent: React.FC<InvoicesTabContentProps> = ({
                       <Badge className={getStatusColor(invoice.status)}>
                         {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
                       </Badge>
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      {getAcceptanceBadge(invoice.status === 'accepted' || invoice.status === 'paid', invoice.invoice_accepted_at)}
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      {getAcceptanceBadge(invoice.contract_status === 'accepted', invoice.contract_accepted_at)}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2" onClick={e => e.stopPropagation()}>

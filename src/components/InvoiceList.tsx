@@ -4,7 +4,7 @@ import { Invoice, Client } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { CalendarDays, Copy, Eye, FileEdit, Trash2, AreaChart, ArrowUp, ArrowDown } from 'lucide-react';
+import { CalendarDays, Copy, Eye, FileEdit, Trash2, AreaChart, ArrowUp, ArrowDown, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { deleteInvoice } from '@/lib/storage';
@@ -65,6 +65,23 @@ const getContractStatusColor = (status?: 'pending' | 'accepted') => {
     default:
       return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
   }
+};
+
+const getAcceptanceBadge = (accepted: boolean, acceptedAt?: string) => {
+  if (accepted && acceptedAt) {
+    return (
+      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+        <Check className="w-3 h-3 mr-1" />
+        Accepted
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="outline" className="bg-gray-50 text-gray-500 border-gray-200">
+      <X className="w-3 h-3 mr-1" />
+      Pending
+    </Badge>
+  );
 };
 
 const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateButton = true, onInvoiceDeleted }) => {
@@ -379,11 +396,11 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
                 >
                   Status {getSortIndicator('status')}
                 </TableHead>
-                <TableHead 
-                  className="cursor-pointer"
-                  onClick={() => handleSort('contractStatus')}
-                >
-                  Contract {getSortIndicator('contractStatus')}
+                <TableHead className="hidden lg:table-cell">
+                  Invoice Accepted
+                </TableHead>
+                <TableHead className="hidden lg:table-cell">
+                  Contract Accepted
                 </TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -413,12 +430,11 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
                         {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
                       </Badge>
                     </TableCell>
-                    <TableCell>
-                      {invoice.contractStatus && (
-                        <Badge className={getContractStatusColor(invoice.contractStatus)}>
-                          {invoice.contractStatus === 'accepted' ? 'Accepted' : 'Not Accepted'}
-                        </Badge>
-                      )}
+                    <TableCell className="hidden lg:table-cell">
+                      {getAcceptanceBadge(invoice.status === 'accepted' || invoice.status === 'paid', invoice.invoice_accepted_at)}
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      {getAcceptanceBadge(invoice.contract_status === 'accepted', invoice.contract_accepted_at)}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end items-center gap-1">

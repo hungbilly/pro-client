@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Search, FilePlus, Eye, CalendarDays, Check, X } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -118,64 +119,67 @@ const InvoicesTabContent: React.FC<InvoicesTabContentProps> = ({
         </div>
       ) : (
         <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Invoice #</TableHead>
-                <TableHead>Client</TableHead>
-                <TableHead className="hidden md:table-cell">Invoice Date</TableHead>
-                <TableHead className="hidden md:table-cell">Job Date</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="hidden lg:table-cell">Invoice</TableHead>
-                <TableHead className="hidden lg:table-cell">Contract</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredInvoices.map(invoice => {
-                const invoiceClient = clients.find(c => c.id === invoice.clientId) || null;
-                console.log(`[InvoicesTabContent] Invoice ${invoice.id} acceptance check: status=${invoice.status}, invoice_accepted_at=${invoice.invoice_accepted_at}, isInvoiceAccepted=${isInvoiceAccepted(invoice)}`);
-                console.log(`[InvoicesTabContent] Invoice ${invoice.id} contract check: contract_accepted_at=${invoice.contract_accepted_at}, contract_accepted_by=${invoice.contract_accepted_by}, contractStatus=${invoice.contractStatus}, isContractAccepted=${isContractAccepted(invoice)}`);
-                return (
-                  <TableRow key={invoice.id} onClick={() => handleInvoiceRowClick(invoice.id)} className="cursor-pointer">
-                    <TableCell className="font-medium">{invoice.number}</TableCell>
-                    <TableCell>{invoiceClient?.name}</TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      {new Date(invoice.date).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      <div className="flex items-center">
-                        <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
-                        {getJobDateDisplay(invoice)}
-                      </div>
-                    </TableCell>
-                    <TableCell>${invoice.amount.toFixed(2)}</TableCell>
-                    <TableCell>
-                      <Badge className={getStatusColor(invoice.status)}>
-                        {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell">
-                      {getAcceptanceBadge(isInvoiceAccepted(invoice), invoice.invoice_accepted_at)}
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell">
-                      {getAcceptanceBadge(isContractAccepted(invoice), invoice.contract_accepted_at)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2" onClick={e => e.stopPropagation()}>
-                        <Button variant="outline" size={isMobile ? "mobile" : "sm"} asChild className={isMobile ? "touch-manipulation" : ""}>
-                          <Link to={`/invoice/${invoice.id}`}>
-                            <Eye className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
+          <ScrollArea className="w-full">
+            <Table className="min-w-[800px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Invoice #</TableHead>
+                  <TableHead>Client</TableHead>
+                  <TableHead>Invoice Date</TableHead>
+                  <TableHead>Job Date</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Invoice</TableHead>
+                  <TableHead>Contract</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredInvoices.map(invoice => {
+                  const invoiceClient = clients.find(c => c.id === invoice.clientId) || null;
+                  console.log(`[InvoicesTabContent] Invoice ${invoice.id} acceptance check: status=${invoice.status}, invoice_accepted_at=${invoice.invoice_accepted_at}, isInvoiceAccepted=${isInvoiceAccepted(invoice)}`);
+                  console.log(`[InvoicesTabContent] Invoice ${invoice.id} contract check: contract_accepted_at=${invoice.contract_accepted_at}, contract_accepted_by=${invoice.contract_accepted_by}, contractStatus=${invoice.contractStatus}, isContractAccepted=${isContractAccepted(invoice)}`);
+                  return (
+                    <TableRow key={invoice.id} onClick={() => handleInvoiceRowClick(invoice.id)} className="cursor-pointer">
+                      <TableCell className="font-medium">{invoice.number}</TableCell>
+                      <TableCell>{invoiceClient?.name}</TableCell>
+                      <TableCell>
+                        {new Date(invoice.date).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center">
+                          <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+                          {getJobDateDisplay(invoice)}
+                        </div>
+                      </TableCell>
+                      <TableCell>${invoice.amount.toFixed(2)}</TableCell>
+                      <TableCell>
+                        <Badge className={getStatusColor(invoice.status)}>
+                          {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {getAcceptanceBadge(isInvoiceAccepted(invoice), invoice.invoice_accepted_at)}
+                      </TableCell>
+                      <TableCell>
+                        {getAcceptanceBadge(isContractAccepted(invoice), invoice.contract_accepted_at)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2" onClick={e => e.stopPropagation()}>
+                          <Button variant="outline" size={isMobile ? "mobile" : "sm"} asChild className={isMobile ? "touch-manipulation" : ""}>
+                            <Link to={`/invoice/${invoice.id}`}>
+                              <Eye className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
                 )}
-              )}
-            </TableBody>
-          </Table>
+              </TableBody>
+            </Table>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
         </div>
       )}
     </>

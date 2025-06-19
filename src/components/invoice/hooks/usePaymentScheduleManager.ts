@@ -21,6 +21,7 @@ export const usePaymentScheduleManager = ({
   });
   const [isAddingSchedule, setIsAddingSchedule] = useState(false);
   const [inputValues, setInputValues] = useState<{[key: string]: string}>({});
+  const [hasNormalizedData, setHasNormalizedData] = useState(false);
 
   // Initialize with default payment schedule if none exist
   useEffect(() => {
@@ -37,8 +38,55 @@ export const usePaymentScheduleManager = ({
     }
   }, [paymentSchedules.length, invoiceAmount, onUpdateSchedules]);
 
+  // One-time data normalization when payment schedules are first loaded
+  useEffect(() => {
+    if (paymentSchedules.length > 0 && invoiceAmount > 0 && !hasNormalizedData) {
+      console.log('PaymentScheduleManager: One-time data normalization check');
+      
+      let needsUpdate = false;
+      const normalizedSchedules = paymentSchedules.map(schedule => {
+        const currentAmount = schedule.amount || 0;
+        const currentPercentage = schedule.percentage || 0;
+        
+        // If amount is missing or zero but percentage exists, calculate amount from percentage
+        if (currentAmount === 0 && currentPercentage > 0) {
+          const calculatedAmount = (invoiceAmount * currentPercentage) / 100;
+          console.log(`PaymentScheduleManager: Normalizing schedule ${schedule.id} - setting amount to ${calculatedAmount} from percentage ${currentPercentage}`);
+          needsUpdate = true;
+          return {
+            ...schedule,
+            amount: calculatedAmount
+          };
+        }
+        
+        // If amount exists but percentage is missing, calculate percentage from amount
+        if (currentAmount > 0 && currentPercentage === 0) {
+          const calculatedPercentage = (currentAmount / invoiceAmount) * 100;
+          console.log(`PaymentScheduleManager: Normalizing schedule ${schedule.id} - setting percentage to ${calculatedPercentage} from amount ${currentAmount}`);
+          needsUpdate = true;
+          return {
+            ...schedule,
+            percentage: calculatedPercentage
+          };
+        }
+        
+        return schedule;
+      });
+      
+      if (needsUpdate) {
+        console.log('PaymentScheduleManager: Applying normalization updates');
+        onUpdateSchedules(normalizedSchedules);
+      }
+      
+      setHasNormalizedData(true);
+    }
+  }, [paymentSchedules, invoiceAmount, hasNormalizedData, onUpdateSchedules]);
+
   // Smart payment schedule adjustment when invoice amount changes
   useEffect(() => {
+    // Skip if we haven't done the initial normalization yet
+    if (!hasNormalizedData) return;
+    
     if (paymentSchedules.length > 0 && invoiceAmount > 0) {
       console.log('PaymentScheduleManager: Invoice amount changed to:', invoiceAmount);
       console.log('PaymentScheduleManager: Current schedules:', paymentSchedules);
@@ -163,7 +211,7 @@ export const usePaymentScheduleManager = ({
         console.log('PaymentScheduleManager: No changes needed');
       }
     }
-  }, [invoiceAmount]);
+  }, [invoiceAmount, hasNormalizedData]);
 
   const generateId = () => `payment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 

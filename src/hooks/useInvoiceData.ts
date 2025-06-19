@@ -44,6 +44,48 @@ export function useInvoiceData(): UseInvoiceDataResult {
 
   const isEditView = location.pathname.includes('/edit');
 
+  // Helper function to normalize payment schedules
+  const normalizePaymentSchedules = (fetchedInvoice: Invoice) => {
+    if (!fetchedInvoice.paymentSchedules || !Array.isArray(fetchedInvoice.paymentSchedules)) {
+      return fetchedInvoice;
+    }
+
+    const invoiceAmount = fetchedInvoice.amount || 0;
+    
+    // Fix payment schedules that have missing or zero amounts but have percentages
+    const normalizedSchedules = fetchedInvoice.paymentSchedules.map(schedule => {
+      const currentAmount = schedule.amount || 0;
+      const currentPercentage = schedule.percentage || 0;
+      
+      // If amount is missing or zero but percentage exists, calculate amount from percentage
+      if (currentAmount === 0 && currentPercentage > 0 && invoiceAmount > 0) {
+        const calculatedAmount = (invoiceAmount * currentPercentage) / 100;
+        console.log(`PaymentSchedule ${schedule.id}: Fixed amount from ${currentAmount} to ${calculatedAmount} (${currentPercentage}%)`);
+        return {
+          ...schedule,
+          amount: calculatedAmount
+        };
+      }
+      
+      // If amount exists but percentage is missing, calculate percentage from amount
+      if (currentAmount > 0 && currentPercentage === 0 && invoiceAmount > 0) {
+        const calculatedPercentage = (currentAmount / invoiceAmount) * 100;
+        console.log(`PaymentSchedule ${schedule.id}: Fixed percentage from ${currentPercentage} to ${calculatedPercentage} (${currentAmount})`);
+        return {
+          ...schedule,
+          percentage: calculatedPercentage
+        };
+      }
+      
+      return schedule;
+    });
+
+    return {
+      ...fetchedInvoice,
+      paymentSchedules: normalizedSchedules
+    };
+  };
+
   useEffect(() => {
     const fetchInvoiceData = async () => {
       setLoading(true);
@@ -74,7 +116,11 @@ export function useInvoiceData(): UseInvoiceDataResult {
             if (!fetchedInvoice.dueDate) {
               fetchedInvoice.dueDate = format(new Date(), 'yyyy-MM-dd');
             }
-            setInvoice(fetchedInvoice);
+            
+            // Normalize payment schedules data before setting the invoice
+            const normalizedInvoice = normalizePaymentSchedules(fetchedInvoice);
+            console.log('useInvoiceData: Normalized invoice payment schedules', normalizedInvoice.paymentSchedules);
+            setInvoice(normalizedInvoice);
 
             if (fetchedInvoice.clientId && !client) {
               const clientData = await getClient(fetchedInvoice.clientId);

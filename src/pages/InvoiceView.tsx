@@ -578,16 +578,16 @@ const InvoiceView = () => {
     return validAmount.toFixed(2);
   };
 
-  // Separate products and discounts
-  const productItems = invoice?.items?.filter(item => 
-    !item.id?.startsWith('template-discount-') && 
-    !item.id?.startsWith('manual-discount-')
-  ) || [];
+  // Check if an item is a discount
+  const isDiscountItem = (item: any) => {
+    return item.id?.startsWith('template-discount-') || 
+           item.id?.startsWith('manual-discount-') ||
+           item.amount < 0;
+  };
 
-  const discountItems = invoice?.items?.filter(item => 
-    item.id?.startsWith('template-discount-') || 
-    item.id?.startsWith('manual-discount-')
-  ) || [];
+  // Separate products and discounts
+  const productItems = invoice?.items?.filter(item => !isDiscountItem(item)) || [];
+  const discountItems = invoice?.items?.filter(item => isDiscountItem(item)) || [];
 
   // Calculate subtotal from products only
   const subtotal = productItems.reduce((sum, item) => sum + ensureValidNumber(item.amount || 0), 0);
@@ -815,115 +815,84 @@ const InvoiceView = () => {
                     </div>
                   )}
                   
-                  {/* Products Section */}
-                  {productItems.length > 0 && (
-                    <div className="mb-6">
-                      <div className="flex items-center mb-3">
-                        <Package className="h-5 w-5 mr-2" />
-                        <h4 className="text-lg font-semibold">Products / Services</h4>
+                  {/* Products and Services Section */}
+                  <div className="mb-6">
+                    <div className="flex items-center mb-3">
+                      <Package className="h-5 w-5 mr-2" />
+                      <h4 className="text-lg font-semibold">Products / Services</h4>
+                    </div>
+                    
+                    <div className="border rounded-md p-4 bg-gray-50 dark:bg-gray-900/50">
+                      <div className="hidden md:flex justify-between mb-3 text-sm font-medium text-muted-foreground border-b pb-2">
+                        <div className="flex-1">
+                          <div className="mb-1">Product/Service Name</div>
+                        </div>
+                        <div className="flex-1 pr-4">Description</div>
+                        <div className="flex items-center space-x-6 min-w-[260px] justify-end">
+                          <div className="text-right w-16">Quantity</div>
+                          <div className="text-right w-24">Unit Price</div>
+                          <div className="text-right w-24">Amount</div>
+                        </div>
                       </div>
                       
-                      <div className="border rounded-md p-4 bg-gray-50 dark:bg-gray-900/50">
-                        <div className="hidden md:flex justify-between mb-3 text-sm font-medium text-muted-foreground border-b pb-2">
-                          <div className="flex-1">
-                            <div className="mb-1">Product/Service Name</div>
-                          </div>
-                          <div className="flex-1 pr-4">Description</div>
-                          <div className="flex items-center space-x-6 min-w-[260px] justify-end">
-                            <div className="text-right w-16">Quantity</div>
-                            <div className="text-right w-24">Unit Price</div>
-                            <div className="text-right w-24">Amount</div>
-                          </div>
-                        </div>
+                      {invoice.items?.map((item) => {
+                        const isDiscount = isDiscountItem(item);
+                        const itemTextClass = isDiscount ? "text-red-700 dark:text-red-300" : "";
+                        const itemBgClass = isDiscount ? "bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800" : "";
                         
-                        {productItems.map((item) => (
-                          <div key={item.id} className="mb-4 pb-4 border-b last:mb-0 last:pb-0 last:border-b-0">
+                        return (
+                          <div key={item.id} className={`mb-4 pb-4 border-b last:mb-0 last:pb-0 last:border-b-0 ${isDiscount ? 'rounded p-2 ' + itemBgClass : ''}`}>
                             <div className="md:flex md-justify-between md:items-start">
                               <div className="md:flex-1">
-                                <h5 className="font-medium">{item.name || 'Unnamed Product'}</h5>
+                                <h5 className={`font-medium ${itemTextClass}`}>
+                                  {isDiscount && <Percent className="inline h-4 w-4 mr-1" />}
+                                  {item.name || (isDiscount ? 'Discount' : 'Unnamed Product')}
+                                </h5>
                               </div>
                               <div className="md:flex-1 md:pr-4">
                                 {item.description && (
-                                  <div className="mt-2 text-sm" dangerouslySetInnerHTML={{ __html: item.description }} />
+                                  <div className={`mt-2 text-sm ${itemTextClass}`} dangerouslySetInnerHTML={{ __html: item.description }} />
                                 )}
                               </div>
                               <div className="mt-2 md:mt-0 flex flex-col md:flex-row md:items-center md:space-x-6 md:min-w-[260px] md:justify-end">
-                                <div className="text-sm text-muted-foreground md:text-right w-16">
+                                <div className={`text-sm text-muted-foreground md:text-right w-16 ${itemTextClass}`}>
                                   <span className="md:hidden">Quantity: </span>
                                   <span>{item.quantity}</span>
                                 </div>
-                                <div className="text-sm text-muted-foreground md:text-right w-24">
+                                <div className={`text-sm text-muted-foreground md:text-right w-24 ${itemTextClass}`}>
                                   <span className="md:hidden">Unit Price: </span>
-                                  <span>{formatCurrency(item.rate)}</span>
+                                  <span>
+                                    {isDiscount && item.rate < 0 ? '-' : ''}
+                                    {formatCurrency(Math.abs(item.rate))}
+                                  </span>
                                 </div>
-                                <div className="font-medium md:text-right w-24">
+                                <div className={`font-medium md:text-right w-24 ${itemTextClass}`}>
                                   <span className="md:hidden">Total: </span>
-                                  <span>{formatCurrency(item.amount)}</span>
+                                  <span>
+                                    {isDiscount && item.amount < 0 ? '-' : ''}
+                                    {formatCurrency(Math.abs(item.amount))}
+                                  </span>
                                 </div>
                               </div>
                             </div>
                           </div>
-                        ))}
-                        
-                        <div className="mt-4 pt-4 border-t">
-                          <div className="flex justify-between font-medium">
-                            <span>Subtotal</span>
-                            <span>{formatCurrency(subtotal)}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Discounts Section */}
-                  {discountItems.length > 0 && (
-                    <div className="mb-6">
-                      <div className="flex items-center mb-3">
-                        <Percent className="h-5 w-5 mr-2 text-red-600 dark:text-red-400" />
-                        <h4 className="text-lg font-semibold text-red-700 dark:text-red-300">Discounts Applied</h4>
-                      </div>
+                        );
+                      })}
                       
-                      <div className="border rounded-md p-4 bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-900">
-                        <div className="hidden md:flex justify-between mb-3 text-sm font-medium text-red-600 dark:text-red-400 border-b pb-2 border-red-200 dark:border-red-800">
-                          <div className="flex-1">
-                            <div className="mb-1">Discount Name</div>
-                          </div>
-                          <div className="flex-1 pr-4">Description</div>
-                          <div className="flex items-center space-x-6 min-w-[120px] justify-end">
-                            <div className="text-right w-24">Amount</div>
-                          </div>
+                      <div className="mt-4 pt-4 border-t">
+                        <div className="flex justify-between font-medium">
+                          <span>Subtotal</span>
+                          <span>{formatCurrency(subtotal)}</span>
                         </div>
-                        
-                        {discountItems.map((item) => (
-                          <div key={item.id} className="mb-4 pb-4 border-b border-red-200 dark:border-red-800 last:mb-0 last:pb-0 last:border-b-0">
-                            <div className="md:flex md-justify-between md:items-start">
-                              <div className="md:flex-1">
-                                <h5 className="font-medium text-red-700 dark:text-red-300">{item.name || 'Discount'}</h5>
-                              </div>
-                              <div className="md:flex-1 md:pr-4">
-                                {item.description && (
-                                  <div className="mt-2 text-sm text-red-600 dark:text-red-400" dangerouslySetInnerHTML={{ __html: item.description }} />
-                                )}
-                              </div>
-                              <div className="mt-2 md:mt-0 flex flex-col md:flex-row md:items-center md:space-x-6 md:min-w-[120px] md:justify-end">
-                                <div className="font-medium md:text-right w-24 text-red-700 dark:text-red-300">
-                                  <span className="md:hidden">Discount: </span>
-                                  <span>-{formatCurrency(Math.abs(ensureValidNumber(item.amount)))}</span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                        
-                        <div className="mt-4 pt-4 border-t border-red-200 dark:border-red-800">
-                          <div className="flex justify-between font-medium text-red-700 dark:text-red-300">
+                        {totalDiscounts > 0 && (
+                          <div className="flex justify-between font-medium text-red-700 dark:text-red-300 mt-1">
                             <span>Total Discounts</span>
                             <span>-{formatCurrency(totalDiscounts)}</span>
                           </div>
-                        </div>
+                        )}
                       </div>
                     </div>
-                  )}
+                  </div>
 
                   {/* Invoice Total */}
                   <div className="mb-6">
@@ -933,7 +902,7 @@ const InvoiceView = () => {
                           <span className="text-sm">Subtotal:</span>
                           <span className="text-sm">{formatCurrency(subtotal)}</span>
                         </div>
-                        {discountItems.length > 0 && (
+                        {totalDiscounts > 0 && (
                           <div className="flex justify-between items-center text-red-600 dark:text-red-400">
                             <span className="text-sm">Total Discounts:</span>
                             <span className="text-sm">-{formatCurrency(totalDiscounts)}</span>

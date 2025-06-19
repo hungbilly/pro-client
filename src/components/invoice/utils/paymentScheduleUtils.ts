@@ -20,32 +20,24 @@ export const validatePaymentSchedule = (
   paymentSchedules: PaymentSchedule[],
   invoiceAmount: number
 ): { isValid: boolean; errorMessage?: string } => {
-  if (!newSchedule.dueDate || (!newSchedule.percentage && !newSchedule.amount)) {
+  if (!newSchedule.dueDate || !newSchedule.amount) {
     return { isValid: false, errorMessage: 'Please fill in all fields' };
   }
 
-  // Calculate percentage from amount or vice versa
-  let percentage = newSchedule.percentage || 0;
-  let amount = newSchedule.amount || 0;
+  const amount = newSchedule.amount;
 
-  if (amount > 0 && invoiceAmount > 0) {
-    percentage = (amount / invoiceAmount) * 100;
-  } else if (percentage > 0) {
-    amount = (invoiceAmount * percentage) / 100;
+  if (amount <= 0) {
+    return { isValid: false, errorMessage: 'Amount must be greater than 0' };
   }
 
-  if (percentage <= 0 || percentage > 100) {
-    return { isValid: false, errorMessage: 'Percentage must be between 1 and 100' };
-  }
-
-  const totalCurrentPercentage = paymentSchedules.reduce((sum, schedule) => sum + (schedule.percentage || 0), 0);
+  const totalCurrentAmount = paymentSchedules.reduce((sum, schedule) => sum + (schedule.amount || 0), 0);
   
-  // Check if adding this would exceed 100%
-  if (totalCurrentPercentage + percentage > 100) {
+  // Check if adding this would exceed invoice amount
+  if (totalCurrentAmount + amount > invoiceAmount) {
     // Find if there's an unpaid schedule that can be adjusted
     const hasUnpaidSchedule = paymentSchedules.some(schedule => schedule.status !== 'paid');
     if (!hasUnpaidSchedule) {
-      return { isValid: false, errorMessage: 'Cannot add payment: would exceed 100% and all existing payments are paid' };
+      return { isValid: false, errorMessage: 'Cannot add payment: would exceed invoice amount and all existing payments are paid' };
     }
   }
 
@@ -58,22 +50,15 @@ export const adjustSchedulesForNewPayment = (
   invoiceAmount: number,
   generateId: () => string
 ): PaymentSchedule[] => {
-  // Calculate percentage from amount or vice versa
-  let percentage = newSchedule.percentage || 0;
-  let amount = newSchedule.amount || 0;
+  const amount = newSchedule.amount || 0;
+  const percentage = invoiceAmount > 0 ? (amount / invoiceAmount) * 100 : 0;
 
-  if (amount > 0 && invoiceAmount > 0) {
-    percentage = (amount / invoiceAmount) * 100;
-  } else if (percentage > 0) {
-    amount = (invoiceAmount * percentage) / 100;
-  }
-
-  const totalCurrentPercentage = paymentSchedules.reduce((sum, schedule) => sum + (schedule.percentage || 0), 0);
+  const totalCurrentAmount = paymentSchedules.reduce((sum, schedule) => sum + (schedule.amount || 0), 0);
   const description = getNextPaymentDescription(paymentSchedules.length);
   
-  // If adding this would exceed 100%, adjust the previous payment schedule
-  if (totalCurrentPercentage + percentage > 100) {
-    const excessPercentage = (totalCurrentPercentage + percentage) - 100;
+  // If adding this would exceed invoice amount, adjust the previous payment schedule
+  if (totalCurrentAmount + amount > invoiceAmount) {
+    const excessAmount = (totalCurrentAmount + amount) - invoiceAmount;
     
     // Find the last unpaid payment schedule to deduct from
     const updatedSchedules = [...paymentSchedules];
@@ -82,17 +67,17 @@ export const adjustSchedulesForNewPayment = (
     for (let i = updatedSchedules.length - 1; i >= 0; i--) {
       const schedule = updatedSchedules[i];
       if (schedule.status !== 'paid') {
-        const newPercentageForSchedule = Math.max(0, (schedule.percentage || 0) - excessPercentage);
-        const newAmountForSchedule = (invoiceAmount * newPercentageForSchedule) / 100;
+        const newAmountForSchedule = Math.max(0, (schedule.amount || 0) - excessAmount);
+        const newPercentageForSchedule = invoiceAmount > 0 ? (newAmountForSchedule / invoiceAmount) * 100 : 0;
         
         updatedSchedules[i] = {
           ...schedule,
-          percentage: newPercentageForSchedule,
-          amount: newAmountForSchedule
+          amount: newAmountForSchedule,
+          percentage: newPercentageForSchedule
         };
         
         adjustmentMade = true;
-        toast.success(`Adjusted previous unpaid payment by ${excessPercentage.toFixed(2)}% to accommodate new payment`);
+        toast.success(`Adjusted previous unpaid payment by $${excessAmount.toFixed(2)} to accommodate new payment`);
         break;
       }
     }
@@ -102,9 +87,9 @@ export const adjustSchedulesForNewPayment = (
       id: generateId(),
       description: description,
       dueDate: newSchedule.dueDate!,
+      amount: amount,
       percentage: percentage,
-      status: newSchedule.status || 'unpaid',
-      amount: amount
+      status: newSchedule.status || 'unpaid'
     };
 
     return [...updatedSchedules, schedule];
@@ -114,9 +99,9 @@ export const adjustSchedulesForNewPayment = (
       id: generateId(),
       description: description,
       dueDate: newSchedule.dueDate!,
+      amount: amount,
       percentage: percentage,
-      status: newSchedule.status || 'unpaid',
-      amount: amount
+      status: newSchedule.status || 'unpaid'
     };
 
     return [...paymentSchedules, schedule];

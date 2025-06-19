@@ -39,6 +39,9 @@ const PaymentScheduleRow: React.FC<PaymentScheduleRowProps> = ({
     }
   };
 
+  // Calculate percentage for display - always derive from stored amount
+  const displayPercentage = invoiceAmount > 0 ? ((schedule.amount || 0) / invoiceAmount) * 100 : 0;
+
   return (
     <div className={`grid grid-cols-[120px_160px_100px_120px_120px_auto] gap-4 p-3 border rounded-lg items-end ${schedule.status === 'paid' ? 'bg-green-50 border-green-200' : ''}`}>
       <div>
@@ -67,14 +70,15 @@ const PaymentScheduleRow: React.FC<PaymentScheduleRowProps> = ({
           <Input
             type="text"
             inputMode="numeric"
-            value={Math.round(schedule.percentage || 0).toString()}
+            value={displayPercentage.toFixed(2)}
             onChange={(e) => {
-              // Only allow integers for editing
-              const intValue = e.target.value.replace(/[^\d]/g, '');
-              const percentage = Number(intValue) || 0;
-              onUpdateSchedule(schedule.id, 'percentage', percentage);
+              // When percentage is edited, calculate and update the amount
+              const percentageValue = e.target.value.replace(/[^\d.]/g, '');
+              const percentage = Number(percentageValue) || 0;
+              const newAmount = (invoiceAmount * percentage) / 100;
+              onUpdateSchedule(schedule.id, 'amount', newAmount);
             }}
-            placeholder="0"
+            placeholder="0.00"
             className="pr-5 text-sm"
             disabled={schedule.status === 'paid'}
           />

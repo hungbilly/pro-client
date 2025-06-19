@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -58,7 +59,6 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
     setIsAddingSchedule(false);
     setNewSchedule({
       dueDate: format(new Date(), 'yyyy-MM-dd'),
-      percentage: 0,
       amount: 0,
       status: 'unpaid'
     });
@@ -89,9 +89,10 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
     }));
   }, [paymentSchedules.length, getNextPaymentDescription]);
 
-  const totalPercentage = paymentSchedules.reduce((sum, schedule) => sum + (schedule.percentage || 0), 0);
+  // Calculate totals based on stored amounts
   const totalAmount = paymentSchedules.reduce((sum, schedule) => sum + (schedule.amount || 0), 0);
-  const isPercentageValid = Math.abs(totalPercentage - 100) < 0.01;
+  const totalPercentage = invoiceAmount > 0 ? (totalAmount / invoiceAmount) * 100 : 0;
+  const isAmountValid = Math.abs(totalAmount - invoiceAmount) < 0.01;
 
   return (
     <Card className="mx-0">
@@ -132,9 +133,9 @@ const PaymentScheduleManager: React.FC<PaymentScheduleManagerProps> = ({
                   Amount: ${totalAmount.toFixed(2)}
                 </span>
               </div>
-              {!isPercentageValid && (
+              {!isAmountValid && (
                 <span className="text-sm text-red-500">
-                  Must equal 100%
+                  Must equal invoice amount (${invoiceAmount.toFixed(2)})
                 </span>
               )}
             </div>

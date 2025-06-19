@@ -818,33 +818,36 @@ export type Database = {
       }
       payment_schedules: {
         Row: {
+          amount: number
           created_at: string
           description: string | null
           due_date: string
           id: string
           invoice_id: string
           payment_date: string | null
-          percentage: number
+          percentage: number | null
           status: string | null
         }
         Insert: {
+          amount: number
           created_at?: string
           description?: string | null
           due_date: string
           id?: string
           invoice_id: string
           payment_date?: string | null
-          percentage: number
+          percentage?: number | null
           status?: string | null
         }
         Update: {
+          amount?: number
           created_at?: string
           description?: string | null
           due_date?: string
           id?: string
           invoice_id?: string
           payment_date?: string | null
-          percentage?: number
+          percentage?: number | null
           status?: string | null
         }
         Relationships: [

@@ -16,7 +16,6 @@ export const usePaymentScheduleManager = ({
 }: UsePaymentScheduleManagerProps) => {
   const [newSchedule, setNewSchedule] = useState<Partial<PaymentSchedule>>({
     dueDate: format(new Date(), 'yyyy-MM-dd'),
-    percentage: 0,
     amount: 0,
     status: 'unpaid'
   });
@@ -30,9 +29,9 @@ export const usePaymentScheduleManager = ({
         id: generateId(),
         description: '1st payment',
         dueDate: format(new Date(), 'yyyy-MM-dd'),
+        amount: invoiceAmount,
         percentage: 100,
-        status: 'unpaid',
-        amount: invoiceAmount
+        status: 'unpaid'
       };
       onUpdateSchedules([defaultSchedule]);
     }
@@ -51,16 +50,9 @@ export const usePaymentScheduleManager = ({
       console.log('PaymentScheduleManager: Paid schedules:', paidSchedules);
       console.log('PaymentScheduleManager: Unpaid schedules:', unpaidSchedules);
       
-      // Calculate total paid amount - ensure paid schedules have proper amounts
+      // Calculate total paid amount - keep paid amounts unchanged
       const totalPaidAmount = paidSchedules.reduce((sum, schedule) => {
-        // If paid schedule has no amount, calculate it from percentage
-        let amount = schedule.amount || 0;
-        if (amount === 0 && schedule.percentage && schedule.percentage > 0) {
-          // For paid schedules, we need to calculate what they SHOULD have been paid
-          // based on their percentage at the time they were paid
-          amount = (invoiceAmount * schedule.percentage) / 100;
-          console.log(`PaymentScheduleManager: Paid schedule ${schedule.id} has no amount, calculating from percentage: ${schedule.percentage}% of ${invoiceAmount} = ${amount}`);
-        }
+        const amount = schedule.amount || 0;
         console.log(`PaymentScheduleManager: Paid schedule ${schedule.id} amount:`, amount);
         return sum + amount;
       }, 0);
@@ -82,18 +74,15 @@ export const usePaymentScheduleManager = ({
         // All payments are paid, just recalculate percentages for paid schedules
         const updatedSchedules = paymentSchedules.map(schedule => {
           if (schedule.status === 'paid') {
-            // For paid schedules, preserve the calculated amount and update percentage
-            let preservedAmount = schedule.amount || 0;
-            if (preservedAmount === 0 && schedule.percentage && schedule.percentage > 0) {
-              preservedAmount = (invoiceAmount * schedule.percentage) / 100;
-            }
+            // For paid schedules, preserve the amount and update percentage
+            const preservedAmount = schedule.amount || 0;
             const newPercentage = invoiceAmount > 0 ? (preservedAmount / invoiceAmount) * 100 : 0;
             
             console.log(`PaymentScheduleManager: Updating paid schedule ${schedule.id} - preserving amount:`, preservedAmount, 'new percentage:', newPercentage);
             
             return {
               ...schedule,
-              amount: preservedAmount, // Explicitly preserve the amount
+              amount: preservedAmount,
               percentage: newPercentage
             };
           }
@@ -102,8 +91,7 @@ export const usePaymentScheduleManager = ({
         
         const hasChanges = updatedSchedules.some((schedule, index) => {
           const original = paymentSchedules[index];
-          return Math.abs((schedule.amount || 0) - (original.amount || 0)) > 0.01 || 
-                 Math.abs((schedule.percentage || 0) - (original.percentage || 0)) > 0.01;
+          return Math.abs((schedule.percentage || 0) - (original.percentage || 0)) > 0.01;
         });
         
         if (hasChanges) {
@@ -113,31 +101,28 @@ export const usePaymentScheduleManager = ({
         return;
       }
       
-      // Calculate total current unpaid percentage to maintain proportions
-      const totalUnpaidPercentage = unpaidSchedules.reduce((sum, schedule) => sum + (schedule.percentage || 0), 0);
+      // Calculate total current unpaid amount to maintain proportions
+      const totalUnpaidAmount = unpaidSchedules.reduce((sum, schedule) => sum + (schedule.amount || 0), 0);
       
-      console.log('PaymentScheduleManager: Total unpaid percentage:', totalUnpaidPercentage);
+      console.log('PaymentScheduleManager: Total unpaid amount:', totalUnpaidAmount);
       
       // Distribute remaining amount proportionally among unpaid schedules
       const updatedSchedules = paymentSchedules.map(schedule => {
         if (schedule.status === 'paid') {
-          // CRITICAL: Keep paid schedules unchanged in amount, just update percentage
-          let preservedAmount = schedule.amount || 0;
-          if (preservedAmount === 0 && schedule.percentage && schedule.percentage > 0) {
-            preservedAmount = (invoiceAmount * schedule.percentage) / 100;
-          }
+          // Keep paid schedules unchanged in amount, just update percentage
+          const preservedAmount = schedule.amount || 0;
           const newPercentage = invoiceAmount > 0 ? (preservedAmount / invoiceAmount) * 100 : 0;
           
           console.log(`PaymentScheduleManager: Preserving paid schedule ${schedule.id} - amount:`, preservedAmount, 'percentage:', newPercentage);
           
           return {
             ...schedule,
-            amount: preservedAmount, // Explicitly preserve the paid amount
+            amount: preservedAmount,
             percentage: newPercentage
           };
         } else {
           // Distribute remaining amount proportionally for unpaid schedules
-          const currentProportion = totalUnpaidPercentage > 0 ? (schedule.percentage || 0) / totalUnpaidPercentage : 1 / unpaidSchedules.length;
+          const currentProportion = totalUnpaidAmount > 0 ? (schedule.amount || 0) / totalUnpaidAmount : 1 / unpaidSchedules.length;
           const newAmount = remainingAmount * currentProportion;
           const newPercentage = invoiceAmount > 0 ? (newAmount / invoiceAmount) * 100 : 0;
           
@@ -200,14 +185,8 @@ export const usePaymentScheduleManager = ({
     if (field === 'status' && value === 'paid' && scheduleToUpdate?.status !== 'paid') {
       console.log(`PaymentScheduleManager: Marking schedule ${id} as paid`);
       
-      // Calculate the correct amount based on current percentage and invoice amount
-      let currentAmount = scheduleToUpdate.amount || 0;
-      if (scheduleToUpdate.percentage && invoiceAmount > 0) {
-        // Always recalculate the amount based on current percentage for consistency
-        currentAmount = (invoiceAmount * scheduleToUpdate.percentage) / 100;
-        console.log(`PaymentScheduleManager: Calculated amount for paid schedule: ${currentAmount} (${scheduleToUpdate.percentage}% of ${invoiceAmount})`);
-      }
-      
+      // Keep the current amount unchanged when marking as paid
+      const currentAmount = scheduleToUpdate.amount || 0;
       const newPercentage = invoiceAmount > 0 ? (currentAmount / invoiceAmount) * 100 : 0;
       
       const updatedSchedules = paymentSchedules.map(schedule => {
@@ -215,8 +194,8 @@ export const usePaymentScheduleManager = ({
           return {
             ...schedule,
             status: value,
-            amount: currentAmount, // Store the calculated amount
-            percentage: newPercentage // Update percentage to match
+            amount: currentAmount,
+            percentage: newPercentage
           };
         }
         return schedule;
@@ -226,7 +205,7 @@ export const usePaymentScheduleManager = ({
       return;
     }
     
-    // Prevent editing amount/percentage for paid schedules
+    // Prevent editing amount for paid schedules
     if (scheduleToUpdate?.status === 'paid' && (field === 'amount' || field === 'percentage')) {
       toast.error('Cannot modify amount or percentage of a paid payment schedule');
       return;
@@ -238,13 +217,14 @@ export const usePaymentScheduleManager = ({
         
         // Sync percentage and amount only for unpaid schedules
         if (schedule.status !== 'paid') {
-          if (field === 'percentage') {
+          if (field === 'amount') {
             const numValue = Number(value);
-            updated.amount = (invoiceAmount * numValue) / 100;
-            updated.percentage = numValue;
-          } else if (field === 'amount') {
-            const numValue = Number(value);
+            updated.amount = numValue;
             updated.percentage = invoiceAmount > 0 ? (numValue / invoiceAmount) * 100 : 0;
+          } else if (field === 'percentage') {
+            const numValue = Number(value);
+            updated.percentage = numValue;
+            updated.amount = (invoiceAmount * numValue) / 100;
           }
         }
         

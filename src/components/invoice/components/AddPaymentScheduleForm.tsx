@@ -37,11 +37,10 @@ const AddPaymentScheduleForm: React.FC<AddPaymentScheduleFormProps> = ({
   };
 
   const handleNewSchedulePercentageChange = (value: string) => {
-    // Only allow integers for input
-    const intValue = value.replace(/[^\d]/g, '');
-    const percentage = Number(intValue) || 0;
+    // When percentage is entered, calculate and store the amount
+    const percentageValue = value.replace(/[^\d.]/g, '');
+    const percentage = Number(percentageValue) || 0;
     const amount = (invoiceAmount * percentage) / 100;
-    onUpdateNewSchedule('percentage', percentage);
     onUpdateNewSchedule('amount', amount);
   };
 
@@ -52,10 +51,11 @@ const AddPaymentScheduleForm: React.FC<AddPaymentScheduleFormProps> = ({
     // Only update the actual amount when it's a valid number
     const cleanValue = value.replace(/[^\d.]/g, '');
     const amount = Number(cleanValue) || 0;
-    const percentage = invoiceAmount > 0 ? (amount / invoiceAmount) * 100 : 0;
     onUpdateNewSchedule('amount', amount);
-    onUpdateNewSchedule('percentage', percentage);
   };
+
+  // Calculate percentage for display - always derive from stored amount
+  const displayPercentage = invoiceAmount > 0 ? ((newSchedule.amount || 0) / invoiceAmount) * 100 : 0;
 
   return (
     <div className="space-y-3 p-2 border rounded-lg bg-muted/50 sm:p-4">
@@ -77,11 +77,11 @@ const AddPaymentScheduleForm: React.FC<AddPaymentScheduleFormProps> = ({
               <Input
                 type="text"
                 inputMode="numeric"
-                value={Math.round(newSchedule.percentage || 0).toString()}
+                value={displayPercentage.toFixed(2)}
                 onChange={(e) => {
                   handleNewSchedulePercentageChange(e.target.value);
                 }}
-                placeholder="0"
+                placeholder="0.00"
                 className="pr-5 text-sm"
               />
               <Percent className="absolute right-1.5 top-2.5 h-3 w-3 text-muted-foreground" />

@@ -10,6 +10,9 @@ import { useCompanyContext } from '@/context/CompanyContext';
 interface DiscountItem {
   id: string;
   name: string;
+  description: string;
+  quantity: number;
+  rate: number;
   amount: number;
   type: 'fixed' | 'percentage';
 }
@@ -56,10 +59,15 @@ const DiscountSelector: React.FC<DiscountSelectorProps> = ({
   };
 
   const handleSelect = (discount: DiscountTemplate) => {
+    const discountAmount = calculateDiscountAmount(discount.amount, discount.type);
+    
     const discountItem: DiscountItem = {
       id: `template-discount-${discount.id}`,
       name: discount.name,
-      amount: -Number(discount.amount), // Make sure discount amount is negative
+      description: discount.description || '',
+      quantity: 1, // Always set quantity to 1 for discount items
+      rate: -Math.abs(discountAmount), // Make sure discount rate is negative
+      amount: -Math.abs(discountAmount), // Make sure discount amount is negative
       type: discount.type,
     };
 

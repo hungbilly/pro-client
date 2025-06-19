@@ -816,27 +816,27 @@ const InvoiceView = () => {
                   )}
                   
                   {/* Products Section */}
-                  <div className="mb-6">
-                    <div className="flex items-center mb-3">
-                      <Package className="h-5 w-5 mr-2" />
-                      <h4 className="text-lg font-semibold">Products / Services</h4>
-                    </div>
-                    
-                    <div className="border rounded-md p-4 bg-gray-50 dark:bg-gray-900/50">
-                      <div className="hidden md:flex justify-between mb-3 text-sm font-medium text-muted-foreground border-b pb-2">
-                        <div className="flex-1">
-                          <div className="mb-1">Product/Service Name</div>
-                        </div>
-                        <div className="flex-1 pr-4">Description</div>
-                        <div className="flex items-center space-x-6 min-w-[260px] justify-end">
-                          <div className="text-right w-16">Quantity</div>
-                          <div className="text-right w-24">Unit Price</div>
-                          <div className="text-right w-24">Amount</div>
-                        </div>
+                  {productItems.length > 0 && (
+                    <div className="mb-6">
+                      <div className="flex items-center mb-3">
+                        <Package className="h-5 w-5 mr-2" />
+                        <h4 className="text-lg font-semibold">Products / Services</h4>
                       </div>
                       
-                      {productItems.length > 0 ? (
-                        productItems.map((item) => (
+                      <div className="border rounded-md p-4 bg-gray-50 dark:bg-gray-900/50">
+                        <div className="hidden md:flex justify-between mb-3 text-sm font-medium text-muted-foreground border-b pb-2">
+                          <div className="flex-1">
+                            <div className="mb-1">Product/Service Name</div>
+                          </div>
+                          <div className="flex-1 pr-4">Description</div>
+                          <div className="flex items-center space-x-6 min-w-[260px] justify-end">
+                            <div className="text-right w-16">Quantity</div>
+                            <div className="text-right w-24">Unit Price</div>
+                            <div className="text-right w-24">Amount</div>
+                          </div>
+                        </div>
+                        
+                        {productItems.map((item) => (
                           <div key={item.id} className="mb-4 pb-4 border-b last:mb-0 last:pb-0 last:border-b-0">
                             <div className="md:flex md-justify-between md:items-start">
                               <div className="md:flex-1">
@@ -863,30 +863,28 @@ const InvoiceView = () => {
                               </div>
                             </div>
                           </div>
-                        ))
-                      ) : (
-                        <p className="text-muted-foreground">No products/services in this invoice.</p>
-                      )}
-                      
-                      <div className="mt-4 pt-4 border-t">
-                        <div className="flex justify-between font-medium">
-                          <span>Subtotal</span>
-                          <span>{formatCurrency(subtotal)}</span>
+                        ))}
+                        
+                        <div className="mt-4 pt-4 border-t">
+                          <div className="flex justify-between font-medium">
+                            <span>Subtotal</span>
+                            <span>{formatCurrency(subtotal)}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Discounts Section */}
                   {discountItems.length > 0 && (
                     <div className="mb-6">
                       <div className="flex items-center mb-3">
-                        <Percent className="h-5 w-5 mr-2" />
-                        <h4 className="text-lg font-semibold">Discounts Applied</h4>
+                        <Percent className="h-5 w-5 mr-2 text-red-600 dark:text-red-400" />
+                        <h4 className="text-lg font-semibold text-red-700 dark:text-red-300">Discounts Applied</h4>
                       </div>
                       
                       <div className="border rounded-md p-4 bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-900">
-                        <div className="hidden md:flex justify-between mb-3 text-sm font-medium text-muted-foreground border-b pb-2 border-red-200 dark:border-red-800">
+                        <div className="hidden md:flex justify-between mb-3 text-sm font-medium text-red-600 dark:text-red-400 border-b pb-2 border-red-200 dark:border-red-800">
                           <div className="flex-1">
                             <div className="mb-1">Discount Name</div>
                           </div>

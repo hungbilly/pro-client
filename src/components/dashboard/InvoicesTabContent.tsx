@@ -19,14 +19,14 @@ interface InvoicesTabContentProps {
   onOpenCreateInvoiceModal: () => void;
 }
 
-// Helper function to check if invoice is accepted
+// Helper function to check if invoice is accepted (based on status or timestamp)
 const isInvoiceAccepted = (invoice: Invoice) => {
-  return !!(invoice.invoice_accepted_at || invoice.invoice_accepted_by);
+  return invoice.status === 'accepted' || invoice.status === 'paid' || !!invoice.invoice_accepted_at;
 };
 
 // Helper function to check if contract is accepted
 const isContractAccepted = (invoice: Invoice) => {
-  return !!(invoice.contract_accepted_at || (invoice.contractStatus === 'accepted'));
+  return !!(invoice.contract_accepted_at || invoice.contract_accepted_by || (invoice.contractStatus === 'accepted'));
 };
 
 const InvoicesTabContent: React.FC<InvoicesTabContentProps> = ({ 
@@ -53,7 +53,7 @@ const InvoicesTabContent: React.FC<InvoicesTabContentProps> = ({
   };
 
   const getAcceptanceBadge = (accepted: boolean, acceptedAt?: string) => {
-    if (accepted && acceptedAt) {
+    if (accepted) {
       return (
         <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
           <Check className="w-3 h-3 mr-1" />
@@ -135,8 +135,8 @@ const InvoicesTabContent: React.FC<InvoicesTabContentProps> = ({
             <TableBody>
               {filteredInvoices.map(invoice => {
                 const invoiceClient = clients.find(c => c.id === invoice.clientId) || null;
-                console.log(`[InvoicesTabContent] Invoice ${invoice.id} acceptance check: invoice_accepted_at=${invoice.invoice_accepted_at}, invoice_accepted_by=${invoice.invoice_accepted_by}, isInvoiceAccepted=${isInvoiceAccepted(invoice)}`);
-                console.log(`[InvoicesTabContent] Invoice ${invoice.id} contract check: contract_accepted_at=${invoice.contract_accepted_at}, contractStatus=${invoice.contractStatus}, isContractAccepted=${isContractAccepted(invoice)}`);
+                console.log(`[InvoicesTabContent] Invoice ${invoice.id} acceptance check: status=${invoice.status}, invoice_accepted_at=${invoice.invoice_accepted_at}, isInvoiceAccepted=${isInvoiceAccepted(invoice)}`);
+                console.log(`[InvoicesTabContent] Invoice ${invoice.id} contract check: contract_accepted_at=${invoice.contract_accepted_at}, contract_accepted_by=${invoice.contract_accepted_by}, contractStatus=${invoice.contractStatus}, isContractAccepted=${isContractAccepted(invoice)}`);
                 return (
                   <TableRow key={invoice.id} onClick={() => handleInvoiceRowClick(invoice.id)} className="cursor-pointer">
                     <TableCell className="font-medium">{invoice.number}</TableCell>
@@ -157,7 +157,7 @@ const InvoicesTabContent: React.FC<InvoicesTabContentProps> = ({
                       </Badge>
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">
-                      {getAcceptanceBadge(isInvoiceAccepted(invoice), invoice.invoice_accepted_at || invoice.invoice_accepted_by)}
+                      {getAcceptanceBadge(isInvoiceAccepted(invoice), invoice.invoice_accepted_at)}
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">
                       {getAcceptanceBadge(isContractAccepted(invoice), invoice.contract_accepted_at)}

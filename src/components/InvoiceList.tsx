@@ -68,7 +68,7 @@ const getContractStatusColor = (status?: 'pending' | 'accepted') => {
 };
 
 const getAcceptanceBadge = (accepted: boolean, acceptedAt?: string) => {
-  if (accepted && acceptedAt) {
+  if (accepted) {
     return (
       <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
         <Check className="w-3 h-3 mr-1" />
@@ -84,14 +84,14 @@ const getAcceptanceBadge = (accepted: boolean, acceptedAt?: string) => {
   );
 };
 
-// Helper function to check if invoice is accepted
+// Helper function to check if invoice is accepted (based on status or timestamp)
 const isInvoiceAccepted = (invoice: Invoice) => {
-  return !!(invoice.invoice_accepted_at || invoice.invoice_accepted_by);
+  return invoice.status === 'accepted' || invoice.status === 'paid' || !!invoice.invoice_accepted_at;
 };
 
 // Helper function to check if contract is accepted
 const isContractAccepted = (invoice: Invoice) => {
-  return !!(invoice.contract_accepted_at || (invoice.contractStatus === 'accepted'));
+  return !!(invoice.contract_accepted_at || invoice.contract_accepted_by || (invoice.contractStatus === 'accepted'));
 };
 
 const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateButton = true, onInvoiceDeleted }) => {
@@ -418,8 +418,8 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
             <TableBody>
               {sortedInvoices.map((invoice) => {
                 console.log(`[InvoiceList] Rendering invoice ${invoice.id}, jobId: ${invoice.jobId}, shootingDate: ${invoice.shootingDate}, jobDate: ${invoice.jobId ? jobDates[invoice.jobId] : 'no job'}`);
-                console.log(`[InvoiceList] Invoice acceptance check: invoice_accepted_at=${invoice.invoice_accepted_at}, invoice_accepted_by=${invoice.invoice_accepted_by}, isAccepted=${isInvoiceAccepted(invoice)}`);
-                console.log(`[InvoiceList] Contract acceptance check: contract_accepted_at=${invoice.contract_accepted_at}, contractStatus=${invoice.contractStatus}, isAccepted=${isContractAccepted(invoice)}`);
+                console.log(`[InvoiceList] Invoice acceptance check: status=${invoice.status}, invoice_accepted_at=${invoice.invoice_accepted_at}, isAccepted=${isInvoiceAccepted(invoice)}`);
+                console.log(`[InvoiceList] Contract acceptance check: contract_accepted_at=${invoice.contract_accepted_at}, contract_accepted_by=${invoice.contract_accepted_by}, contractStatus=${invoice.contractStatus}, isAccepted=${isContractAccepted(invoice)}`);
                 return (
                   <TableRow key={invoice.id}>
                     <TableCell className="font-medium">{invoice.number}</TableCell>
@@ -443,7 +443,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, client, showCreateB
                       </Badge>
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">
-                      {getAcceptanceBadge(isInvoiceAccepted(invoice), invoice.invoice_accepted_at || invoice.invoice_accepted_by)}
+                      {getAcceptanceBadge(isInvoiceAccepted(invoice), invoice.invoice_accepted_at)}
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">
                       {getAcceptanceBadge(isContractAccepted(invoice), invoice.contract_accepted_at)}

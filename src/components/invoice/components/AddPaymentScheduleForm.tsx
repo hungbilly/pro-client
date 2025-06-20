@@ -8,6 +8,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Plus, X, Percent, DollarSign } from 'lucide-react';
 import { PaymentSchedule, PaymentStatus } from '@/types';
+import { format } from 'date-fns';
 
 interface AddPaymentScheduleFormProps {
   newSchedule: Partial<PaymentSchedule>;
@@ -30,9 +31,11 @@ const AddPaymentScheduleForm: React.FC<AddPaymentScheduleFormProps> = ({
   onInputValueChange,
   onInputBlur
 }) => {
-  const handleDateChange = (date: Date | undefined, field: string) => {
+  const handleDateChange = (date: Date | undefined) => {
     if (date) {
-      onUpdateNewSchedule(field as keyof PaymentSchedule, date.toISOString().split('T')[0]);
+      // Format the date in local timezone to avoid UTC conversion issues
+      const localDate = format(date, 'yyyy-MM-dd');
+      onUpdateNewSchedule('dueDate', localDate);
     }
   };
 
@@ -71,8 +74,8 @@ const AddPaymentScheduleForm: React.FC<AddPaymentScheduleFormProps> = ({
             <Label className="text-xs text-muted-foreground">Due Date</Label>
             <DatePicker
               mode="single"
-              selected={newSchedule.dueDate ? new Date(newSchedule.dueDate) : undefined}
-              onSelect={(date) => handleDateChange(date, 'dueDate')}
+              selected={newSchedule.dueDate ? new Date(newSchedule.dueDate + 'T00:00:00') : undefined}
+              onSelect={handleDateChange}
               hideIcon={true}
             />
           </div>

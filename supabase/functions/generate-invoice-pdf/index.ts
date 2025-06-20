@@ -10,22 +10,22 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Enhanced logging with timestamps
 const log = {
-  info: (message: string, data?: any) => {
+  info: (message, data) => {
     const timestamp = new Date().toISOString();
     console.log(`[${timestamp}] [INFO] ${message}`, data ? data : '');
   },
-  warn: (message: string, data?: any) => {
+  warn: (message, data) => {
     const timestamp = new Date().toISOString();
     console.warn(`[${timestamp}] [WARN] ${message}`, data ? data : '');
   },
-  error: (message: string, error: any) => {
+  error: (message, error) => {
     const timestamp = new Date().toISOString();
     console.error(`[${timestamp}] [ERROR] ${message}`, error);
     if (error?.stack) {
       console.error(`[${timestamp}] [ERROR] Stack trace:`, error.stack);
     }
   },
-  debug: (message: string, data?: any) => {
+  debug: (message, data) => {
     const timestamp = new Date().toISOString();
     console.log(`[${timestamp}] [DEBUG] ${message}`, data ? data : '');
   }
@@ -37,8 +37,52 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
 };
 
-// Helper function to strip HTML tags
-function stripHtml(html: string): string {
+// Helper function to convert HTML to formatted text for PDF
+function formatHtmlForPdf(html) {
+  if (!html) return '';
+  
+  // Convert HTML to more readable text while preserving structure
+  let text = html
+    // Convert line breaks and paragraphs
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<p[^>]*>/gi, '')
+    
+    // Convert lists
+    .replace(/<ul[^>]*>/gi, '\n')
+    .replace(/<\/ul>/gi, '\n')
+    .replace(/<li[^>]*>/gi, '• ')
+    .replace(/<\/li>/gi, '\n')
+    
+    // Convert headings and emphasis
+    .replace(/<h[1-6][^>]*>/gi, '\n')
+    .replace(/<\/h[1-6]>/gi, '\n')
+    .replace(/<strong[^>]*>|<b[^>]*>/gi, '')
+    .replace(/<\/strong>|<\/b>/gi, '')
+    .replace(/<em[^>]*>|<i[^>]*>/gi, '')
+    .replace(/<\/em>|<\/i>/gi, '')
+    
+    // Remove remaining HTML tags
+    .replace(/<[^>]*>/g, '')
+    
+    // Clean up HTML entities
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    
+    // Clean up whitespace but preserve intentional line breaks
+    .replace(/\n\s*\n\s*\n/g, '\n\n') // Remove excessive line breaks
+    .replace(/[ \t]+/g, ' ') // Convert multiple spaces/tabs to single space
+    .trim();
+    
+  return text;
+}
+
+// Helper function to strip HTML tags (fallback)
+function stripHtml(html) {
   return html
     .replace(/<[^>]*>/g, '')
     .replace(/&nbsp;/g, ' ')
@@ -50,8 +94,8 @@ function stripHtml(html: string): string {
 }
 
 // Helper function to add wrapped text with page breaks
-function addWrappedText(doc: any, text: string, x: number, y: number, maxWidth: number, lineHeight: number, pageHeight: number, margin: number): number {
-  const cleanText = stripHtml(text);
+function addWrappedText(doc, text, x, y, maxWidth, lineHeight, pageHeight, margin) {
+  const cleanText = formatHtmlForPdf(text);
   const lines = doc.splitTextToSize(cleanText, maxWidth);
   
   for (let i = 0; i < lines.length; i++) {
@@ -67,7 +111,7 @@ function addWrappedText(doc: any, text: string, x: number, y: number, maxWidth: 
 }
 
 // Helper function to process logo for PDF
-async function processLogoForPDF(logoUrl: string): Promise<{data: string, width: number, height: number}> {
+async function processLogoForPDF(logoUrl) {
   try {
     const response = await fetch(logoUrl);
     if (!response.ok) {
@@ -93,7 +137,7 @@ async function processLogoForPDF(logoUrl: string): Promise<{data: string, width:
 }
 
 // Helper to load a single font weight and register it with jsPDF
-async function loadAndRegisterFont(doc: any, fontName: string, weight: string, url: string): Promise<boolean> {
+async function loadAndRegisterFont(doc, fontName, weight, url) {
   try {
     log.info(`Attempting to load font: ${fontName} ${weight} from:`, url);
     const fontResponse = await fetch(url, {
@@ -119,7 +163,7 @@ async function loadAndRegisterFont(doc: any, fontName: string, weight: string, u
 }
 
 // Loads Chinese fonts (normal and bold) and sets the default font
-async function loadChineseFont(doc: any): Promise<boolean> {
+async function loadChineseFont(doc) {
   const fontBaseUrl = 'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/notosanssc/';
   const fontName = 'NotoSansSC';
   const regularFontUrl = `${fontBaseUrl}NotoSansSC-Regular.ttf`;
@@ -146,8 +190,7 @@ async function loadChineseFont(doc: any): Promise<boolean> {
   return regularLoaded;
 }
 
-// Enhanced PDF generation function
-async function generatePDF(invoiceData: any): Promise<Uint8Array> {
+async function generatePDF(invoiceData) {
   log.info('Generating PDF for invoice:', invoiceData.number);
   log.debug('Invoice data overview:', {
     hasClient: !!invoiceData.client,
@@ -396,7 +439,7 @@ async function generatePDF(invoiceData: any): Promise<Uint8Array> {
       }
     });
 
-    y = (doc as any).lastAutoTable.finalY + 10;
+    y = doc.lastAutoTable.finalY + 10;
 
     // Invoice Items
     if (invoiceData.items && invoiceData.items.length > 0) {
@@ -414,10 +457,10 @@ async function generatePDF(invoiceData: any): Promise<Uint8Array> {
         { header: 'Amount', dataKey: 'amount' }
       ];
 
-      const tableData = invoiceData.items.map((item: any) => {
+      const tableData = invoiceData.items.map((item) => {
         const row = {
           name: item.name || 'Product/Service',
-          description: stripHtml(item.description || ''),
+          description: formatHtmlForPdf(item.description || ''),
           quantity: item.quantity.toString(),
           rate: `HK$${item.rate.toFixed(2)}`,
           amount: `HK$${item.amount.toFixed(2)}`
@@ -456,7 +499,7 @@ async function generatePDF(invoiceData: any): Promise<Uint8Array> {
           cellPadding: 3,
           font: fontLoaded ? 'NotoSansSC' : 'helvetica'
         },
-        didDrawPage: (data: any) => {
+        didDrawPage: (data) => {
           y = data.cursor.y + 5;
           log.debug('Invoice items table drawn, new y position:', y);
         }
@@ -495,7 +538,7 @@ async function generatePDF(invoiceData: any): Promise<Uint8Array> {
         { header: 'Status', dataKey: 'status' }
       ];
 
-      const paymentData = invoiceData.paymentSchedules.map((schedule: any) => {
+      const paymentData = invoiceData.paymentSchedules.map((schedule) => {
         const row = {
           description: schedule.description || '',
           dueDate: new Date(schedule.dueDate).toLocaleDateString(),
@@ -537,7 +580,7 @@ async function generatePDF(invoiceData: any): Promise<Uint8Array> {
           cellPadding: 3,
           font: fontLoaded ? 'NotoSansSC' : 'helvetica'
         },
-        didDrawPage: (data: any) => {
+        didDrawPage: (data) => {
           y = data.cursor.y + 10;
           log.debug('Payment schedule table drawn, new y position:', y);
         }
@@ -612,7 +655,7 @@ async function generatePDF(invoiceData: any): Promise<Uint8Array> {
       doc.setFontSize(9);
       log.debug('Contract terms paragraphs:', paragraphs);
 
-      paragraphs.forEach((paragraph: string, index: number) => {
+      paragraphs.forEach((paragraph, index) => {
         if (y > pageHeight - 30) {
           doc.addPage();
           y = margin;
@@ -660,7 +703,7 @@ async function generatePDF(invoiceData: any): Promise<Uint8Array> {
     return pdfView;
   } catch (err) {
     log.error('Error generating PDF:', err);
-    throw new Error('Failed to generate PDF: ' + (err as Error).message);
+    throw new Error('Failed to generate PDF: ' + err.message);
   }
 }
 
@@ -677,15 +720,15 @@ serve(async (req) => {
     });
   }
 
-  // Track execution stages and timing for debugging
-  const executionStages: Record<string, any> = {
+  // Track execution stages an timing for debugging
+  const executionStages = {
     'request_start': {
       start: Date.now()
     }
   };
 
   // Collect debug info
-  const debugInfo: Record<string, any> = {
+  const debugInfo = {
     timestamp: new Date().toISOString(),
     stages: executionStages
   };
@@ -716,7 +759,13 @@ serve(async (req) => {
     };
 
     if (!invoiceId) {
-      log.error('Missing required parameter: invoiceId');
+      executionStages.validation = {
+        start: Date.now(),
+        end: Date.now(),
+        success: false,
+        error: 'Missing invoiceId'
+      };
+      log.error('Missing required parameter: invoiceId', {});
       return new Response(JSON.stringify({
         error: 'Missing required parameter: invoiceId',
         debugInfo: debugMode ? debugInfo : undefined
@@ -726,14 +775,97 @@ serve(async (req) => {
       });
     }
 
+    // Validation step
+    executionStages.validation = {
+      start: Date.now()
+    };
+
+    // Fetch existing invoice PDF URL and check if we need to regenerate
+    if (!forceRegenerate && !debugMode) {
+      executionStages.check_existing = {
+        start: Date.now()
+      };
+      const { data: existingInvoice, error: existingError } = await supabase.from('invoices').select('pdf_url, number').eq('id', invoiceId).single();
+      executionStages.check_existing.end = Date.now();
+      executionStages.check_existing.success = !existingError;
+
+      if (!existingError && existingInvoice?.pdf_url) {
+        log.info('Using existing PDF URL:', existingInvoice.pdf_url);
+        try {
+          // Try to validate the existing PDF URL
+          executionStages.validate_existing = {
+            start: Date.now()
+          };
+          // Fetch headers only to check if file exists and is a PDF
+          const pdfResponse = await fetch(existingInvoice.pdf_url, {
+            method: 'HEAD'
+          });
+          executionStages.validate_existing.end = Date.now();
+
+          if (pdfResponse.ok) {
+            const contentType = pdfResponse.headers.get('content-type');
+            const contentLength = pdfResponse.headers.get('content-length');
+            log.debug('Existing PDF validation results:', {
+              status: pdfResponse.status,
+              contentType,
+              contentLength
+            });
+
+            // If content type is PDF and size is reasonable, use the existing URL
+            if (contentType?.includes('pdf') && parseInt(contentLength || '0') > 1000) {
+              log.info('Existing PDF is valid, returning URL');
+              executionStages.validate_existing.success = true;
+              debugInfo.pdfInfo = {
+                source: 'existing',
+                url: existingInvoice.pdf_url,
+                contentType,
+                contentLength
+              };
+
+              return new Response(JSON.stringify({
+                pdfUrl: existingInvoice.pdf_url,
+                debugInfo: debugMode ? debugInfo : undefined
+              }), {
+                headers,
+                status: 200
+              });
+            } else {
+              executionStages.validate_existing.success = false;
+              executionStages.validate_existing.error = 'Invalid content type or size';
+              log.warn('Existing PDF appears invalid, regenerating...', {
+                contentType,
+                contentLength
+              });
+            }
+          } else {
+            executionStages.validate_existing.success = false;
+            executionStages.validate_existing.error = `HTTP ${pdfResponse.status}`;
+            log.warn('Existing PDF URL returned non-OK status, regenerating...', {
+              status: pdfResponse.status,
+              statusText: pdfResponse.statusText
+            });
+          }
+        } catch (e) {
+          executionStages.validate_existing.success = false;
+          executionStages.validate_existing.error = e instanceof Error ? e.message : 'Unknown error';
+          log.error('Error verifying existing PDF:', e);
+        }
+      }
+    }
+
+    executionStages.validation.end = Date.now();
+    executionStages.validation.success = true;
+
     // Fetch all invoice data
-    const { data: invoice, error: invoiceError } = await supabase
-      .from('invoices')
-      .select('*, invoice_items(*), payment_schedules(*)')
-      .eq('id', invoiceId)
-      .single();
-      
+    executionStages.fetch_data = {
+      start: Date.now()
+    };
+    const { data: invoice, error: invoiceError } = await supabase.from('invoices').select('*, invoice_items(*), payment_schedules(*)').eq('id', invoiceId).single();
+
     if (invoiceError || !invoice) {
+      executionStages.fetch_data.end = Date.now();
+      executionStages.fetch_data.success = false;
+      executionStages.fetch_data.error = invoiceError ? invoiceError.message : 'Invoice not found';
       log.error('Error fetching invoice data:', invoiceError);
       return new Response(JSON.stringify({
         error: 'Failed to fetch invoice data',
@@ -746,31 +878,52 @@ serve(async (req) => {
     }
 
     log.info('Fetched invoice data successfully. Invoice number:', invoice.number);
+    debugInfo.invoiceNumber = invoice.number;
 
     // Fetch related data (client, company, job)
-    const { data: client } = await supabase
-      .from('clients')
-      .select('*')
-      .eq('id', invoice.client_id)
-      .single();
+    const { data: client, error: clientError } = await supabase.from('clients').select('*').eq('id', invoice.client_id).single();
 
-    const { data: company } = await supabase
-      .from('company_clientview')
-      .select('*')
-      .eq('company_id', invoice.company_id)
-      .single();
+    if (clientError) {
+      log.warn('Warning: Client not found for ID:', invoice.client_id);
+      debugInfo.warnings = [
+        ...debugInfo.warnings || [],
+        'Client not found'
+      ];
+    }
+
+    const { data: company, error: companyError } = await supabase.from('company_clientview').select('*').eq('company_id', invoice.company_id).single();
+    log.debug('Invoice company_id:', invoice.company_id);
+    log.debug('Fetched company data from company_clientview:', company);
+
+    if (companyError) {
+      log.error('Error fetching company data from company_clientview:', companyError);
+      debugInfo.warnings = [
+        ...debugInfo.warnings || [],
+        'Company not found'
+      ];
+    }
 
     let job = null;
     if (invoice.job_id) {
-      const { data: jobData } = await supabase
-        .from('jobs')
-        .select('*')
-        .eq('id', invoice.job_id)
-        .single();
-      job = jobData;
+      const { data: jobData, error: jobError } = await supabase.from('jobs').select('*').eq('id', invoice.job_id).single();
+      if (jobError) {
+        log.warn('Warning: Job not found for ID:', invoice.job_id, jobError);
+        debugInfo.warnings = [
+          ...debugInfo.warnings || [],
+          'Job not found'
+        ];
+      } else {
+        job = jobData;
+      }
     }
 
+    executionStages.fetch_data.end = Date.now();
+    executionStages.fetch_data.success = true;
+
     // Format the data for PDF generation
+    executionStages.format_data = {
+      start: Date.now()
+    };
     const formattedInvoice = {
       id: invoice.id,
       number: invoice.number,
@@ -795,7 +948,7 @@ serve(async (req) => {
         phone: company.phone,
         website: company.website,
         logoUrl: company.logo_url,
-        payment_methods: company.payment_methods
+        payment_methods: company.payment_methods // Added mapping for payment_methods
       } : {
         id: 'unknown',
         name: 'Unknown Company'
@@ -804,9 +957,10 @@ serve(async (req) => {
         id: job.id,
         title: job.title,
         description: job.description,
-        date: job.date
+        date: job.date,
+        makeup: job.makeup
       } : undefined,
-      items: (invoice.invoice_items || []).map((item: any) => ({
+      items: (invoice.invoice_items || []).map((item) => ({
         id: item.id,
         name: item.name,
         description: item.description,
@@ -814,24 +968,40 @@ serve(async (req) => {
         rate: item.rate,
         amount: item.amount
       })),
-      paymentSchedules: (invoice.payment_schedules || []).map((schedule: any) => ({
+      paymentSchedules: (invoice.payment_schedules || []).map((schedule) => ({
         id: schedule.id,
         dueDate: schedule.due_date,
         percentage: schedule.percentage,
         description: schedule.description,
         status: schedule.status,
         paymentDate: schedule.payment_date,
-        amount: (invoice.amount * schedule.percentage) / 100
+        amount: invoice.amount * schedule.percentage / 100
       }))
     };
 
+    executionStages.format_data.end = Date.now();
+    executionStages.format_data.success = true;
+
+    debugInfo.companyInfo = {
+      hasLogo: !!company?.logo_url,
+      logoUrl: company?.logo_url
+    };
+
     log.info('Generating PDF for invoice:', invoiceId);
-    
+
     // Generate the PDF
-    let pdfData: Uint8Array;
+    executionStages.generate_pdf = {
+      start: Date.now()
+    };
+    let pdfData;
     try {
       pdfData = await generatePDF(formattedInvoice);
+      executionStages.generate_pdf.end = Date.now();
+      executionStages.generate_pdf.success = true;
     } catch (pdfError) {
+      executionStages.generate_pdf.end = Date.now();
+      executionStages.generate_pdf.success = false;
+      executionStages.generate_pdf.error = pdfError instanceof Error ? pdfError.message : 'Unknown error';
       log.error('Error generating PDF:', pdfError);
       return new Response(JSON.stringify({
         error: `Failed to generate PDF: ${pdfError instanceof Error ? pdfError.message : 'Unknown error'}`,
@@ -842,11 +1012,18 @@ serve(async (req) => {
       });
     }
 
-    // Validate generated PDF
-    if (!pdfData || !(pdfData instanceof Uint8Array)) {
-      log.error('PDF generation returned invalid data');
+    // Enhanced validation of generated PDF
+    executionStages.validate_pdf = {
+      start: Date.now()
+    };
+
+    if (!pdfData) {
+      executionStages.validate_pdf.end = Date.now();
+      executionStages.validate_pdf.success = false;
+      executionStages.validate_pdf.error = 'No PDF data generated';
+      log.error('PDF generation returned null or undefined data');
       return new Response(JSON.stringify({
-        error: 'PDF generation failed - invalid data returned',
+        error: 'PDF generation failed - no data returned',
         debugInfo: debugMode ? debugInfo : undefined
       }), {
         headers,
@@ -854,7 +1031,26 @@ serve(async (req) => {
       });
     }
 
+    // Validate PDF data type and signature
+    if (!(pdfData instanceof Uint8Array)) {
+      executionStages.validate_pdf.end = Date.now();
+      executionStages.validate_pdf.success = false;
+      executionStages.validate_pdf.error = 'Invalid PDF data type';
+      log.error('PDF data is not a Uint8Array:', pdfData);
+      return new Response(JSON.stringify({
+        error: 'Invalid PDF data type',
+        debugInfo: debugMode ? debugInfo : undefined
+      }), {
+        headers,
+        status: 500
+      });
+    }
+
+    // Handle very small PDFs
     if (pdfData.byteLength < 1000) {
+      executionStages.validate_pdf.end = Date.now();
+      executionStages.validate_pdf.success = false;
+      executionStages.validate_pdf.error = `PDF too small: ${pdfData.byteLength} bytes`;
       log.error('Generated PDF is suspiciously small:', pdfData.byteLength, 'bytes');
       return new Response(JSON.stringify({
         error: `Generated PDF appears invalid. PDF size too small: ${pdfData.byteLength} bytes`,
@@ -865,12 +1061,43 @@ serve(async (req) => {
       });
     }
 
+    // Updated size validation - more permissive for large invoices
+    if (!skipSizeValidation && !allowLargeFiles) {
+      // Standard size limit of 15MB for regular invoices
+      if (pdfData.byteLength > 15000000) {
+        executionStages.validate_pdf.end = Date.now();
+        executionStages.validate_pdf.success = false;
+        executionStages.validate_pdf.error = `PDF too large: ${pdfData.byteLength} bytes`;
+        log.warn('Generated PDF is large:', pdfData.byteLength, 'bytes, but allowing it to proceed');
+      }
+    } else if (allowLargeFiles) {
+      // For large files mode, allow up to 50MB
+      if (pdfData.byteLength > 50000000) {
+        executionStages.validate_pdf.end = Date.now();
+        executionStages.validate_pdf.success = false;
+        executionStages.validate_pdf.error = `PDF too large even for large files mode: ${pdfData.byteLength} bytes`;
+        log.error('Generated PDF exceeds large file limit:', pdfData.byteLength, 'bytes');
+        return new Response(JSON.stringify({
+          error: `Generated PDF is too large: ${(pdfData.byteLength / 1024 / 1024).toFixed(2)} MB (max 50MB)`,
+          debugInfo: debugMode ? debugInfo : undefined
+        }), {
+          headers,
+          status: 500
+        });
+      } else {
+        log.info('Large PDF generated successfully:', pdfData.byteLength, 'bytes');
+      }
+    }
+
     // Check PDF signature
     const pdfSignature = new TextDecoder().decode(pdfData.slice(0, 5));
     if (pdfSignature !== '%PDF-') {
+      executionStages.validate_pdf.end = Date.now();
+      executionStages.validate_pdf.success = false;
+      executionStages.validate_pdf.error = `Invalid PDF signature: ${pdfSignature}`;
       log.error('Generated data is not a valid PDF - invalid signature:', pdfSignature);
       return new Response(JSON.stringify({
-        error: 'Generated data is not a valid PDF file',
+        error: `Generated data is not a valid PDF file`,
         debugInfo: debugMode ? debugInfo : undefined
       }), {
         headers,
@@ -878,39 +1105,77 @@ serve(async (req) => {
       });
     }
 
-    log.info(`PDF generated successfully, size: ${pdfData.byteLength} bytes`);
+    executionStages.validate_pdf.end = Date.now();
+    executionStages.validate_pdf.success = true;
+
+    log.info(`PDF generated successfully, size: ${pdfData.byteLength} bytes (${(pdfData.byteLength / 1024 / 1024).toFixed(2)} MB)`);
+    debugInfo.pdfSize = pdfData.byteLength;
 
     // Upload PDF to storage
     const timestamp = Date.now();
     const filePath = `invoices/${invoiceId}.pdf`;
     log.info('Uploading PDF to storage path:', filePath);
 
-    // Wrap PDF data in a Blob
+    executionStages.upload_pdf = {
+      start: Date.now()
+    };
+
+    // Validate PDF data before upload
+    log.debug('PDF data before upload:', {
+      type: pdfData.constructor.name,
+      size: pdfData.byteLength,
+      signature: pdfSignature
+    });
+
+    // Wrap PDF data in a Blob to ensure correct binary handling
     const pdfBlob = new Blob([pdfData], {
       type: 'application/pdf'
     });
 
-    // Remove existing file first
+    log.debug('PDF Blob details:', {
+      size: pdfBlob.size,
+      type: pdfBlob.type
+    });
+
+    // Remove existing file to prevent upsert issues
     try {
       await supabase.storage.from('invoice-pdfs').remove([filePath]);
-      log.info('Removed existing PDF file if it existed');
+      log.info('Removed existing PDF file if it existed:', filePath);
     } catch (removeError) {
       log.warn('Failed to remove existing PDF file:', removeError);
     }
 
     // Upload the PDF
-    const { data: uploadData, error: uploadError } = await supabase
-      .storage
-      .from('invoice-pdfs')
-      .upload(filePath, pdfBlob, {
+    try {
+      const { data: uploadData, error: uploadError } = await supabase.storage.from('invoice-pdfs').upload(filePath, pdfBlob, {
         contentType: 'application/pdf',
         upsert: false
       });
 
-    if (uploadError) {
-      log.error('Error uploading PDF to storage:', uploadError);
+      if (uploadError) {
+        executionStages.upload_pdf.end = Date.now();
+        executionStages.upload_pdf.success = false;
+        executionStages.upload_pdf.error = uploadError.message;
+        log.error('Error uploading PDF to storage:', uploadError);
+        return new Response(JSON.stringify({
+          error: `Failed to upload PDF: ${uploadError.message}`,
+          debugInfo: debugMode ? debugInfo : undefined
+        }), {
+          headers,
+          status: 500
+        });
+      }
+
+      executionStages.upload_pdf.end = Date.now();
+      executionStages.upload_pdf.success = true;
+      log.info('PDF uploaded successfully to storage');
+    } catch (uploadErr) {
+      executionStages.upload_pdf.end = Date.now();
+      executionStages.upload_pdf.success = false;
+      executionStages.upload_pdf.error = uploadErr instanceof Error ? uploadErr.message : 'Unknown error';
+      log.error('Unexpected error during PDF upload:', uploadErr);
       return new Response(JSON.stringify({
-        error: `Failed to upload PDF: ${uploadError.message}`,
+        error: `Unexpected error during PDF upload: ${uploadErr instanceof Error ? uploadErr.message : 'Unknown error'}`,
         debugInfo: debugMode ? debugInfo : undefined
       }), {
         headers,
@@ -918,13 +1183,8 @@ serve(async (req) => {
       });
     }
 
-    log.info('PDF uploaded successfully to storage');
-
     // Get public URL
-    const { data: publicUrlData } = supabase
-      .storage
-      .from('invoice-pdfs')
-      .getPublicUrl(filePath);
+    const { data: publicUrlData } = supabase.storage.from('invoice-pdfs').getPublicUrl(filePath);
 
     if (!publicUrlData || !publicUrlData.publicUrl) {
       log.error('Failed to get public URL for PDF');
@@ -945,10 +1205,7 @@ serve(async (req) => {
     log.info('Generated public URL for PDF:', pdfUrl);
 
     // Update the invoice with the PDF URL
-    const { error: updateError } = await supabase
-      .from('invoices')
-      .update({ pdf_url: pdfUrl })
-      .eq('id', invoiceId);
+    const { error: updateError } = await supabase.from('invoices').update({ pdf_url: pdfUrl }).eq('id', invoiceId);
 
     if (updateError) {
       log.error('Error updating invoice with PDF URL:', updateError);

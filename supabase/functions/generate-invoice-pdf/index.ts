@@ -109,7 +109,7 @@ function addWrappedText(doc, text, x, y, maxWidth, lineHeight, pageHeight, margi
   return y;
 }
 
-// Helper function to process logo for PDF
+// Helper function to process logo for PDF - simplified for Deno environment
 async function processLogoForPDF(logoUrl) {
   try {
     const response = await fetch(logoUrl);
@@ -118,38 +118,25 @@ async function processLogoForPDF(logoUrl) {
     }
     const arrayBuffer = await response.arrayBuffer();
     const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-    const img = new Image();
-    const imageData = `data:image/jpeg;base64,${base64}`;
-    return new Promise((resolve, reject) => {
-      img.onload = () => {
-        const aspectRatio = img.width / img.height;
-        const maxWidth = 40; // Maximum width in mm
-        const maxHeight = 25; // Maximum height in mm
-
-        let finalWidth = maxWidth;
-        let finalHeight = finalWidth / aspectRatio;
-
-        // If the calculated height exceeds maxHeight, scale down based on height
-        if (finalHeight > maxHeight) {
-          finalHeight = maxHeight;
-          finalWidth = finalHeight * aspectRatio;
-        }
-
-        // Ensure the final dimensions are within bounds
-        finalWidth = Math.min(finalWidth, maxWidth);
-        finalHeight = Math.min(finalHeight, maxHeight);
-
-        resolve({
-          data: imageData,
-          width: finalWidth,
-          height: finalHeight
-        });
-      };
-      img.onerror = () => {
-        reject(new Error('Failed to load image for dimension calculation'));
-      };
-      img.src = imageData;
-    });
+    
+    // Since we can't use Image API in Deno, we'll use standard dimensions
+    // Most logos work well with these proportions
+    const maxWidth = 40; // Maximum width in mm
+    const maxHeight = 25; // Maximum height in mm
+    
+    // Determine image format from URL or response headers
+    const contentType = response.headers.get('content-type') || '';
+    let format = 'JPEG';
+    if (contentType.includes('png')) {
+      format = 'PNG';
+    }
+    
+    return {
+      data: `data:${contentType || 'image/jpeg'};base64,${base64}`,
+      width: maxWidth,
+      height: maxHeight,
+      format: format
+    };
   } catch (error) {
     log.error('Error processing logo:', error);
     throw error;
@@ -278,20 +265,21 @@ async function generatePDF(invoiceData) {
     let rightColumnY = y;
     let leftColumnY = y;
 
-    // Optimized logo handling with proper aspect ratio
+    // Logo handling with proper error handling for Deno environment
     if (invoiceData.company.logoUrl) {
-      log.debug('Adding optimized logo to PDF');
+      log.debug('Adding logo to PDF');
       try {
         const logoData = await processLogoForPDF(invoiceData.company.logoUrl);
         const logoWidth = logoData.width;
         const logoHeight = logoData.height;
         const logoX = margin + (rightColumnX - margin - logoWidth) / 4;
         
-        doc.addImage(logoData.data, 'JPEG', logoX, y, logoWidth, logoHeight, undefined, 'MEDIUM');
-        log.debug('Optimized logo added to PDF successfully');
+        doc.addImage(logoData.data, logoData.format, logoX, y, logoWidth, logoHeight, undefined, 'MEDIUM');
+        log.debug('Logo added to PDF successfully');
         leftColumnY += logoHeight + 10;
       } catch (logoError) {
-        log.error('Error adding optimized logo:', logoError);
+        log.error('Error adding logo:', logoError);
+        // Fallback to company name as text
         doc.setFontSize(24);
         doc.setFont(fontLoaded ? 'NotoSansSC' : 'helvetica', 'normal');
         doc.text(invoiceData.company.name.toUpperCase(), margin, leftColumnY + 15);

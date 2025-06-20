@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { jsPDF } from 'https://esm.sh/jspdf@3.0.1';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
@@ -110,7 +109,7 @@ function addWrappedText(doc, text, x, y, maxWidth, lineHeight, pageHeight, margi
   return y;
 }
 
-// Helper function to process logo for PDF
+// Helper function to process logo for PDF with proper aspect ratio
 async function processLogoForPDF(logoUrl) {
   try {
     const response = await fetch(logoUrl);
@@ -121,15 +120,44 @@ async function processLogoForPDF(logoUrl) {
     const arrayBuffer = await response.arrayBuffer();
     const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
     
-    // Standard logo dimensions for PDF
-    const maxWidth = 40;
-    const maxHeight = 25;
+    // Create a temporary image to get dimensions
+    const img = new Image();
+    const imageData = `data:image/jpeg;base64,${base64}`;
     
-    return {
-      data: `data:image/jpeg;base64,${base64}`,
-      width: maxWidth,
-      height: maxHeight
-    };
+    return new Promise((resolve, reject) => {
+      img.onload = () => {
+        // Calculate aspect ratio
+        const aspectRatio = img.width / img.height;
+        
+        // Set maximum dimensions while maintaining aspect ratio
+        const maxWidth = 40;
+        const maxHeight = 25;
+        
+        let finalWidth, finalHeight;
+        
+        if (aspectRatio > maxWidth / maxHeight) {
+          // Width is the limiting factor
+          finalWidth = maxWidth;
+          finalHeight = maxWidth / aspectRatio;
+        } else {
+          // Height is the limiting factor
+          finalHeight = maxHeight;
+          finalWidth = maxHeight * aspectRatio;
+        }
+        
+        resolve({
+          data: imageData,
+          width: finalWidth,
+          height: finalHeight
+        });
+      };
+      
+      img.onerror = () => {
+        reject(new Error('Failed to load image for dimension calculation'));
+      };
+      
+      img.src = imageData;
+    });
   } catch (error) {
     log.error('Error processing logo:', error);
     throw error;
@@ -260,15 +288,17 @@ async function generatePDF(invoiceData) {
 
     // Optimized logo handling with proper aspect ratio
     if (invoiceData.company.logoUrl) {
-      log.debug('Adding optimized logo to PDF');
+      log.debug('Adding optimized logo to PDF with proper aspect ratio');
       try {
         const logoData = await processLogoForPDF(invoiceData.company.logoUrl);
         const logoWidth = logoData.width;
         const logoHeight = logoData.height;
-        const logoX = margin + (rightColumnX - margin - logoWidth) / 4;
+        
+        // Center the logo in the left column area
+        const logoX = margin + (rightColumnX - margin - logoWidth) / 2;
         
         doc.addImage(logoData.data, 'JPEG', logoX, y, logoWidth, logoHeight, undefined, 'MEDIUM');
-        log.debug('Optimized logo added to PDF successfully');
+        log.debug('Optimized logo with proper aspect ratio added to PDF successfully');
         leftColumnY += logoHeight + 10;
       } catch (logoError) {
         log.error('Error adding optimized logo:', logoError);

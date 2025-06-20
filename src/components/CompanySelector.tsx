@@ -70,7 +70,7 @@ const CompanySelector: React.FC<CompanySelectorProps> = ({
           <span className={`text-slate-300 mr-2 ${!showLabel ? '' : 'hidden'}`}>
             Current Company:
           </span>
-          <div className="text-black font-medium">
+          <div className="text-blue-200 font-medium">
             {selectedCompany?.name || companies[0].name}
           </div>
         </div>

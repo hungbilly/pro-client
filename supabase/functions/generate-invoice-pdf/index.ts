@@ -601,7 +601,7 @@ async function generatePDF(invoiceData: any, companyData: any, clientData: any, 
     statusText = 'Invoice not accepted | Contract terms not accepted';
   }
 
-  console.log(`[DEBUG] Adding footer to ${pageCount}`);
+  console.log(`[DEBUG] Adding footer to ${pageCount} pages`);
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
     doc.setFontSize(8);
@@ -707,8 +707,7 @@ serve(async (req) => {
     if (companyError) {
       console.error('Error fetching company data:', companyError);
     } else {
-      console.log(`[DEBUG] Fetched company data from company_clientview: ${JSON.stringify(comp
-      anyData, null, 2)}`);
+      console.log(`[DEBUG] Fetched company data from company_clientview: ${JSON.stringify(companyData, null, 2)}`);
     }
 
     // Fetch client data

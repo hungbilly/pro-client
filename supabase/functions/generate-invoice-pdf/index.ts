@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { jsPDF } from 'https://esm.sh/jspdf@3.0.1';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
@@ -117,19 +116,40 @@ async function processLogoForPDF(logoUrl) {
     if (!response.ok) {
       throw new Error(`Failed to fetch logo: ${response.status}`);
     }
-    
     const arrayBuffer = await response.arrayBuffer();
     const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-    
-    // Standard logo dimensions for PDF
-    const maxWidth = 40;
-    const maxHeight = 25;
-    
-    return {
-      data: `data:image/jpeg;base64,${base64}`,
-      width: maxWidth,
-      height: maxHeight
-    };
+    const img = new Image();
+    const imageData = `data:image/jpeg;base64,${base64}`;
+    return new Promise((resolve, reject) => {
+      img.onload = () => {
+        const aspectRatio = img.width / img.height;
+        const maxWidth = 40; // Maximum width in mm
+        const maxHeight = 25; // Maximum height in mm
+
+        let finalWidth = maxWidth;
+        let finalHeight = finalWidth / aspectRatio;
+
+        // If the calculated height exceeds maxHeight, scale down based on height
+        if (finalHeight > maxHeight) {
+          finalHeight = maxHeight;
+          finalWidth = finalHeight * aspectRatio;
+        }
+
+        // Ensure the final dimensions are within bounds
+        finalWidth = Math.min(finalWidth, maxWidth);
+        finalHeight = Math.min(finalHeight, maxHeight);
+
+        resolve({
+          data: imageData,
+          width: finalWidth,
+          height: finalHeight
+        });
+      };
+      img.onerror = () => {
+        reject(new Error('Failed to load image for dimension calculation'));
+      };
+      img.src = imageData;
+    });
   } catch (error) {
     log.error('Error processing logo:', error);
     throw error;

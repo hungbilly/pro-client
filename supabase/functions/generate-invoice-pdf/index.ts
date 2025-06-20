@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { jsPDF } from 'https://esm.sh/jspdf@2.5.1'
@@ -777,16 +776,18 @@ serve(async (req) => {
     console.log(`[INFO] PDF uploaded successfully to storage`);
     console.log(`[DEBUG] PDF file storage details: ${JSON.stringify(uploadData, null, 2)}`);
 
-    // Generate public URL
+    // Generate public URL - Fixed to handle query parameters correctly
     const { data: publicUrlData } = supabase.storage
       .from('invoice-pdfs')
-      .getPublicUrl(filePath, {
-        transform: {
-          quality: 100
-        }
-      });
+      .getPublicUrl(filePath);
 
-    const publicUrl = `${publicUrlData.publicUrl}?t=${Date.now()}`;
+    // Add timestamp parameter correctly by checking if URL already has query parameters
+    const baseUrl = publicUrlData.publicUrl;
+    const timestamp = Date.now();
+    const publicUrl = baseUrl.includes('?') 
+      ? `${baseUrl}&t=${timestamp}` 
+      : `${baseUrl}?t=${timestamp}`;
+    
     console.log(`[INFO] Generated public URL for PDF: ${publicUrl}`);
 
     // Verify the uploaded PDF

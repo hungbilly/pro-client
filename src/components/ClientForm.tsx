@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Client } from '@/types';
@@ -29,14 +28,15 @@ const ClientForm: React.FC<ClientFormProps> = ({ existingClient, onSuccess }) =>
 
   const createClientMutation = useMutation({
     mutationFn: saveClient,
-    onSuccess: () => {
+    onSuccess: (newClient) => {
       toast.success('Client created successfully!');
       // Invalidate the clients query to refetch the updated list
       queryClient.invalidateQueries({ queryKey: ['clients', selectedCompanyId] });
       if (onSuccess) {
         onSuccess();
       } else {
-        navigate('/');
+        // Navigate to the newly created client's detail page
+        navigate(`/client/${newClient.id}`);
       }
     },
     onError: (error) => {

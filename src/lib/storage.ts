@@ -329,6 +329,7 @@ export const getClient = async (clientId: string): Promise<Client | null> => {
       email: data.email || '',
       phone: data.phone || '',
       address: data.address || '',
+      company: data.company || '', // Make sure to map company field
       notes: data.notes || '',
       createdAt: data.created_at,
       companyId: data.company_id
@@ -363,6 +364,7 @@ export const getClients = async (companyId?: string): Promise<Client[]> => {
       email: client.email || '',
       phone: client.phone || '',
       address: client.address || '',
+      company: client.company || '', // Make sure to map company field
       notes: client.notes || '',
       createdAt: client.created_at,
       companyId: client.company_id
@@ -382,6 +384,7 @@ export const saveClient = async (client: Omit<Client, 'id' | 'createdAt'>): Prom
         email: client.email,
         phone: client.phone,
         address: client.address,
+        company: client.company, // Make sure company field is included
         notes: client.notes,
         company_id: client.companyId
       })
@@ -399,6 +402,7 @@ export const saveClient = async (client: Omit<Client, 'id' | 'createdAt'>): Prom
       email: data.email || '',
       phone: data.phone || '',
       address: data.address || '',
+      company: data.company || '', // Make sure to map company field back
       notes: data.notes || '',
       createdAt: data.created_at,
       companyId: data.company_id
@@ -418,6 +422,7 @@ export const updateClient = async (client: Client): Promise<Client> => {
         email: client.email,
         phone: client.phone,
         address: client.address,
+        company: client.company, // Make sure company field is included
         notes: client.notes,
         company_id: client.companyId
       })
@@ -436,6 +441,7 @@ export const updateClient = async (client: Client): Promise<Client> => {
       email: data.email || '',
       phone: data.phone || '',
       address: data.address || '',
+      company: data.company || '', // Make sure to map company field back
       notes: data.notes || '',
       createdAt: data.created_at,
       companyId: data.company_id

@@ -131,10 +131,11 @@ const ClientsTable = () => {
 
   // Filter clients based on search query and date range
   const filteredClients = clients.filter(client => {
-    // Text search filter
+    // Text search filter - include company field in search
     const matchesSearch = client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       client.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      client.phone.toLowerCase().includes(searchQuery.toLowerCase());
+      client.phone.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (client.company && client.company.toLowerCase().includes(searchQuery.toLowerCase()));
     
     // Date range filter
     let matchesDateRange = true;
@@ -164,6 +165,10 @@ const ClientsTable = () => {
       case 'name':
         valueA = a.name || '';
         valueB = b.name || '';
+        break;
+      case 'company':
+        valueA = a.company || '';
+        valueB = b.company || '';
         break;
       case 'email':
         valueA = a.email || '';
@@ -264,7 +269,7 @@ const ClientsTable = () => {
         </CardHeader>
         <CardContent className="pt-6">
           <SearchBox 
-            placeholder="Search clients by name, email, or phone..." 
+            placeholder="Search clients by name, company, email, or phone..." 
             value={searchQuery} 
             onChange={(e) => setSearchQuery(e.target.value)} 
             className="mb-4"
@@ -280,6 +285,13 @@ const ClientsTable = () => {
                     onSort={() => handleSort('name')}
                   >
                     Name
+                  </TableHead>
+                  <TableHead 
+                    sortable 
+                    sorted={sortBy === 'company' ? sortOrder : null}
+                    onSort={() => handleSort('company')}
+                  >
+                    Company
                   </TableHead>
                   <TableHead 
                     sortable 
@@ -309,7 +321,7 @@ const ClientsTable = () => {
               <TableBody>
                 {sortedClients.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                       No clients match your search or date filter
                     </TableCell>
                   </TableRow>
@@ -321,6 +333,7 @@ const ClientsTable = () => {
                       className="cursor-pointer"
                     >
                       <TableCell className="font-medium">{client.name}</TableCell>
+                      <TableCell>{client.company || '-'}</TableCell>
                       <TableCell>{client.email}</TableCell>
                       <TableCell>{client.phone}</TableCell>
                       <TableCell className="hidden md:table-cell">

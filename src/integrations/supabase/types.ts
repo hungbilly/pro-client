@@ -33,6 +33,7 @@ export type Database = {
       clients: {
         Row: {
           address: string
+          company: string | null
           company_id: string | null
           created_at: string
           email: string
@@ -43,6 +44,7 @@ export type Database = {
         }
         Insert: {
           address: string
+          company?: string | null
           company_id?: string | null
           created_at?: string
           email: string
@@ -53,6 +55,7 @@ export type Database = {
         }
         Update: {
           address?: string
+          company?: string | null
           company_id?: string | null
           created_at?: string
           email?: string

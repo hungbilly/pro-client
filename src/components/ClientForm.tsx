@@ -24,6 +24,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ existingClient, onSuccess }) =>
   const [email, setEmail] = useState(existingClient?.email || '');
   const [phone, setPhone] = useState(existingClient?.phone || '');
   const [address, setAddress] = useState(existingClient?.address || '');
+  const [company, setCompany] = useState(existingClient?.company || '');
   const [notes, setNotes] = useState(existingClient?.notes || '');
 
   const createClientMutation = useMutation({
@@ -85,6 +86,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ existingClient, onSuccess }) =>
           email,
           phone,
           address,
+          company,
           notes,
           createdAt: existingClient.createdAt,
           companyId: selectedCompanyId
@@ -97,6 +99,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ existingClient, onSuccess }) =>
           email,
           phone,
           address,
+          company,
           notes,
           companyId: selectedCompanyId
         };
@@ -125,6 +128,16 @@ const ClientForm: React.FC<ClientFormProps> = ({ existingClient, onSuccess }) =>
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="client-company">Client's Company</Label>
+            <Input
+              id="client-company"
+              placeholder="Client's company name (optional)"
+              value={company}
+              onChange={(e) => setCompany(e.target.value)}
             />
           </div>
           

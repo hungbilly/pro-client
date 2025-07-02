@@ -616,6 +616,9 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
                   <Label className="text-base font-medium">Client</Label>
                   <div className="mt-2">
                     <p className="font-medium break-words">{client.name}</p>
+                    {client.company && (
+                      <p className="text-sm text-muted-foreground break-words">{client.company}</p>
+                    )}
                     <p className="text-sm text-muted-foreground break-words">{client.email}</p>
                   </div>
                 </div>}

@@ -48,14 +48,15 @@ const ClientForm: React.FC<ClientFormProps> = ({ existingClient, onSuccess }) =>
 
   const updateClientMutation = useMutation({
     mutationFn: updateClient,
-    onSuccess: () => {
+    onSuccess: (updatedClient) => {
       toast.success('Client updated successfully!');
       // Invalidate the clients query to refetch the updated list
       queryClient.invalidateQueries({ queryKey: ['clients', selectedCompanyId] });
       if (onSuccess) {
         onSuccess();
       } else {
-        navigate('/');
+        // Navigate to the updated client's detail page
+        navigate(`/client/${updatedClient.id}`);
       }
     },
     onError: (error) => {

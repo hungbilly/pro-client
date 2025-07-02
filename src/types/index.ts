@@ -1,4 +1,3 @@
-
 export interface Client {
   id: string;
   name: string;
@@ -8,6 +7,7 @@ export interface Client {
   createdAt: string;
   notes?: string;
   companyId?: string;
+  company?: string;
 }
 
 export interface Company {

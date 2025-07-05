@@ -1,7 +1,7 @@
 
 import React, { useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
-import MainNavbar from './MainNavbar';
+import TopNavbar from './TopNavbar';
 import Footer from './Footer';
 import TrialBanner from './TrialBanner';
 import { useSubscription } from '@/context/SubscriptionContext';
@@ -42,7 +42,7 @@ const AppLayout = () => {
         WebkitOverflowScrolling: 'touch' 
       }}
     >
-      <MainNavbar />
+      <TopNavbar />
       {isInTrialPeriod && <TrialBanner />}
       
       <div className="flex-1 mobile-scrollable">

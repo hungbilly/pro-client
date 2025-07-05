@@ -152,6 +152,11 @@ const ClientDetail = () => {
               </CardDescription>
               <Separator className="my-4" />
               <div className="space-y-2">
+                {client.company && (
+                  <p>
+                    <span className="font-semibold">Company:</span> {client.company}
+                  </p>
+                )}
                 <p>
                   <span className="font-semibold">Email:</span> {client.email}
                 </p>

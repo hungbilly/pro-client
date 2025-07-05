@@ -14,7 +14,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Check, Calendar, FileText, DollarSign, Send, MailCheck, FileCheck, Edit, CalendarDays, Package, Building, User, Phone, Mail, MapPin, Download, Copy, Link as LinkIcon, Bug, Share2, AlertCircle, CheckCircle, Percent } from 'lucide-react';
+import { ArrowLeft, Check, Calendar, FileText, DollarSign, Send, MailCheck, FileCheck, Edit, CalendarDays, Package, Building, User, Phone, Mail, MapPin, Download, Copy, Link as LinkIcon, Bug, Share2, AlertCircle, CheckCircle, Percent, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import PageTransition from '@/components/ui-custom/PageTransition';
 import { useAuth } from '@/context/AuthContext';
@@ -717,6 +717,12 @@ const InvoiceView = () => {
                     {job && <div className="font-medium">{job.title}</div>}
                     <div className="text-sm font-medium mt-1">Client: {client.name}</div>
                     <div className="text-sm grid grid-cols-1 gap-1 mt-1">
+                      {client.company && (
+                        <div className="flex items-center text-gray-600 dark:text-gray-400">
+                          <Building2 className="h-3 w-3 mr-1" />
+                          {client.company}
+                        </div>
+                      )}
                       {client.email && (
                         <div className="flex items-center text-gray-600 dark:text-gray-400">
                           <Mail className="h-3 w-3 mr-1" />

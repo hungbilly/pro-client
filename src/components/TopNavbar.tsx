@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Home, Users, Briefcase, Settings, CreditCard, LogOut, Building, Menu, User, UserCog, FileText, Shield, DollarSign, BookOpen } from 'lucide-react';
@@ -112,7 +113,7 @@ const TopNavbar = () => {
   };
 
   const renderMenuItems = () => {
-    return filterMenuItems(menuItems).map(item => <Button key={item.path} variant="ghost" size="sm" asChild={!item.disabled} disabled={item.disabled} className={cn("flex items-center gap-2 px-4 py-2 text-sm rounded-md transition-colors w-full justify-start", isActive(item.path) ? "bg-slate-800 text-white" : "text-slate-300 hover:text-white hover:bg-slate-800", item.disabled && "opacity-50 cursor-not-allowed")}>
+    return filterMenuItems(menuItems).map(item => <Button key={item.path} variant="ghost" size="sm" asChild={!item.disabled} disabled={item.disabled} className={cn("flex items-center gap-2 px-4 py-2 text-sm rounded-md transition-colors w-full justify-start", isActive(item.path) ? "bg-slate-700 text-white" : "text-slate-200 hover:text-white hover:bg-slate-700", item.disabled && "opacity-50 cursor-not-allowed")}>
         {!item.disabled ? <Link to={item.path} className="flex items-center gap-2 w-full" onClick={() => isMobile && setIsDrawerOpen(false)}>
             {item.icon}
             <span>{item.label}</span>
@@ -123,8 +124,8 @@ const TopNavbar = () => {
       </Button>);
   };
 
-  return <div className="w-full">
-      <div className="bg-slate-900 w-full">
+  return <div className="w-full relative z-50">
+      <div className="bg-slate-900 w-full shadow-lg border-b border-slate-700">
         <div className="max-w-screen-2xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between w-full relative">
             <div className="flex items-center z-10">
@@ -177,7 +178,7 @@ const TopNavbar = () => {
             </div>
             
             <nav className="hidden md:flex items-center justify-center absolute left-1/2 transform -translate-x-1/2 space-x-2">
-              {filterMenuItems(menuItems).map(item => <Button key={item.path} variant="ghost" size="sm" asChild={!item.disabled} disabled={item.disabled} className={cn("h-auto px-3 py-1.5 text-xs rounded-md transition-colors", isActive(item.path) ? "bg-slate-800 text-white" : "text-slate-300 hover:text-white hover:bg-slate-800", item.disabled && "opacity-50 cursor-not-allowed")}>
+              {filterMenuItems(menuItems).map(item => <Button key={item.path} variant="ghost" size="sm" asChild={!item.disabled} disabled={item.disabled} className={cn("h-auto px-3 py-1.5 text-xs rounded-md transition-colors font-medium", isActive(item.path) ? "bg-slate-700 text-white shadow-md" : "text-slate-200 hover:text-white hover:bg-slate-700", item.disabled && "opacity-50 cursor-not-allowed")}>
                   {!item.disabled ? <Link to={item.path} className="flex flex-col items-center gap-1">
                       {item.icon}
                       <span>{item.label}</span>
@@ -195,7 +196,7 @@ const TopNavbar = () => {
         </div>
       </div>
       
-      <div className="bg-slate-800 w-full py-2">
+      <div className="bg-slate-800 w-full py-2 border-b border-slate-600">
         <div className="max-w-screen-2xl mx-auto px-4">
           <div className="flex items-center justify-between">
             <div className="w-full md:w-auto">
@@ -203,15 +204,15 @@ const TopNavbar = () => {
             </div>
             
             <div className="hidden md:flex items-center gap-4">
-              {user && <Button variant="ghost" size="sm" className="text-slate-300 hover:bg-slate-700 flex items-center gap-1 overflow-hidden" onClick={() => setIsProfileModalOpen(true)}>
-                  <User className="h-4 w-4 text-slate-400 flex-shrink-0" />
+              {user && <Button variant="ghost" size="sm" className="text-slate-200 hover:bg-slate-700 hover:text-white flex items-center gap-1 overflow-hidden font-medium" onClick={() => setIsProfileModalOpen(true)}>
+                  <User className="h-4 w-4 text-slate-300 flex-shrink-0" />
                   <span className="text-xs truncate">
                     {user.email}
                   </span>
                   <SubscriptionStatusBadge />
                 </Button>}
               
-              <Button variant="ghost" size="sm" className="text-white hover:bg-slate-700 flex items-center gap-2" onClick={handleLogout}>
+              <Button variant="ghost" size="sm" className="text-white hover:bg-slate-700 flex items-center gap-2 font-medium" onClick={handleLogout}>
                 <LogOut className="h-4 w-4" />
                 <span>Logout</span>
               </Button>

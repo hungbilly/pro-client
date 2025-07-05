@@ -15,6 +15,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import JobTeammatesList from '@/components/teammates/JobTeammatesList';
 import { getJobTeammates } from '@/lib/teammateStorage';
+
 const JobDetail = () => {
   const {
     id
@@ -261,6 +262,16 @@ const JobDetail = () => {
                       <span>{client.name}</span>
                     </div>
                   </div>
+                  
+                  {client.company && (
+                    <div>
+                      <div className="text-xs font-medium text-muted-foreground mb-1">Company</div>
+                      <div className="flex items-center gap-1.5">
+                        <Building2 className="h-3 w-3 text-muted-foreground" />
+                        <span>{client.company}</span>
+                      </div>
+                    </div>
+                  )}
                   
                   <div>
                     <div className="text-xs font-medium text-muted-foreground mb-1">Email</div>

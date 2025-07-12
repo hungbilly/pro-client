@@ -340,121 +340,58 @@ const InvoiceList: React.FC<InvoiceListProps> = ({
         </div>
       ) : (
         <div className="rounded-md border">
-          <ScrollArea className="w-full">
-            <Table className="min-w-[900px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead 
-                    className="cursor-pointer" 
-                    onClick={() => handleSort('number')}
-                  >
-                    Invoice # {getSortIndicator('number')}
-                  </TableHead>
-                  <TableHead 
-                    className="cursor-pointer"
-                    onClick={() => handleSort('date')}
-                  >
-                    Invoice Date {getSortIndicator('date')}
-                  </TableHead>
-                  <TableHead 
-                    className="cursor-pointer"
-                    onClick={() => handleSort('dueDate')}
-                  >
-                    Due Date {getSortIndicator('dueDate')}
-                  </TableHead>
-                  <TableHead 
-                    className="cursor-pointer"
-                    onClick={() => handleSort('shootingDate')}
-                  >
-                    Job Date {getSortIndicator('shootingDate')}
-                  </TableHead>
-                  <TableHead 
-                    className="cursor-pointer"
-                    onClick={() => handleSort('amount')}
-                  >
-                    Amount {getSortIndicator('amount')}
-                  </TableHead>
-                  <TableHead 
-                    className="cursor-pointer"
-                    onClick={() => handleSort('paid')}
-                  >
-                    Paid {getSortIndicator('paid')}
-                  </TableHead>
-                  <TableHead>
-                    Acceptance
-                  </TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedInvoices.map((invoice) => {
-                  const paidAmount = getPaidAmount(invoice);
-                  console.log(`[InvoiceList] Rendering invoice ${invoice.id}, jobId: ${invoice.jobId}, shootingDate: ${invoice.shootingDate}, jobDate: ${invoice.jobId ? jobDates[invoice.jobId] : 'no job'}`);
-                  console.log(`[InvoiceList] Invoice acceptance check: status=${invoice.status}, invoice_accepted_at=${invoice.invoice_accepted_at}, isAccepted=${isInvoiceAccepted(invoice)}`);
-                  console.log(`[InvoiceList] Contract acceptance check: contract_accepted_at=${invoice.contract_accepted_at}, contract_accepted_by=${invoice.contract_accepted_by}, contractStatus=${invoice.contractStatus}, isAccepted=${isContractAccepted(invoice)}`);
-                  return (
-                    <TableRow key={invoice.id}>
-                      <TableCell className="font-medium">{invoice.number}</TableCell>
-                      <TableCell>{new Date(invoice.date).toLocaleDateString()}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center">
-                          <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
-                          {new Date(invoice.dueDate).toLocaleDateString()}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center">
-                          <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
-                          {getJobDateDisplay(invoice)}
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-semibold">{formatCurrency(invoice.amount, companyCurrency)}</TableCell>
-                      <TableCell className="font-semibold">{formatCurrency(paidAmount, companyCurrency)}</TableCell>
-                      <TableCell>
-                        <AcceptanceStatusDots 
-                          isInvoiceAccepted={isInvoiceAccepted(invoice)}
-                          isContractAccepted={isContractAccepted(invoice)}
-                        />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end items-center gap-1">
-                          {invoice.status !== 'draft' && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              title="Copy client link"
-                              onClick={(e) => copyInvoiceLink(invoice, e)}
-                            >
-                              <Copy className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            asChild
-                          >
-                            <Link to={`/invoice/${invoice.id}`}>
-                              <Eye className="h-3.5 w-3.5" />
-                            </Link>
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            title="Delete invoice"
-                            onClick={(e) => confirmDeleteInvoice(e, invoice.id)}
-                          >
-                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+          <ScrollArea className="w-full whitespace-nowrap">
+            <div className="w-full overflow-auto">
+              <Table className="min-w-[900px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead 
+                      className="cursor-pointer whitespace-nowrap" 
+                      onClick={() => handleSort('number')}
+                    >
+                      Invoice # {getSortIndicator('number')}
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer whitespace-nowrap"
+                      onClick={() => handleSort('date')}
+                    >
+                      Invoice Date {getSortIndicator('date')}
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer whitespace-nowrap"
+                      onClick={() => handleSort('dueDate')}
+                    >
+                      Due Date {getSortIndicator('dueDate')}
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer whitespace-nowrap"
+                      onClick={() => handleSort('shootingDate')}
+                    >
+                      Job Date {getSortIndicator('shootingDate')}
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer whitespace-nowrap"
+                      onClick={() => handleSort('amount')}
+                    >
+                      Amount {getSortIndicator('amount')}
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer whitespace-nowrap"
+                      onClick={() => handleSort('paid')}
+                    >
+                      Paid {getSortIndicator('paid')}
+                    </TableHead>
+                    <TableHead className="whitespace-nowrap">
+                      Acceptance
+                    </TableHead>
+                    <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+...
+                </TableBody>
+              </Table>
+            </div>
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
         </div>

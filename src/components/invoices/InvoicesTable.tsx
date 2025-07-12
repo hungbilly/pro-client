@@ -95,31 +95,31 @@ const InvoicesTable: React.FC<InvoicesTableProps> = ({
                 Client {getSortIndicator('client')}
               </TableHead>
               <TableHead 
-                className="hidden md:table-cell cursor-pointer" 
+                className="cursor-pointer" 
                 onClick={() => onSort('job')}
               >
                 Job {getSortIndicator('job')}
               </TableHead>
               <TableHead 
-                className="hidden md:table-cell cursor-pointer" 
+                className="cursor-pointer" 
                 onClick={() => onSort('date')}
               >
                 Invoice Date {getSortIndicator('date')}
               </TableHead>
               <TableHead 
-                className="hidden md:table-cell cursor-pointer" 
+                className="cursor-pointer" 
                 onClick={() => onSort('shootingDate')}
               >
                 Job Date {getSortIndicator('shootingDate')}
               </TableHead>
               <TableHead 
-                className="hidden md:table-cell cursor-pointer" 
+                className="cursor-pointer" 
                 onClick={() => onSort('amount')}
               >
                 Amount {getSortIndicator('amount')}
               </TableHead>
               <TableHead 
-                className="hidden md:table-cell cursor-pointer" 
+                className="cursor-pointer" 
                 onClick={() => onSort('paid')}
               >
                 Paid {getSortIndicator('paid')}
@@ -142,20 +142,20 @@ const InvoicesTable: React.FC<InvoicesTableProps> = ({
                 >
                   <TableCell className="font-medium">{invoice.number || '-'}</TableCell>
                   <TableCell>{getClientName(invoice.clientId)}</TableCell>
-                  <TableCell className="hidden md:table-cell">{getJobName(invoice.jobId)}</TableCell>
-                  <TableCell className="hidden md:table-cell">
+                  <TableCell>{getJobName(invoice.jobId)}</TableCell>
+                  <TableCell>
                     {invoice.date ? new Date(invoice.date).toLocaleDateString() : '-'}
                   </TableCell>
-                  <TableCell className="hidden md:table-cell">
+                  <TableCell>
                     <div className="flex items-center">
                       <CalendarDays className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
                       {getJobDateDisplay(invoice)}
                     </div>
                   </TableCell>
-                  <TableCell className="hidden md:table-cell">
+                  <TableCell>
                     {formatCurrency(invoice.amount || 0, companyCurrency)}
                   </TableCell>
-                  <TableCell className="hidden md:table-cell">
+                  <TableCell>
                     {formatCurrency(paidAmount, companyCurrency)}
                   </TableCell>
                   <TableCell>

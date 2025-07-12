@@ -144,7 +144,7 @@ const ClientDetail = () => {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4">
+          <div className="grid gap-4 overflow-hidden">
             <div>
               <h3 className="text-lg font-medium">Client Information</h3>
               <CardDescription>
@@ -179,7 +179,9 @@ const ClientDetail = () => {
             <Separator className="my-4" />
             <JobList jobs={jobs} client={client} onJobDelete={handleJobDelete} />
             <Separator className="my-4" />
-            <InvoiceList invoices={invoices} client={client} showCreateButton={false} />
+            <div className="overflow-hidden">
+              <InvoiceList invoices={invoices} client={client} showCreateButton={false} />
+            </div>
           </div>
         </CardContent>
         <CardFooter>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { Invoice, Client } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -78,6 +78,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({
   const [sortBy, setSortBy] = React.useState<'invoice-date' | 'job-date'>('invoice-date');
   const [sortConfig, setSortConfig] = React.useState<SortConfig>({ key: 'date', direction: 'desc' });
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { id: jobId } = useParams();
   const [jobDates, setJobDates] = React.useState<Record<string, string | null>>({});
   
@@ -262,6 +263,10 @@ const InvoiceList: React.FC<InvoiceListProps> = ({
     setInvoiceToDelete(invoiceId);
   };
 
+  const handleInvoiceRowClick = (invoiceId: string) => {
+    navigate(`/invoice/${invoiceId}`);
+  };
+
   const getJobDateDisplay = (invoice: Invoice) => {
     if (invoice.shootingDate) {
       return new Date(invoice.shootingDate).toLocaleDateString();
@@ -393,7 +398,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({
                   console.log(`[InvoiceList] Invoice acceptance check: status=${invoice.status}, invoice_accepted_at=${invoice.invoice_accepted_at}, isAccepted=${isInvoiceAccepted(invoice)}`);
                   console.log(`[InvoiceList] Contract acceptance check: contract_accepted_at=${invoice.contract_accepted_at}, contract_accepted_by=${invoice.contract_accepted_by}, contractStatus=${invoice.contractStatus}, isAccepted=${isContractAccepted(invoice)}`);
                   return (
-                    <TableRow key={invoice.id}>
+                    <TableRow key={invoice.id} onClick={() => handleInvoiceRowClick(invoice.id)} className="cursor-pointer">
                       <TableCell className="font-medium whitespace-nowrap">{invoice.number}</TableCell>
                       <TableCell className="whitespace-nowrap">{new Date(invoice.date).toLocaleDateString()}</TableCell>
                       <TableCell className="whitespace-nowrap">
@@ -417,7 +422,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({
                         />
                       </TableCell>
                       <TableCell className="text-right whitespace-nowrap">
-                        <div className="flex justify-end items-center gap-1">
+                        <div className="flex justify-end items-center gap-1" onClick={e => e.stopPropagation()}>
                           {invoice.status !== 'draft' && (
                             <Button
                               variant="ghost"

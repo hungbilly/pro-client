@@ -341,7 +341,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({
       ) : (
         <div className="rounded-md border">
           <ScrollArea className="w-full">
-            <Table className="min-w-[900px]">
+            <Table className="min-w-[1200px]">
               <TableHeader>
                 <TableRow>
                   <TableHead 

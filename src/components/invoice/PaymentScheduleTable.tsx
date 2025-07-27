@@ -513,6 +513,7 @@ const PaymentScheduleTable = memo(({
                 size="sm"
                 onClick={() => setEditingAmountId(schedule.id)}
                 className="ml-1"
+                disabled={!shouldEnableEditing}
               >
                 <Edit2 className="h-3 w-3" />
               </Button>

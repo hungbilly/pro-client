@@ -508,15 +508,6 @@ const PaymentScheduleTable = memo(({
         {!isClientView && (
           <TableCell className="whitespace-nowrap min-w-[115px] max-w-[130px]">
             <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setEditingAmountId(schedule.id)}
-                className="ml-1"
-                disabled={!shouldEnableEditing}
-              >
-                <Edit2 className="h-3 w-3" />
-              </Button>
               {/* Status dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
